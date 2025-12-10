@@ -24,7 +24,6 @@ services:
       - "9000:9000"
     volumes:
       - ./backend:/app
-      - ./osk:/app/osk
     environment:
       - ENVIRONMENT=development
       - DATABASE_URL=sqlite:///./libresim.db
