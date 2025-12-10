@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from 'react'
+import { useCallback, useMemo, useRef, useEffect } from 'react'
 import {
   ReactFlow,
   Background,
@@ -6,7 +6,6 @@ import {
   MiniMap,
   useNodesState,
   useEdgesState,
-  addEdge,
   Connection,
   Node,
   Edge,
@@ -58,6 +57,38 @@ export function Editor() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
 
+  // Sync React Flow nodes with model state when model changes
+  useEffect(() => {
+    if (!model) {
+      setNodes([])
+      setEdges([])
+      return
+    }
+
+    const newNodes: Node[] = model.blocks.map((block) => ({
+      id: block.id,
+      type: 'blockNode',
+      position: block.position,
+      data: {
+        block,
+        definition: blockRegistry.get(block.type),
+      },
+    }))
+
+    const newEdges: Edge[] = model.connections.map((conn) => ({
+      id: conn.id,
+      source: conn.sourceBlockId,
+      sourceHandle: conn.sourcePortId,
+      target: conn.targetBlockId,
+      targetHandle: conn.targetPortId,
+      type: 'smoothstep',
+      animated: false,
+    }))
+
+    setNodes(newNodes)
+    setEdges(newEdges)
+  }, [model, setNodes, setEdges])
+
   // Sync React Flow state back to model store
   const onNodeDragStop = useCallback(
     (_: React.MouseEvent, node: Node) => {
@@ -69,27 +100,16 @@ export function Editor() {
   const onConnect: OnConnect = useCallback(
     (params: Connection) => {
       if (params.source && params.target && params.sourceHandle && params.targetHandle) {
-        const connectionId = addConnection({
+        // Add connection to model - the useEffect will sync edges automatically
+        addConnection({
           sourceBlockId: params.source,
           sourcePortId: params.sourceHandle,
           targetBlockId: params.target,
           targetPortId: params.targetHandle,
         })
-        if (connectionId) {
-          setEdges((eds) =>
-            addEdge(
-              {
-                ...params,
-                id: connectionId,
-                type: 'smoothstep',
-              },
-              eds
-            )
-          )
-        }
       }
     },
-    [addConnection, setEdges]
+    [addConnection]
   )
 
   const onNodesDelete = useCallback(
@@ -133,25 +153,11 @@ export function Editor() {
         y: event.clientY,
       })
 
-      const blockId = addBlock(definition, position)
-      if (blockId) {
-        setNodes((nds) => [
-          ...nds,
-          {
-            id: blockId,
-            type: 'blockNode',
-            position,
-            data: {
-              block: model?.blocks.find((b) => b.id === blockId),
-              definition,
-            },
-          },
-        ])
-      }
-
+      // Add block to model - the useEffect will sync nodes automatically
+      addBlock(definition, position)
       setDraggingBlockType(null)
     },
-    [draggingBlockType, screenToFlowPosition, addBlock, setNodes, setDraggingBlockType, model]
+    [draggingBlockType, screenToFlowPosition, addBlock, setDraggingBlockType]
   )
 
   const nodeTypes: NodeTypes = useMemo(
