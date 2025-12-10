@@ -7,7 +7,8 @@ from ..state import State
 class Scope(Block):
     """Scope block - records signal over time."""
 
-    def __init__(self, num_inputs=1):
+    def __init__(self, num_inputs=1, **kwargs):
+        # Accept **kwargs to ignore extra params like sampleTime from frontend
         super().__init__()
         self.num_inputs = num_inputs
         self.inputs = [0.0] * num_inputs
@@ -72,7 +73,7 @@ class ToWorkspace(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block):
+    def connectInput(self, block, port=0):
         """Connect an input block."""
         self.input_block = block
 
@@ -109,7 +110,7 @@ class Display(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block):
+    def connectInput(self, block, port=0):
         self.input_block = block
 
     def update(self):

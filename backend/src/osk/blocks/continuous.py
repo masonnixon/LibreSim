@@ -25,7 +25,7 @@ class Integrator(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block):
+    def connectInput(self, block, port=0):
         self.input_block = block
 
     def update(self):
@@ -71,7 +71,7 @@ class Derivative(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block):
+    def connectInput(self, block, port=0):
         self.input_block = block
 
     def update(self):
@@ -116,7 +116,7 @@ class TransferFunction(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block):
+    def connectInput(self, block, port=0):
         self.input_block = block
 
     def update(self):
@@ -193,7 +193,7 @@ class StateSpace(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block):
+    def connectInput(self, block, port=0):
         self.input_block = block
 
     def update(self):
@@ -253,7 +253,7 @@ class PIDController(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block):
+    def connectInput(self, block, port=0):
         self.input_block = block
 
     def update(self):

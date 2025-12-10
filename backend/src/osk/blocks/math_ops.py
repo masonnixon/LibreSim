@@ -56,7 +56,7 @@ class Gain(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block):
+    def connectInput(self, block, port=0):
         self.input_block = block
 
     def update(self):
@@ -121,7 +121,7 @@ class Abs(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block):
+    def connectInput(self, block, port=0):
         self.input_block = block
 
     def update(self):
@@ -145,7 +145,7 @@ class Sign(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block):
+    def connectInput(self, block, port=0):
         self.input_block = block
 
     def update(self):
@@ -177,7 +177,7 @@ class Saturation(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block):
+    def connectInput(self, block, port=0):
         self.input_block = block
 
     def update(self):
@@ -203,7 +203,7 @@ class MathFunction(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block):
+    def connectInput(self, block, port=0):
         self.input_block = block
 
     def update(self):
@@ -247,7 +247,7 @@ class Trigonometry(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block):
+    def connectInput(self, block, port=0):
         self.input_block = block
 
     def update(self):
@@ -290,7 +290,7 @@ class DeadZone(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block):
+    def connectInput(self, block, port=0):
         self.input_block = block
 
     def update(self):

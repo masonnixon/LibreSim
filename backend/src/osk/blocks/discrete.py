@@ -25,7 +25,7 @@ class UnitDelay(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block):
+    def connectInput(self, block, port=0):
         self.input_block = block
 
     def update(self):
@@ -60,7 +60,7 @@ class ZeroOrderHold(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block):
+    def connectInput(self, block, port=0):
         self.input_block = block
 
     def update(self):
@@ -98,7 +98,7 @@ class DiscreteIntegrator(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block):
+    def connectInput(self, block, port=0):
         self.input_block = block
 
     def update(self):
@@ -145,7 +145,7 @@ class DiscreteDerivative(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block):
+    def connectInput(self, block, port=0):
         self.input_block = block
 
     def update(self):
@@ -193,7 +193,7 @@ class DiscreteTransferFunction(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block):
+    def connectInput(self, block, port=0):
         self.input_block = block
 
     def update(self):
