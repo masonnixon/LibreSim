@@ -1,42 +1,116 @@
 """OSK Adapter - Interface to the Object-oriented Simulation Kernel.
 
-This module provides the bridge between LibreSim's block model and OSK's
-simulation engine. It translates compiled blocks to OSK objects and
-manages the simulation execution.
-
-TODO: Replace stub implementations with actual OSK integration once
-the OSK code is available.
+This module provides the bridge between LibreSim's compiled model and OSK's
+simulation engine. It creates OSK block instances and manages simulation execution.
 """
 
-import math
-from typing import Dict, Any, List, Callable
-from dataclasses import dataclass
+from typing import Dict, Any, List, Type
 
 from ..models.simulation import SimulationConfig, SolverType
 from .compiler import CompiledModel, CompiledBlock
 
+# Import OSK components
+from ..osk import Block, State, Sim
+from ..osk.blocks import (
+    # Sources
+    Constant, Step, Ramp, SineWave, Clock,
+    # Sinks
+    Scope, ToWorkspace,
+    # Continuous
+    Integrator, Derivative, TransferFunction, StateSpace, PIDController,
+    # Discrete
+    UnitDelay, ZeroOrderHold,
+    # Math
+    Sum, Gain, Product, Abs, Saturation,
+)
+from ..osk.blocks.math_ops import Switch, MathFunction, Trigonometry, DeadZone, Sign
+from ..osk.blocks.sinks import Display, Terminator
+from ..osk.blocks.sources import PulseGenerator
+from ..osk.blocks.discrete import DiscreteIntegrator, DiscreteDerivative, DiscreteTransferFunction
 
-@dataclass
-class BlockState:
-    """Runtime state for a block."""
 
-    outputs: Dict[str, float]
-    state: Dict[str, float]  # For stateful blocks like integrators
+# Mapping from LibreSim block types to OSK block classes
+BLOCK_TYPE_MAP: Dict[str, Type[Block]] = {
+    # Sources
+    "constant": Constant,
+    "step": Step,
+    "ramp": Ramp,
+    "sine_wave": SineWave,
+    "pulse_generator": PulseGenerator,
+    "clock": Clock,
+    # Sinks
+    "scope": Scope,
+    "display": Display,
+    "to_workspace": ToWorkspace,
+    "terminator": Terminator,
+    # Continuous
+    "integrator": Integrator,
+    "derivative": Derivative,
+    "transfer_function": TransferFunction,
+    "state_space": StateSpace,
+    "pid_controller": PIDController,
+    # Discrete
+    "unit_delay": UnitDelay,
+    "zero_order_hold": ZeroOrderHold,
+    "discrete_integrator": DiscreteIntegrator,
+    "discrete_derivative": DiscreteDerivative,
+    "discrete_transfer_function": DiscreteTransferFunction,
+    # Math
+    "sum": Sum,
+    "gain": Gain,
+    "product": Product,
+    "abs": Abs,
+    "sign": Sign,
+    "saturation": Saturation,
+    "dead_zone": DeadZone,
+    "math_function": MathFunction,
+    "trigonometry": Trigonometry,
+    "switch": Switch,
+}
+
+# Parameter name mapping from LibreSim to OSK constructor arguments
+PARAM_MAP: Dict[str, Dict[str, str]] = {
+    "constant": {"value": "value"},
+    "step": {"stepTime": "step_time", "initialValue": "initial_value", "finalValue": "final_value"},
+    "ramp": {"slope": "slope", "startTime": "start_time", "initialOutput": "initial_output"},
+    "sine_wave": {"amplitude": "amplitude", "frequency": "frequency", "phase": "phase", "bias": "bias"},
+    "pulse_generator": {"amplitude": "amplitude", "period": "period", "dutyCycle": "duty_cycle", "phaseDelay": "phase_delay"},
+    "scope": {"numInputs": "num_inputs"},
+    "to_workspace": {"variableName": "variable_name"},
+    "integrator": {"initialCondition": "initial_condition", "limitOutput": "limit_output", "upperLimit": "upper_limit", "lowerLimit": "lower_limit"},
+    "derivative": {"coefficient": "coefficient"},
+    "transfer_function": {"numerator": "numerator", "denominator": "denominator"},
+    "state_space": {"A": "A", "B": "B", "C": "C", "D": "D", "initialCondition": "initial_state"},
+    "pid_controller": {"Kp": "Kp", "Ki": "Ki", "Kd": "Kd", "N": "N", "initialConditionI": "initial_integrator"},
+    "unit_delay": {"initialCondition": "initial_condition", "sampleTime": "sample_time"},
+    "zero_order_hold": {"sampleTime": "sample_time"},
+    "discrete_integrator": {"method": "method", "sampleTime": "sample_time", "initialCondition": "initial_condition"},
+    "discrete_derivative": {"sampleTime": "sample_time", "initialCondition": "initial_condition"},
+    "discrete_transfer_function": {"numerator": "numerator", "denominator": "denominator", "sampleTime": "sample_time"},
+    "sum": {"signs": "signs"},
+    "gain": {"gain": "gain"},
+    "product": {"operations": "operations"},
+    "saturation": {"upperLimit": "upper_limit", "lowerLimit": "lower_limit"},
+    "dead_zone": {"start": "start", "end": "end"},
+    "math_function": {"function": "function", "exponent": "exponent"},
+    "trigonometry": {"function": "function"},
+    "switch": {"threshold": "threshold", "criteria": "criteria"},
+}
 
 
 class OSKAdapter:
     """Adapter for the Object-oriented Simulation Kernel.
 
-    This class wraps OSK functionality and provides a clean interface
-    for the simulation runner. Currently contains stub implementations
-    that will be replaced with actual OSK calls.
+    Creates OSK block instances from compiled LibreSim models and
+    manages simulation execution using OSK's Sim class.
     """
 
     def __init__(self):
         self._compiled_model: CompiledModel | None = None
         self._config: SimulationConfig | None = None
-        self._block_states: Dict[str, BlockState] = {}
-        self._block_functions: Dict[str, Callable] = {}
+        self._osk_blocks: Dict[str, Block] = {}
+        self._block_map: Dict[str, CompiledBlock] = {}
+        self._sink_blocks: List[str] = []
 
     def initialize(self, compiled_model: CompiledModel, config: SimulationConfig):
         """Initialize the simulation with a compiled model.
@@ -47,234 +121,99 @@ class OSKAdapter:
         """
         self._compiled_model = compiled_model
         self._config = config
-        self._block_states = {}
+        self._osk_blocks = {}
+        self._block_map = {}
+        self._sink_blocks = []
 
-        # Initialize each block
+        # Set the integration method
+        solver_method = self._get_solver_method(config.solver)
+        State.method = solver_method
+
+        # Create OSK block instances
         for block in compiled_model.blocks:
-            self._initialize_block(block)
+            self._create_osk_block(block)
+            self._block_map[block.id] = block
 
-    def _initialize_block(self, block: CompiledBlock):
-        """Initialize a single block's state and function."""
-        # Initialize state
-        state = BlockState(outputs={}, state={})
+        # Set up connections between blocks
+        self._setup_connections()
 
-        # Set up initial conditions based on block type
-        if block.type == "integrator":
-            state.state["integral"] = block.parameters.get("initialCondition", 0.0)
-        elif block.type == "derivative":
-            state.state["prev_input"] = 0.0
-            state.state["prev_time"] = 0.0
-        elif block.type == "pid_controller":
-            state.state["integral"] = block.parameters.get("initialConditionI", 0.0)
-            state.state["prev_error"] = 0.0
-        elif block.type == "unit_delay":
-            state.state["prev_value"] = block.parameters.get("initialCondition", 0.0)
-        elif block.type == "transfer_function":
-            # Initialize state vector for transfer function
-            num = block.parameters.get("numerator", [1])
-            den = block.parameters.get("denominator", [1, 1])
-            order = len(den) - 1
-            state.state["x"] = [0.0] * order
+    def _get_solver_method(self, solver: SolverType) -> str:
+        """Convert SolverType to OSK method name."""
+        return {
+            SolverType.EULER: "Euler",
+            SolverType.RK4: "RK4",
+            SolverType.MERSON: "Merson",
+        }.get(solver, "RK4")
 
-        self._block_states[block.id] = state
-        self._block_functions[block.id] = self._get_block_function(block)
+    def _create_osk_block(self, compiled_block: CompiledBlock):
+        """Create an OSK block instance from a compiled block."""
+        block_type = compiled_block.type
+        block_class = BLOCK_TYPE_MAP.get(block_type)
 
-    def _get_block_function(self, block: CompiledBlock) -> Callable:
-        """Get the computation function for a block type."""
-        block_type = block.type
-        params = block.parameters
+        if not block_class:
+            # Unknown block type, create a pass-through block
+            print(f"Warning: Unknown block type '{block_type}', using pass-through")
+            self._osk_blocks[compiled_block.id] = Gain(gain=1.0)
+            return
 
-        # Source blocks
-        if block_type == "constant":
-            value = params.get("value", 1.0)
-            return lambda t, inputs, state: {"out": value}
+        # Map parameters
+        osk_params = self._map_parameters(block_type, compiled_block.parameters)
 
-        elif block_type == "step":
-            step_time = params.get("stepTime", 1.0)
-            initial = params.get("initialValue", 0.0)
-            final = params.get("finalValue", 1.0)
-            return lambda t, inputs, state: {"out": final if t >= step_time else initial}
+        # Create the block instance
+        try:
+            osk_block = block_class(**osk_params)
+            self._osk_blocks[compiled_block.id] = osk_block
 
-        elif block_type == "ramp":
-            slope = params.get("slope", 1.0)
-            start_time = params.get("startTime", 0.0)
-            initial = params.get("initialOutput", 0.0)
-            return lambda t, inputs, state: {
-                "out": initial + slope * (t - start_time) if t >= start_time else initial
-            }
+            # Track sink blocks for output recording
+            if block_type in ["scope", "display", "to_workspace"]:
+                self._sink_blocks.append(compiled_block.id)
 
-        elif block_type == "sine_wave":
-            amp = params.get("amplitude", 1.0)
-            freq = params.get("frequency", 1.0)
-            phase = params.get("phase", 0.0)
-            bias = params.get("bias", 0.0)
-            return lambda t, inputs, state: {
-                "out": amp * math.sin(2 * math.pi * freq * t + phase) + bias
-            }
+        except Exception as e:
+            print(f"Error creating block '{compiled_block.name}': {e}")
+            # Create a default block as fallback
+            self._osk_blocks[compiled_block.id] = Gain(gain=1.0)
 
-        elif block_type == "clock":
-            return lambda t, inputs, state: {"out": t}
+    def _map_parameters(self, block_type: str, params: Dict[str, Any]) -> Dict[str, Any]:
+        """Map LibreSim parameter names to OSK constructor arguments."""
+        param_mapping = PARAM_MAP.get(block_type, {})
+        osk_params = {}
 
-        # Math blocks
-        elif block_type == "gain":
-            gain = params.get("gain", 1.0)
-            return lambda t, inputs, state: {"out": gain * inputs.get("in", 0.0)}
+        for libresim_name, value in params.items():
+            osk_name = param_mapping.get(libresim_name, libresim_name)
+            osk_params[osk_name] = value
 
-        elif block_type == "sum":
-            signs = params.get("signs", "++")
-            def sum_func(t, inputs, state):
-                result = 0.0
-                for i, sign in enumerate(signs):
-                    input_key = f"in{i+1}" if i > 0 else "in1"
-                    val = inputs.get(input_key, 0.0)
-                    result += val if sign == "+" else -val
-                return {"out": result}
-            return sum_func
+        return osk_params
 
-        elif block_type == "product":
-            ops = params.get("operations", "**")
-            def product_func(t, inputs, state):
-                result = 1.0
-                for i, op in enumerate(ops):
-                    input_key = f"in{i+1}"
-                    val = inputs.get(input_key, 1.0)
-                    if op == "*":
-                        result *= val
-                    else:
-                        result /= val if val != 0 else 1e-10
-                return {"out": result}
-            return product_func
+    def _setup_connections(self):
+        """Set up connections between OSK blocks."""
+        if not self._compiled_model:
+            return
 
-        elif block_type == "abs":
-            return lambda t, inputs, state: {"out": abs(inputs.get("in", 0.0))}
+        for block in self._compiled_model.blocks:
+            osk_block = self._osk_blocks.get(block.id)
+            if not osk_block:
+                continue
 
-        elif block_type == "saturation":
-            upper = params.get("upperLimit", 1.0)
-            lower = params.get("lowerLimit", -1.0)
-            return lambda t, inputs, state: {
-                "out": max(lower, min(upper, inputs.get("in", 0.0)))
-            }
+            # Connect inputs
+            for i, conn in enumerate(block.input_connections):
+                source_block_id, source_port = conn.split(":")
+                source_osk_block = self._osk_blocks.get(source_block_id)
 
-        # Continuous blocks
-        elif block_type == "integrator":
-            def integrator_func(t, inputs, state):
-                # Simple forward Euler integration
-                dt = self._config.step_size if self._config else 0.01
-                state["integral"] += inputs.get("in", 0.0) * dt
-                return {"out": state["integral"]}
-            return integrator_func
-
-        elif block_type == "derivative":
-            def derivative_func(t, inputs, state):
-                current_input = inputs.get("in", 0.0)
-                dt = t - state.get("prev_time", 0.0)
-                if dt > 0:
-                    deriv = (current_input - state.get("prev_input", 0.0)) / dt
-                else:
-                    deriv = 0.0
-                state["prev_input"] = current_input
-                state["prev_time"] = t
-                return {"out": deriv}
-            return derivative_func
-
-        elif block_type == "pid_controller":
-            kp = params.get("Kp", 1.0)
-            ki = params.get("Ki", 0.0)
-            kd = params.get("Kd", 0.0)
-            n = params.get("N", 100.0)
-
-            def pid_func(t, inputs, state):
-                error = inputs.get("in", 0.0)
-                dt = self._config.step_size if self._config else 0.01
-
-                # Proportional
-                p_term = kp * error
-
-                # Integral
-                state["integral"] += error * dt
-                i_term = ki * state["integral"]
-
-                # Derivative (with filter)
-                d_error = (error - state.get("prev_error", 0.0)) / dt if dt > 0 else 0.0
-                d_term = kd * d_error
-
-                state["prev_error"] = error
-                return {"out": p_term + i_term + d_term}
-            return pid_func
-
-        elif block_type == "transfer_function":
-            num = params.get("numerator", [1])
-            den = params.get("denominator", [1, 1])
-
-            def tf_func(t, inputs, state):
-                # Simple first-order approximation for demo
-                # TODO: Implement proper state-space realization
-                u = inputs.get("in", 0.0)
-                dt = self._config.step_size if self._config else 0.01
-
-                if len(den) == 2:
-                    # First order: num[0] / (den[0]*s + den[1])
-                    # y' = (-den[1]/den[0])*y + (num[0]/den[0])*u
-                    a = -den[1] / den[0] if den[0] != 0 else 0
-                    b = num[0] / den[0] if den[0] != 0 else 0
-                    y = state.get("x", [0.0])[0]
-                    y_new = y + dt * (a * y + b * u)
-                    state["x"] = [y_new]
-                    return {"out": y_new}
-                else:
-                    # Higher order - simplified
-                    return {"out": num[0] * u / den[0] if den[0] != 0 else 0}
-            return tf_func
-
-        # Discrete blocks
-        elif block_type == "unit_delay":
-            def delay_func(t, inputs, state):
-                output = state.get("prev_value", 0.0)
-                state["prev_value"] = inputs.get("in", 0.0)
-                return {"out": output}
-            return delay_func
-
-        elif block_type == "zero_order_hold":
-            sample_time = params.get("sampleTime", 0.1)
-            def zoh_func(t, inputs, state):
-                if "last_sample_time" not in state:
-                    state["last_sample_time"] = 0.0
-                    state["held_value"] = inputs.get("in", 0.0)
-
-                if t - state["last_sample_time"] >= sample_time:
-                    state["held_value"] = inputs.get("in", 0.0)
-                    state["last_sample_time"] = t
-
-                return {"out": state["held_value"]}
-            return zoh_func
-
-        # Sink blocks (just pass through for recording)
-        elif block_type in ["scope", "display", "to_workspace", "terminator"]:
-            return lambda t, inputs, state: {"out": inputs.get("in", 0.0)}
-
-        # Routing blocks
-        elif block_type == "mux":
-            num_inputs = params.get("numInputs", 2)
-            def mux_func(t, inputs, state):
-                values = [inputs.get(f"in{i+1}", 0.0) for i in range(num_inputs)]
-                return {"out": values}
-            return mux_func
-
-        elif block_type == "switch":
-            threshold = params.get("threshold", 0.0)
-            def switch_func(t, inputs, state):
-                control = inputs.get("control", 0.0)
-                if control >= threshold:
-                    return {"out": inputs.get("in1", 0.0)}
-                else:
-                    return {"out": inputs.get("in2", 0.0)}
-            return switch_func
-
-        # Default: pass-through
-        return lambda t, inputs, state: {"out": inputs.get("in", 0.0)}
+                if source_osk_block:
+                    # Use connectInput if available, otherwise we'll handle in step()
+                    if hasattr(osk_block, 'connectInput'):
+                        osk_block.connectInput(source_osk_block, i)
+                    elif hasattr(osk_block, 'input_block'):
+                        osk_block.input_block = source_osk_block
+                    elif hasattr(osk_block, 'input_blocks'):
+                        if i < len(osk_block.input_blocks):
+                            osk_block.input_blocks[i] = source_osk_block
 
     def step(self, t: float, dt: float) -> Dict[str, float]:
         """Execute one simulation step.
+
+        This method manually steps through the simulation, updating
+        the OSK State class timing and calling block methods.
 
         Args:
             t: Current simulation time
@@ -286,54 +225,128 @@ class OSKAdapter:
         if not self._compiled_model:
             return {}
 
-        # Dictionary to hold all block outputs for this step
-        all_outputs: Dict[str, Dict[str, float]] = {}
+        # Set OSK timing
+        State.t = t
+        State.dt = dt
+        State.dtp = dt
+        State.ready = 1
+
         recorded_outputs: Dict[str, float] = {}
 
-        # Execute blocks in order
+        # Execute blocks in topological order
         for block_id in self._compiled_model.execution_order:
-            block = next(
-                (b for b in self._compiled_model.blocks if b.id == block_id), None
-            )
-            if not block:
+            osk_block = self._osk_blocks.get(block_id)
+            compiled_block = self._block_map.get(block_id)
+
+            if not osk_block or not compiled_block:
                 continue
 
-            # Gather inputs from connected blocks
-            inputs = {}
-            state = self._block_states[block_id]
+            # For blocks without automatic input connection, set inputs manually
+            if not hasattr(osk_block, 'input_block') or osk_block.input_block is None:
+                for i, conn in enumerate(compiled_block.input_connections):
+                    source_block_id, _ = conn.split(":")
+                    source_block = self._osk_blocks.get(source_block_id)
+                    if source_block:
+                        value = source_block.getOutput()
+                        osk_block.setInput(value, i)
 
-            for i, conn in enumerate(block.input_connections):
-                source_block_id, source_port = conn.split(":")
-                if source_block_id in all_outputs:
-                    # Map source output to input name
-                    input_name = f"in{i+1}" if i > 0 else "in" if len(block.input_connections) == 1 else f"in{i+1}"
-                    source_output = all_outputs[source_block_id].get("out", 0.0)
-                    inputs[input_name] = source_output
+            # Update block (computes derivatives)
+            osk_block.update()
 
-            # Execute block function
-            func = self._block_functions.get(block_id)
-            if func:
-                outputs = func(t, inputs, state.state)
-                all_outputs[block_id] = outputs
-                state.outputs = outputs
+            # Record sink block outputs
+            if block_id in self._sink_blocks:
+                output = osk_block.getOutput()
+                key = f"{block_id}:out"
+                if isinstance(output, (int, float)):
+                    recorded_outputs[key] = float(output)
 
-                # Record sink block outputs
-                if block.type in ["scope", "display", "to_workspace"]:
-                    for port_name, value in outputs.items():
-                        key = f"{block_id}:{port_name}"
-                        if isinstance(value, (int, float)):
-                            recorded_outputs[key] = float(value)
+            # Report (for data recording in sink blocks)
+            if State.ready:
+                osk_block.rpt()
+
+        # Propagate states for all blocks
+        for osk_block in self._osk_blocks.values():
+            osk_block.propagateStates()
 
         return recorded_outputs
 
-    def get_solver(self, solver_type: SolverType):
-        """Get an OSK solver instance.
+    def run_simulation(self) -> Dict[str, Any]:
+        """Run a complete simulation using OSK's Sim class.
 
-        TODO: Return actual OSK solver objects when integrated.
+        This is an alternative to using step() repeatedly,
+        using OSK's native simulation loop.
+
+        Returns:
+            Simulation results with signals and statistics
         """
-        # Placeholder for OSK solver integration
+        if not self._compiled_model or not self._config:
+            return {"signals": [], "statistics": {}}
+
+        # Create stage with all blocks in execution order
+        stage = [
+            self._osk_blocks[bid]
+            for bid in self._compiled_model.execution_order
+            if bid in self._osk_blocks
+        ]
+
+        # Create and run simulation
+        sim = Sim(
+            dts=[self._config.step_size],
+            tmax=self._config.stop_time,
+            vStage=[stage]
+        )
+
+        results = sim.run()
+
+        # Collect results from sink blocks
+        signals = []
+        for block_id in self._sink_blocks:
+            osk_block = self._osk_blocks.get(block_id)
+            if osk_block and hasattr(osk_block, 'getData'):
+                data = osk_block.getData()
+                signals.append({
+                    "blockId": block_id,
+                    "portId": "out",
+                    "name": data.get("name", block_id),
+                    "times": data.get("times", []),
+                    "values": data.get("values", []) if "values" in data else data.get("values", [[]])[0]
+                })
+
         return {
-            SolverType.EULER: "EulerSolver",
-            SolverType.RK4: "RK4Solver",
-            SolverType.MERSON: "MersonSolver",
-        }.get(solver_type, "RK4Solver")
+            "signals": signals,
+            "statistics": {
+                "totalSteps": len(results.get("times", [])),
+                "executionTime": 0,  # Would need to measure
+                "finalTime": results.get("times", [0])[-1] if results.get("times") else 0
+            }
+        }
+
+    def get_solver(self, solver_type: SolverType) -> str:
+        """Get OSK solver method name.
+
+        Args:
+            solver_type: The solver type enum
+
+        Returns:
+            OSK solver method name string
+        """
+        return self._get_solver_method(solver_type)
+
+    def get_block(self, block_id: str) -> Block | None:
+        """Get an OSK block instance by ID.
+
+        Args:
+            block_id: The block ID
+
+        Returns:
+            The OSK block instance or None
+        """
+        return self._osk_blocks.get(block_id)
+
+    def get_all_blocks(self) -> Dict[str, Block]:
+        """Get all OSK block instances.
+
+        Returns:
+            Dictionary mapping block IDs to OSK block instances
+        """
+        return self._osk_blocks.copy()
