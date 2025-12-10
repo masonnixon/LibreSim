@@ -10,6 +10,15 @@ from ...simulation.runner import SimulationRunner
 
 router = APIRouter()
 
+print("Simulation router loaded successfully")
+
+
+@router.get("/test")
+async def test_endpoint() -> Dict[str, str]:
+    """Simple test endpoint."""
+    return {"status": "ok", "message": "Simulation API is working"}
+
+
 # Global simulation runner instance (single-user for now)
 _runner: SimulationRunner | None = None
 
