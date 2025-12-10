@@ -1,0 +1,138 @@
+import type { BlockDefinition } from '../types/block'
+
+export const sinkBlocks: BlockDefinition[] = [
+  {
+    type: 'scope',
+    category: 'sinks',
+    name: 'Scope',
+    description: 'Display signal over time',
+    inputs: [{ name: 'in', dataType: 'double', dimensions: [1] }],
+    outputs: [],
+    parameters: [
+      {
+        name: 'numInputs',
+        type: 'number',
+        default: 1,
+        label: 'Number of Inputs',
+        description: 'Number of input ports',
+        min: 1,
+        max: 10,
+      },
+      {
+        name: 'sampleTime',
+        type: 'number',
+        default: -1,
+        label: 'Sample Time',
+        description: 'Sample time (-1 for inherited)',
+      },
+    ],
+    icon: '📊',
+  },
+  {
+    type: 'display',
+    category: 'sinks',
+    name: 'Display',
+    description: 'Display current signal value',
+    inputs: [{ name: 'in', dataType: 'double', dimensions: [1] }],
+    outputs: [],
+    parameters: [
+      {
+        name: 'format',
+        type: 'select',
+        default: 'short',
+        label: 'Display Format',
+        description: 'Number display format',
+        options: [
+          { value: 'short', label: 'Short' },
+          { value: 'long', label: 'Long' },
+          { value: 'scientific', label: 'Scientific' },
+        ],
+      },
+      {
+        name: 'decimals',
+        type: 'number',
+        default: 4,
+        label: 'Decimal Places',
+        min: 0,
+        max: 15,
+      },
+    ],
+    icon: '🔢',
+  },
+  {
+    type: 'to_workspace',
+    category: 'sinks',
+    name: 'To Workspace',
+    description: 'Log signal to output data',
+    inputs: [{ name: 'in', dataType: 'double', dimensions: [1] }],
+    outputs: [],
+    parameters: [
+      {
+        name: 'variableName',
+        type: 'string',
+        default: 'simout',
+        label: 'Variable Name',
+        description: 'Name for output variable',
+      },
+      {
+        name: 'saveFormat',
+        type: 'select',
+        default: 'timeseries',
+        label: 'Save Format',
+        options: [
+          { value: 'timeseries', label: 'Time Series' },
+          { value: 'array', label: 'Array' },
+        ],
+      },
+    ],
+    icon: '💾',
+  },
+  {
+    type: 'xy_graph',
+    category: 'sinks',
+    name: 'XY Graph',
+    description: 'Display XY plot',
+    inputs: [
+      { name: 'x', dataType: 'double', dimensions: [1] },
+      { name: 'y', dataType: 'double', dimensions: [1] },
+    ],
+    outputs: [],
+    parameters: [
+      {
+        name: 'xMin',
+        type: 'number',
+        default: -1,
+        label: 'X Min',
+      },
+      {
+        name: 'xMax',
+        type: 'number',
+        default: 1,
+        label: 'X Max',
+      },
+      {
+        name: 'yMin',
+        type: 'number',
+        default: -1,
+        label: 'Y Min',
+      },
+      {
+        name: 'yMax',
+        type: 'number',
+        default: 1,
+        label: 'Y Max',
+      },
+    ],
+    icon: '📈',
+  },
+  {
+    type: 'terminator',
+    category: 'sinks',
+    name: 'Terminator',
+    description: 'Terminate unconnected output',
+    inputs: [{ name: 'in', dataType: 'double', dimensions: [1] }],
+    outputs: [],
+    parameters: [],
+    icon: '⊗',
+  },
+]
