@@ -18,6 +18,7 @@ interface UIState {
   // Actions
   toggleProperties: () => void
   toggleSimulation: () => void
+  setShowSimulation: (show: boolean) => void
   toggleSidebar: () => void
 
   setDraggingBlockType: (type: string | null) => void
@@ -44,6 +45,7 @@ export const useUIStore = create<UIState>((set) => ({
 
   toggleProperties: () => set((state) => ({ showProperties: !state.showProperties })),
   toggleSimulation: () => set((state) => ({ showSimulation: !state.showSimulation })),
+  setShowSimulation: (show) => set({ showSimulation: show }),
   toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
 
   setDraggingBlockType: (type) => set({ draggingBlockType: type }),

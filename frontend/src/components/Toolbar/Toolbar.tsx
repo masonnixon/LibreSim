@@ -1,3 +1,4 @@
+import { useRef, useCallback } from 'react'
 import { useModelStore } from '../../store/modelStore'
 import { useSimulationStore } from '../../store/simulationStore'
 import { useUIStore } from '../../store/uiStore'
@@ -5,14 +6,24 @@ import { api } from '../../api/client'
 
 export function Toolbar() {
   const { model, isDirty, createNewModel, saveModel } = useModelStore()
-  const { state: simState } = useSimulationStore()
+  const { state: simState, setStatus, setProgress, setResults, setError, clearResults } = useSimulationStore()
   const {
     toggleProperties,
     toggleSimulation,
     showProperties,
     showSimulation,
     openImportModal,
+    setShowSimulation,
   } = useUIStore()
+
+  const pollingRef = useRef<number | null>(null)
+
+  const stopPolling = useCallback(() => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current)
+      pollingRef.current = null
+    }
+  }, [])
 
   const handleNew = () => {
     const name = prompt('Enter model name:', 'Untitled')
@@ -34,16 +45,54 @@ export function Toolbar() {
 
   const handleRun = async () => {
     if (!model) return
+
     try {
-      await api.startSimulation(model.id, model.simulationConfig)
+      // Clear previous results and set status to running
+      clearResults()
+      setStatus('running')
+
+      // Open the Scope panel
+      setShowSimulation(true)
+
+      // Start the simulation with the full model
+      await api.startSimulation(model, model.simulationConfig)
+
+      // Poll for status and results
+      pollingRef.current = window.setInterval(async () => {
+        try {
+          const status = await api.getSimulationStatus()
+          setProgress(status.currentTime || 0, status.progress || 0)
+
+          if (status.status === 'completed') {
+            stopPolling()
+            setStatus('completed')
+
+            // Fetch final results
+            const results = await api.getSimulationResults()
+            setResults(results)
+          } else if (status.status === 'error') {
+            stopPolling()
+            setError('Simulation failed')
+          } else if (status.status === 'idle') {
+            // Simulation was stopped
+            stopPolling()
+            setStatus('idle')
+          }
+        } catch (err) {
+          console.error('Failed to get simulation status:', err)
+        }
+      }, 100) // Poll every 100ms
     } catch (error) {
       console.error('Failed to start simulation:', error)
+      setError(error instanceof Error ? error.message : 'Failed to start simulation')
     }
   }
 
   const handleStop = async () => {
     try {
+      stopPolling()
       await api.stopSimulation()
+      setStatus('idle')
     } catch (error) {
       console.error('Failed to stop simulation:', error)
     }

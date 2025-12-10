@@ -47,10 +47,10 @@ export const api = {
   },
 
   async startSimulation(
-    modelId: string,
+    model: Model,
     config: SimulationConfig
   ): Promise<{ sessionId: string }> {
-    const response = await apiClient.post('/simulate/start', { modelId, config })
+    const response = await apiClient.post('/simulate/start', { model, config })
     return response.data
   },
 
@@ -66,7 +66,7 @@ export const api = {
     await apiClient.post('/simulate/resume')
   },
 
-  async getSimulationStatus(): Promise<{ status: string; progress: number }> {
+  async getSimulationStatus(): Promise<{ status: string; progress: number; currentTime?: number }> {
     const response = await apiClient.get('/simulate/status')
     return response.data
   },

@@ -3,12 +3,11 @@
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from typing import Dict, Any
 
+from ...models.model import Model
 from ...models.simulation import SimulationConfig, SimulationStatus
 from ...simulation.runner import SimulationRunner
-from ...services.model_service import ModelService
 
 router = APIRouter()
-model_service = ModelService()
 
 # Global simulation runner instance (single-user for now)
 _runner: SimulationRunner | None = None
@@ -28,20 +27,21 @@ async def start_simulation(
     """Start a simulation."""
     global _runner
 
-    model_id = request.get("modelId")
+    model_data = request.get("model")
     config_data = request.get("config", {})
 
-    if not model_id:
-        raise HTTPException(status_code=400, detail="modelId is required")
+    if not model_data:
+        raise HTTPException(status_code=400, detail="model is required")
 
-    model = model_service.get_model(model_id)
-    if not model:
-        raise HTTPException(status_code=404, detail="Model not found")
+    try:
+        # Parse the model from request body
+        model = Model(**model_data)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid model data: {str(e)}")
 
-    # Validate model first
-    validation = model_service.validate_model(model)
-    if not validation["valid"]:
-        raise HTTPException(status_code=400, detail=validation["errors"])
+    # Basic validation
+    if not model.blocks:
+        raise HTTPException(status_code=400, detail="Model has no blocks")
 
     # Create simulation config
     config = SimulationConfig(**config_data)
