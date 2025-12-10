@@ -1,5 +1,6 @@
 """Simulation control API routes."""
 
+import traceback
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from typing import Dict, Any
 
@@ -37,23 +38,36 @@ async def start_simulation(
         # Parse the model from request body
         model = Model(**model_data)
     except Exception as e:
+        print(f"Model parsing error: {e}")
+        print(f"Model data: {model_data}")
+        traceback.print_exc()
         raise HTTPException(status_code=400, detail=f"Invalid model data: {str(e)}")
 
     # Basic validation
     if not model.blocks:
         raise HTTPException(status_code=400, detail="Model has no blocks")
 
-    # Create simulation config
-    config = SimulationConfig(**config_data)
+    try:
+        # Create simulation config
+        config = SimulationConfig(**config_data)
+    except Exception as e:
+        print(f"Config parsing error: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=400, detail=f"Invalid config data: {str(e)}")
 
-    # Create and start runner
-    _runner = SimulationRunner(model, config)
-    session_id = _runner.session_id
+    try:
+        # Create and start runner
+        _runner = SimulationRunner(model, config)
+        session_id = _runner.session_id
 
-    # Run simulation in background
-    background_tasks.add_task(_runner.run)
+        # Run simulation in background
+        background_tasks.add_task(_runner.run)
 
-    return {"sessionId": session_id}
+        return {"sessionId": session_id}
+    except Exception as e:
+        print(f"Runner creation error: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to create simulation: {str(e)}")
 
 
 @router.post("/stop")

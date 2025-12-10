@@ -2,7 +2,7 @@
 
 from enum import Enum
 from typing import Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class SolverType(str, Enum):
@@ -15,6 +15,7 @@ class SolverType(str, Enum):
 
 class SimulationConfig(BaseModel):
     """Simulation configuration."""
+    model_config = ConfigDict(populate_by_name=True)
 
     solver: SolverType = SolverType.RK4
     start_time: float = Field(default=0.0, alias="startTime")
@@ -24,9 +25,6 @@ class SimulationConfig(BaseModel):
     min_step: float | None = Field(default=None, alias="minStep")
     relative_tolerance: float = Field(default=1e-3, alias="relativeTolerance")
     absolute_tolerance: float = Field(default=1e-6, alias="absoluteTolerance")
-
-    class Config:
-        populate_by_name = True
 
 
 class SimulationStatus(str, Enum):
@@ -42,6 +40,7 @@ class SimulationStatus(str, Enum):
 
 class SignalData(BaseModel):
     """Time series data for a signal."""
+    model_config = ConfigDict(populate_by_name=True)
 
     block_id: str = Field(alias="blockId")
     port_id: str = Field(alias="portId")
@@ -49,19 +48,14 @@ class SignalData(BaseModel):
     times: list[float]
     values: list[float]
 
-    class Config:
-        populate_by_name = True
-
 
 class SimulationStatistics(BaseModel):
     """Simulation execution statistics."""
+    model_config = ConfigDict(populate_by_name=True)
 
     total_steps: int = Field(alias="totalSteps")
     execution_time: float = Field(alias="executionTime")
     final_time: float = Field(alias="finalTime")
-
-    class Config:
-        populate_by_name = True
 
 
 class SimulationResults(BaseModel):

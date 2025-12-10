@@ -2,7 +2,7 @@
 
 from enum import Enum
 from typing import Any, Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class BlockCategory(str, Enum):
@@ -28,14 +28,12 @@ class DataType(str, Enum):
 
 class Port(BaseModel):
     """Port definition for a block."""
+    model_config = ConfigDict(populate_by_name=True)
 
     id: str
     name: str
     data_type: DataType = Field(default=DataType.DOUBLE, alias="dataType")
     dimensions: list[int] = Field(default=[1])
-
-    class Config:
-        populate_by_name = True
 
 
 class ParameterType(str, Enum):
@@ -91,6 +89,7 @@ class Position(BaseModel):
 
 class Block(BaseModel):
     """Instance of a block in a model."""
+    model_config = ConfigDict(populate_by_name=True)
 
     id: str
     type: str
@@ -100,18 +99,13 @@ class Block(BaseModel):
     input_ports: list[Port] = Field(default_factory=list, alias="inputPorts")
     output_ports: list[Port] = Field(default_factory=list, alias="outputPorts")
 
-    class Config:
-        populate_by_name = True
-
 
 class Connection(BaseModel):
     """Connection between blocks."""
+    model_config = ConfigDict(populate_by_name=True)
 
     id: str
     source_block_id: str = Field(alias="sourceBlockId")
     source_port_id: str = Field(alias="sourcePortId")
     target_block_id: str = Field(alias="targetBlockId")
     target_port_id: str = Field(alias="targetPortId")
-
-    class Config:
-        populate_by_name = True
