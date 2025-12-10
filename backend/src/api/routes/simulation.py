@@ -130,3 +130,50 @@ async def get_simulation_results() -> Dict[str, Any]:
         raise HTTPException(status_code=400, detail="No simulation available")
 
     return _runner.get_results()
+
+
+@router.post("/debug")
+async def debug_simulation(request: Dict[str, Any]) -> Dict[str, Any]:
+    """Debug endpoint to test model parsing."""
+    model_data = request.get("model")
+    config_data = request.get("config", {})
+
+    result = {
+        "model_received": model_data is not None,
+        "config_received": config_data is not None,
+    }
+
+    if model_data:
+        result["model_keys"] = list(model_data.keys()) if isinstance(model_data, dict) else "not a dict"
+        result["blocks_count"] = len(model_data.get("blocks", [])) if isinstance(model_data, dict) else 0
+
+        # Try to parse model
+        try:
+            model = Model(**model_data)
+            result["model_parsed"] = True
+            result["model_block_count"] = len(model.blocks)
+        except Exception as e:
+            result["model_parsed"] = False
+            result["model_error"] = str(e)
+            traceback.print_exc()
+
+    if config_data:
+        try:
+            config = SimulationConfig(**config_data)
+            result["config_parsed"] = True
+        except Exception as e:
+            result["config_parsed"] = False
+            result["config_error"] = str(e)
+            traceback.print_exc()
+
+    # Try to create runner
+    if result.get("model_parsed") and result.get("config_parsed"):
+        try:
+            runner = SimulationRunner(model, config)
+            result["runner_created"] = True
+        except Exception as e:
+            result["runner_created"] = False
+            result["runner_error"] = str(e)
+            traceback.print_exc()
+
+    return result

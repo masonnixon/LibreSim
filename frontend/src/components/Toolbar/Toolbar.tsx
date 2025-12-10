@@ -82,9 +82,19 @@ export function Toolbar() {
           console.error('Failed to get simulation status:', err)
         }
       }, 100) // Poll every 100ms
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to start simulation:', error)
-      setError(error instanceof Error ? error.message : 'Failed to start simulation')
+      // Extract error detail from axios response
+      let errorMessage = 'Failed to start simulation'
+      if (error && typeof error === 'object') {
+        const axiosError = error as { response?: { data?: { detail?: string } }; message?: string }
+        if (axiosError.response?.data?.detail) {
+          errorMessage = axiosError.response.data.detail
+        } else if (axiosError.message) {
+          errorMessage = axiosError.message
+        }
+      }
+      setError(errorMessage)
     }
   }
 
