@@ -56,7 +56,7 @@ LibreSim provides a graphical environment for modeling, simulating, and analyzin
    python -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    pip install -r requirements.txt
-   uvicorn src.main:app --reload --port 8000
+   uvicorn src.main:app --reload --port 9000
    ```
 
 3. **Start the frontend**
@@ -67,7 +67,7 @@ LibreSim provides a graphical environment for modeling, simulating, and analyzin
    ```
 
 4. **Open in browser**
-   Navigate to `http://localhost:5173`
+   Navigate to `http://localhost:4200`
 
 ### Using Docker
 

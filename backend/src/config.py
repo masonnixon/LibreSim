@@ -8,7 +8,7 @@ class Settings(BaseSettings):
 
     environment: str = "development"
     database_url: str = "sqlite:///./libresim.db"
-    cors_origins: list[str] = ["http://localhost:5173", "http://localhost:3000"]
+    cors_origins: list[str] = ["http://localhost:4200"]
 
     # Simulation settings
     max_simulation_time: float = 1000.0
