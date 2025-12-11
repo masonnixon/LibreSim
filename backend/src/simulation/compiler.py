@@ -62,11 +62,14 @@ class ModelCompiler:
             input_connections = self._build_input_map(flattened_connections)
             output_connections = self._build_output_map(flattened_connections)
 
-            # Build dependency graph
-            dependencies = self._build_dependency_graph(flattened_blocks, input_connections)
+            # Build dependency graph for algebraic loop detection
+            # (excludes state-holding blocks which break algebraic loops)
+            algebraic_dependencies = self._build_dependency_graph(
+                flattened_blocks, input_connections, for_algebraic_loop_detection=True
+            )
 
             # Check for algebraic loops
-            loop = self._detect_algebraic_loops(dependencies)
+            loop = self._detect_algebraic_loops(algebraic_dependencies)
             if loop:
                 return CompiledModel(
                     success=False,
@@ -74,8 +77,15 @@ class ModelCompiler:
                     errors=[f"Algebraic loop involving blocks: {', '.join(loop)}"],
                 )
 
-            # Topological sort
-            execution_order = self._topological_sort(flattened_blocks, dependencies)
+            # Build dependency graph for execution order
+            # We break cycles at state-holding blocks since they output based on previous state
+            # This is the same as algebraic loop detection graph
+            execution_dependencies = self._build_dependency_graph(
+                flattened_blocks, input_connections, for_algebraic_loop_detection=True
+            )
+
+            # Topological sort for execution order
+            execution_order = self._topological_sort(flattened_blocks, execution_dependencies)
 
             # Create compiled blocks
             compiled_blocks = []
@@ -132,16 +142,61 @@ class ModelCompiler:
             )
         return result
 
+    # Blocks that have internal state and thus "break" algebraic loops
+    # These blocks introduce a delay between input and output
+    STATE_HOLDING_BLOCKS = {
+        "integrator",
+        "discrete_integrator",
+        "unit_delay",
+        "transfer_function",
+        "discrete_transfer_function",
+        "state_space",
+        "derivative",  # Has internal state for filtering
+        "discrete_derivative",
+        "pid_controller",  # Has integrator and derivative states
+        "zero_order_hold",
+        "variable_transport_delay",
+        "luenberger_observer",
+        "kalman_filter",
+        "extended_kalman_filter",
+        "moving_average",
+        "low_pass_filter",
+        "high_pass_filter",
+        "band_pass_filter",
+        "rate_limiter",
+        "backlash",
+    }
+
     def _build_dependency_graph(
-        self, blocks: List[Block], input_connections: Dict[str, List[str]]
+        self, blocks: List[Block], input_connections: Dict[str, List[str]],
+        for_algebraic_loop_detection: bool = False
     ) -> Dict[str, Set[str]]:
-        """Build graph of block dependencies (block -> set of blocks it depends on)."""
+        """Build graph of block dependencies (block -> set of blocks it depends on).
+
+        Args:
+            blocks: List of blocks
+            input_connections: Map of block_id -> list of input connections
+            for_algebraic_loop_detection: If True, excludes dependencies through
+                state-holding blocks (integrators, etc.) since they break algebraic loops.
+
+        Returns:
+            Dictionary mapping block_id -> set of block_ids it depends on
+        """
         dependencies: Dict[str, Set[str]] = {b.id: set() for b in blocks}
+        block_types = {b.id: b.type for b in blocks}
 
         for block in blocks:
             if block.id in input_connections:
                 for conn in input_connections[block.id]:
                     source_block_id = conn.split(":")[0]
+
+                    # For algebraic loop detection, skip if source is state-holding
+                    # (state-holding blocks output based on previous state, not current input)
+                    if for_algebraic_loop_detection:
+                        source_type = block_types.get(source_block_id, "")
+                        if source_type in self.STATE_HOLDING_BLOCKS:
+                            continue
+
                     dependencies[block.id].add(source_block_id)
 
         return dependencies
