@@ -9,6 +9,7 @@ from .sinks import Scope, ToWorkspace
 from .continuous import Integrator, Derivative, TransferFunction, StateSpace, PIDController
 from .discrete import UnitDelay, ZeroOrderHold
 from .math_ops import Sum, Gain, Product, Abs, Saturation
+from .subsystems import Inport, Outport, Subsystem
 
 __all__ = [
     # Sources
@@ -21,4 +22,6 @@ __all__ = [
     "UnitDelay", "ZeroOrderHold",
     # Math
     "Sum", "Gain", "Product", "Abs", "Saturation",
+    # Subsystems
+    "Inport", "Outport", "Subsystem",
 ]

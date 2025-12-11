@@ -5,6 +5,7 @@ export type BlockCategory =
   | 'discrete'
   | 'math'
   | 'routing'
+  | 'subsystems'
 
 export type DataType = 'double' | 'single' | 'int32' | 'boolean' | 'bus'
 
@@ -46,6 +47,10 @@ export interface BlockInstance {
   parameters: Record<string, unknown>
   inputPorts: Port[]
   outputPorts: Port[]
+  // For Subsystem blocks only
+  children?: BlockInstance[]
+  childConnections?: Connection[]
+  isExpanded?: boolean
 }
 
 export interface Connection {

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useEffect } from 'react'
+import { useCallback, useMemo, useRef, useEffect, useState } from 'react'
 import {
   ReactFlow,
   Background,
@@ -16,22 +16,35 @@ import {
 import { useModelStore } from '../../store/modelStore'
 import { useUIStore } from '../../store/uiStore'
 import { BlockNode } from './BlockNode'
+import { SubsystemNode } from './SubsystemNode'
 import { blockRegistry } from '../../blocks'
 
 export function Editor() {
   const reactFlowWrapper = useRef<HTMLDivElement>(null)
   const { screenToFlowPosition } = useReactFlow()
 
-  const { model, addBlock, updateBlockPosition, addConnection, removeBlock, removeConnection, selectBlocks } =
-    useModelStore()
+  const {
+    model,
+    addBlock,
+    updateBlockPosition,
+    addConnection,
+    removeBlock,
+    removeConnection,
+    selectBlocks,
+    selectedBlockIds,
+    createSubsystem,
+  } = useModelStore()
   const { draggingBlockType, setDraggingBlockType } = useUIStore()
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
 
   // Convert model blocks to React Flow nodes
   const initialNodes: Node[] = useMemo(() => {
     if (!model) return []
     return model.blocks.map((block) => ({
       id: block.id,
-      type: 'blockNode',
+      type: block.type === 'subsystem' ? 'subsystemNode' : 'blockNode',
       position: block.position,
       data: {
         block,
@@ -67,7 +80,7 @@ export function Editor() {
 
     const newNodes: Node[] = model.blocks.map((block) => ({
       id: block.id,
-      type: 'blockNode',
+      type: block.type === 'subsystem' ? 'subsystemNode' : 'blockNode',
       position: block.position,
       data: {
         block,
@@ -163,9 +176,32 @@ export function Editor() {
   const nodeTypes: NodeTypes = useMemo(
     () => ({
       blockNode: BlockNode,
+      subsystemNode: SubsystemNode,
     }),
     []
   )
+
+  // Context menu handlers
+  const handleContextMenu = useCallback(
+    (event: React.MouseEvent) => {
+      event.preventDefault()
+      if (selectedBlockIds.length >= 2) {
+        setContextMenu({ x: event.clientX, y: event.clientY })
+      }
+    },
+    [selectedBlockIds]
+  )
+
+  const handleCloseContextMenu = useCallback(() => {
+    setContextMenu(null)
+  }, [])
+
+  const handleCreateSubsystem = useCallback(() => {
+    if (selectedBlockIds.length >= 2) {
+      createSubsystem(selectedBlockIds)
+    }
+    setContextMenu(null)
+  }, [selectedBlockIds, createSubsystem])
 
   if (!model) {
     return (
@@ -179,7 +215,7 @@ export function Editor() {
   }
 
   return (
-    <div ref={reactFlowWrapper} className="flex-1">
+    <div ref={reactFlowWrapper} className="flex-1 relative" onClick={handleCloseContextMenu}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -192,6 +228,7 @@ export function Editor() {
         onSelectionChange={onSelectionChange}
         onDragOver={onDragOver}
         onDrop={onDrop}
+        onContextMenu={handleContextMenu}
         nodeTypes={nodeTypes}
         fitView
         snapToGrid
@@ -219,12 +256,31 @@ export function Editor() {
                 return '#cba6f7'
               case 'routing':
                 return '#f9e2af'
+              case 'subsystems':
+                return '#22d3ee'
               default:
                 return '#6c7086'
             }
           }}
         />
       </ReactFlow>
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <div
+          className="absolute z-50 bg-slate-800 border border-slate-600 rounded-lg shadow-xl py-1 min-w-[180px]"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+        >
+          <button
+            className="w-full px-4 py-2 text-left text-sm text-white hover:bg-slate-700 flex items-center gap-2"
+            onClick={handleCreateSubsystem}
+          >
+            <span>{ }</span>
+            <span>Create Subsystem</span>
+            <span className="ml-auto text-slate-400 text-xs">{selectedBlockIds.length} blocks</span>
+          </button>
+        </div>
+      )}
     </div>
   )
 }

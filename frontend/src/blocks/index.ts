@@ -5,6 +5,7 @@ import { continuousBlocks } from './continuous'
 import { discreteBlocks } from './discrete'
 import { mathBlocks } from './math'
 import { routingBlocks } from './routing'
+import { subsystemBlocks } from './subsystems'
 
 // All block definitions
 const allBlocks: BlockDefinition[] = [
@@ -14,6 +15,7 @@ const allBlocks: BlockDefinition[] = [
   ...discreteBlocks,
   ...mathBlocks,
   ...routingBlocks,
+  ...subsystemBlocks,
 ]
 
 // Block registry for quick lookup
@@ -53,6 +55,7 @@ export const blockCategories: BlockCategory[] = [
   'discrete',
   'math',
   'routing',
+  'subsystems',
 ]
 
 export { sourceBlocks } from './sources'
@@ -61,3 +64,4 @@ export { continuousBlocks } from './continuous'
 export { discreteBlocks } from './discrete'
 export { mathBlocks } from './math'
 export { routingBlocks } from './routing'
+export { subsystemBlocks } from './subsystems'

@@ -14,6 +14,7 @@ class BlockCategory(str, Enum):
     DISCRETE = "discrete"
     MATH = "math"
     ROUTING = "routing"
+    SUBSYSTEMS = "subsystems"
 
 
 class DataType(str, Enum):
@@ -98,6 +99,10 @@ class Block(BaseModel):
     parameters: dict[str, Any] = Field(default_factory=dict)
     input_ports: list[Port] = Field(default_factory=list, alias="inputPorts")
     output_ports: list[Port] = Field(default_factory=list, alias="outputPorts")
+    # For Subsystem blocks only
+    children: list["Block"] | None = Field(default=None)
+    child_connections: list["Connection"] | None = Field(default=None, alias="childConnections")
+    is_expanded: bool | None = Field(default=None, alias="isExpanded")
 
 
 class Connection(BaseModel):
@@ -109,3 +114,7 @@ class Connection(BaseModel):
     source_port_id: str = Field(alias="sourcePortId")
     target_block_id: str = Field(alias="targetBlockId")
     target_port_id: str = Field(alias="targetPortId")
+
+
+# Rebuild models to resolve forward references
+Block.model_rebuild()

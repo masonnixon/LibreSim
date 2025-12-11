@@ -22,6 +22,8 @@ from ..osk.blocks import (
     UnitDelay, ZeroOrderHold,
     # Math
     Sum, Gain, Product, Abs, Saturation,
+    # Subsystems
+    Inport, Outport, Subsystem,
 )
 from ..osk.blocks.math_ops import Switch, MathFunction, Trigonometry, DeadZone, Sign
 from ..osk.blocks.sinks import Display, Terminator
@@ -66,6 +68,10 @@ BLOCK_TYPE_MAP: Dict[str, Type[Block]] = {
     "math_function": MathFunction,
     "trigonometry": Trigonometry,
     "switch": Switch,
+    # Subsystems
+    "inport": Inport,
+    "outport": Outport,
+    "subsystem": Subsystem,
 }
 
 # Parameter name mapping from LibreSim to OSK constructor arguments
@@ -95,6 +101,10 @@ PARAM_MAP: Dict[str, Dict[str, str]] = {
     "math_function": {"function": "function", "exponent": "exponent"},
     "trigonometry": {"function": "function"},
     "switch": {"threshold": "threshold", "criteria": "criteria"},
+    # Subsystems
+    "inport": {"portNumber": "port_number"},
+    "outport": {"portNumber": "port_number"},
+    "subsystem": {"numInputs": "num_inputs", "numOutputs": "num_outputs"},
 }
 
 

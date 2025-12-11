@@ -34,6 +34,10 @@ interface ModelState {
   selectConnections: (connectionIds: string[]) => void
   clearSelection: () => void
 
+  // Subsystem operations
+  createSubsystem: (blockIds: string[], name?: string) => string | null
+  toggleSubsystemExpanded: (subsystemId: string) => void
+
   // Config
   updateSimulationConfig: (config: Partial<SimulationConfig>) => void
   updateMetadata: (metadata: Partial<ModelMetadata>) => void
@@ -271,6 +275,220 @@ export const useModelStore = create<ModelState>((set, get) => ({
       model: {
         ...model,
         metadata: { ...model.metadata, ...metadata },
+      },
+      isDirty: true,
+    })
+  },
+
+  createSubsystem: (blockIds: string[], name?: string) => {
+    const { model } = get()
+    if (!model || blockIds.length === 0) return null
+
+    const selectedBlocks = model.blocks.filter((b) => blockIds.includes(b.id))
+    if (selectedBlocks.length === 0) return null
+
+    // Calculate center position of selected blocks for subsystem placement
+    const avgX = selectedBlocks.reduce((sum, b) => sum + b.position.x, 0) / selectedBlocks.length
+    const avgY = selectedBlocks.reduce((sum, b) => sum + b.position.y, 0) / selectedBlocks.length
+
+    // Find all connections
+    const internalConnections: Connection[] = []
+    const incomingConnections: Connection[] = []
+    const outgoingConnections: Connection[] = []
+
+    model.connections.forEach((conn) => {
+      const sourceInside = blockIds.includes(conn.sourceBlockId)
+      const targetInside = blockIds.includes(conn.targetBlockId)
+
+      if (sourceInside && targetInside) {
+        internalConnections.push(conn)
+      } else if (!sourceInside && targetInside) {
+        incomingConnections.push(conn)
+      } else if (sourceInside && !targetInside) {
+        outgoingConnections.push(conn)
+      }
+    })
+
+    // Create Inport blocks for each unique incoming connection target
+    const inportMap = new Map<string, { inportId: string; portNumber: number }>()
+    const childInports: BlockInstance[] = []
+    const newInternalConnections: Connection[] = [...internalConnections]
+    let inportNumber = 1
+
+    incomingConnections.forEach((conn) => {
+      const key = `${conn.targetBlockId}-${conn.targetPortId}`
+      if (!inportMap.has(key)) {
+        const inportId = nanoid()
+        const targetBlock = selectedBlocks.find((b) => b.id === conn.targetBlockId)
+        const targetPort = targetBlock?.inputPorts.find((p) => p.id === conn.targetPortId)
+
+        childInports.push({
+          id: inportId,
+          type: 'inport',
+          name: `In${inportNumber}`,
+          position: { x: 50, y: 50 + (inportNumber - 1) * 80 },
+          parameters: { portNumber: inportNumber },
+          inputPorts: [],
+          outputPorts: [{
+            id: `${inportId}-out-0`,
+            name: 'out',
+            dataType: targetPort?.dataType || 'double',
+            dimensions: targetPort?.dimensions || [1],
+          }],
+        })
+        inportMap.set(key, { inportId, portNumber: inportNumber })
+        inportNumber++
+      }
+
+      // Create internal connection from inport to original target
+      const inportInfo = inportMap.get(key)!
+      newInternalConnections.push({
+        id: nanoid(),
+        sourceBlockId: inportInfo.inportId,
+        sourcePortId: `${inportInfo.inportId}-out-0`,
+        targetBlockId: conn.targetBlockId,
+        targetPortId: conn.targetPortId,
+      })
+    })
+
+    // Create Outport blocks for each unique outgoing connection source
+    const outportMap = new Map<string, { outportId: string; portNumber: number }>()
+    const childOutports: BlockInstance[] = []
+    let outportNumber = 1
+
+    outgoingConnections.forEach((conn) => {
+      const key = `${conn.sourceBlockId}-${conn.sourcePortId}`
+      if (!outportMap.has(key)) {
+        const outportId = nanoid()
+        const sourceBlock = selectedBlocks.find((b) => b.id === conn.sourceBlockId)
+        const sourcePort = sourceBlock?.outputPorts.find((p) => p.id === conn.sourcePortId)
+
+        childOutports.push({
+          id: outportId,
+          type: 'outport',
+          name: `Out${outportNumber}`,
+          position: { x: 400, y: 50 + (outportNumber - 1) * 80 },
+          parameters: { portNumber: outportNumber },
+          inputPorts: [{
+            id: `${outportId}-in-0`,
+            name: 'in',
+            dataType: sourcePort?.dataType || 'double',
+            dimensions: sourcePort?.dimensions || [1],
+          }],
+          outputPorts: [],
+        })
+        outportMap.set(key, { outportId, portNumber: outportNumber })
+        outportNumber++
+      }
+
+      // Create internal connection from original source to outport
+      const outportInfo = outportMap.get(key)!
+      newInternalConnections.push({
+        id: nanoid(),
+        sourceBlockId: conn.sourceBlockId,
+        sourcePortId: conn.sourcePortId,
+        targetBlockId: outportInfo.outportId,
+        targetPortId: `${outportInfo.outportId}-in-0`,
+      })
+    })
+
+    // Create the subsystem block
+    const subsystemId = nanoid()
+    const subsystemName = name || `Subsystem${model.blocks.filter((b) => b.type === 'subsystem').length + 1}`
+
+    // Build input ports from inports
+    const subsystemInputPorts = childInports.map((inport, idx) => ({
+      id: `${subsystemId}-in-${idx}`,
+      name: inport.name,
+      dataType: inport.outputPorts[0]?.dataType || 'double' as const,
+      dimensions: inport.outputPorts[0]?.dimensions || [1],
+    }))
+
+    // Build output ports from outports
+    const subsystemOutputPorts = childOutports.map((outport, idx) => ({
+      id: `${subsystemId}-out-${idx}`,
+      name: outport.name,
+      dataType: outport.inputPorts[0]?.dataType || 'double' as const,
+      dimensions: outport.inputPorts[0]?.dimensions || [1],
+    }))
+
+    const subsystemBlock: BlockInstance = {
+      id: subsystemId,
+      type: 'subsystem',
+      name: subsystemName,
+      position: { x: avgX, y: avgY },
+      parameters: { description: '' },
+      inputPorts: subsystemInputPorts,
+      outputPorts: subsystemOutputPorts,
+      children: [...childInports, ...selectedBlocks, ...childOutports],
+      childConnections: newInternalConnections,
+      isExpanded: false,
+    }
+
+    // Create new external connections to subsystem
+    const newExternalConnections: Connection[] = []
+
+    // Remap incoming connections to subsystem inputs
+    incomingConnections.forEach((conn) => {
+      const key = `${conn.targetBlockId}-${conn.targetPortId}`
+      const inportInfo = inportMap.get(key)
+      if (inportInfo) {
+        newExternalConnections.push({
+          id: nanoid(),
+          sourceBlockId: conn.sourceBlockId,
+          sourcePortId: conn.sourcePortId,
+          targetBlockId: subsystemId,
+          targetPortId: `${subsystemId}-in-${inportInfo.portNumber - 1}`,
+        })
+      }
+    })
+
+    // Remap outgoing connections from subsystem outputs
+    outgoingConnections.forEach((conn) => {
+      const key = `${conn.sourceBlockId}-${conn.sourcePortId}`
+      const outportInfo = outportMap.get(key)
+      if (outportInfo) {
+        newExternalConnections.push({
+          id: nanoid(),
+          sourceBlockId: subsystemId,
+          sourcePortId: `${subsystemId}-out-${outportInfo.portNumber - 1}`,
+          targetBlockId: conn.targetBlockId,
+          targetPortId: conn.targetPortId,
+        })
+      }
+    })
+
+    // Remove original blocks and their connections, add subsystem
+    const remainingBlocks = model.blocks.filter((b) => !blockIds.includes(b.id))
+    const remainingConnections = model.connections.filter(
+      (c) => !blockIds.includes(c.sourceBlockId) && !blockIds.includes(c.targetBlockId)
+    )
+
+    set({
+      model: {
+        ...model,
+        blocks: [...remainingBlocks, subsystemBlock],
+        connections: [...remainingConnections, ...newExternalConnections],
+      },
+      isDirty: true,
+      selectedBlockIds: [subsystemId],
+    })
+
+    return subsystemId
+  },
+
+  toggleSubsystemExpanded: (subsystemId: string) => {
+    const { model } = get()
+    if (!model) return
+
+    set({
+      model: {
+        ...model,
+        blocks: model.blocks.map((b) =>
+          b.id === subsystemId && b.type === 'subsystem'
+            ? { ...b, isExpanded: !b.isExpanded }
+            : b
+        ),
       },
       isDirty: true,
     })
