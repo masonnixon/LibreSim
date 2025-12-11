@@ -1,0 +1,87 @@
+{
+  "id": "example-first-order-step",
+  "metadata": {
+    "name": "First-Order System Step Response",
+    "description": "Step response of a first-order system (RC circuit). Transfer function: H(s) = 1/(s+1) with time constant tau = 1 second. Similar to Simulink 'Getting Started' tutorial.",
+    "author": "LibreSim Examples",
+    "createdAt": "2024-01-01T00:00:00Z",
+    "modifiedAt": "2024-01-01T00:00:00Z",
+    "version": "1.0.0"
+  },
+  "blocks": [
+    {
+      "id": "step1",
+      "type": "step",
+      "name": "Step Input",
+      "position": { "x": 100, "y": 150 },
+      "parameters": {
+        "stepTime": 1.0,
+        "initialValue": 0,
+        "finalValue": 1
+      },
+      "inputPorts": [],
+      "outputPorts": [
+        { "id": "step1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "tf1",
+      "type": "transfer_function",
+      "name": "1/(s+1)",
+      "position": { "x": 300, "y": 150 },
+      "parameters": {
+        "numerator": [1],
+        "denominator": [1, 1]
+      },
+      "inputPorts": [
+        { "id": "tf1-in", "name": "in", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [
+        { "id": "tf1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "scope1",
+      "type": "scope",
+      "name": "Response",
+      "position": { "x": 500, "y": 150 },
+      "parameters": {
+        "numInputs": 2
+      },
+      "inputPorts": [
+        { "id": "scope1-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
+        { "id": "scope1-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": []
+    }
+  ],
+  "connections": [
+    {
+      "id": "conn1",
+      "sourceBlockId": "step1",
+      "sourcePortId": "step1-out",
+      "targetBlockId": "tf1",
+      "targetPortId": "tf1-in"
+    },
+    {
+      "id": "conn2",
+      "sourceBlockId": "step1",
+      "sourcePortId": "step1-out",
+      "targetBlockId": "scope1",
+      "targetPortId": "scope1-in1"
+    },
+    {
+      "id": "conn3",
+      "sourceBlockId": "tf1",
+      "sourcePortId": "tf1-out",
+      "targetBlockId": "scope1",
+      "targetPortId": "scope1-in2"
+    }
+  ],
+  "simulationConfig": {
+    "solver": "rk4",
+    "startTime": 0,
+    "stopTime": 10,
+    "stepSize": 0.01
+  }
+}

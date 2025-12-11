@@ -1,0 +1,142 @@
+{
+  "id": "example-pid-controller",
+  "metadata": {
+    "name": "PID Controller",
+    "description": "Closed-loop PID control of a second-order plant. Plant: G(s) = 1/(s^2 + 2s + 1). PID controller with Kp=10, Ki=5, Kd=2. Classic Simulink tutorial example.",
+    "author": "LibreSim Examples",
+    "createdAt": "2024-01-01T00:00:00Z",
+    "modifiedAt": "2024-01-01T00:00:00Z",
+    "version": "1.0.0"
+  },
+  "blocks": [
+    {
+      "id": "step1",
+      "type": "step",
+      "name": "Reference",
+      "position": { "x": 50, "y": 150 },
+      "parameters": {
+        "stepTime": 1.0,
+        "initialValue": 0,
+        "finalValue": 1
+      },
+      "inputPorts": [],
+      "outputPorts": [
+        { "id": "step1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "sum1",
+      "type": "sum",
+      "name": "Error",
+      "position": { "x": 180, "y": 150 },
+      "parameters": {
+        "signs": "+-"
+      },
+      "inputPorts": [
+        { "id": "sum1-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
+        { "id": "sum1-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [
+        { "id": "sum1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "pid1",
+      "type": "pid_controller",
+      "name": "PID",
+      "position": { "x": 310, "y": 150 },
+      "parameters": {
+        "Kp": 10,
+        "Ki": 5,
+        "Kd": 2,
+        "N": 100
+      },
+      "inputPorts": [
+        { "id": "pid1-in", "name": "in", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [
+        { "id": "pid1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "plant1",
+      "type": "transfer_function",
+      "name": "Plant",
+      "position": { "x": 450, "y": 150 },
+      "parameters": {
+        "numerator": [1],
+        "denominator": [1, 2, 1]
+      },
+      "inputPorts": [
+        { "id": "plant1-in", "name": "in", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [
+        { "id": "plant1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "scope1",
+      "type": "scope",
+      "name": "Response",
+      "position": { "x": 620, "y": 150 },
+      "parameters": {
+        "numInputs": 2
+      },
+      "inputPorts": [
+        { "id": "scope1-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
+        { "id": "scope1-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": []
+    }
+  ],
+  "connections": [
+    {
+      "id": "conn1",
+      "sourceBlockId": "step1",
+      "sourcePortId": "step1-out",
+      "targetBlockId": "sum1",
+      "targetPortId": "sum1-in1"
+    },
+    {
+      "id": "conn2",
+      "sourceBlockId": "sum1",
+      "sourcePortId": "sum1-out",
+      "targetBlockId": "pid1",
+      "targetPortId": "pid1-in"
+    },
+    {
+      "id": "conn3",
+      "sourceBlockId": "pid1",
+      "sourcePortId": "pid1-out",
+      "targetBlockId": "plant1",
+      "targetPortId": "plant1-in"
+    },
+    {
+      "id": "conn4",
+      "sourceBlockId": "plant1",
+      "sourcePortId": "plant1-out",
+      "targetBlockId": "sum1",
+      "targetPortId": "sum1-in2"
+    },
+    {
+      "id": "conn5",
+      "sourceBlockId": "step1",
+      "sourcePortId": "step1-out",
+      "targetBlockId": "scope1",
+      "targetPortId": "scope1-in1"
+    },
+    {
+      "id": "conn6",
+      "sourceBlockId": "plant1",
+      "sourcePortId": "plant1-out",
+      "targetBlockId": "scope1",
+      "targetPortId": "scope1-in2"
+    }
+  ],
+  "simulationConfig": {
+    "solver": "rk4",
+    "startTime": 0,
+    "stopTime": 15,
+    "stepSize": 0.01
+  }
+}

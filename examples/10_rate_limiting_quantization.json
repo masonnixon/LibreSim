@@ -1,0 +1,171 @@
+{
+  "id": "example-rate-limit-quantize",
+  "metadata": {
+    "name": "Rate Limiting and Quantization Effects",
+    "description": "Demonstrates actuator limitations: rate limiting (slew rate) and quantization (resolution). Common in servo systems, DAC outputs, and mechanical actuators. Shows how these nonlinearities affect signal fidelity.",
+    "author": "LibreSim Examples",
+    "createdAt": "2024-01-01T00:00:00Z",
+    "modifiedAt": "2024-01-01T00:00:00Z",
+    "version": "1.0.0"
+  },
+  "blocks": [
+    {
+      "id": "sine1",
+      "type": "sine_wave",
+      "name": "Command",
+      "position": { "x": 50, "y": 150 },
+      "parameters": {
+        "amplitude": 5.0,
+        "frequency": 2.0,
+        "phase": 0,
+        "bias": 0
+      },
+      "inputPorts": [],
+      "outputPorts": [
+        { "id": "sine1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "rate_lim",
+      "type": "rate_limiter",
+      "name": "Rate Limiter",
+      "position": { "x": 250, "y": 100 },
+      "parameters": {
+        "risingLimit": 10,
+        "fallingLimit": -10
+      },
+      "inputPorts": [
+        { "id": "rate_lim-in", "name": "in", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [
+        { "id": "rate_lim-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "quant1",
+      "type": "quantizer",
+      "name": "Quantizer",
+      "position": { "x": 250, "y": 220 },
+      "parameters": {
+        "interval": 0.5
+      },
+      "inputPorts": [
+        { "id": "quant1-in", "name": "in", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [
+        { "id": "quant1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "rate_quant",
+      "type": "rate_limiter",
+      "name": "Rate + Quant",
+      "position": { "x": 420, "y": 320 },
+      "parameters": {
+        "risingLimit": 10,
+        "fallingLimit": -10
+      },
+      "inputPorts": [
+        { "id": "rate_quant-in", "name": "in", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [
+        { "id": "rate_quant-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "quant2",
+      "type": "quantizer",
+      "name": "Then Quant",
+      "position": { "x": 550, "y": 320 },
+      "parameters": {
+        "interval": 0.5
+      },
+      "inputPorts": [
+        { "id": "quant2-in", "name": "in", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [
+        { "id": "quant2-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "scope1",
+      "type": "scope",
+      "name": "Effects",
+      "position": { "x": 700, "y": 180 },
+      "parameters": {
+        "numInputs": 4
+      },
+      "inputPorts": [
+        { "id": "scope1-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
+        { "id": "scope1-in2", "name": "in2", "dataType": "double", "dimensions": [1] },
+        { "id": "scope1-in3", "name": "in3", "dataType": "double", "dimensions": [1] },
+        { "id": "scope1-in4", "name": "in4", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": []
+    }
+  ],
+  "connections": [
+    {
+      "id": "conn1",
+      "sourceBlockId": "sine1",
+      "sourcePortId": "sine1-out",
+      "targetBlockId": "rate_lim",
+      "targetPortId": "rate_lim-in"
+    },
+    {
+      "id": "conn2",
+      "sourceBlockId": "sine1",
+      "sourcePortId": "sine1-out",
+      "targetBlockId": "quant1",
+      "targetPortId": "quant1-in"
+    },
+    {
+      "id": "conn3",
+      "sourceBlockId": "sine1",
+      "sourcePortId": "sine1-out",
+      "targetBlockId": "rate_quant",
+      "targetPortId": "rate_quant-in"
+    },
+    {
+      "id": "conn4",
+      "sourceBlockId": "rate_quant",
+      "sourcePortId": "rate_quant-out",
+      "targetBlockId": "quant2",
+      "targetPortId": "quant2-in"
+    },
+    {
+      "id": "conn5",
+      "sourceBlockId": "sine1",
+      "sourcePortId": "sine1-out",
+      "targetBlockId": "scope1",
+      "targetPortId": "scope1-in1"
+    },
+    {
+      "id": "conn6",
+      "sourceBlockId": "rate_lim",
+      "sourcePortId": "rate_lim-out",
+      "targetBlockId": "scope1",
+      "targetPortId": "scope1-in2"
+    },
+    {
+      "id": "conn7",
+      "sourceBlockId": "quant1",
+      "sourcePortId": "quant1-out",
+      "targetBlockId": "scope1",
+      "targetPortId": "scope1-in3"
+    },
+    {
+      "id": "conn8",
+      "sourceBlockId": "quant2",
+      "sourcePortId": "quant2-out",
+      "targetBlockId": "scope1",
+      "targetPortId": "scope1-in4"
+    }
+  ],
+  "simulationConfig": {
+    "solver": "rk4",
+    "startTime": 0,
+    "stopTime": 3,
+    "stepSize": 0.001
+  }
+}

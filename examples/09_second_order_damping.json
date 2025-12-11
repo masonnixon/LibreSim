@@ -1,0 +1,149 @@
+{
+  "id": "example-second-order-damping",
+  "metadata": {
+    "name": "Second-Order System Damping Comparison",
+    "description": "Classic control systems example comparing second-order systems with different damping ratios. Underdamped (zeta=0.2), critically damped (zeta=1.0), and overdamped (zeta=2.0) responses. Natural frequency omega_n=1 rad/s.",
+    "author": "LibreSim Examples",
+    "createdAt": "2024-01-01T00:00:00Z",
+    "modifiedAt": "2024-01-01T00:00:00Z",
+    "version": "1.0.0"
+  },
+  "blocks": [
+    {
+      "id": "step1",
+      "type": "step",
+      "name": "Step Input",
+      "position": { "x": 50, "y": 200 },
+      "parameters": {
+        "stepTime": 1.0,
+        "initialValue": 0,
+        "finalValue": 1
+      },
+      "inputPorts": [],
+      "outputPorts": [
+        { "id": "step1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "tf_under",
+      "type": "transfer_function",
+      "name": "Underdamped",
+      "position": { "x": 250, "y": 80 },
+      "parameters": {
+        "numerator": [1],
+        "denominator": [1, 0.4, 1]
+      },
+      "inputPorts": [
+        { "id": "tf_under-in", "name": "in", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [
+        { "id": "tf_under-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "tf_crit",
+      "type": "transfer_function",
+      "name": "Critical",
+      "position": { "x": 250, "y": 200 },
+      "parameters": {
+        "numerator": [1],
+        "denominator": [1, 2, 1]
+      },
+      "inputPorts": [
+        { "id": "tf_crit-in", "name": "in", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [
+        { "id": "tf_crit-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "tf_over",
+      "type": "transfer_function",
+      "name": "Overdamped",
+      "position": { "x": 250, "y": 320 },
+      "parameters": {
+        "numerator": [1],
+        "denominator": [1, 4, 1]
+      },
+      "inputPorts": [
+        { "id": "tf_over-in", "name": "in", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [
+        { "id": "tf_over-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "scope1",
+      "type": "scope",
+      "name": "Comparison",
+      "position": { "x": 480, "y": 200 },
+      "parameters": {
+        "numInputs": 4
+      },
+      "inputPorts": [
+        { "id": "scope1-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
+        { "id": "scope1-in2", "name": "in2", "dataType": "double", "dimensions": [1] },
+        { "id": "scope1-in3", "name": "in3", "dataType": "double", "dimensions": [1] },
+        { "id": "scope1-in4", "name": "in4", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": []
+    }
+  ],
+  "connections": [
+    {
+      "id": "conn1",
+      "sourceBlockId": "step1",
+      "sourcePortId": "step1-out",
+      "targetBlockId": "tf_under",
+      "targetPortId": "tf_under-in"
+    },
+    {
+      "id": "conn2",
+      "sourceBlockId": "step1",
+      "sourcePortId": "step1-out",
+      "targetBlockId": "tf_crit",
+      "targetPortId": "tf_crit-in"
+    },
+    {
+      "id": "conn3",
+      "sourceBlockId": "step1",
+      "sourcePortId": "step1-out",
+      "targetBlockId": "tf_over",
+      "targetPortId": "tf_over-in"
+    },
+    {
+      "id": "conn4",
+      "sourceBlockId": "step1",
+      "sourcePortId": "step1-out",
+      "targetBlockId": "scope1",
+      "targetPortId": "scope1-in1"
+    },
+    {
+      "id": "conn5",
+      "sourceBlockId": "tf_under",
+      "sourcePortId": "tf_under-out",
+      "targetBlockId": "scope1",
+      "targetPortId": "scope1-in2"
+    },
+    {
+      "id": "conn6",
+      "sourceBlockId": "tf_crit",
+      "sourcePortId": "tf_crit-out",
+      "targetBlockId": "scope1",
+      "targetPortId": "scope1-in3"
+    },
+    {
+      "id": "conn7",
+      "sourceBlockId": "tf_over",
+      "sourcePortId": "tf_over-out",
+      "targetBlockId": "scope1",
+      "targetPortId": "scope1-in4"
+    }
+  ],
+  "simulationConfig": {
+    "solver": "rk4",
+    "startTime": 0,
+    "stopTime": 20,
+    "stepSize": 0.01
+  }
+}

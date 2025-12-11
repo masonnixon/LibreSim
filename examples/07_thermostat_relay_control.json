@@ -1,0 +1,199 @@
+{
+  "id": "example-thermostat-relay",
+  "metadata": {
+    "name": "Thermostat Relay Control (Bang-Bang)",
+    "description": "Thermostat-style temperature control using a relay with hysteresis. Models a room with thermal mass (integrator) and on-off heating. Relay turns on at 18C and off at 22C. Classic bang-bang controller example. Uses Nonlinear blocks.",
+    "author": "LibreSim Examples",
+    "createdAt": "2024-01-01T00:00:00Z",
+    "modifiedAt": "2024-01-01T00:00:00Z",
+    "version": "1.0.0"
+  },
+  "blocks": [
+    {
+      "id": "setpoint",
+      "type": "constant",
+      "name": "Setpoint (20C)",
+      "position": { "x": 50, "y": 100 },
+      "parameters": {
+        "value": 20
+      },
+      "inputPorts": [],
+      "outputPorts": [
+        { "id": "setpoint-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "error_sum",
+      "type": "sum",
+      "name": "Error",
+      "position": { "x": 180, "y": 150 },
+      "parameters": {
+        "signs": "+-"
+      },
+      "inputPorts": [
+        { "id": "error_sum-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
+        { "id": "error_sum-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [
+        { "id": "error_sum-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "relay1",
+      "type": "relay",
+      "name": "Thermostat",
+      "position": { "x": 310, "y": 150 },
+      "parameters": {
+        "switchOn": -2,
+        "switchOff": 2,
+        "outputOn": 5,
+        "outputOff": 0
+      },
+      "inputPorts": [
+        { "id": "relay1-in", "name": "in", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [
+        { "id": "relay1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "heat_loss",
+      "type": "gain",
+      "name": "Heat Loss",
+      "position": { "x": 310, "y": 280 },
+      "parameters": {
+        "gain": -0.1
+      },
+      "inputPorts": [
+        { "id": "heat_loss-in", "name": "in", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [
+        { "id": "heat_loss-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "net_heat",
+      "type": "sum",
+      "name": "Net Heat",
+      "position": { "x": 450, "y": 200 },
+      "parameters": {
+        "signs": "++"
+      },
+      "inputPorts": [
+        { "id": "net_heat-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
+        { "id": "net_heat-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [
+        { "id": "net_heat-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "room",
+      "type": "integrator",
+      "name": "Room Temp",
+      "position": { "x": 580, "y": 200 },
+      "parameters": {
+        "initialCondition": 15
+      },
+      "inputPorts": [
+        { "id": "room-in", "name": "in", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [
+        { "id": "room-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "scope1",
+      "type": "scope",
+      "name": "Temperature",
+      "position": { "x": 750, "y": 150 },
+      "parameters": {
+        "numInputs": 3
+      },
+      "inputPorts": [
+        { "id": "scope1-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
+        { "id": "scope1-in2", "name": "in2", "dataType": "double", "dimensions": [1] },
+        { "id": "scope1-in3", "name": "in3", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": []
+    }
+  ],
+  "connections": [
+    {
+      "id": "conn1",
+      "sourceBlockId": "setpoint",
+      "sourcePortId": "setpoint-out",
+      "targetBlockId": "error_sum",
+      "targetPortId": "error_sum-in1"
+    },
+    {
+      "id": "conn2",
+      "sourceBlockId": "room",
+      "sourcePortId": "room-out",
+      "targetBlockId": "error_sum",
+      "targetPortId": "error_sum-in2"
+    },
+    {
+      "id": "conn3",
+      "sourceBlockId": "error_sum",
+      "sourcePortId": "error_sum-out",
+      "targetBlockId": "relay1",
+      "targetPortId": "relay1-in"
+    },
+    {
+      "id": "conn4",
+      "sourceBlockId": "relay1",
+      "sourcePortId": "relay1-out",
+      "targetBlockId": "net_heat",
+      "targetPortId": "net_heat-in1"
+    },
+    {
+      "id": "conn5",
+      "sourceBlockId": "room",
+      "sourcePortId": "room-out",
+      "targetBlockId": "heat_loss",
+      "targetPortId": "heat_loss-in"
+    },
+    {
+      "id": "conn6",
+      "sourceBlockId": "heat_loss",
+      "sourcePortId": "heat_loss-out",
+      "targetBlockId": "net_heat",
+      "targetPortId": "net_heat-in2"
+    },
+    {
+      "id": "conn7",
+      "sourceBlockId": "net_heat",
+      "sourcePortId": "net_heat-out",
+      "targetBlockId": "room",
+      "targetPortId": "room-in"
+    },
+    {
+      "id": "conn8",
+      "sourceBlockId": "setpoint",
+      "sourcePortId": "setpoint-out",
+      "targetBlockId": "scope1",
+      "targetPortId": "scope1-in1"
+    },
+    {
+      "id": "conn9",
+      "sourceBlockId": "room",
+      "sourcePortId": "room-out",
+      "targetBlockId": "scope1",
+      "targetPortId": "scope1-in2"
+    },
+    {
+      "id": "conn10",
+      "sourceBlockId": "relay1",
+      "sourcePortId": "relay1-out",
+      "targetBlockId": "scope1",
+      "targetPortId": "scope1-in3"
+    }
+  ],
+  "simulationConfig": {
+    "solver": "rk4",
+    "startTime": 0,
+    "stopTime": 100,
+    "stepSize": 0.1
+  }
+}

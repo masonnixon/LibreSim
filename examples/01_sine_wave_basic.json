@@ -1,0 +1,57 @@
+{
+  "id": "example-sine-wave-basic",
+  "metadata": {
+    "name": "Sine Wave Basic",
+    "description": "Simple example: Generate a sine wave and display it on a scope. This is the most basic LibreSim model demonstrating source and sink blocks.",
+    "author": "LibreSim Examples",
+    "createdAt": "2024-01-01T00:00:00Z",
+    "modifiedAt": "2024-01-01T00:00:00Z",
+    "version": "1.0.0"
+  },
+  "blocks": [
+    {
+      "id": "sine1",
+      "type": "sine_wave",
+      "name": "Sine Wave",
+      "position": { "x": 100, "y": 150 },
+      "parameters": {
+        "amplitude": 1.0,
+        "frequency": 1.0,
+        "phase": 0,
+        "bias": 0
+      },
+      "inputPorts": [],
+      "outputPorts": [
+        { "id": "sine1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "scope1",
+      "type": "scope",
+      "name": "Scope",
+      "position": { "x": 350, "y": 150 },
+      "parameters": {
+        "numInputs": 1
+      },
+      "inputPorts": [
+        { "id": "scope1-in1", "name": "in1", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": []
+    }
+  ],
+  "connections": [
+    {
+      "id": "conn1",
+      "sourceBlockId": "sine1",
+      "sourcePortId": "sine1-out",
+      "targetBlockId": "scope1",
+      "targetPortId": "scope1-in1"
+    }
+  ],
+  "simulationConfig": {
+    "solver": "rk4",
+    "startTime": 0,
+    "stopTime": 10,
+    "stepSize": 0.01
+  }
+}

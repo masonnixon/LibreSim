@@ -1,0 +1,163 @@
+{
+  "id": "example-signal-filtering",
+  "metadata": {
+    "name": "Signal Filtering Comparison",
+    "description": "Demonstrates signal processing blocks by filtering a composite signal (1Hz + 10Hz sine waves). Compares low-pass filter, moving average, and rate limiter effects. Uses new Signal Processing block category.",
+    "author": "LibreSim Examples",
+    "createdAt": "2024-01-01T00:00:00Z",
+    "modifiedAt": "2024-01-01T00:00:00Z",
+    "version": "1.0.0"
+  },
+  "blocks": [
+    {
+      "id": "sine_low",
+      "type": "sine_wave",
+      "name": "Low Freq (1Hz)",
+      "position": { "x": 50, "y": 100 },
+      "parameters": {
+        "amplitude": 1.0,
+        "frequency": 1.0,
+        "phase": 0,
+        "bias": 0
+      },
+      "inputPorts": [],
+      "outputPorts": [
+        { "id": "sine_low-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "sine_high",
+      "type": "sine_wave",
+      "name": "High Freq (10Hz)",
+      "position": { "x": 50, "y": 200 },
+      "parameters": {
+        "amplitude": 0.3,
+        "frequency": 10.0,
+        "phase": 0,
+        "bias": 0
+      },
+      "inputPorts": [],
+      "outputPorts": [
+        { "id": "sine_high-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "sum1",
+      "type": "sum",
+      "name": "Combined",
+      "position": { "x": 200, "y": 150 },
+      "parameters": {
+        "signs": "++"
+      },
+      "inputPorts": [
+        { "id": "sum1-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
+        { "id": "sum1-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [
+        { "id": "sum1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "lpf1",
+      "type": "low_pass_filter",
+      "name": "LPF (2Hz)",
+      "position": { "x": 380, "y": 100 },
+      "parameters": {
+        "cutoffFrequency": 2.0
+      },
+      "inputPorts": [
+        { "id": "lpf1-in", "name": "in", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [
+        { "id": "lpf1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "mavg1",
+      "type": "moving_average",
+      "name": "Moving Avg",
+      "position": { "x": 380, "y": 200 },
+      "parameters": {
+        "windowSize": 20
+      },
+      "inputPorts": [
+        { "id": "mavg1-in", "name": "in", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [
+        { "id": "mavg1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "scope1",
+      "type": "scope",
+      "name": "Comparison",
+      "position": { "x": 580, "y": 150 },
+      "parameters": {
+        "numInputs": 3
+      },
+      "inputPorts": [
+        { "id": "scope1-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
+        { "id": "scope1-in2", "name": "in2", "dataType": "double", "dimensions": [1] },
+        { "id": "scope1-in3", "name": "in3", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": []
+    }
+  ],
+  "connections": [
+    {
+      "id": "conn1",
+      "sourceBlockId": "sine_low",
+      "sourcePortId": "sine_low-out",
+      "targetBlockId": "sum1",
+      "targetPortId": "sum1-in1"
+    },
+    {
+      "id": "conn2",
+      "sourceBlockId": "sine_high",
+      "sourcePortId": "sine_high-out",
+      "targetBlockId": "sum1",
+      "targetPortId": "sum1-in2"
+    },
+    {
+      "id": "conn3",
+      "sourceBlockId": "sum1",
+      "sourcePortId": "sum1-out",
+      "targetBlockId": "lpf1",
+      "targetPortId": "lpf1-in"
+    },
+    {
+      "id": "conn4",
+      "sourceBlockId": "sum1",
+      "sourcePortId": "sum1-out",
+      "targetBlockId": "mavg1",
+      "targetPortId": "mavg1-in"
+    },
+    {
+      "id": "conn5",
+      "sourceBlockId": "sum1",
+      "sourcePortId": "sum1-out",
+      "targetBlockId": "scope1",
+      "targetPortId": "scope1-in1"
+    },
+    {
+      "id": "conn6",
+      "sourceBlockId": "lpf1",
+      "sourcePortId": "lpf1-out",
+      "targetBlockId": "scope1",
+      "targetPortId": "scope1-in2"
+    },
+    {
+      "id": "conn7",
+      "sourceBlockId": "mavg1",
+      "sourcePortId": "mavg1-out",
+      "targetBlockId": "scope1",
+      "targetPortId": "scope1-in3"
+    }
+  ],
+  "simulationConfig": {
+    "solver": "rk4",
+    "startTime": 0,
+    "stopTime": 5,
+    "stepSize": 0.001
+  }
+}

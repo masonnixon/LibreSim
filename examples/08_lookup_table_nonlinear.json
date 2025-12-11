@@ -1,0 +1,119 @@
+{
+  "id": "example-lookup-table",
+  "metadata": {
+    "name": "Lookup Table Nonlinearity",
+    "description": "Demonstrates 1D lookup table for modeling nonlinear characteristics. Models a saturation-like curve defined by data points. Common in engine control, sensor calibration, and actuator modeling. Uses Nonlinear blocks.",
+    "author": "LibreSim Examples",
+    "createdAt": "2024-01-01T00:00:00Z",
+    "modifiedAt": "2024-01-01T00:00:00Z",
+    "version": "1.0.0"
+  },
+  "blocks": [
+    {
+      "id": "sine1",
+      "type": "sine_wave",
+      "name": "Input Signal",
+      "position": { "x": 50, "y": 150 },
+      "parameters": {
+        "amplitude": 2.0,
+        "frequency": 0.5,
+        "phase": 0,
+        "bias": 0
+      },
+      "inputPorts": [],
+      "outputPorts": [
+        { "id": "sine1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "lut1",
+      "type": "lookup_table_1d",
+      "name": "Soft Saturation",
+      "position": { "x": 250, "y": 150 },
+      "parameters": {
+        "xData": [-3, -2, -1, -0.5, 0, 0.5, 1, 2, 3],
+        "yData": [-1.0, -0.95, -0.8, -0.45, 0, 0.45, 0.8, 0.95, 1.0]
+      },
+      "inputPorts": [
+        { "id": "lut1-in", "name": "in", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [
+        { "id": "lut1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "sat1",
+      "type": "saturation",
+      "name": "Hard Saturation",
+      "position": { "x": 250, "y": 280 },
+      "parameters": {
+        "upperLimit": 1,
+        "lowerLimit": -1
+      },
+      "inputPorts": [
+        { "id": "sat1-in", "name": "in", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [
+        { "id": "sat1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "scope1",
+      "type": "scope",
+      "name": "Comparison",
+      "position": { "x": 480, "y": 200 },
+      "parameters": {
+        "numInputs": 3
+      },
+      "inputPorts": [
+        { "id": "scope1-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
+        { "id": "scope1-in2", "name": "in2", "dataType": "double", "dimensions": [1] },
+        { "id": "scope1-in3", "name": "in3", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": []
+    }
+  ],
+  "connections": [
+    {
+      "id": "conn1",
+      "sourceBlockId": "sine1",
+      "sourcePortId": "sine1-out",
+      "targetBlockId": "lut1",
+      "targetPortId": "lut1-in"
+    },
+    {
+      "id": "conn2",
+      "sourceBlockId": "sine1",
+      "sourcePortId": "sine1-out",
+      "targetBlockId": "sat1",
+      "targetPortId": "sat1-in"
+    },
+    {
+      "id": "conn3",
+      "sourceBlockId": "sine1",
+      "sourcePortId": "sine1-out",
+      "targetBlockId": "scope1",
+      "targetPortId": "scope1-in1"
+    },
+    {
+      "id": "conn4",
+      "sourceBlockId": "lut1",
+      "sourcePortId": "lut1-out",
+      "targetBlockId": "scope1",
+      "targetPortId": "scope1-in2"
+    },
+    {
+      "id": "conn5",
+      "sourceBlockId": "sat1",
+      "sourcePortId": "sat1-out",
+      "targetBlockId": "scope1",
+      "targetPortId": "scope1-in3"
+    }
+  ],
+  "simulationConfig": {
+    "solver": "rk4",
+    "startTime": 0,
+    "stopTime": 10,
+    "stepSize": 0.01
+  }
+}

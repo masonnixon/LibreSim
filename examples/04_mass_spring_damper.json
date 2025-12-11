@@ -1,0 +1,212 @@
+{
+  "id": "example-mass-spring-damper",
+  "metadata": {
+    "name": "Mass-Spring-Damper System",
+    "description": "Classic mechanical system: m*x'' + c*x' + k*x = F. Parameters: m=1kg, c=0.5 N*s/m, k=2 N/m. Models position response to a step force input. Demonstrates integrators for physical systems.",
+    "author": "LibreSim Examples",
+    "createdAt": "2024-01-01T00:00:00Z",
+    "modifiedAt": "2024-01-01T00:00:00Z",
+    "version": "1.0.0"
+  },
+  "blocks": [
+    {
+      "id": "force",
+      "type": "step",
+      "name": "Force F",
+      "position": { "x": 50, "y": 150 },
+      "parameters": {
+        "stepTime": 1.0,
+        "initialValue": 0,
+        "finalValue": 1
+      },
+      "inputPorts": [],
+      "outputPorts": [
+        { "id": "force-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "sum1",
+      "type": "sum",
+      "name": "Sum Forces",
+      "position": { "x": 180, "y": 150 },
+      "parameters": {
+        "signs": "+--"
+      },
+      "inputPorts": [
+        { "id": "sum1-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
+        { "id": "sum1-in2", "name": "in2", "dataType": "double", "dimensions": [1] },
+        { "id": "sum1-in3", "name": "in3", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [
+        { "id": "sum1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "mass",
+      "type": "gain",
+      "name": "1/m",
+      "position": { "x": 300, "y": 150 },
+      "parameters": {
+        "gain": 1.0
+      },
+      "inputPorts": [
+        { "id": "mass-in", "name": "in", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [
+        { "id": "mass-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "int1",
+      "type": "integrator",
+      "name": "Velocity",
+      "position": { "x": 420, "y": 150 },
+      "parameters": {
+        "initialCondition": 0
+      },
+      "inputPorts": [
+        { "id": "int1-in", "name": "in", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [
+        { "id": "int1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "int2",
+      "type": "integrator",
+      "name": "Position",
+      "position": { "x": 540, "y": 150 },
+      "parameters": {
+        "initialCondition": 0
+      },
+      "inputPorts": [
+        { "id": "int2-in", "name": "in", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [
+        { "id": "int2-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "damper",
+      "type": "gain",
+      "name": "Damper c",
+      "position": { "x": 420, "y": 280 },
+      "parameters": {
+        "gain": 0.5
+      },
+      "inputPorts": [
+        { "id": "damper-in", "name": "in", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [
+        { "id": "damper-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "spring",
+      "type": "gain",
+      "name": "Spring k",
+      "position": { "x": 540, "y": 280 },
+      "parameters": {
+        "gain": 2.0
+      },
+      "inputPorts": [
+        { "id": "spring-in", "name": "in", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [
+        { "id": "spring-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "scope1",
+      "type": "scope",
+      "name": "Outputs",
+      "position": { "x": 700, "y": 150 },
+      "parameters": {
+        "numInputs": 2
+      },
+      "inputPorts": [
+        { "id": "scope1-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
+        { "id": "scope1-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": []
+    }
+  ],
+  "connections": [
+    {
+      "id": "conn1",
+      "sourceBlockId": "force",
+      "sourcePortId": "force-out",
+      "targetBlockId": "sum1",
+      "targetPortId": "sum1-in1"
+    },
+    {
+      "id": "conn2",
+      "sourceBlockId": "sum1",
+      "sourcePortId": "sum1-out",
+      "targetBlockId": "mass",
+      "targetPortId": "mass-in"
+    },
+    {
+      "id": "conn3",
+      "sourceBlockId": "mass",
+      "sourcePortId": "mass-out",
+      "targetBlockId": "int1",
+      "targetPortId": "int1-in"
+    },
+    {
+      "id": "conn4",
+      "sourceBlockId": "int1",
+      "sourcePortId": "int1-out",
+      "targetBlockId": "int2",
+      "targetPortId": "int2-in"
+    },
+    {
+      "id": "conn5",
+      "sourceBlockId": "int1",
+      "sourcePortId": "int1-out",
+      "targetBlockId": "damper",
+      "targetPortId": "damper-in"
+    },
+    {
+      "id": "conn6",
+      "sourceBlockId": "damper",
+      "sourcePortId": "damper-out",
+      "targetBlockId": "sum1",
+      "targetPortId": "sum1-in2"
+    },
+    {
+      "id": "conn7",
+      "sourceBlockId": "int2",
+      "sourcePortId": "int2-out",
+      "targetBlockId": "spring",
+      "targetPortId": "spring-in"
+    },
+    {
+      "id": "conn8",
+      "sourceBlockId": "spring",
+      "sourcePortId": "spring-out",
+      "targetBlockId": "sum1",
+      "targetPortId": "sum1-in3"
+    },
+    {
+      "id": "conn9",
+      "sourceBlockId": "int1",
+      "sourcePortId": "int1-out",
+      "targetBlockId": "scope1",
+      "targetPortId": "scope1-in1"
+    },
+    {
+      "id": "conn10",
+      "sourceBlockId": "int2",
+      "sourcePortId": "int2-out",
+      "targetBlockId": "scope1",
+      "targetPortId": "scope1-in2"
+    }
+  ],
+  "simulationConfig": {
+    "solver": "rk4",
+    "startTime": 0,
+    "stopTime": 20,
+    "stepSize": 0.01
+  }
+}
