@@ -1,0 +1,59 @@
+Model {
+  Name			  "first_order_step_response"
+  Version		  8.0
+  SavedCharacterEncoding  "UTF-8"
+  StartTime		  "0.0"
+  StopTime		  "10.0"
+  SolverType		  "Fixed-step"
+  Solver		  "ode4"
+  FixedStep		  "0.01"
+
+  System {
+    Name		    "first_order_step_response"
+    Location		    [100, 100, 800, 500]
+    Open		    on
+
+    Block {
+      BlockType		      Step
+      Name		      "Step Input"
+      Position		      [100, 140, 160, 180]
+      Time		      "1"
+      Before		      "0"
+      After		      "1"
+      SampleTime	      "0"
+    }
+    Block {
+      BlockType		      TransferFcn
+      Name		      "1/(s+1)"
+      Position		      [300, 140, 400, 180]
+      Numerator		      "[1]"
+      Denominator	      "[1 1]"
+    }
+    Block {
+      BlockType		      Scope
+      Name		      "Response"
+      Ports		      [2]
+      Position		      [500, 135, 560, 185]
+      NumInputPorts	      "2"
+    }
+    Line {
+      SrcBlock		      "Step Input"
+      SrcPort		      1
+      DstBlock		      "1/(s+1)"
+      DstPort		      1
+    }
+    Line {
+      SrcBlock		      "Step Input"
+      SrcPort		      1
+      Points		      [50, 0; 0, -60; 320, 0]
+      DstBlock		      "Response"
+      DstPort		      1
+    }
+    Line {
+      SrcBlock		      "1/(s+1)"
+      SrcPort		      1
+      DstBlock		      "Response"
+      DstPort		      2
+    }
+  }
+}

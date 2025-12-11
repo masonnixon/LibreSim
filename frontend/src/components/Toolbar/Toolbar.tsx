@@ -1,22 +1,24 @@
-import { useRef, useCallback } from 'react'
+import { useRef, useCallback, ChangeEvent } from 'react'
 import { useModelStore } from '../../store/modelStore'
 import { useSimulationStore } from '../../store/simulationStore'
 import { useUIStore } from '../../store/uiStore'
 import { api } from '../../api/client'
+import type { Model } from '../../types/model'
 
 export function Toolbar() {
-  const { model, isDirty, createNewModel, saveModel } = useModelStore()
+  const { model, isDirty, createNewModel, saveModel, loadModel } = useModelStore()
   const { state: simState, setStatus, setProgress, setResults, setError, clearResults } = useSimulationStore()
   const {
     toggleProperties,
     toggleSimulation,
     showProperties,
     showSimulation,
-    openImportModal,
     setShowSimulation,
   } = useUIStore()
 
   const pollingRef = useRef<number | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const importInputRef = useRef<HTMLInputElement>(null)
 
   const stopPolling = useCallback(() => {
     if (pollingRef.current) {
@@ -30,6 +32,108 @@ export function Toolbar() {
     if (name) {
       createNewModel(name)
     }
+  }
+
+  const handleOpen = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    try {
+      const text = await file.text()
+      const modelData = JSON.parse(text) as Model
+
+      // Validate basic model structure
+      if (!modelData.blocks || !modelData.connections) {
+        throw new Error('Invalid model file: missing blocks or connections')
+      }
+
+      // Ensure required fields exist
+      if (!modelData.id) {
+        modelData.id = crypto.randomUUID?.() || Date.now().toString()
+      }
+      if (!modelData.metadata) {
+        modelData.metadata = {
+          name: file.name.replace(/\.(json|mdl)$/i, ''),
+          description: '',
+          author: '',
+          createdAt: new Date().toISOString(),
+          modifiedAt: new Date().toISOString(),
+          version: '1.0.0',
+        }
+      }
+      if (!modelData.simulationConfig) {
+        modelData.simulationConfig = {
+          solver: 'rk4',
+          startTime: 0,
+          stopTime: 10,
+          stepSize: 0.01,
+        }
+      }
+
+      loadModel(modelData)
+    } catch (error) {
+      console.error('Failed to load model:', error)
+      alert(`Failed to load model: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+
+    // Reset the input so the same file can be selected again
+    event.target.value = ''
+  }
+
+  const handleImport = () => {
+    importInputRef.current?.click()
+  }
+
+  const handleImportChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    try {
+      const text = await file.text()
+
+      // Check if it's a JSON file (LibreSim format)
+      if (file.name.endsWith('.json')) {
+        const modelData = JSON.parse(text) as Model
+        if (!modelData.id) {
+          modelData.id = crypto.randomUUID?.() || Date.now().toString()
+        }
+        loadModel(modelData)
+      }
+      // Check if it's an MDL file (Simulink format)
+      else if (file.name.endsWith('.mdl')) {
+        // For now, show a message that MDL import is coming
+        // In the future, this would parse the MDL format
+        alert('Simulink MDL import is a work in progress. For now, please use LibreSim JSON format.')
+      }
+      else {
+        alert('Unsupported file format. Please use .json or .mdl files.')
+      }
+    } catch (error) {
+      console.error('Failed to import model:', error)
+      alert(`Failed to import: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+
+    event.target.value = ''
+  }
+
+  const handleExport = () => {
+    if (!model) return
+
+    const dataStr = JSON.stringify(model, null, 2)
+    const blob = new Blob([dataStr], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${model.metadata.name || 'model'}.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
   }
 
   const handleSave = async () => {
@@ -117,6 +221,22 @@ export function Toolbar() {
         <span className="font-bold text-lg text-blue-400">LibreSim</span>
       </div>
 
+      {/* Hidden file inputs */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".json"
+        onChange={handleFileChange}
+        className="hidden"
+      />
+      <input
+        ref={importInputRef}
+        type="file"
+        accept=".json,.mdl"
+        onChange={handleImportChange}
+        className="hidden"
+      />
+
       {/* File Operations */}
       <div className="flex items-center gap-1 pr-2 border-r border-editor-border">
         <button
@@ -127,9 +247,9 @@ export function Toolbar() {
           New
         </button>
         <button
-          onClick={() => {}}
+          onClick={handleOpen}
           className="px-3 py-1.5 text-sm hover:bg-editor-border rounded transition-colors"
-          title="Open Model"
+          title="Open Model (JSON)"
         >
           Open
         </button>
@@ -142,9 +262,17 @@ export function Toolbar() {
           Save{isDirty ? '*' : ''}
         </button>
         <button
-          onClick={openImportModal}
+          onClick={handleExport}
+          disabled={!model}
+          className="px-3 py-1.5 text-sm hover:bg-editor-border rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Export Model as JSON"
+        >
+          Export
+        </button>
+        <button
+          onClick={handleImport}
           className="px-3 py-1.5 text-sm hover:bg-editor-border rounded transition-colors"
-          title="Import Simulink MDL"
+          title="Import Simulink MDL or JSON"
         >
           Import
         </button>

@@ -1,0 +1,103 @@
+Model {
+  Name			  "second_order_damping"
+  Version		  8.0
+  SavedCharacterEncoding  "UTF-8"
+  StartTime		  "0.0"
+  StopTime		  "20.0"
+  SolverType		  "Fixed-step"
+  Solver		  "ode4"
+  FixedStep		  "0.01"
+
+  System {
+    Name		    "second_order_damping"
+    Location		    [100, 100, 800, 600]
+    Open		    on
+
+    Annotation {
+      Name		      "Second-Order System Damping Comparison\nH(s) = wn^2 / (s^2 + 2*zeta*wn*s + wn^2)\nwn = 1 rad/s"
+      Position		      [400, 30]
+    }
+    Block {
+      BlockType		      Step
+      Name		      "Step Input"
+      Position		      [50, 190, 110, 230]
+      Time		      "1"
+      Before		      "0"
+      After		      "1"
+    }
+    Block {
+      BlockType		      TransferFcn
+      Name		      "Underdamped (z=0.2)"
+      Position		      [250, 70, 350, 110]
+      Numerator		      "[1]"
+      Denominator	      "[1 0.4 1]"
+    }
+    Block {
+      BlockType		      TransferFcn
+      Name		      "Critical (z=1)"
+      Position		      [250, 190, 350, 230]
+      Numerator		      "[1]"
+      Denominator	      "[1 2 1]"
+    }
+    Block {
+      BlockType		      TransferFcn
+      Name		      "Overdamped (z=2)"
+      Position		      [250, 310, 350, 350]
+      Numerator		      "[1]"
+      Denominator	      "[1 4 1]"
+    }
+    Block {
+      BlockType		      Scope
+      Name		      "Comparison"
+      Ports		      [4]
+      Position		      [480, 175, 540, 245]
+      NumInputPorts	      "4"
+    }
+    Line {
+      SrcBlock		      "Step Input"
+      SrcPort		      1
+      Points		      [50, 0]
+      Branch {
+	DstBlock		"Critical (z=1)"
+	DstPort			1
+      }
+      Branch {
+	Points			[0, -120]
+	DstBlock		"Underdamped (z=0.2)"
+	DstPort			1
+      }
+      Branch {
+	Points			[0, 120]
+	DstBlock		"Overdamped (z=2)"
+	DstPort			1
+      }
+    }
+    Line {
+      SrcBlock		      "Step Input"
+      SrcPort		      1
+      Points		      [310, 0; 0, -30]
+      DstBlock		      "Comparison"
+      DstPort		      1
+    }
+    Line {
+      SrcBlock		      "Underdamped (z=0.2)"
+      SrcPort		      1
+      Points		      [80, 0; 0, 110]
+      DstBlock		      "Comparison"
+      DstPort		      2
+    }
+    Line {
+      SrcBlock		      "Critical (z=1)"
+      SrcPort		      1
+      DstBlock		      "Comparison"
+      DstPort		      3
+    }
+    Line {
+      SrcBlock		      "Overdamped (z=2)"
+      SrcPort		      1
+      Points		      [80, 0; 0, -110]
+      DstBlock		      "Comparison"
+      DstPort		      4
+    }
+  }
+}

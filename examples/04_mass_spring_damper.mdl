@@ -1,0 +1,138 @@
+Model {
+  Name			  "mass_spring_damper"
+  Version		  8.0
+  SavedCharacterEncoding  "UTF-8"
+  StartTime		  "0.0"
+  StopTime		  "20.0"
+  SolverType		  "Fixed-step"
+  Solver		  "ode4"
+  FixedStep		  "0.01"
+
+  System {
+    Name		    "mass_spring_damper"
+    Location		    [100, 100, 900, 600]
+    Open		    on
+
+    Annotation {
+      Name		      "Mass-Spring-Damper System\nm*x'' + c*x' + k*x = F\nm=1, c=0.5, k=2"
+      Position		      [400, 30]
+    }
+    Block {
+      BlockType		      Step
+      Name		      "Force F"
+      Position		      [50, 140, 110, 180]
+      Time		      "1"
+      Before		      "0"
+      After		      "1"
+    }
+    Block {
+      BlockType		      Sum
+      Name		      "Sum Forces"
+      Position		      [180, 145, 210, 175]
+      Inputs		      "+--"
+      IconShape		      "round"
+    }
+    Block {
+      BlockType		      Gain
+      Name		      "1/m"
+      Position		      [300, 145, 350, 175]
+      Gain		      "1"
+    }
+    Block {
+      BlockType		      Integrator
+      Name		      "Velocity"
+      Position		      [420, 145, 470, 175]
+      InitialCondition	      "0"
+    }
+    Block {
+      BlockType		      Integrator
+      Name		      "Position"
+      Position		      [540, 145, 590, 175]
+      InitialCondition	      "0"
+    }
+    Block {
+      BlockType		      Gain
+      Name		      "Damper c"
+      Position		      [420, 270, 470, 300]
+      Gain		      "0.5"
+    }
+    Block {
+      BlockType		      Gain
+      Name		      "Spring k"
+      Position		      [540, 270, 590, 300]
+      Gain		      "2"
+    }
+    Block {
+      BlockType		      Scope
+      Name		      "Outputs"
+      Ports		      [2]
+      Position		      [700, 140, 760, 180]
+      NumInputPorts	      "2"
+    }
+    Line {
+      SrcBlock		      "Force F"
+      SrcPort		      1
+      DstBlock		      "Sum Forces"
+      DstPort		      1
+    }
+    Line {
+      SrcBlock		      "Sum Forces"
+      SrcPort		      1
+      DstBlock		      "1/m"
+      DstPort		      1
+    }
+    Line {
+      SrcBlock		      "1/m"
+      SrcPort		      1
+      DstBlock		      "Velocity"
+      DstPort		      1
+    }
+    Line {
+      SrcBlock		      "Velocity"
+      SrcPort		      1
+      DstBlock		      "Position"
+      DstPort		      1
+    }
+    Line {
+      SrcBlock		      "Velocity"
+      SrcPort		      1
+      Points		      [0, 110]
+      DstBlock		      "Damper c"
+      DstPort		      1
+    }
+    Line {
+      SrcBlock		      "Damper c"
+      SrcPort		      1
+      Points		      [-250, 0; 0, -130]
+      DstBlock		      "Sum Forces"
+      DstPort		      2
+    }
+    Line {
+      SrcBlock		      "Position"
+      SrcPort		      1
+      Points		      [0, 110]
+      DstBlock		      "Spring k"
+      DstPort		      1
+    }
+    Line {
+      SrcBlock		      "Spring k"
+      SrcPort		      1
+      Points		      [30, 0; 0, 160; -450, 0; 0, -265]
+      DstBlock		      "Sum Forces"
+      DstPort		      3
+    }
+    Line {
+      SrcBlock		      "Velocity"
+      SrcPort		      1
+      Points		      [200, 0]
+      DstBlock		      "Outputs"
+      DstPort		      1
+    }
+    Line {
+      SrcBlock		      "Position"
+      SrcPort		      1
+      DstBlock		      "Outputs"
+      DstPort		      2
+    }
+  }
+}

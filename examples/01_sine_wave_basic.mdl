@@ -1,0 +1,56 @@
+Model {
+  Name			  "sine_wave_basic"
+  Version		  8.0
+  SavedCharacterEncoding  "UTF-8"
+  SampleTimeColors	  off
+  LibraryLinkDisplay	  "none"
+  WideLines		  off
+  ShowLineDimensions	  off
+  ShowPortDataTypes	  off
+  ShowLoopsOnError	  on
+  IgnoreBidirectionalLines off
+  ShowStorageClass	  off
+  ShowTestPointIcons	  on
+  ShowViewerIcons	  on
+  SortedOrder		  off
+  ExecutionContextIcon	  off
+  ShowLinearizationAnnotations on
+  StartTime		  "0.0"
+  StopTime		  "10.0"
+  SolverType		  "Fixed-step"
+  Solver		  "ode4"
+  FixedStep		  "0.01"
+
+  System {
+    Name		    "sine_wave_basic"
+    Location		    [100, 100, 700, 400]
+    Open		    on
+
+    Block {
+      BlockType		      Sin
+      Name		      "Sine Wave"
+      Position		      [100, 140, 160, 180]
+      SineType		      "Time based"
+      Amplitude		      "1"
+      Frequency		      "1"
+      Phase		      "0"
+      Bias		      "0"
+      SampleTime	      "0"
+    }
+    Block {
+      BlockType		      Scope
+      Name		      "Scope"
+      Ports		      [1]
+      Position		      [350, 140, 410, 180]
+      NumInputPorts	      "1"
+      SaveName		      "ScopeData"
+      DataFormat	      "StructureWithTime"
+    }
+    Line {
+      SrcBlock		      "Sine Wave"
+      SrcPort		      1
+      DstBlock		      "Scope"
+      DstPort		      1
+    }
+  }
+}
