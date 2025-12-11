@@ -12,6 +12,7 @@ import {
   NodeTypes,
   useReactFlow,
   OnConnect,
+  Panel,
 } from '@xyflow/react'
 import { useModelStore } from '../../store/modelStore'
 import { useUIStore } from '../../store/uiStore'
@@ -21,7 +22,7 @@ import { blockRegistry } from '../../blocks'
 
 export function Editor() {
   const reactFlowWrapper = useRef<HTMLDivElement>(null)
-  const { screenToFlowPosition } = useReactFlow()
+  const { screenToFlowPosition, getNodes } = useReactFlow()
 
   const {
     model,
@@ -38,6 +39,9 @@ export function Editor() {
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
+
+  // Selection toolbar position
+  const [selectionBounds, setSelectionBounds] = useState<{ x: number; y: number; width: number; height: number } | null>(null)
 
   // Convert model blocks to React Flow nodes
   const initialNodes: Node[] = useMemo(() => {
@@ -142,6 +146,23 @@ export function Editor() {
   const onSelectionChange = useCallback(
     ({ nodes: selectedNodes }: { nodes: Node[] }) => {
       selectBlocks(selectedNodes.map((n) => n.id))
+
+      // Calculate selection bounds for toolbar positioning
+      if (selectedNodes.length >= 2) {
+        const positions = selectedNodes.map((n) => n.position)
+        const minX = Math.min(...positions.map((p) => p.x))
+        const maxX = Math.max(...positions.map((p) => p.x)) + 140 // approximate block width
+        const minY = Math.min(...positions.map((p) => p.y))
+        const maxY = Math.max(...positions.map((p) => p.y)) + 60 // approximate block height
+        setSelectionBounds({
+          x: (minX + maxX) / 2,
+          y: minY - 50, // Position above the selection
+          width: maxX - minX,
+          height: maxY - minY,
+        })
+      } else {
+        setSelectionBounds(null)
+      }
     },
     [selectBlocks]
   )
@@ -201,6 +222,7 @@ export function Editor() {
       createSubsystem(selectedBlockIds)
     }
     setContextMenu(null)
+    setSelectionBounds(null)
   }, [selectedBlockIds, createSubsystem])
 
   if (!model) {
@@ -263,6 +285,27 @@ export function Editor() {
             }
           }}
         />
+
+        {/* Selection Toolbar - appears when 2+ blocks are selected */}
+        {selectedBlockIds.length >= 2 && (
+          <Panel position="top-center" className="!top-4">
+            <div className="bg-slate-800/95 backdrop-blur-sm border border-cyan-500/50 rounded-lg shadow-xl px-4 py-2 flex items-center gap-3">
+              <span className="text-cyan-400 text-sm font-medium">
+                {selectedBlockIds.length} blocks selected
+              </span>
+              <div className="w-px h-5 bg-slate-600" />
+              <button
+                onClick={handleCreateSubsystem}
+                className="flex items-center gap-2 px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-medium rounded-md transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+                </svg>
+                Create Subsystem
+              </button>
+            </div>
+          </Panel>
+        )}
       </ReactFlow>
 
       {/* Context Menu */}
@@ -275,7 +318,9 @@ export function Editor() {
             className="w-full px-4 py-2 text-left text-sm text-white hover:bg-slate-700 flex items-center gap-2"
             onClick={handleCreateSubsystem}
           >
-            <span>{ }</span>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+            </svg>
             <span>Create Subsystem</span>
             <span className="ml-auto text-slate-400 text-xs">{selectedBlockIds.length} blocks</span>
           </button>
