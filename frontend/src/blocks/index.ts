@@ -6,6 +6,9 @@ import { discreteBlocks } from './discrete'
 import { mathBlocks } from './math'
 import { routingBlocks } from './routing'
 import { subsystemBlocks } from './subsystems'
+import { signalProcessingBlocks } from './signal_processing'
+import { nonlinearBlocks } from './nonlinear'
+import { observerBlocks } from './observers'
 
 // All block definitions
 const allBlocks: BlockDefinition[] = [
@@ -16,6 +19,9 @@ const allBlocks: BlockDefinition[] = [
   ...mathBlocks,
   ...routingBlocks,
   ...subsystemBlocks,
+  ...signalProcessingBlocks,
+  ...nonlinearBlocks,
+  ...observerBlocks,
 ]
 
 // Block registry for quick lookup
@@ -56,6 +62,9 @@ export const blockCategories: BlockCategory[] = [
   'math',
   'routing',
   'subsystems',
+  'signal_processing',
+  'nonlinear',
+  'observers',
 ]
 
 export { sourceBlocks } from './sources'
@@ -65,3 +74,6 @@ export { discreteBlocks } from './discrete'
 export { mathBlocks } from './math'
 export { routingBlocks } from './routing'
 export { subsystemBlocks } from './subsystems'
+export { signalProcessingBlocks } from './signal_processing'
+export { nonlinearBlocks } from './nonlinear'
+export { observerBlocks } from './observers'

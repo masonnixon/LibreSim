@@ -24,6 +24,12 @@ from ..osk.blocks import (
     Sum, Gain, Product, Abs, Saturation,
     # Subsystems
     Inport, Outport, Subsystem,
+    # Signal Processing
+    RateLimiter, MovingAverage, LowPassFilter, HighPassFilter, BandPassFilter, Backlash,
+    # Nonlinear
+    LookupTable1D, LookupTable2D, Quantizer, Relay, Coulomb, VariableTransportDelay,
+    # Observers
+    LuenbergerObserver, KalmanFilter, ExtendedKalmanFilter,
 )
 from ..osk.blocks.math_ops import Switch, MathFunction, Trigonometry, DeadZone, Sign
 from ..osk.blocks.sinks import Display, Terminator
@@ -72,6 +78,24 @@ BLOCK_TYPE_MAP: Dict[str, Type[Block]] = {
     "inport": Inport,
     "outport": Outport,
     "subsystem": Subsystem,
+    # Signal Processing
+    "rate_limiter": RateLimiter,
+    "moving_average": MovingAverage,
+    "low_pass_filter": LowPassFilter,
+    "high_pass_filter": HighPassFilter,
+    "band_pass_filter": BandPassFilter,
+    "backlash": Backlash,
+    # Nonlinear
+    "lookup_table_1d": LookupTable1D,
+    "lookup_table_2d": LookupTable2D,
+    "quantizer": Quantizer,
+    "relay": Relay,
+    "coulomb_friction": Coulomb,
+    "variable_transport_delay": VariableTransportDelay,
+    # Observers
+    "luenberger_observer": LuenbergerObserver,
+    "kalman_filter": KalmanFilter,
+    "extended_kalman_filter": ExtendedKalmanFilter,
 }
 
 # Parameter name mapping from LibreSim to OSK constructor arguments
@@ -105,6 +129,24 @@ PARAM_MAP: Dict[str, Dict[str, str]] = {
     "inport": {"portNumber": "port_number"},
     "outport": {"portNumber": "port_number"},
     "subsystem": {"numInputs": "num_inputs", "numOutputs": "num_outputs"},
+    # Signal Processing
+    "rate_limiter": {"risingLimit": "rising_limit", "fallingLimit": "falling_limit"},
+    "moving_average": {"windowSize": "window_size"},
+    "low_pass_filter": {"cutoffFrequency": "cutoff_freq"},
+    "high_pass_filter": {"cutoffFrequency": "cutoff_freq"},
+    "band_pass_filter": {"lowCutoff": "low_cutoff", "highCutoff": "high_cutoff"},
+    "backlash": {"deadbandWidth": "deadband_width", "initialOutput": "initial_output"},
+    # Nonlinear
+    "lookup_table_1d": {"xData": "x_data", "yData": "y_data"},
+    "lookup_table_2d": {"xData": "x_data", "yData": "y_data", "zData": "z_data"},
+    "quantizer": {"interval": "interval"},
+    "relay": {"switchOn": "switch_on", "switchOff": "switch_off", "outputOn": "output_on", "outputOff": "output_off"},
+    "coulomb_friction": {"staticGain": "static_gain", "dynamicGain": "dynamic_gain", "velocityThreshold": "velocity_threshold"},
+    "variable_transport_delay": {"maxDelay": "max_delay", "initialDelay": "initial_delay"},
+    # Observers
+    "luenberger_observer": {"A": "A", "B": "B", "C": "C", "L": "L", "initialState": "initial_state"},
+    "kalman_filter": {"A": "A", "B": "B", "C": "C", "Q": "Q", "R": "R", "initialState": "initial_state", "initialP": "initial_P"},
+    "extended_kalman_filter": {"nStates": "n_states", "Q": "Q", "R": "R", "initialState": "initial_state"},
 }
 
 

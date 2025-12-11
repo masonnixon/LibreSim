@@ -30,6 +30,12 @@ function BlockNodeComponent({ data, selected }: NodeProps<BlockNodeData>) {
         return 'block-routing'
       case 'subsystems':
         return 'bg-cyan-600 border-cyan-400 border-2'
+      case 'signal_processing':
+        return 'bg-teal-600 border-teal-400 border-2'
+      case 'nonlinear':
+        return 'bg-orange-600 border-orange-400 border-2'
+      case 'observers':
+        return 'bg-indigo-600 border-indigo-400 border-2'
       default:
         return 'bg-gray-600 border-gray-500'
     }

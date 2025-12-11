@@ -10,6 +10,13 @@ from .continuous import Integrator, Derivative, TransferFunction, StateSpace, PI
 from .discrete import UnitDelay, ZeroOrderHold
 from .math_ops import Sum, Gain, Product, Abs, Saturation
 from .subsystems import Inport, Outport, Subsystem
+from .signal_processing import (
+    RateLimiter, MovingAverage, LowPassFilter, HighPassFilter, BandPassFilter, Backlash
+)
+from .nonlinear import (
+    LookupTable1D, LookupTable2D, Quantizer, Relay, Coulomb, VariableTransportDelay
+)
+from .observers import LuenbergerObserver, KalmanFilter, ExtendedKalmanFilter
 
 __all__ = [
     # Sources
@@ -24,4 +31,10 @@ __all__ = [
     "Sum", "Gain", "Product", "Abs", "Saturation",
     # Subsystems
     "Inport", "Outport", "Subsystem",
+    # Signal Processing
+    "RateLimiter", "MovingAverage", "LowPassFilter", "HighPassFilter", "BandPassFilter", "Backlash",
+    # Nonlinear
+    "LookupTable1D", "LookupTable2D", "Quantizer", "Relay", "Coulomb", "VariableTransportDelay",
+    # Observers
+    "LuenbergerObserver", "KalmanFilter", "ExtendedKalmanFilter",
 ]

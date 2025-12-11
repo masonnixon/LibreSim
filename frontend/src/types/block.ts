@@ -6,6 +6,9 @@ export type BlockCategory =
   | 'math'
   | 'routing'
   | 'subsystems'
+  | 'signal_processing'
+  | 'nonlinear'
+  | 'observers'
 
 export type DataType = 'double' | 'single' | 'int32' | 'boolean' | 'bus'
 

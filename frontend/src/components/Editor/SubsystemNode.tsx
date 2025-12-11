@@ -26,6 +26,12 @@ function getCategoryColor(category: string): string {
       return '#f9e2af'
     case 'subsystems':
       return '#22d3ee'
+    case 'signal_processing':
+      return '#2dd4bf' // teal
+    case 'nonlinear':
+      return '#fb923c' // orange
+    case 'observers':
+      return '#818cf8' // indigo
     default:
       return '#6c7086'
   }

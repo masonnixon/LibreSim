@@ -10,6 +10,10 @@ const categoryLabels: Record<BlockCategory, string> = {
   discrete: 'Discrete',
   math: 'Math Operations',
   routing: 'Signal Routing',
+  subsystems: 'Subsystems',
+  signal_processing: 'Signal Processing',
+  nonlinear: 'Nonlinear',
+  observers: 'State Observers',
 }
 
 const categoryColors: Record<BlockCategory, string> = {
@@ -19,6 +23,10 @@ const categoryColors: Record<BlockCategory, string> = {
   discrete: 'bg-block-discrete',
   math: 'bg-block-math',
   routing: 'bg-block-routing',
+  subsystems: 'bg-purple-600',
+  signal_processing: 'bg-teal-600',
+  nonlinear: 'bg-orange-600',
+  observers: 'bg-indigo-600',
 }
 
 export function Sidebar() {
