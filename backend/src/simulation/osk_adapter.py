@@ -121,6 +121,8 @@ class OSKAdapter:
         self._osk_blocks: Dict[str, Block] = {}
         self._block_map: Dict[str, CompiledBlock] = {}
         self._sink_blocks: List[str] = []
+        # Track source block names for each scope input: scope_id -> [source_name, ...]
+        self._scope_input_names: Dict[str, List[str]] = {}
 
     def initialize(self, compiled_model: CompiledModel, config: SimulationConfig):
         """Initialize the simulation with a compiled model.
@@ -134,6 +136,7 @@ class OSKAdapter:
         self._osk_blocks = {}
         self._block_map = {}
         self._sink_blocks = []
+        self._scope_input_names = {}
 
         # Set the integration method
         solver_method = self._get_solver_method(config.solver)
@@ -204,10 +207,16 @@ class OSKAdapter:
             if not osk_block:
                 continue
 
+            # For scope blocks, track the source block names for each input
+            if block.type == "scope":
+                num_inputs = len(block.input_connections)
+                self._scope_input_names[block.id] = [""] * num_inputs
+
             # Connect inputs
             for i, conn in enumerate(block.input_connections):
                 source_block_id, source_port = conn.split(":")
                 source_osk_block = self._osk_blocks.get(source_block_id)
+                source_compiled_block = self._block_map.get(source_block_id)
 
                 if source_osk_block:
                     # Use connectInput if available, otherwise we'll handle in step()
@@ -218,6 +227,10 @@ class OSKAdapter:
                     elif hasattr(osk_block, 'input_blocks'):
                         if i < len(osk_block.input_blocks):
                             osk_block.input_blocks[i] = source_osk_block
+
+                # Track source name for scope inputs
+                if block.type == "scope" and source_compiled_block:
+                    self._scope_input_names[block.id][i] = source_compiled_block.name
 
     def step(self, t: float, dt: float) -> Dict[str, float]:
         """Execute one simulation step.
@@ -265,10 +278,22 @@ class OSKAdapter:
 
             # Record sink block outputs
             if block_id in self._sink_blocks:
-                output = osk_block.getOutput()
-                key = f"{block_id}:out"
-                if isinstance(output, (int, float)):
-                    recorded_outputs[key] = float(output)
+                # For scopes with multiple inputs, record each input separately
+                if block_id in self._scope_input_names and hasattr(osk_block, 'inputs'):
+                    input_names = self._scope_input_names[block_id]
+                    for i, (value, name) in enumerate(zip(osk_block.inputs, input_names)):
+                        # Use source block name as the signal name
+                        signal_name = name if name else f"Input {i+1}"
+                        key = f"{block_id}:{i}:{signal_name}"
+                        if isinstance(value, (int, float)):
+                            recorded_outputs[key] = float(value)
+                else:
+                    # Single-input sink block
+                    output = osk_block.getOutput()
+                    compiled_block = self._block_map.get(block_id)
+                    key = f"{block_id}:out:{compiled_block.name if compiled_block else block_id}"
+                    if isinstance(output, (int, float)):
+                        recorded_outputs[key] = float(output)
 
             # Report (for data recording in sink blocks)
             if State.ready:
