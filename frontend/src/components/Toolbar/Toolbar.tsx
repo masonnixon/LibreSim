@@ -15,12 +15,12 @@ export function Toolbar() {
   const { state: simState, setStatus, setProgress, setResults, setError, clearResults } = useSimulationStore()
   const {
     toggleProperties,
-    toggleSimulation,
     showProperties,
-    showSimulation,
-    setShowSimulation,
     sidebarCollapsed,
     toggleSidebar,
+    plotWindows,
+    closeAllPlotWindows,
+    openPlotWindow,
   } = useUIStore()
 
   const pollingRef = useRef<number | null>(null)
@@ -239,13 +239,30 @@ export function Toolbar() {
     setShowMobileMenu(false)
   }
 
+  // Track scope blocks for reopening windows
+  const scopeBlockIds = model?.blocks
+    .filter((b) => b.type === 'scope' || b.type === 'xy_graph')
+    .map((b) => b.id) || []
+
+  const hasOpenPlotWindows = Object.keys(plotWindows).length > 0
+
+  const handleTogglePlotWindows = () => {
+    if (hasOpenPlotWindows) {
+      closeAllPlotWindows()
+    } else {
+      // Reopen windows for all scope blocks
+      scopeBlockIds.forEach((id, index) => {
+        openPlotWindow(id, { x: 20 + index * 40, y: 100 + index * 40 })
+      })
+    }
+  }
+
   const handleRun = async () => {
     if (!model) return
 
     try {
       clearResults()
       setStatus('running')
-      setShowSimulation(true)
 
       await api.startSimulation(model, model.simulationConfig)
 
@@ -322,8 +339,8 @@ export function Toolbar() {
       <div className="dropdown-item" onClick={() => { toggleProperties(); setShowMobileMenu(false) }}>
         {showProperties ? 'Hide Properties' : 'Show Properties'}
       </div>
-      <div className="dropdown-item" onClick={() => { toggleSimulation(); setShowMobileMenu(false) }}>
-        {showSimulation ? 'Hide Scope' : 'Show Scope'}
+      <div className="dropdown-item" onClick={() => { handleTogglePlotWindows(); setShowMobileMenu(false) }}>
+        {hasOpenPlotWindows ? 'Hide Scopes' : 'Show Scopes'}
       </div>
     </div>
   )
@@ -549,13 +566,13 @@ export function Toolbar() {
               Properties
             </button>
             <button
-              onClick={toggleSimulation}
+              onClick={handleTogglePlotWindows}
               className={`px-3 py-1.5 text-sm rounded transition-colors ${
-                showSimulation ? 'bg-blue-600' : 'hover:bg-editor-border'
+                hasOpenPlotWindows ? 'bg-blue-600' : 'hover:bg-editor-border'
               }`}
-              title="Toggle Simulation Panel"
+              title={hasOpenPlotWindows ? 'Close All Plot Windows' : 'Open Plot Windows'}
             >
-              Scope
+              Scopes {hasOpenPlotWindows ? `(${Object.keys(plotWindows).length})` : ''}
             </button>
           </div>
         </>

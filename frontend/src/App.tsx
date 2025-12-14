@@ -4,14 +4,14 @@ import { Editor } from './components/Editor/Editor'
 import { Sidebar } from './components/Sidebar/Sidebar'
 import { PropertiesPanel } from './components/Properties/PropertiesPanel'
 import { Toolbar } from './components/Toolbar/Toolbar'
-import { SimulationPanel } from './components/Simulation/SimulationPanel'
+import { PlotWindowManager } from './components/Simulation/PlotWindowManager'
 import { ToastContainer } from './components/Toast/Toast'
 import { useUIStore } from './store/uiStore'
 
 import '@xyflow/react/dist/style.css'
 
 function App() {
-  const { showProperties, showSimulation, sidebarCollapsed, toggleSidebar } = useUIStore()
+  const { showProperties, sidebarCollapsed, toggleSidebar } = useUIStore()
   const [isMobile, setIsMobile] = useState(false)
 
   // Check for mobile screen size and auto-collapse panels
@@ -49,8 +49,8 @@ function App() {
           {showProperties && !isMobile && <PropertiesPanel />}
         </div>
 
-        {/* Floating Simulation Results Panel */}
-        {showSimulation && <SimulationPanel />}
+        {/* Floating Plot Windows - one per scope block */}
+        <PlotWindowManager />
 
         {/* Toast Notifications */}
         <ToastContainer />
