@@ -24,6 +24,18 @@ export function Editor() {
   const reactFlowWrapper = useRef<HTMLDivElement>(null)
   const { screenToFlowPosition, getNodes } = useReactFlow()
 
+  // Mobile detection for responsive MiniMap
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
   const {
     model,
     addBlock,
@@ -262,6 +274,7 @@ export function Editor() {
         <Controls className="bg-editor-surface border-editor-border" />
         <MiniMap
           className="bg-editor-surface border-editor-border"
+          style={isMobile ? { width: 100, height: 60 } : undefined}
           nodeColor={(node) => {
             const def = node.data?.definition
             if (!def) return '#6c7086'

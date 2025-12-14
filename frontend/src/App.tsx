@@ -43,14 +43,14 @@ function App() {
           {/* Center - Block Diagram Editor */}
           <div className="flex-1 flex flex-col min-w-0">
             <Editor />
-
-            {/* Bottom - Simulation Results (collapsible) */}
-            {showSimulation && <SimulationPanel />}
           </div>
 
           {/* Right Panel - Properties (collapsible) - hidden on mobile by default */}
           {showProperties && !isMobile && <PropertiesPanel />}
         </div>
+
+        {/* Floating Simulation Results Panel */}
+        {showSimulation && <SimulationPanel />}
 
         {/* Toast Notifications */}
         <ToastContainer />
