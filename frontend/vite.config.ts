@@ -15,6 +15,7 @@ export default defineConfig({
   server: {
     port: 4200,
     host: true,
+    allowedHosts: ['irongiant.tail7d452.ts.net'],
     proxy: {
       '/api': {
         target: backendUrl,
