@@ -90,10 +90,10 @@ export function Sidebar() {
   }
 
   return (
-    <div className="w-64 bg-editor-surface border-r border-editor-border flex flex-col">
+    <div className="w-52 md:w-64 bg-editor-surface border-r border-editor-border flex flex-col">
       {/* Header */}
-      <div className="p-3 border-b border-editor-border flex items-center justify-between">
-        <h2 className="font-semibold text-sm">Block Library</h2>
+      <div className="p-2 md:p-3 border-b border-editor-border flex items-center justify-between">
+        <h2 className="font-semibold text-xs md:text-sm">Block Library</h2>
         <button
           onClick={toggleSidebar}
           className="p-1 text-gray-400 hover:text-white hover:bg-editor-border rounded"
