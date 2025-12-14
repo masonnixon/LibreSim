@@ -5,6 +5,7 @@ import { useUIStore } from '../../store/uiStore'
 import { api } from '../../api/client'
 import { toast } from '../Toast/Toast'
 import { exampleList, getExample } from '../../data/examples'
+import { exportModelAsMDL } from '../../utils/mdlExporter'
 import type { Model } from '../../types/model'
 
 const STORAGE_KEY = 'libresim_last_model'
@@ -26,6 +27,7 @@ export function Toolbar() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const importInputRef = useRef<HTMLInputElement>(null)
   const [showExamplesMenu, setShowExamplesMenu] = useState(false)
+  const [showExportMenu, setShowExportMenu] = useState(false)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
 
@@ -67,6 +69,7 @@ export function Toolbar() {
   useEffect(() => {
     const handleClickOutside = () => {
       setShowExamplesMenu(false)
+      setShowExportMenu(false)
       setShowMobileMenu(false)
     }
     document.addEventListener('click', handleClickOutside)
@@ -170,7 +173,7 @@ export function Toolbar() {
     event.target.value = ''
   }
 
-  const handleExport = () => {
+  const handleExportJSON = () => {
     if (!model) return
 
     const dataStr = JSON.stringify(model, null, 2)
@@ -185,7 +188,22 @@ export function Toolbar() {
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
 
-    toast.success('Model Exported', `Saved as "${model.metadata.name || 'model'}.json" to your Downloads folder`)
+    toast.success('JSON Exported', `Saved as "${model.metadata.name || 'model'}.json" to your Downloads folder`)
+    setShowExportMenu(false)
+    setShowMobileMenu(false)
+  }
+
+  const handleExportMDL = () => {
+    if (!model) return
+
+    try {
+      exportModelAsMDL(model)
+      toast.success('MDL Exported', `Saved as "${model.metadata.name || 'model'}.mdl" (Simulink format) to your Downloads folder`)
+    } catch (error) {
+      console.error('Failed to export MDL:', error)
+      toast.warning('Export Failed', `${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+    setShowExportMenu(false)
     setShowMobileMenu(false)
   }
 
@@ -287,7 +305,8 @@ export function Toolbar() {
       <div className="dropdown-item" onClick={handleNew}>New Model</div>
       <div className="dropdown-item" onClick={handleOpen}>Open</div>
       <div className="dropdown-item" onClick={handleSave}>Save</div>
-      <div className="dropdown-item" onClick={handleExport}>Export</div>
+      <div className="dropdown-item" onClick={handleExportJSON}>Export JSON</div>
+      <div className="dropdown-item" onClick={handleExportMDL}>Export MDL (Simulink)</div>
       <div className="dropdown-item" onClick={handleImport}>Import</div>
       <div className="border-t border-editor-border my-1" />
       <div className="dropdown-item font-medium text-gray-400 text-xs">Examples</div>
@@ -359,14 +378,40 @@ export function Toolbar() {
             >
               Save{isDirty ? '*' : ''}
             </button>
-            <button
-              onClick={handleExport}
-              disabled={!model}
-              className="px-3 py-1.5 text-sm hover:bg-editor-border rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Export Model as JSON"
-            >
-              Export
-            </button>
+            <div className="relative">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowExportMenu(!showExportMenu)
+                }}
+                disabled={!model}
+                className="px-3 py-1.5 text-sm hover:bg-editor-border rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                title="Export Model"
+              >
+                Export
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {showExportMenu && (
+                <div className="dropdown-menu" onClick={(e) => e.stopPropagation()}>
+                  <div
+                    className="dropdown-item"
+                    onClick={handleExportJSON}
+                  >
+                    <div className="text-sm">Export as JSON</div>
+                    <div className="text-xs text-gray-500">LibreSim native format</div>
+                  </div>
+                  <div
+                    className="dropdown-item"
+                    onClick={handleExportMDL}
+                  >
+                    <div className="text-sm">Export as MDL</div>
+                    <div className="text-xs text-gray-500">Simulink compatible</div>
+                  </div>
+                </div>
+              )}
+            </div>
             <button
               onClick={handleImport}
               className="px-3 py-1.5 text-sm hover:bg-editor-border rounded transition-colors"
