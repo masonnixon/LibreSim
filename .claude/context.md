@@ -1,7 +1,14 @@
 # LibreSim Project Context
 
 ## Project Overview
-LibreSim is a web-based block diagram simulation tool designed as an open-source alternative to MathWorks Simulink. It allows users to create, edit, and simulate dynamic systems using a visual block diagram interface.
+LibreSim is a web-based block diagram simulation tool designed as an alternative to MathWorks Simulink. It allows users to create, edit, and simulate dynamic systems using a visual block diagram interface.
+
+## License
+LibreSim uses the **LibreSim Source Available Commercial License (LSACL)**:
+- **Free** for personal, educational, academic, research, and non-profit use
+- **Free** for commercial use generating less than $10,000/year
+- **Royalty-based** for commercial use above $10,000/year (3-7% based on revenue tier)
+- See `LICENSE` file for full terms
 
 ## Architecture
 
@@ -145,9 +152,12 @@ Located in `examples/` directory:
 
 ## File Operations
 The toolbar supports:
+- **New**: Create a new blank model
 - **Open**: Load LibreSim JSON model files
-- **Export**: Save current model as JSON
-- **Import**: Load Simulink MDL files (planned)
+- **Save**: Save to browser localStorage
+- **Export JSON**: Download current model as JSON file
+- **Export MDL**: Download as Simulink-compatible MDL file
+- **Import**: Load JSON or Simulink MDL files
 
 ## File Reference
 
@@ -159,10 +169,30 @@ The toolbar supports:
 - `backend/src/simulation/compiler.py` - Topological sort and algebraic loop detection
 - `backend/src/osk/kernel.py` - Main simulation kernel
 - `frontend/src/store/modelStore.ts` - Model state management
-- `frontend/src/components/Canvas/Canvas.tsx` - Block diagram editor
+- `frontend/src/store/uiStore.ts` - UI state including plot windows
+- `frontend/src/components/Editor/Editor.tsx` - Block diagram editor with React Flow
 - `frontend/src/components/Toolbar/Toolbar.tsx` - File operations and simulation controls
+- `frontend/src/components/Sidebar/Sidebar.tsx` - Block library with mobile tap-to-add
+- `frontend/src/components/Simulation/PlotWindow.tsx` - Draggable/resizable plot window
+- `frontend/src/components/Simulation/PlotWindowManager.tsx` - Multi-window plot management
+- `frontend/src/utils/mdlExporter.ts` - Export to Simulink MDL format
+- `frontend/src/utils/mdlImporter.ts` - Import from Simulink MDL format
 
 ## Recent Changes Log
+
+### Session 2024-12-14 (continued)
+- Added MDL export functionality (Simulink-compatible output)
+- Added mobile tap-to-add for sidebar blocks
+- Made MiniMap responsive (smaller on mobile)
+- Implemented multi-window plot system:
+  - PlotWindow component with drag/resize/minimize
+  - PlotWindowManager for per-scope-block windows
+  - Window z-ordering (click to bring to front)
+- Added MDL import functionality:
+  - Full MDL parser (tokenizer + hierarchical parser)
+  - 30+ Simulink block type mappings
+  - Parameter conversion for all block types
+  - Connection/Line parsing
 
 ### Session 2024-12-14
 - Fixed algebraic loop detection for feedback control systems (STATE_HOLDING_BLOCKS)
@@ -189,7 +219,29 @@ The toolbar supports:
 
 ## Known Issues / TODO
 - PID controller example may produce incorrect results (under investigation)
-- MDL import not yet implemented (export only)
+
+## Recent UI/UX Enhancements
+
+### Mobile Support
+- **Tap-to-add blocks**: On mobile devices, tapping a block in the sidebar adds it directly to the canvas (since drag-and-drop doesn't work well on touch)
+- **Responsive MiniMap**: MiniMap shrinks to 100x60 on mobile screens (< 768px)
+- **Auto-collapse sidebar**: Sidebar collapses after adding a block on mobile
+- **Visual hints**: Blue banner and "+" icons on blocks when in mobile mode
+
+### Multi-Window Plot System
+- Each Scope/XY Graph block gets its own dedicated floating window
+- Windows are **draggable** (header) and **resizable** (all edges/corners)
+- Windows can be **minimized** to just the header bar
+- Click any window to bring it to front (z-ordering)
+- Auto-opens windows when simulation completes
+- Toolbar "Scopes" button toggles all windows open/closed
+- Components: `PlotWindow.tsx`, `PlotWindowManager.tsx`
+
+### File Import/Export
+- **MDL Export**: Export models to Simulink-compatible MDL format
+- **MDL Import**: Import Simulink MDL files with full block/connection parsing
+- Supports 30+ Simulink block types with parameter conversion
+- Auto-detects MDL format from file content
 
 ## Simulink Reference Documentation
 - PID Controller: https://www.mathworks.com/help/simulink/slref/pidcontroller.html

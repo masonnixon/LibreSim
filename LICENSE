@@ -1,0 +1,110 @@
+# LibreSim Source Available Commercial License (LSACL)
+## Version 1.0
+
+Copyright (c) 2024 Mason Nixon. All rights reserved.
+
+## Definitions
+
+- **"Software"** means the LibreSim source code, documentation, and associated files.
+- **"Licensor"** means Mason Nixon, the copyright holder.
+- **"Commercial Use"** means any use of the Software intended for or directed toward commercial advantage or monetary compensation, including but not limited to:
+  - Using the Software in a product or service sold to customers
+  - Using the Software to provide paid consulting or services
+  - Using the Software in a business operation that generates revenue
+  - Incorporating the Software into proprietary software for sale
+- **"Non-Commercial Use"** means personal, educational, academic, research, or non-profit use where no commercial advantage or monetary compensation is sought.
+- **"Derivative Work"** means any modification, adaptation, translation, or work based upon the Software.
+- **"Net Revenue"** means gross revenue minus direct costs (hosting, third-party services, payment processing fees).
+
+---
+
+## Grant of Rights
+
+### 1. Non-Commercial Use License
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this Software, to use, copy, modify, merge, and distribute the Software and Derivative Works for Non-Commercial Use, subject to the following conditions:
+
+1. The above copyright notice and this license shall be included in all copies or substantial portions of the Software.
+2. Attribution must be given to the original author (Mason Nixon) in any Derivative Works.
+3. Derivative Works must be distributed under the same license terms.
+
+### 2. Commercial Use License
+
+Any Commercial Use of the Software requires a separate commercial license agreement with the Licensor. Commercial Use without a valid commercial license is strictly prohibited.
+
+#### Commercial License Terms
+
+To obtain a commercial license, you must:
+
+1. **Contact the Licensor** at: [INSERT CONTACT EMAIL]
+2. **Pay Royalties** according to the following schedule:
+
+   | Annual Net Revenue from Software Use | Royalty Rate |
+   |--------------------------------------|--------------|
+   | $0 - $10,000                         | 0% (Free)    |
+   | $10,001 - $100,000                   | 3%           |
+   | $100,001 - $1,000,000                | 5%           |
+   | Over $1,000,000                      | 7%           |
+
+3. **Report Revenue** quarterly to the Licensor with reasonable documentation.
+4. **Maintain Records** of revenue generated through use of the Software for at least 3 years.
+
+The Licensor reserves the right to negotiate alternative commercial terms on a case-by-case basis.
+
+---
+
+## Additional Terms
+
+### 3. Source Code Availability
+
+The source code of this Software is made available for transparency, security auditing, learning, and Non-Commercial Use. Access to source code does not imply permission for Commercial Use without a commercial license.
+
+### 4. No Trademark License
+
+This license does not grant permission to use the trade names, trademarks, service marks, or product names of the Licensor, except as required for reasonable and customary use in describing the origin of the Software.
+
+### 5. Contributions
+
+By submitting contributions to this project, you agree that:
+1. Your contributions are licensed under the same terms as this license.
+2. You grant the Licensor a perpetual, worldwide, non-exclusive, royalty-free license to use, modify, and distribute your contributions.
+3. You have the right to submit the contributions under these terms.
+
+### 6. No Warranty
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+### 7. Termination
+
+This license automatically terminates if you fail to comply with its terms. Upon termination, you must cease all use of the Software and destroy all copies in your possession.
+
+### 8. Governing Law
+
+This license shall be governed by and construed in accordance with the laws of the United States, without regard to its conflict of law provisions.
+
+---
+
+## Summary
+
+| Use Type | Permission | Cost |
+|----------|------------|------|
+| Personal/Learning | ✅ Allowed | Free |
+| Academic/Research | ✅ Allowed | Free |
+| Non-Profit | ✅ Allowed | Free |
+| Open Source Projects (Non-Commercial) | ✅ Allowed | Free |
+| Commercial (< $10k revenue) | ✅ Allowed | Free |
+| Commercial (> $10k revenue) | Requires License | Royalties Apply |
+
+---
+
+## Contact
+
+For commercial licensing inquiries, please contact:
+
+**Mason Nixon**
+Email: [INSERT EMAIL ADDRESS]
+Website: [INSERT WEBSITE]
+
+---
+
+*This license was created to balance open access to source code with sustainable commercial support for the creator. It is inspired by licenses such as the Business Source License (BSL), Commons Clause, and Fair Source License.*
