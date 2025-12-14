@@ -150,10 +150,14 @@ class TransferFunction(Block):
                     deriv -= den[j + 1] * self.states[self.order - 1 - j][0]
                 self.states[i][1] = deriv
 
-        # Compute output
-        self.output = num[-1] * self.input
+        # Compute output: y = D*u + C*x
+        # D = num[0] (leading coefficient, 0 for strictly proper transfer functions)
+        # C_i = b_i - D*a_i where b_i = num[order-i], a_i = den[order-i]
+        d = num[0]  # Direct feedthrough (0 for strictly proper)
+        self.output = d * self.input
         for i in range(self.order):
-            self.output += (num[i] - num[-1] * den[i + 1]) * self.states[self.order - 1 - i][0]
+            c_i = num[self.order - i] - d * den[self.order - i]
+            self.output += c_i * self.states[i][0]
 
     def getOutput(self, port=0):
         return self.output
