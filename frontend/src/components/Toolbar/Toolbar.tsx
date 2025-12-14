@@ -6,6 +6,7 @@ import { api } from '../../api/client'
 import { toast } from '../Toast/Toast'
 import { exampleList, getExample } from '../../data/examples'
 import { exportModelAsMDL } from '../../utils/mdlExporter'
+import { importMDL, isMDLFile } from '../../utils/mdlImporter'
 import type { Model } from '../../types/model'
 
 const STORAGE_KEY = 'libresim_last_model'
@@ -160,8 +161,15 @@ export function Toolbar() {
         }
         loadModel(modelData)
         toast.success('Import Complete', `Imported "${file.name}"`)
-      } else if (file.name.endsWith('.mdl')) {
-        toast.warning('MDL Import', 'Simulink MDL import is coming soon. Please use JSON format for now.')
+      } else if (file.name.endsWith('.mdl') || isMDLFile(text)) {
+        // Import Simulink MDL file
+        const modelData = importMDL(text)
+        // Use filename as model name if not set
+        if (!modelData.metadata.name || modelData.metadata.name === 'Imported Model') {
+          modelData.metadata.name = file.name.replace(/\.mdl$/i, '')
+        }
+        loadModel(modelData)
+        toast.success('MDL Import Complete', `Imported "${modelData.metadata.name}" from Simulink format (${modelData.blocks.length} blocks, ${modelData.connections.length} connections)`)
       } else {
         toast.warning('Unsupported Format', 'Please use .json or .mdl files.')
       }
