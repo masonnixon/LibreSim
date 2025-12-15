@@ -1,5 +1,11 @@
 import type { Model, ModelMetadata } from '../types/model'
-import type { BlockInstance, Connection, Port } from '../types/block'
+import type { BlockInstance, Connection, Port, BlockDefinition } from '../types/block'
+import type {
+  Library,
+  LibraryBlockDefinition,
+  LibraryBlockImplementation,
+  LibraryPortMapping,
+} from '../types/library'
 import { blockRegistry } from '../blocks'
 
 // Counter for generating unique IDs when crypto.randomUUID is not available
@@ -1075,4 +1081,157 @@ export function isMDLFile(content: string): boolean {
   // Check for Model { or Library { at the start (with possible whitespace/comments)
   const trimmed = content.trim()
   return (trimmed.startsWith('Model') || trimmed.startsWith('Library')) && trimmed.includes('{')
+}
+
+/**
+ * Convert a subsystem BlockInstance to a LibraryBlockDefinition
+ */
+function subsystemToLibraryBlock(
+  block: BlockInstance,
+  libraryId: string,
+  libraryName: string
+): LibraryBlockDefinition {
+  // Extract port information from child blocks
+  const inports = (block.children || []).filter(b => b.type === 'inport')
+  const outports = (block.children || []).filter(b => b.type === 'outport')
+
+  // Sort by port number
+  inports.sort((a, b) => {
+    const portA = (a.parameters.portNumber as number) || 1
+    const portB = (b.parameters.portNumber as number) || 1
+    return portA - portB
+  })
+  outports.sort((a, b) => {
+    const portA = (a.parameters.portNumber as number) || 1
+    const portB = (b.parameters.portNumber as number) || 1
+    return portA - portB
+  })
+
+  // Create port mappings
+  const portMappings: LibraryPortMapping[] = [
+    ...inports.map((inport, index) => ({
+      externalPort: {
+        name: inport.name || `in${index + 1}`,
+        dataType: 'double' as const,
+        dimensions: [1],
+      },
+      internalBlockId: inport.id,
+      portNumber: (inport.parameters.portNumber as number) || index + 1,
+      direction: 'input' as const,
+    })),
+    ...outports.map((outport, index) => ({
+      externalPort: {
+        name: outport.name || `out${index + 1}`,
+        dataType: 'double' as const,
+        dimensions: [1],
+      },
+      internalBlockId: outport.id,
+      portNumber: (outport.parameters.portNumber as number) || index + 1,
+      direction: 'output' as const,
+    })),
+  ]
+
+  // Build the implementation
+  const implementation: LibraryBlockImplementation = {
+    blocks: block.children || [],
+    connections: block.childConnections || [],
+    portMappings,
+  }
+
+  // Create input/output definitions for the block interface
+  const inputs = inports.map((inport, index) => ({
+    name: inport.name || `in${index + 1}`,
+    dataType: 'double' as const,
+    dimensions: [1],
+  }))
+
+  const outputs = outports.map((outport, index) => ({
+    name: outport.name || `out${index + 1}`,
+    dataType: 'double' as const,
+    dimensions: [1],
+  }))
+
+  // Generate a unique type name for this library block
+  const typeSlug = block.name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
+
+  return {
+    type: typeSlug,
+    category: 'subsystems',
+    name: block.name,
+    description: `Library block from ${libraryName}`,
+    inputs,
+    outputs,
+    parameters: [],
+    icon: '⊡',
+    // Library-specific fields
+    isLibraryBlock: true,
+    libraryId,
+    libraryName,
+    originalName: block.name,
+    implementation,
+  }
+}
+
+/**
+ * Import an MDL file as a library of reusable blocks.
+ * This extracts all top-level subsystem blocks as library block definitions.
+ */
+export function importMDLAsLibrary(
+  content: string,
+  sourcePath?: string
+): Omit<Library, 'id' | 'importedAt'> {
+  try {
+    const parsed = parseMDL(content)
+    console.log('[MDL Library Import] Parsed library name:', parsed.Name)
+    console.log('[MDL Library Import] Total blocks in system:', parsed.system.blocks.length)
+
+    // Convert all blocks first (to get subsystems with their children)
+    const { blocks } = convertSystem(parsed.system.blocks, parsed.system.lines)
+
+    // Filter to only subsystem blocks that have children (these are the reusable library blocks)
+    const subsystemBlocks = blocks.filter(
+      block => block.type === 'subsystem' && block.children && block.children.length > 0
+    )
+
+    console.log('[MDL Library Import] Found subsystem blocks:', subsystemBlocks.length)
+    subsystemBlocks.forEach(block => {
+      console.log(`  - ${block.name}: ${block.children?.length || 0} children`)
+    })
+
+    // Temporary library ID for processing (will be replaced by store)
+    const tempLibraryId = generateUniqueId('lib_')
+
+    // Convert each subsystem to a LibraryBlockDefinition
+    const libraryBlocks: LibraryBlockDefinition[] = subsystemBlocks.map(block =>
+      subsystemToLibraryBlock(block, tempLibraryId, parsed.Name)
+    )
+
+    return {
+      name: parsed.Name || 'Imported Library',
+      description: `Imported from ${sourcePath || 'MDL file'}`,
+      version: '1.0.0',
+      sourcePath,
+      sourceFormat: 'mdl',
+      blocks: libraryBlocks,
+    }
+  } catch (error) {
+    console.error('MDL library import error:', error)
+    throw new Error(`Failed to import MDL library: ${error instanceof Error ? error.message : 'Unknown error'}`)
+  }
+}
+
+/**
+ * Check if an MDL file contains library content (multiple subsystem blocks)
+ */
+export function isMDLLibrary(content: string): boolean {
+  try {
+    const parsed = parseMDL(content)
+    // A library typically has multiple top-level subsystem blocks
+    const subsystemCount = parsed.system.blocks.filter(
+      b => b.BlockType === 'SubSystem' || b.BlockType === 'Subsystem'
+    ).length
+    return subsystemCount > 1
+  } catch {
+    return false
+  }
 }

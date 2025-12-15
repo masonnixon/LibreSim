@@ -2,11 +2,13 @@ import { useRef, useCallback, ChangeEvent, useState, useEffect } from 'react'
 import { useModelStore } from '../../store/modelStore'
 import { useSimulationStore } from '../../store/simulationStore'
 import { useUIStore } from '../../store/uiStore'
+import { useLibraryStore } from '../../store/libraryStore'
 import { api } from '../../api/client'
 import { toast } from '../Toast/Toast'
 import { exampleList, getExample } from '../../data/examples'
 import { exportModelAsMDL } from '../../utils/mdlExporter'
-import { importMDL, isMDLFile } from '../../utils/mdlImporter'
+import { importMDL, isMDLFile, importMDLAsLibrary, isMDLLibrary } from '../../utils/mdlImporter'
+import { blockRegistry } from '../../blocks'
 import type { Model } from '../../types/model'
 
 const STORAGE_KEY = 'libresim_last_model'
@@ -23,12 +25,15 @@ export function Toolbar() {
     closeAllPlotWindows,
     openPlotWindow,
   } = useUIStore()
+  const importLibrary = useLibraryStore((state) => state.importLibrary)
 
   const pollingRef = useRef<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const importInputRef = useRef<HTMLInputElement>(null)
+  const libraryInputRef = useRef<HTMLInputElement>(null)
   const [showExamplesMenu, setShowExamplesMenu] = useState(false)
   const [showExportMenu, setShowExportMenu] = useState(false)
+  const [showImportMenu, setShowImportMenu] = useState(false)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
 
@@ -71,6 +76,7 @@ export function Toolbar() {
     const handleClickOutside = () => {
       setShowExamplesMenu(false)
       setShowExportMenu(false)
+      setShowImportMenu(false)
       setShowMobileMenu(false)
     }
     document.addEventListener('click', handleClickOutside)
@@ -142,8 +148,15 @@ export function Toolbar() {
     event.target.value = ''
   }
 
-  const handleImport = () => {
+  const handleImportModel = () => {
     importInputRef.current?.click()
+    setShowImportMenu(false)
+    setShowMobileMenu(false)
+  }
+
+  const handleImportLibrary = () => {
+    libraryInputRef.current?.click()
+    setShowImportMenu(false)
     setShowMobileMenu(false)
   }
 
@@ -176,6 +189,52 @@ export function Toolbar() {
     } catch (error) {
       console.error('Failed to import model:', error)
       toast.warning('Import Failed', `${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+
+    event.target.value = ''
+  }
+
+  const handleLibraryImportChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    try {
+      const text = await file.text()
+
+      if (!isMDLFile(text)) {
+        toast.warning('Invalid Format', 'Library import only supports Simulink MDL files.')
+        return
+      }
+
+      // Parse as library
+      const libraryData = importMDLAsLibrary(text, file.name)
+
+      if (libraryData.blocks.length === 0) {
+        toast.warning('No Library Blocks', 'No subsystem blocks found in this MDL file. Import it as a model instead.')
+        return
+      }
+
+      // Import into library store
+      const result = importLibrary(libraryData, { replaceExisting: true })
+
+      if (result.success && result.library) {
+        // Register blocks with the block registry
+        blockRegistry.registerLibraryBlocks(result.library.blocks)
+
+        toast.success(
+          'Library Imported',
+          `Imported "${result.library.name}" with ${result.library.blocks.length} reusable blocks`
+        )
+
+        if (result.warnings.length > 0) {
+          result.warnings.forEach((warn) => toast.info('Note', warn))
+        }
+      } else {
+        toast.warning('Import Failed', result.errors.join(', '))
+      }
+    } catch (error) {
+      console.error('Failed to import library:', error)
+      toast.warning('Library Import Failed', `${error instanceof Error ? error.message : 'Unknown error'}`)
     }
 
     event.target.value = ''
@@ -332,7 +391,8 @@ export function Toolbar() {
       <div className="dropdown-item" onClick={handleSave}>Save</div>
       <div className="dropdown-item" onClick={handleExportJSON}>Export JSON</div>
       <div className="dropdown-item" onClick={handleExportMDL}>Export MDL (Simulink)</div>
-      <div className="dropdown-item" onClick={handleImport}>Import</div>
+      <div className="dropdown-item" onClick={handleImportModel}>Import Model</div>
+      <div className="dropdown-item text-cyan-400" onClick={handleImportLibrary}>Import Library</div>
       <div className="border-t border-editor-border my-1" />
       <div className="dropdown-item font-medium text-gray-400 text-xs">Examples</div>
       {exampleList.slice(0, 5).map((ex) => (
@@ -373,6 +433,13 @@ export function Toolbar() {
         type="file"
         accept=".json,.mdl"
         onChange={handleImportChange}
+        className="hidden"
+      />
+      <input
+        ref={libraryInputRef}
+        type="file"
+        accept=".mdl"
+        onChange={handleLibraryImportChange}
         className="hidden"
       />
 
@@ -437,13 +504,39 @@ export function Toolbar() {
                 </div>
               )}
             </div>
-            <button
-              onClick={handleImport}
-              className="px-3 py-1.5 text-sm hover:bg-editor-border rounded transition-colors"
-              title="Import Simulink MDL or JSON"
-            >
-              Import
-            </button>
+            <div className="relative">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowImportMenu(!showImportMenu)
+                }}
+                className="px-3 py-1.5 text-sm hover:bg-editor-border rounded transition-colors flex items-center gap-1"
+                title="Import Model or Library"
+              >
+                Import
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {showImportMenu && (
+                <div className="dropdown-menu" onClick={(e) => e.stopPropagation()}>
+                  <div
+                    className="dropdown-item"
+                    onClick={handleImportModel}
+                  >
+                    <div className="text-sm">Import Model</div>
+                    <div className="text-xs text-gray-500">JSON or Simulink MDL file</div>
+                  </div>
+                  <div
+                    className="dropdown-item"
+                    onClick={handleImportLibrary}
+                  >
+                    <div className="text-sm">Import Library</div>
+                    <div className="text-xs text-cyan-400">Reusable MDL subsystems</div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Examples Menu */}

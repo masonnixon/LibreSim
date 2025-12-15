@@ -3,6 +3,7 @@ import { nanoid } from '../utils/nanoid'
 import type { BlockInstance, Connection, BlockDefinition } from '../types/block'
 import type { Model, ModelMetadata } from '../types/model'
 import type { SimulationConfig } from '../types/simulation'
+import { isLibraryBlockDefinition } from '../types/library'
 
 // Path item for subsystem navigation
 interface SubsystemPathItem {
@@ -161,6 +162,46 @@ export const useModelStore = create<ModelState>((set, get) => ({
         ...output,
         id: `${blockId}-out-${idx}`,
       })),
+    }
+
+    // If this is a library block, copy its implementation (children and connections)
+    if (isLibraryBlockDefinition(definition)) {
+      const impl = definition.implementation
+
+      // Deep copy children with new IDs prefixed by block ID
+      const idMap = new Map<string, string>() // old ID -> new ID
+      const children: BlockInstance[] = impl.blocks.map((child) => {
+        const newChildId = `${blockId}__${nanoid()}`
+        idMap.set(child.id, newChildId)
+
+        return {
+          ...child,
+          id: newChildId,
+          inputPorts: child.inputPorts.map((port, idx) => ({
+            ...port,
+            id: `${newChildId}-in-${idx}`,
+          })),
+          outputPorts: child.outputPorts.map((port, idx) => ({
+            ...port,
+            id: `${newChildId}-out-${idx}`,
+          })),
+        }
+      })
+
+      // Deep copy connections with updated block IDs
+      const childConnections: Connection[] = impl.connections.map((conn) => ({
+        id: `${blockId}__${nanoid()}`,
+        sourceBlockId: idMap.get(conn.sourceBlockId) || conn.sourceBlockId,
+        sourcePortId: conn.sourcePortId.replace(/^[^-]+-/, `${idMap.get(conn.sourceBlockId) || conn.sourceBlockId}-`),
+        targetBlockId: idMap.get(conn.targetBlockId) || conn.targetBlockId,
+        targetPortId: conn.targetPortId.replace(/^[^-]+-/, `${idMap.get(conn.targetBlockId) || conn.targetBlockId}-`),
+      }))
+
+      // Override block type to 'subsystem' since that's what the backend expects
+      newBlock.type = 'subsystem'
+      newBlock.children = children
+      newBlock.childConnections = childConnections
+      newBlock.isExpanded = false
     }
 
     set({

@@ -127,6 +127,47 @@ def rpt(self):   # optional, for recording data
 ### Routing
 - Subsystem (with Inport/Outport for hierarchical modeling)
 
+## Library Block System
+
+Libraries allow importing reusable subsystem blocks from Simulink MDL files:
+
+### How It Works
+1. **Import Library**: Use "Import → Import Library" to load an MDL file
+2. **Extract Subsystems**: All top-level subsystem blocks become library block definitions
+3. **Reusable Blocks**: Library blocks appear in the sidebar under "Imported Libraries"
+4. **Instance Creation**: Dragging a library block creates a copy with unique IDs
+
+### Key Types
+```typescript
+interface LibraryBlockDefinition extends BlockDefinition {
+  isLibraryBlock: true
+  libraryId: string
+  libraryName: string
+  implementation: LibraryBlockImplementation
+}
+
+interface LibraryBlockImplementation {
+  blocks: BlockInstance[]
+  connections: Connection[]
+  portMappings: LibraryPortMapping[]
+}
+```
+
+### Architecture
+- **Library Store** (`libraryStore.ts`): Manages imported libraries with localStorage persistence
+- **Block Registry**: Dynamically registers library blocks for sidebar display
+- **Model Store**: Copies implementation when library block is added to model
+- **Backend Compiler**: Flattens library blocks same as regular subsystems
+
+### Use Case: Quaternion Library
+The quaternionLib.mdl contains:
+- `Quaternion` - Base block with properties
+- `Quaternion Normalize` - Method to normalize quaternion
+- `Quaternion Conjugate` - Method to get conjugate
+- etc.
+
+Each becomes a reusable library block that can be dragged into any model.
+
 ## Example Models
 
 Located in `examples/` directory:
@@ -179,6 +220,45 @@ The toolbar supports:
 - `frontend/src/utils/mdlImporter.ts` - Import from Simulink MDL format
 
 ## Recent Changes Log
+
+### Session 2024-12-14 (Library Block System)
+- **Added Library Block Architecture**:
+  - Library blocks are reusable subsystem definitions imported from MDL files
+  - Libraries are stored separately from models and persist in localStorage
+  - Library blocks appear in a dedicated "Imported Libraries" section in the sidebar
+  - Dragging a library block creates a subsystem with the implementation copied
+
+- **New Files**:
+  - `frontend/src/types/library.ts` - Type definitions for Library, LibraryBlockDefinition, LibraryBlockImplementation
+  - `frontend/src/store/libraryStore.ts` - Zustand store for managing imported libraries with persistence
+
+- **Block Registry Updates** (`frontend/src/blocks/index.ts`):
+  - Added `registerLibraryBlock()`, `registerLibraryBlocks()` for dynamic registration
+  - Added `unregisterLibrary()` to remove all blocks from a library
+  - Added `getLibraryBlocks()`, `getBlocksByLibrary()` for querying
+  - Added `subscribe()` for reactive UI updates when library blocks change
+  - Added `isLibraryBlock()` check
+
+- **MDL Importer Updates** (`frontend/src/utils/mdlImporter.ts`):
+  - Added `importMDLAsLibrary()` - imports MDL as library of reusable blocks
+  - Added `isMDLLibrary()` - checks if MDL has multiple subsystem blocks
+  - Added `subsystemToLibraryBlock()` - converts subsystem to LibraryBlockDefinition
+
+- **Toolbar Updates** (`frontend/src/components/Toolbar/Toolbar.tsx`):
+  - Import dropdown now has "Import Model" and "Import Library" options
+  - Library import registers blocks with registry for immediate use
+
+- **Sidebar Updates** (`frontend/src/components/Sidebar/Sidebar.tsx`):
+  - Added "Imported Libraries" section below built-in categories
+  - Shows library name, block count, and expandable block list
+  - Library blocks have cyan styling to distinguish from built-in blocks
+  - Remove library button (X) with confirmation
+  - Search filters library blocks too
+
+- **Model Store Updates** (`frontend/src/store/modelStore.ts`):
+  - `addBlock()` now handles LibraryBlockDefinition
+  - Copies implementation (children, childConnections) when adding library block
+  - Regenerates IDs to avoid conflicts between multiple instances
 
 ### Session 2024-12-14 (MDL Library Import)
 - **Fixed MDL tokenizer** to handle square bracket arrays `[1, 2, 3]` as single tokens
