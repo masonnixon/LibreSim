@@ -46,6 +46,12 @@ export function Editor() {
     selectBlocks,
     selectedBlockIds,
     createSubsystem,
+    currentPath,
+    enterSubsystem,
+    exitSubsystem,
+    navigateToPath,
+    getCurrentBlocks,
+    getCurrentConnections,
   } = useModelStore()
   const { draggingBlockType, setDraggingBlockType } = useUIStore()
 
@@ -55,10 +61,14 @@ export function Editor() {
   // Selection toolbar position
   const [selectionBounds, setSelectionBounds] = useState<{ x: number; y: number; width: number; height: number } | null>(null)
 
+  // Get current view blocks and connections (handles subsystem navigation)
+  const currentBlocks = getCurrentBlocks()
+  const currentConnections = getCurrentConnections()
+
   // Convert model blocks to React Flow nodes
   const initialNodes: Node[] = useMemo(() => {
     if (!model) return []
-    return model.blocks.map((block) => ({
+    return currentBlocks.map((block) => ({
       id: block.id,
       type: block.type === 'subsystem' ? 'subsystemNode' : 'blockNode',
       position: block.position,
@@ -67,12 +77,12 @@ export function Editor() {
         definition: blockRegistry.get(block.type),
       },
     }))
-  }, [model?.blocks])
+  }, [model, currentBlocks])
 
   // Convert model connections to React Flow edges
   const initialEdges: Edge[] = useMemo(() => {
     if (!model) return []
-    return model.connections.map((conn) => ({
+    return currentConnections.map((conn) => ({
       id: conn.id,
       source: conn.sourceBlockId,
       sourceHandle: conn.sourcePortId,
@@ -81,12 +91,12 @@ export function Editor() {
       type: 'smoothstep',
       animated: false,
     }))
-  }, [model?.connections])
+  }, [model, currentConnections])
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
 
-  // Sync React Flow nodes with model state when model changes
+  // Sync React Flow nodes with model state when model or current path changes
   useEffect(() => {
     if (!model) {
       setNodes([])
@@ -94,7 +104,7 @@ export function Editor() {
       return
     }
 
-    const newNodes: Node[] = model.blocks.map((block) => ({
+    const newNodes: Node[] = currentBlocks.map((block) => ({
       id: block.id,
       type: block.type === 'subsystem' ? 'subsystemNode' : 'blockNode',
       position: block.position,
@@ -104,19 +114,52 @@ export function Editor() {
       },
     }))
 
-    const newEdges: Edge[] = model.connections.map((conn) => ({
-      id: conn.id,
-      source: conn.sourceBlockId,
-      sourceHandle: conn.sourcePortId,
-      target: conn.targetBlockId,
-      targetHandle: conn.targetPortId,
-      type: 'smoothstep',
-      animated: false,
-    }))
+    // Build a map of block IDs to their port IDs for validation
+    const blockPortMap = new Map<string, { inputs: Set<string>; outputs: Set<string> }>()
+    currentBlocks.forEach((block) => {
+      blockPortMap.set(block.id, {
+        inputs: new Set(block.inputPorts.map((p) => p.id)),
+        outputs: new Set(block.outputPorts.map((p) => p.id)),
+      })
+    })
+
+    // Filter out invalid edges (where source/target block or port doesn't exist)
+    const validEdges: Edge[] = currentConnections
+      .filter((conn) => {
+        const srcBlock = blockPortMap.get(conn.sourceBlockId)
+        const dstBlock = blockPortMap.get(conn.targetBlockId)
+
+        if (!srcBlock) {
+          console.warn(`[Editor] Skipping edge: source block ${conn.sourceBlockId} not found`)
+          return false
+        }
+        if (!dstBlock) {
+          console.warn(`[Editor] Skipping edge: target block ${conn.targetBlockId} not found`)
+          return false
+        }
+        if (!srcBlock.outputs.has(conn.sourcePortId)) {
+          console.warn(`[Editor] Skipping edge: source port ${conn.sourcePortId} not found on block`)
+          return false
+        }
+        if (!dstBlock.inputs.has(conn.targetPortId)) {
+          console.warn(`[Editor] Skipping edge: target port ${conn.targetPortId} not found on block`)
+          return false
+        }
+        return true
+      })
+      .map((conn) => ({
+        id: conn.id,
+        source: conn.sourceBlockId,
+        sourceHandle: conn.sourcePortId,
+        target: conn.targetBlockId,
+        targetHandle: conn.targetPortId,
+        type: 'smoothstep',
+        animated: false,
+      }))
 
     setNodes(newNodes)
-    setEdges(newEdges)
-  }, [model, setNodes, setEdges])
+    setEdges(validEdges)
+  }, [model, currentBlocks, currentConnections, setNodes, setEdges])
 
   // Sync React Flow state back to model store
   const onNodeDragStop = useCallback(
@@ -237,6 +280,27 @@ export function Editor() {
     setSelectionBounds(null)
   }, [selectedBlockIds, createSubsystem])
 
+  // Handle double-click on nodes to enter subsystems
+  const onNodeDoubleClick = useCallback(
+    (_: React.MouseEvent, node: Node) => {
+      if (node.type === 'subsystemNode') {
+        enterSubsystem(node.id)
+      }
+    },
+    [enterSubsystem]
+  )
+
+  // Handle keyboard navigation (Escape to exit subsystem)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && currentPath.length > 0) {
+        exitSubsystem()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [currentPath, exitSubsystem])
+
   if (!model) {
     return (
       <div className="flex-1 flex items-center justify-center bg-editor-bg text-gray-400">
@@ -260,6 +324,7 @@ export function Editor() {
         onNodesDelete={onNodesDelete}
         onEdgesDelete={onEdgesDelete}
         onSelectionChange={onSelectionChange}
+        onNodeDoubleClick={onNodeDoubleClick}
         onDragOver={onDragOver}
         onDrop={onDrop}
         onContextMenu={handleContextMenu}
@@ -298,6 +363,52 @@ export function Editor() {
             }
           }}
         />
+
+        {/* Breadcrumb Navigation - shows path when inside a subsystem */}
+        {currentPath.length > 0 && (
+          <Panel position="top-left" className="!top-2 !left-2">
+            <div className="bg-slate-800/95 backdrop-blur-sm border border-slate-600 rounded-lg shadow-xl px-3 py-2 flex items-center gap-1 text-sm">
+              {/* Root/Model link */}
+              <button
+                onClick={() => navigateToPath(-1)}
+                className="text-cyan-400 hover:text-cyan-300 font-medium transition-colors"
+              >
+                {model?.metadata.name || 'Model'}
+              </button>
+
+              {/* Path items */}
+              {currentPath.map((item, index) => (
+                <div key={item.id} className="flex items-center">
+                  <svg className="w-4 h-4 text-slate-500 mx-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                  {index === currentPath.length - 1 ? (
+                    <span className="text-white font-medium">{item.name}</span>
+                  ) : (
+                    <button
+                      onClick={() => navigateToPath(index)}
+                      className="text-cyan-400 hover:text-cyan-300 font-medium transition-colors"
+                    >
+                      {item.name}
+                    </button>
+                  )}
+                </div>
+              ))}
+
+              {/* Exit button */}
+              <button
+                onClick={exitSubsystem}
+                className="ml-3 px-2 py-1 text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 rounded transition-colors flex items-center gap-1"
+                title="Exit subsystem (Esc)"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Exit
+              </button>
+            </div>
+          </Panel>
+        )}
 
         {/* Selection Toolbar - appears when 2+ blocks are selected */}
         {selectedBlockIds.length >= 2 && (

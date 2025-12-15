@@ -2,6 +2,21 @@ import type { Model, ModelMetadata } from '../types/model'
 import type { BlockInstance, Connection, Port } from '../types/block'
 import { blockRegistry } from '../blocks'
 
+// Counter for generating unique IDs when crypto.randomUUID is not available
+let idCounter = 0
+
+/**
+ * Generate a unique ID for blocks and connections
+ */
+function generateUniqueId(prefix: string = ''): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID()
+  }
+  // Fallback: use timestamp + counter to ensure uniqueness
+  idCounter++
+  return `${prefix}${Date.now()}_${idCounter}_${Math.random().toString(36).substr(2, 9)}`
+}
+
 // Reverse mapping from Simulink BlockTypes to LibreSim types
 const SIMULINK_TO_LIBRESIM: Record<string, string> = {
   // Sources
@@ -37,29 +52,36 @@ const SIMULINK_TO_LIBRESIM: Record<string, string> = {
   'DiscreteDerivative': 'discrete_derivative',
   'DiscreteTransferFcn': 'discrete_transfer_function',
 
-  // Math
+  // Math Operations
   'Sum': 'sum',
   'Gain': 'gain',
   'Product': 'product',
+  'DotProduct': 'dot_product',
   'Abs': 'abs',
   'Signum': 'sign',
   'Saturate': 'saturation',
   'Saturation': 'saturation',
   'DeadZone': 'dead_zone',
   'Math': 'math_function',
+  'Sqrt': 'sqrt',
   'Trigonometry': 'trigonometry',
   'Switch': 'switch',
   'MinMax': 'minmax',
   'Bias': 'bias',
+  'UnaryMinus': 'unary_minus',
+  'Fcn': 'fcn',
 
   // Signal routing
   'Mux': 'mux',
   'Demux': 'demux',
+  'Selector': 'selector',
+  'Reshape': 'reshape',
   'BusCreator': 'bus_creator',
   'BusSelector': 'bus_selector',
   'Merge': 'merge',
   'Goto': 'goto',
   'From': 'from',
+  'DataTypeConversion': 'data_type_conversion',
 
   // Signal Processing
   'RateLimiter': 'rate_limiter',
@@ -68,14 +90,38 @@ const SIMULINK_TO_LIBRESIM: Record<string, string> = {
   // Nonlinear
   'Relay': 'relay',
   'Lookup': 'lookup_table_1d',
+  'Lookup_n-D': 'lookup_table_nd',
   'Lookup2D': 'lookup_table_2d',
   'Backlash': 'backlash',
 
-  // Subsystems
+  // Subsystems and ports
   'SubSystem': 'subsystem',
   'Subsystem': 'subsystem',
   'Inport': 'inport',
   'Outport': 'outport',
+  'EnablePort': 'enable_port',
+  'TriggerPort': 'trigger_port',
+  'ActionPort': 'action_port',
+
+  // References (library blocks)
+  'Reference': 'reference',
+
+  // Logic and comparison
+  'Logic': 'logic',
+  'RelationalOperator': 'relational_operator',
+  'Compare To Constant': 'compare_to_constant',
+  'Compare To Zero': 'compare_to_zero',
+
+  // Memory/state
+  'Memory': 'memory',
+  'DataStoreMemory': 'data_store_memory',
+  'DataStoreRead': 'data_store_read',
+  'DataStoreWrite': 'data_store_write',
+
+  // Matrix operations
+  'Concatenate': 'concatenate',
+  'Assignment': 'assignment',
+  'Permute Dimensions': 'permute_dimensions',
 }
 
 // Map solver types from Simulink to LibreSim
@@ -141,6 +187,14 @@ function tokenize(content: string): string[] {
       continue
     }
 
+    // Skip comments (% to end of line)
+    if (content[i] === '%') {
+      while (i < len && content[i] !== '\n') {
+        i++
+      }
+      continue
+    }
+
     // Handle braces
     if (content[i] === '{' || content[i] === '}') {
       tokens.push(content[i])
@@ -167,9 +221,24 @@ function tokenize(content: string): string[] {
       continue
     }
 
+    // Handle square bracket arrays as a single token [1, 2, 3]
+    if (content[i] === '[') {
+      let arr = '['
+      i++
+      let depth = 1
+      while (i < len && depth > 0) {
+        if (content[i] === '[') depth++
+        else if (content[i] === ']') depth--
+        arr += content[i]
+        i++
+      }
+      tokens.push(arr)
+      continue
+    }
+
     // Handle identifiers and numbers
     let token = ''
-    while (i < len && !/[\s{}"]/.test(content[i])) {
+    while (i < len && !/[\s{}"[\]]/.test(content[i])) {
       token += content[i]
       i++
     }
@@ -217,8 +286,9 @@ function parseMDL(content: string): ParsedModel {
   const tokens = tokenize(content)
   let pos = 0
 
-  function parseObject(): Record<string, unknown> {
+  function parseObject(depth: number = 0): Record<string, unknown> {
     const obj: Record<string, unknown> = {}
+    const debugPrefix = '  '.repeat(depth)
 
     while (pos < tokens.length && tokens[pos] !== '}') {
       const key = tokens[pos]
@@ -227,55 +297,144 @@ function parseMDL(content: string): ParsedModel {
       if (tokens[pos] === '{') {
         pos++ // skip {
 
-        // Check if this is an array of objects (like Block, Line, System)
-        if (key === 'Block' || key === 'Line' || key === 'System') {
-          const arrayKey = key === 'Block' ? 'blocks' : key === 'Line' ? 'lines' : 'systems'
+        // Check if this is an array of objects (like Block, Line, System, Branch, Port, Annotation, Array, Object)
+        // Also handle special Simulink config objects that should be skipped
+        const arrayElements = ['Block', 'Line', 'System', 'Branch', 'Port', 'Annotation', 'Array', 'Object']
+        if (arrayElements.includes(key)) {
+          const arrayKey = key.toLowerCase() + 's' // blocks, lines, systems, branchs, ports, annotations, arrays, objects
           if (!obj[arrayKey]) {
             obj[arrayKey] = []
           }
-          (obj[arrayKey] as unknown[]).push(parseObject())
+          const parsed = parseObject(depth + 1)
+          if (key === 'Block' && depth <= 2) {
+            console.log(`${debugPrefix}[MDL Parse] Adding Block: "${parsed.Name}" (type: ${parsed.BlockType})`)
+          } else if (depth <= 2) {
+            console.log(`${debugPrefix}[MDL Parse] Adding ${key} to ${arrayKey} array`)
+          }
+          ;(obj[arrayKey] as unknown[]).push(parsed)
+        } else if (key.startsWith('$')) {
+          // Skip special properties (e.g., $ObjectID, $BackupClass)
+          if (depth <= 2) console.log(`${debugPrefix}[MDL Parse] SKIPPING $ property: "${key}"`)
+          parseObject(depth + 1) // Parse but discard
+        } else if (key.includes('.') && (key.includes('CC') || key.includes('ConfigSet') || key.includes('AUTOSARPro'))) {
+          // Skip Simulink configuration objects that end in CC (e.g., Simulink.SolverCC, Simulink.DataIOCC)
+          // or are ConfigSet objects - these are configuration, not block data
+          if (depth <= 2) console.log(`${debugPrefix}[MDL Parse] SKIPPING config object: "${key}"`)
+          parseObject(depth + 1) // Parse but discard
+        } else if (key === 'Simulink.BlockDiagram' || key === 'BlockDiagram') {
+          // Simulink.BlockDiagram contains the main diagram data - extract its contents
+          if (depth <= 2) console.log(`${debugPrefix}[MDL Parse] Parsing BlockDiagram: "${key}"`)
+          const bdContent = parseObject(depth + 1)
+          // Merge BlockDiagram contents into current object
+          if (bdContent.systems) {
+            if (!obj.systems) obj.systems = []
+            ;(obj.systems as unknown[]).push(...(bdContent.systems as unknown[]))
+          }
+          if (bdContent.blocks) {
+            if (!obj.blocks) obj.blocks = []
+            ;(obj.blocks as unknown[]).push(...(bdContent.blocks as unknown[]))
+          }
         } else {
-          obj[key] = parseObject()
+          if (depth <= 2) console.log(`${debugPrefix}[MDL Parse] Parsing nested object: "${key}"`)
+          obj[key] = parseObject(depth + 1)
         }
         pos++ // skip }
       } else if (tokens[pos] !== '{' && tokens[pos] !== '}') {
-        obj[key] = parseValue(tokens[pos])
+        // Skip special properties starting with $ (e.g., $ObjectID, $BackupClass)
+        if (!key.startsWith('$')) {
+          obj[key] = parseValue(tokens[pos])
+        }
         pos++
+      } else if (tokens[pos] === '}') {
+        // Unexpected closing brace without a value - this key has no value
+        // This can happen with empty objects or special syntax
+        if (depth <= 2) console.log(`${debugPrefix}[MDL Parse] Key "${key}" has no value (closing brace)`)
       }
     }
 
     return obj
   }
 
-  // Find Model {
-  while (pos < tokens.length && tokens[pos] !== 'Model') {
+  // Find Model { or Library { (libraries are block collections that can also be imported)
+  let fileType: 'Model' | 'Library' | null = null
+  while (pos < tokens.length) {
+    if (tokens[pos] === 'Model' || tokens[pos] === 'Library') {
+      fileType = tokens[pos] as 'Model' | 'Library'
+      break
+    }
     pos++
   }
-  pos++ // skip 'Model'
+
+  if (!fileType) {
+    throw new Error('Invalid MDL format: Model or Library block not found')
+  }
+
+  pos++ // skip 'Model' or 'Library'
 
   if (tokens[pos] === '{') {
     pos++ // skip {
     const modelObj = parseObject()
 
+    console.log('[MDL Parse] Top-level keys:', Object.keys(modelObj))
+
     // Extract system information
     const systems = (modelObj.systems as Record<string, unknown>[]) || []
+    console.log('[MDL Parse] Number of systems found:', systems.length)
+
     const mainSystem = systems[0] || {}
+    console.log('[MDL Parse] Main system keys:', Object.keys(mainSystem))
+
+    // Log all systems' block counts
+    systems.forEach((sys, i) => {
+      const sysBlocks = (sys.blocks as ParsedBlock[]) || []
+      console.log(`[MDL Parse] System ${i} name: "${sys.Name}", blocks: ${sysBlocks.length}`)
+    })
+
+    // For libraries, collect all top-level subsystem blocks as the main content
+    // Check both mainSystem and modelObj for blocks (different MDL versions structure differently)
+    let blocks = (mainSystem.blocks as ParsedBlock[]) || []
+    let lines = (mainSystem.lines as ParsedLine[]) || []
+
+    // Also check if blocks are directly in the model object (some formats)
+    if (blocks.length === 0 && modelObj.blocks) {
+      blocks = modelObj.blocks as ParsedBlock[]
+      console.log('[MDL Parse] Using blocks from model object instead of system')
+    }
+
+    console.log('[MDL Parse] Blocks found in main system:', blocks.length)
+    if (blocks.length > 0) {
+      console.log('[MDL Parse] Block details:')
+      blocks.forEach((b, i) => {
+        console.log(`  [${i}] Name: "${b.Name}", Type: "${b.BlockType}"`)
+      })
+    }
+    console.log('[MDL Parse] Lines found in main system:', lines.length)
+
+    // Debug: Check if there are Arrays that might contain blocks
+    if (modelObj.arrays) {
+      console.log('[MDL Parse] Found arrays:', (modelObj.arrays as unknown[]).length)
+    }
+
+    // Debug: Check for blocks directly in model object (some formats)
+    if (modelObj.blocks) {
+      console.log('[MDL Parse] Found blocks directly in model:', (modelObj.blocks as unknown[]).length)
+    }
 
     return {
-      Name: modelObj.Name as string || 'Imported Model',
+      Name: modelObj.Name as string || (fileType === 'Library' ? 'Imported Library' : 'Imported Model'),
       StartTime: modelObj.StartTime as string,
       StopTime: modelObj.StopTime as string,
       Solver: modelObj.Solver as string,
       FixedStep: modelObj.FixedStep as string,
       system: {
         Name: mainSystem.Name as string || 'Main',
-        blocks: (mainSystem.blocks as ParsedBlock[]) || [],
-        lines: (mainSystem.lines as ParsedLine[]) || [],
+        blocks,
+        lines,
       }
     }
   }
 
-  throw new Error('Invalid MDL format: Model block not found')
+  throw new Error('Invalid MDL format: Could not parse file structure')
 }
 
 /**
@@ -423,6 +582,56 @@ function convertBlockParameters(block: ParsedBlock, libreSimType: string): Recor
     case 'outport':
       if (block.Port !== undefined) params.portNumber = parseValue(String(block.Port))
       break
+
+    case 'mux':
+      if (block.Inputs !== undefined) params.numInputs = parseValue(String(block.Inputs))
+      break
+
+    case 'demux':
+      if (block.Outputs !== undefined) params.numOutputs = parseValue(String(block.Outputs))
+      break
+
+    case 'math_function':
+      if (block.Operator !== undefined) params.operator = String(block.Operator)
+      break
+
+    case 'reshape':
+      if (block.OutputDimensionality !== undefined) params.outputDimensionality = String(block.OutputDimensionality)
+      if (block.OutputDimensions !== undefined) params.outputDimensions = String(block.OutputDimensions)
+      break
+
+    case 'selector':
+      if (block.IndexMode !== undefined) params.indexMode = String(block.IndexMode)
+      if (block.Indices !== undefined) params.indices = parseValue(String(block.Indices))
+      break
+
+    case 'logic':
+      if (block.Operator !== undefined) params.operator = String(block.Operator)
+      if (block.Inputs !== undefined) params.numInputs = parseValue(String(block.Inputs))
+      break
+
+    case 'relational_operator':
+      if (block.Operator !== undefined) params.operator = String(block.Operator)
+      break
+
+    case 'reference':
+      // Library reference blocks - capture the source block path
+      if (block.SourceBlock !== undefined) params.sourceBlock = String(block.SourceBlock)
+      if (block.SourceType !== undefined) params.sourceType = String(block.SourceType)
+      break
+
+    case 'memory':
+      if (block.InitialCondition !== undefined) params.initialCondition = parseValue(String(block.InitialCondition))
+      break
+
+    case 'concatenate':
+      if (block.NumInputs !== undefined) params.numInputs = parseValue(String(block.NumInputs))
+      if (block.Mode !== undefined) params.mode = String(block.Mode)
+      break
+
+    case 'unary_minus':
+      // No special parameters needed
+      break
   }
 
   return params
@@ -480,34 +689,186 @@ function createPorts(blockType: string, params: Record<string, unknown>): { inpu
     return { inputPorts, outputPorts }
   }
 
-  // Default: 1 input, 1 output
-  return {
-    inputPorts: [{ id: 'in_0', name: 'in', dataType: 'double', dimensions: [1] }],
-    outputPorts: [{ id: 'out_0', name: 'out', dataType: 'double', dimensions: [1] }],
+  // Handle blocks not in registry but with known port configurations
+  const inputPorts: Port[] = []
+  const outputPorts: Port[] = []
+
+  switch (blockType) {
+    case 'mux': {
+      const numInputs = typeof params.numInputs === 'number' ? params.numInputs : parseInt(String(params.numInputs)) || 4
+      for (let i = 0; i < numInputs; i++) {
+        inputPorts.push({
+          id: `in_${i}`,
+          name: `in${i + 1}`,
+          dataType: 'double',
+          dimensions: [1],
+        })
+      }
+      outputPorts.push({ id: 'out_0', name: 'out', dataType: 'double', dimensions: [1] })
+      break
+    }
+
+    case 'demux': {
+      const numOutputs = typeof params.numOutputs === 'number' ? params.numOutputs : parseInt(String(params.numOutputs)) || 4
+      inputPorts.push({ id: 'in_0', name: 'in', dataType: 'double', dimensions: [1] })
+      for (let i = 0; i < numOutputs; i++) {
+        outputPorts.push({
+          id: `out_${i}`,
+          name: `out${i + 1}`,
+          dataType: 'double',
+          dimensions: [1],
+        })
+      }
+      break
+    }
+
+    case 'dot_product':
+      inputPorts.push({ id: 'in_0', name: 'in1', dataType: 'double', dimensions: [1] })
+      inputPorts.push({ id: 'in_1', name: 'in2', dataType: 'double', dimensions: [1] })
+      outputPorts.push({ id: 'out_0', name: 'out', dataType: 'double', dimensions: [1] })
+      break
+
+    case 'reshape':
+    case 'math_function':
+    case 'sqrt':
+    case 'unary_minus':
+    case 'data_type_conversion':
+    case 'memory':
+      inputPorts.push({ id: 'in_0', name: 'in', dataType: 'double', dimensions: [1] })
+      outputPorts.push({ id: 'out_0', name: 'out', dataType: 'double', dimensions: [1] })
+      break
+
+    case 'selector':
+      inputPorts.push({ id: 'in_0', name: 'in', dataType: 'double', dimensions: [1] })
+      outputPorts.push({ id: 'out_0', name: 'out', dataType: 'double', dimensions: [1] })
+      break
+
+    case 'logic': {
+      const numInputs = typeof params.numInputs === 'number' ? params.numInputs : parseInt(String(params.numInputs)) || 2
+      for (let i = 0; i < numInputs; i++) {
+        inputPorts.push({
+          id: `in_${i}`,
+          name: `in${i + 1}`,
+          dataType: 'double',
+          dimensions: [1],
+        })
+      }
+      outputPorts.push({ id: 'out_0', name: 'out', dataType: 'double', dimensions: [1] })
+      break
+    }
+
+    case 'relational_operator':
+      inputPorts.push({ id: 'in_0', name: 'in1', dataType: 'double', dimensions: [1] })
+      inputPorts.push({ id: 'in_1', name: 'in2', dataType: 'double', dimensions: [1] })
+      outputPorts.push({ id: 'out_0', name: 'out', dataType: 'double', dimensions: [1] })
+      break
+
+    case 'concatenate': {
+      const numInputs = typeof params.numInputs === 'number' ? params.numInputs : parseInt(String(params.numInputs)) || 2
+      for (let i = 0; i < numInputs; i++) {
+        inputPorts.push({
+          id: `in_${i}`,
+          name: `in${i + 1}`,
+          dataType: 'double',
+          dimensions: [1],
+        })
+      }
+      outputPorts.push({ id: 'out_0', name: 'out', dataType: 'double', dimensions: [1] })
+      break
+    }
+
+    case 'inport':
+      // Inport has no inputs, only an output
+      outputPorts.push({ id: 'out_0', name: 'out', dataType: 'double', dimensions: [1] })
+      break
+
+    case 'outport':
+      // Outport has no outputs, only an input
+      inputPorts.push({ id: 'in_0', name: 'in', dataType: 'double', dimensions: [1] })
+      break
+
+    case 'reference':
+    case 'subsystem': {
+      // For references and subsystems, use numInputs/numOutputs from Ports parameter
+      const numInputs = typeof params.numInputs === 'number' ? params.numInputs : parseInt(String(params.numInputs)) || 1
+      const numOutputs = typeof params.numOutputs === 'number' ? params.numOutputs : parseInt(String(params.numOutputs)) || 1
+      for (let i = 0; i < numInputs; i++) {
+        inputPorts.push({
+          id: `in_${i}`,
+          name: `in${i + 1}`,
+          dataType: 'double',
+          dimensions: [1],
+        })
+      }
+      for (let i = 0; i < numOutputs; i++) {
+        outputPorts.push({
+          id: `out_${i}`,
+          name: `out${i + 1}`,
+          dataType: 'double',
+          dimensions: [1],
+        })
+      }
+      break
+    }
+
+    default:
+      // Default: 1 input, 1 output
+      inputPorts.push({ id: 'in_0', name: 'in', dataType: 'double', dimensions: [1] })
+      outputPorts.push({ id: 'out_0', name: 'out', dataType: 'double', dimensions: [1] })
   }
+
+  return { inputPorts, outputPorts }
 }
 
 /**
- * Convert parsed MDL to LibreSim Model
+ * Recursively convert a parsed system (blocks and lines) to LibreSim format
  */
-function convertToModel(parsed: ParsedModel): Model {
+function convertSystem(
+  parsedBlocks: ParsedBlock[],
+  parsedLines: ParsedLine[],
+  idPrefix: string = ''
+): { blocks: BlockInstance[]; connections: Connection[] } {
   const blockMap = new Map<string, BlockInstance>()
   const blocks: BlockInstance[] = []
   const connections: Connection[] = []
+  let blockCounter = 0
+  let connCounter = 0
 
   // Convert blocks
-  for (const parsedBlock of parsed.system.blocks) {
+  for (const parsedBlock of parsedBlocks) {
     const simulinkType = parsedBlock.BlockType
-    const libreSimType = SIMULINK_TO_LIBRESIM[simulinkType] || 'subsystem'
-    const blockName = parsedBlock.Name || `Block_${blocks.length}`
+    const libreSimType = SIMULINK_TO_LIBRESIM[simulinkType]
+    if (!libreSimType) {
+      console.warn(`[MDL Import] Unknown Simulink block type: "${simulinkType}" - defaulting to subsystem`)
+    }
+    const finalType = libreSimType || 'subsystem'
+    const blockName = parsedBlock.Name || `Block_${blockCounter}`
 
     const position = parsePosition(parsedBlock.Position)
-    const parameters = convertBlockParameters(parsedBlock, libreSimType)
-    const { inputPorts, outputPorts } = createPorts(libreSimType, parameters)
+    const parameters = convertBlockParameters(parsedBlock, finalType)
 
+    // Handle Ports parameter for subsystems and references
+    // Ports format in MDL: [numInputs, numOutputs] or [numInputs]
+    if ((finalType === 'subsystem' || finalType === 'reference') && parsedBlock.Ports !== undefined) {
+      const ports = parsedBlock.Ports
+      if (Array.isArray(ports)) {
+        parameters.numInputs = ports[0] || 0
+        parameters.numOutputs = ports[1] || 0
+      } else if (typeof ports === 'string') {
+        const match = ports.match(/\[?\s*(\d+)\s*,?\s*(\d*)\s*\]?/)
+        if (match) {
+          parameters.numInputs = parseInt(match[1]) || 0
+          parameters.numOutputs = parseInt(match[2]) || 0
+        }
+      }
+    }
+
+    const { inputPorts, outputPorts } = createPorts(finalType, parameters)
+
+    const blockId = generateUniqueId(`${idPrefix}block_`)
     const block: BlockInstance = {
-      id: crypto.randomUUID?.() || `block_${Date.now()}_${blocks.length}`,
-      type: libreSimType,
+      id: blockId,
+      type: finalType,
       name: blockName,
       position,
       parameters,
@@ -515,36 +876,149 @@ function convertToModel(parsed: ParsedModel): Model {
       outputPorts,
     }
 
+    // Check for nested System inside this block (for subsystems)
+    const nestedSystems = parsedBlock.systems as Record<string, unknown>[] | undefined
+    if (nestedSystems && nestedSystems.length > 0 && finalType === 'subsystem') {
+      const nestedSystem = nestedSystems[0]
+      const nestedBlocks = (nestedSystem.blocks as ParsedBlock[]) || []
+      const nestedLines = (nestedSystem.lines as ParsedLine[]) || []
+
+      if (nestedBlocks.length > 0) {
+        // Recursively convert nested system
+        const { blocks: childBlocks, connections: childConns } = convertSystem(
+          nestedBlocks,
+          nestedLines,
+          `${blockId}_`
+        )
+        block.children = childBlocks
+        block.childConnections = childConns
+
+        // Update port counts based on actual Inport/Outport blocks found
+        const inportCount = childBlocks.filter(b => b.type === 'inport').length
+        const outportCount = childBlocks.filter(b => b.type === 'outport').length
+        if (inportCount > 0 || outportCount > 0) {
+          // Regenerate ports based on actual inport/outport blocks
+          block.inputPorts = []
+          block.outputPorts = []
+          for (let i = 0; i < inportCount; i++) {
+            block.inputPorts.push({
+              id: `in_${i}`,
+              name: `in${i + 1}`,
+              dataType: 'double',
+              dimensions: [1],
+            })
+          }
+          for (let i = 0; i < outportCount; i++) {
+            block.outputPorts.push({
+              id: `out_${i}`,
+              name: `out${i + 1}`,
+              dataType: 'double',
+              dimensions: [1],
+            })
+          }
+        }
+      }
+    }
+
     blocks.push(block)
     blockMap.set(blockName, block)
   }
 
-  // Convert connections (lines)
-  for (const line of parsed.system.lines) {
-    const srcBlockName = line.SrcBlock
-    const dstBlockName = line.DstBlock
+  // Helper function to create a connection
+  function createConnection(
+    srcBlockName: string,
+    srcPortNum: number,
+    dstBlockName: string,
+    dstPortNum: number
+  ) {
     const srcBlock = blockMap.get(srcBlockName)
     const dstBlock = blockMap.get(dstBlockName)
 
-    if (srcBlock && dstBlock) {
-      // Port numbers in Simulink are 1-indexed
-      const srcPortNum = typeof line.SrcPort === 'number' ? line.SrcPort - 1 : parseInt(String(line.SrcPort)) - 1 || 0
-      const dstPortNum = typeof line.DstPort === 'number' ? line.DstPort - 1 : parseInt(String(line.DstPort)) - 1 || 0
+    if (!srcBlock) {
+      console.warn(`[MDL Import] Connection source block not found: "${srcBlockName}"`)
+      return
+    }
+    if (!dstBlock) {
+      console.warn(`[MDL Import] Connection destination block not found: "${dstBlockName}"`)
+      return
+    }
 
-      const srcPort = srcBlock.outputPorts[srcPortNum] || srcBlock.outputPorts[0]
-      const dstPort = dstBlock.inputPorts[dstPortNum] || dstBlock.inputPorts[0]
+    const srcPort = srcBlock.outputPorts[srcPortNum] || srcBlock.outputPorts[0]
+    const dstPort = dstBlock.inputPorts[dstPortNum] || dstBlock.inputPorts[0]
 
-      if (srcPort && dstPort) {
-        connections.push({
-          id: crypto.randomUUID?.() || `conn_${Date.now()}_${connections.length}`,
-          sourceBlockId: srcBlock.id,
-          sourcePortId: srcPort.id,
-          targetBlockId: dstBlock.id,
-          targetPortId: dstPort.id,
-        })
+    if (!srcPort) {
+      console.warn(`[MDL Import] Source port ${srcPortNum} not found on block "${srcBlockName}" (type: ${srcBlock.type}, has ${srcBlock.outputPorts.length} output ports)`)
+      return
+    }
+    if (!dstPort) {
+      console.warn(`[MDL Import] Destination port ${dstPortNum} not found on block "${dstBlockName}" (type: ${dstBlock.type}, has ${dstBlock.inputPorts.length} input ports)`)
+      return
+    }
+
+    connections.push({
+      id: generateUniqueId(`${idPrefix}conn_`),
+      sourceBlockId: srcBlock.id,
+      sourcePortId: srcPort.id,
+      targetBlockId: dstBlock.id,
+      targetPortId: dstPort.id,
+    })
+  }
+
+  // Helper to process branches recursively
+  function processBranches(
+    branches: Array<Record<string, unknown>> | undefined,
+    srcBlockName: string,
+    srcPortNum: number
+  ) {
+    if (!branches) return
+
+    for (const branch of branches) {
+      const dstBlockName = branch.DstBlock as string
+      const dstPort = branch.DstPort as number | string
+
+      if (dstBlockName) {
+        const dstPortNum = typeof dstPort === 'number' ? dstPort - 1 : parseInt(String(dstPort)) - 1 || 0
+        createConnection(srcBlockName, srcPortNum, dstBlockName, dstPortNum)
+      }
+
+      // Handle nested branches (branching from a branch)
+      const nestedBranches = branch.branchs as Array<Record<string, unknown>> | undefined
+      if (nestedBranches) {
+        processBranches(nestedBranches, srcBlockName, srcPortNum)
       }
     }
   }
+
+  // Convert connections (lines)
+  for (const line of parsedLines) {
+    const srcBlockName = line.SrcBlock
+    const srcPort = line.SrcPort
+    const srcPortNum = typeof srcPort === 'number' ? srcPort - 1 : parseInt(String(srcPort)) - 1 || 0
+
+    // Check if this line has branches (one source to multiple destinations)
+    const branches = (line as Record<string, unknown>).branchs as Array<Record<string, unknown>> | undefined
+
+    if (branches && branches.length > 0) {
+      // Process all branches from this source
+      processBranches(branches, srcBlockName, srcPortNum)
+    } else if (line.DstBlock) {
+      // Direct connection (no branching)
+      const dstPortNum = typeof line.DstPort === 'number' ? line.DstPort - 1 : parseInt(String(line.DstPort)) - 1 || 0
+      createConnection(srcBlockName, srcPortNum, line.DstBlock, dstPortNum)
+    }
+  }
+
+  return { blocks, connections }
+}
+
+/**
+ * Convert parsed MDL to LibreSim Model
+ */
+function convertToModel(parsed: ParsedModel): Model {
+  const { blocks, connections } = convertSystem(
+    parsed.system.blocks,
+    parsed.system.lines
+  )
 
   // Determine solver
   const solverType = SOLVER_TO_LIBRESIM[parsed.Solver || 'ode4'] || 'rk4'
@@ -564,7 +1038,7 @@ function convertToModel(parsed: ParsedModel): Model {
   }
 
   return {
-    id: crypto.randomUUID?.() || `model_${Date.now()}`,
+    id: generateUniqueId('model_'),
     metadata,
     blocks,
     connections,
@@ -583,6 +1057,10 @@ function convertToModel(parsed: ParsedModel): Model {
 export function importMDL(content: string): Model {
   try {
     const parsed = parseMDL(content)
+    console.log('[MDL Import] Parsed model name:', parsed.Name)
+    console.log('[MDL Import] Parsed system blocks count:', parsed.system.blocks.length)
+    console.log('[MDL Import] Block names:', parsed.system.blocks.map(b => b.Name))
+    console.log('[MDL Import] Block types:', parsed.system.blocks.map(b => b.BlockType))
     return convertToModel(parsed)
   } catch (error) {
     console.error('MDL import error:', error)
@@ -594,7 +1072,7 @@ export function importMDL(content: string): Model {
  * Validate that a string looks like an MDL file
  */
 export function isMDLFile(content: string): boolean {
-  // Check for Model { at the start (with possible whitespace/comments)
+  // Check for Model { or Library { at the start (with possible whitespace/comments)
   const trimmed = content.trim()
-  return trimmed.startsWith('Model') && trimmed.includes('{')
+  return (trimmed.startsWith('Model') || trimmed.startsWith('Library')) && trimmed.includes('{')
 }

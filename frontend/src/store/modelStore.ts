@@ -4,10 +4,19 @@ import type { BlockInstance, Connection, BlockDefinition } from '../types/block'
 import type { Model, ModelMetadata } from '../types/model'
 import type { SimulationConfig } from '../types/simulation'
 
+// Path item for subsystem navigation
+interface SubsystemPathItem {
+  id: string
+  name: string
+}
+
 interface ModelState {
   // Current model
   model: Model | null
   isDirty: boolean
+
+  // Subsystem navigation - path of subsystem IDs from root to current view
+  currentPath: SubsystemPathItem[]
 
   // Selection
   selectedBlockIds: string[]
@@ -38,6 +47,13 @@ interface ModelState {
   createSubsystem: (blockIds: string[], name?: string) => string | null
   toggleSubsystemExpanded: (subsystemId: string) => void
 
+  // Subsystem navigation
+  enterSubsystem: (subsystemId: string) => void
+  exitSubsystem: () => void
+  navigateToPath: (pathIndex: number) => void
+  getCurrentBlocks: () => BlockInstance[]
+  getCurrentConnections: () => Connection[]
+
   // Config
   updateSimulationConfig: (config: Partial<SimulationConfig>) => void
   updateMetadata: (metadata: Partial<ModelMetadata>) => void
@@ -59,9 +75,34 @@ const createDefaultMetadata = (name: string): ModelMetadata => ({
   version: '1.0.0',
 })
 
+// Helper to find a block by path through nested subsystems
+function findBlockAtPath(
+  blocks: BlockInstance[],
+  path: SubsystemPathItem[]
+): { blocks: BlockInstance[]; connections: Connection[] } | null {
+  if (path.length === 0) {
+    return null // At root level
+  }
+
+  let currentBlocks = blocks
+  let currentConnections: Connection[] = []
+
+  for (const pathItem of path) {
+    const subsystem = currentBlocks.find(b => b.id === pathItem.id && b.type === 'subsystem')
+    if (!subsystem || !subsystem.children) {
+      return null
+    }
+    currentBlocks = subsystem.children
+    currentConnections = subsystem.childConnections || []
+  }
+
+  return { blocks: currentBlocks, connections: currentConnections }
+}
+
 export const useModelStore = create<ModelState>((set, get) => ({
   model: null,
   isDirty: false,
+  currentPath: [],
   selectedBlockIds: [],
   selectedConnectionIds: [],
 
@@ -73,11 +114,11 @@ export const useModelStore = create<ModelState>((set, get) => ({
       connections: [],
       simulationConfig: { ...defaultSimulationConfig },
     }
-    set({ model: newModel, isDirty: false })
+    set({ model: newModel, isDirty: false, currentPath: [] })
   },
 
   loadModel: (model: Model) => {
-    set({ model, isDirty: false, selectedBlockIds: [], selectedConnectionIds: [] })
+    set({ model, isDirty: false, currentPath: [], selectedBlockIds: [], selectedConnectionIds: [] })
   },
 
   saveModel: () => {
@@ -492,5 +533,75 @@ export const useModelStore = create<ModelState>((set, get) => ({
       },
       isDirty: true,
     })
+  },
+
+  enterSubsystem: (subsystemId: string) => {
+    const { model, currentPath } = get()
+    if (!model) return
+
+    // Find the subsystem in the current view
+    const currentBlocks = get().getCurrentBlocks()
+    const subsystem = currentBlocks.find(b => b.id === subsystemId && b.type === 'subsystem')
+
+    if (subsystem && subsystem.children) {
+      set({
+        currentPath: [...currentPath, { id: subsystemId, name: subsystem.name }],
+        selectedBlockIds: [],
+        selectedConnectionIds: [],
+      })
+    }
+  },
+
+  exitSubsystem: () => {
+    const { currentPath } = get()
+    if (currentPath.length === 0) return
+
+    set({
+      currentPath: currentPath.slice(0, -1),
+      selectedBlockIds: [],
+      selectedConnectionIds: [],
+    })
+  },
+
+  navigateToPath: (pathIndex: number) => {
+    const { currentPath } = get()
+    if (pathIndex < 0 || pathIndex >= currentPath.length) {
+      // Navigate to root
+      set({
+        currentPath: [],
+        selectedBlockIds: [],
+        selectedConnectionIds: [],
+      })
+    } else {
+      set({
+        currentPath: currentPath.slice(0, pathIndex + 1),
+        selectedBlockIds: [],
+        selectedConnectionIds: [],
+      })
+    }
+  },
+
+  getCurrentBlocks: () => {
+    const { model, currentPath } = get()
+    if (!model) return []
+
+    if (currentPath.length === 0) {
+      return model.blocks
+    }
+
+    const result = findBlockAtPath(model.blocks, currentPath)
+    return result ? result.blocks : []
+  },
+
+  getCurrentConnections: () => {
+    const { model, currentPath } = get()
+    if (!model) return []
+
+    if (currentPath.length === 0) {
+      return model.connections
+    }
+
+    const result = findBlockAtPath(model.blocks, currentPath)
+    return result ? result.connections : []
   },
 }))

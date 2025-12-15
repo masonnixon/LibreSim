@@ -180,6 +180,27 @@ The toolbar supports:
 
 ## Recent Changes Log
 
+### Session 2024-12-14 (MDL Library Import)
+- **Fixed MDL tokenizer** to handle square bracket arrays `[1, 2, 3]` as single tokens
+  - Previously, arrays like `Position [100, 200, 300, 400]` were incorrectly parsed
+- **Improved MDL parser** for Simulink Library files:
+  - Added support for `Library { }` format (not just `Model { }`)
+  - Handle nested `System` blocks inside subsystem definitions
+  - Skip Simulink config objects (`Simulink.ConfigSet`, `*CC` classes)
+  - Merge `Simulink.BlockDiagram` contents into parent
+  - Added `Object`, `Array`, `Branch`, `Port`, `Annotation` to parsed elements
+- **Subsystem navigation** (double-click to enter):
+  - Added `currentPath` state to track navigation hierarchy
+  - `enterSubsystem()`, `exitSubsystem()`, `navigateToPath()` functions
+  - `getCurrentBlocks()`, `getCurrentConnections()` for current view
+  - Breadcrumb navigation UI in Editor
+  - Escape key to exit subsystem
+- **Added missing block definitions**:
+  - Routing: `reshape`, `selector`, `concatenate`, `data_type_conversion`, `terminator`, `ground`
+  - Math: `dot_product`, `sqrt`, `unary_minus`, `minmax`, `bias`
+- **Fixed duplicate React key warnings** with improved unique ID generation
+- **Edge validation** in Editor to filter invalid connections before React Flow
+
 ### Session 2024-12-14 (continued)
 - Added MDL export functionality (Simulink-compatible output)
 - Added mobile tap-to-add for sidebar blocks
