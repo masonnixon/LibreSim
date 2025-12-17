@@ -2,7 +2,10 @@ import { useModelStore } from '../../store/modelStore'
 import { blockRegistry } from '../../blocks'
 
 export function PropertiesPanel() {
-  const { model, selectedBlockIds, updateBlockParameters, renameBlock } = useModelStore()
+  const { model, selectedBlockIds, updateBlockParameters, renameBlock, getCurrentBlocks } = useModelStore()
+
+  // Get blocks at current path level (handles subsystem navigation)
+  const currentBlocks = getCurrentBlocks()
 
   if (!model || selectedBlockIds.length === 0) {
     return (
@@ -24,11 +27,26 @@ export function PropertiesPanel() {
     )
   }
 
-  const block = model.blocks.find((b) => b.id === selectedBlockIds[0])
+  // Find block in current view (works inside subsystems too)
+  const block = currentBlocks.find((b) => b.id === selectedBlockIds[0])
   if (!block) return null
 
-  const definition = blockRegistry.get(block.type)
-  if (!definition) return null
+  // Get definition or create a fallback for unknown block types
+  const registeredDef = blockRegistry.get(block.type)
+  const definition = registeredDef || {
+    type: block.type,
+    category: 'math',
+    name: block.name || block.type,
+    description: `Block type: ${block.type}`,
+    inputs: block.inputPorts.map((p) => ({ name: p.name, dataType: p.dataType || 'double', dimensions: p.dimensions || [1] })),
+    outputs: block.outputPorts.map((p) => ({ name: p.name, dataType: p.dataType || 'double', dimensions: p.dimensions || [1] })),
+    parameters: Object.keys(block.parameters || {}).map((key) => ({
+      name: key,
+      label: key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1'),
+      type: typeof block.parameters[key] === 'number' ? 'number' : typeof block.parameters[key] === 'boolean' ? 'boolean' : 'string',
+      default: block.parameters[key],
+    })),
+  }
 
   const handleParameterChange = (paramName: string, value: unknown) => {
     updateBlockParameters(block.id, { [paramName]: value })
