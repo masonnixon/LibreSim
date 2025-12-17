@@ -345,7 +345,9 @@ export function Toolbar() {
             setResults(results)
           } else if (status.status === 'error') {
             stopPolling()
-            setError('Simulation failed')
+            const errorMsg = status.error || 'Simulation failed'
+            setError(errorMsg)
+            toast.warning('Simulation Error', errorMsg)
           } else if (status.status === 'idle') {
             stopPolling()
             setStatus('idle')
@@ -647,6 +649,11 @@ export function Toolbar() {
               {isRunning && (
                 <span>
                   | t = {simState.currentTime.toFixed(3)}s ({Math.round(simState.progress * 100)}%)
+                </span>
+              )}
+              {simState.status === 'error' && simState.error && (
+                <span className="text-red-400 max-w-xs truncate" title={simState.error}>
+                  : {simState.error}
                 </span>
               )}
             </div>

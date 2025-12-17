@@ -123,11 +123,17 @@ async def get_simulation_status() -> Dict[str, Any]:
     if _runner is None:
         return {"status": "idle", "progress": 0}
 
-    return {
+    result = {
         "status": _runner.status.value,
         "progress": _runner.progress,
         "currentTime": _runner.current_time,
     }
+
+    # Include error message if there is one
+    if _runner.error_message:
+        result["error"] = _runner.error_message
+
+    return result
 
 
 @router.get("/results")

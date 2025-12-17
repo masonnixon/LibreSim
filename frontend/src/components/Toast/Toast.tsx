@@ -31,11 +31,12 @@ function ToastItem({ toast, onDismiss }: ToastProps) {
 // Toast store for global toast management
 let toastListeners: ((toasts: ToastMessage[]) => void)[] = []
 let currentToasts: ToastMessage[] = []
+let toastCounter = 0
 
 export const toast = {
   show: (type: ToastMessage['type'], title: string, message: string) => {
     const newToast: ToastMessage = {
-      id: Date.now().toString(),
+      id: `${Date.now()}-${toastCounter++}`,
       type,
       title,
       message,

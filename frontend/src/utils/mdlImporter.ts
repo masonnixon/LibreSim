@@ -869,9 +869,22 @@ function convertSystem(
       }
     }
 
-    const { inputPorts, outputPorts } = createPorts(finalType, parameters)
-
+    // Generate block ID first, so we can use it in port IDs
     const blockId = generateUniqueId(`${idPrefix}block_`)
+
+    // Create ports with block ID included in port IDs for proper mapping later
+    const { inputPorts: basePorts, outputPorts: baseOutputPorts } = createPorts(finalType, parameters)
+
+    // Update port IDs to include block ID prefix for proper connection mapping
+    const inputPorts = basePorts.map((port, idx) => ({
+      ...port,
+      id: `${blockId}-in-${idx}`,
+    }))
+    const outputPorts = baseOutputPorts.map((port, idx) => ({
+      ...port,
+      id: `${blockId}-out-${idx}`,
+    }))
+
     const block: BlockInstance = {
       id: blockId,
       type: finalType,
@@ -904,11 +917,12 @@ function convertSystem(
         const outportCount = childBlocks.filter(b => b.type === 'outport').length
         if (inportCount > 0 || outportCount > 0) {
           // Regenerate ports based on actual inport/outport blocks
+          // Use block ID prefix for consistent port ID format
           block.inputPorts = []
           block.outputPorts = []
           for (let i = 0; i < inportCount; i++) {
             block.inputPorts.push({
-              id: `in_${i}`,
+              id: `${blockId}-in-${i}`,
               name: `in${i + 1}`,
               dataType: 'double',
               dimensions: [1],
@@ -916,7 +930,7 @@ function convertSystem(
           }
           for (let i = 0; i < outportCount; i++) {
             block.outputPorts.push({
-              id: `out_${i}`,
+              id: `${blockId}-out-${i}`,
               name: `out${i + 1}`,
               dataType: 'double',
               dimensions: [1],
@@ -1173,6 +1187,93 @@ function subsystemToLibraryBlock(
 }
 
 /**
+ * Resolve reference blocks within a library by copying the implementation
+ * from the referenced subsystem block.
+ */
+function resolveReferenceBlocks(
+  blocks: BlockInstance[],
+  subsystemMap: Map<string, BlockInstance>,
+  libraryName: string
+): void {
+  for (const block of blocks) {
+    // Check children for reference blocks
+    if (block.children) {
+      for (let i = 0; i < block.children.length; i++) {
+        const child = block.children[i]
+        if (child.type === 'reference' && child.parameters.sourceBlock) {
+          // Parse the source block path (e.g., "quaternionLib/Quaternion" or just "Quaternion")
+          const sourcePath = String(child.parameters.sourceBlock)
+          const parts = sourcePath.split('/')
+          const targetName = parts[parts.length - 1] // Get the last part (block name)
+
+          console.log(`[MDL Library Import] Resolving reference: ${child.name} -> ${sourcePath}`)
+
+          // Find the referenced subsystem
+          const referencedBlock = subsystemMap.get(targetName)
+          if (referencedBlock && referencedBlock.children) {
+            console.log(`[MDL Library Import] Found referenced block: ${targetName} with ${referencedBlock.children.length} children`)
+
+            // Create ID mapping for proper connection resolution
+            const idMap = new Map<string, string>()
+            const portIdMap = new Map<string, string>()
+            const newId = child.id
+
+            // Copy children with new IDs
+            const newChildren = referencedBlock.children.map(c => {
+              const newChildId = `${newId}__${generateUniqueId('ref_')}`
+              idMap.set(c.id, newChildId)
+
+              const newInputPorts = c.inputPorts.map((p, idx) => {
+                const newPortId = `${newChildId}-in-${idx}`
+                portIdMap.set(p.id, newPortId)
+                return { ...p, id: newPortId }
+              })
+
+              const newOutputPorts = c.outputPorts.map((p, idx) => {
+                const newPortId = `${newChildId}-out-${idx}`
+                portIdMap.set(p.id, newPortId)
+                return { ...p, id: newPortId }
+              })
+
+              return {
+                ...c,
+                id: newChildId,
+                inputPorts: newInputPorts,
+                outputPorts: newOutputPorts,
+              }
+            })
+
+            // Copy connections with remapped IDs
+            const newConnections = (referencedBlock.childConnections || []).map(conn => ({
+              id: `${newId}__${generateUniqueId('conn_')}`,
+              sourceBlockId: idMap.get(conn.sourceBlockId) || conn.sourceBlockId,
+              sourcePortId: portIdMap.get(conn.sourcePortId) || conn.sourcePortId,
+              targetBlockId: idMap.get(conn.targetBlockId) || conn.targetBlockId,
+              targetPortId: portIdMap.get(conn.targetPortId) || conn.targetPortId,
+            }))
+
+            // Convert reference to subsystem with copied implementation
+            block.children[i] = {
+              ...child,
+              type: 'subsystem',
+              children: newChildren,
+              childConnections: newConnections,
+              inputPorts: referencedBlock.inputPorts.map((p, idx) => ({ ...p, id: `${child.id}-in-${idx}` })),
+              outputPorts: referencedBlock.outputPorts.map((p, idx) => ({ ...p, id: `${child.id}-out-${idx}` })),
+            }
+          } else {
+            console.warn(`[MDL Library Import] Could not resolve reference to: ${targetName}`)
+          }
+        }
+      }
+
+      // Recursively resolve references in nested subsystems
+      resolveReferenceBlocks(block.children, subsystemMap, libraryName)
+    }
+  }
+}
+
+/**
  * Import an MDL file as a library of reusable blocks.
  * This extracts all top-level subsystem blocks as library block definitions.
  */
@@ -1197,6 +1298,15 @@ export function importMDLAsLibrary(
     subsystemBlocks.forEach(block => {
       console.log(`  - ${block.name}: ${block.children?.length || 0} children`)
     })
+
+    // Build a map of subsystem names to their blocks for reference resolution
+    const subsystemMap = new Map<string, BlockInstance>()
+    subsystemBlocks.forEach(block => {
+      subsystemMap.set(block.name, block)
+    })
+
+    // Resolve any reference blocks within subsystems
+    resolveReferenceBlocks(subsystemBlocks, subsystemMap, parsed.Name)
 
     // Temporary library ID for processing (will be replaced by store)
     const tempLibraryId = generateUniqueId('lib_')

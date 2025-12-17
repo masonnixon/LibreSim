@@ -19,6 +19,33 @@ import { useUIStore } from '../../store/uiStore'
 import { BlockNode } from './BlockNode'
 import { SubsystemNode } from './SubsystemNode'
 import { blockRegistry } from '../../blocks'
+import type { BlockDefinition, BlockInstance } from '../../types/block'
+
+// Create a fallback definition for unknown block types
+function getDefinitionOrFallback(block: BlockInstance): BlockDefinition {
+  const def = blockRegistry.get(block.type)
+  if (def) return def
+
+  // Create a fallback definition for unknown block types
+  return {
+    type: block.type,
+    category: 'math', // neutral gray color
+    name: block.name || block.type,
+    description: `Unknown block type: ${block.type}`,
+    inputs: block.inputPorts.map((p) => ({
+      name: p.name,
+      dataType: p.dataType || 'double',
+      dimensions: p.dimensions || [1],
+    })),
+    outputs: block.outputPorts.map((p) => ({
+      name: p.name,
+      dataType: p.dataType || 'double',
+      dimensions: p.dimensions || [1],
+    })),
+    parameters: [],
+    icon: '?',
+  }
+}
 
 export function Editor() {
   const reactFlowWrapper = useRef<HTMLDivElement>(null)
@@ -74,7 +101,7 @@ export function Editor() {
       position: block.position,
       data: {
         block,
-        definition: blockRegistry.get(block.type),
+        definition: getDefinitionOrFallback(block),
       },
     }))
   }, [model, currentBlocks])
@@ -110,7 +137,7 @@ export function Editor() {
       position: block.position,
       data: {
         block,
-        definition: blockRegistry.get(block.type),
+        definition: getDefinitionOrFallback(block),
       },
     }))
 

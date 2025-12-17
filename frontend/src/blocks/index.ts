@@ -30,6 +30,8 @@ class BlockRegistry {
   private blocks: Map<string, BlockDefinition>
   private libraryBlocks: Map<string, LibraryBlockDefinition>
   private listeners: Set<() => void>
+  // Cached array for useSyncExternalStore - must return stable reference
+  private cachedLibraryBlocksArray: LibraryBlockDefinition[] = []
 
   constructor(definitions: BlockDefinition[]) {
     this.blocks = new Map()
@@ -121,10 +123,10 @@ class BlockRegistry {
   }
 
   /**
-   * Get all library blocks
+   * Get all library blocks (returns cached array for useSyncExternalStore compatibility)
    */
   getLibraryBlocks(): LibraryBlockDefinition[] {
-    return Array.from(this.libraryBlocks.values())
+    return this.cachedLibraryBlocksArray
   }
 
   /**
@@ -145,6 +147,8 @@ class BlockRegistry {
   }
 
   private notifyListeners(): void {
+    // Rebuild cached array before notifying - creates new reference so React detects change
+    this.cachedLibraryBlocksArray = Array.from(this.libraryBlocks.values())
     this.listeners.forEach((listener) => listener())
   }
 

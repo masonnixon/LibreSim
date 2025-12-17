@@ -30,6 +30,7 @@ class SimulationRunner:
         self._current_time = 0.0
         self._should_stop = False
         self._is_paused = False
+        self._error_message: str | None = None
 
         self._results: Dict[str, List[tuple[float, float]]] = {}
         self._start_time: float = 0
@@ -51,6 +52,10 @@ class SimulationRunner:
     @property
     def current_time(self) -> float:
         return self._current_time
+
+    @property
+    def error_message(self) -> str | None:
+        return self._error_message
 
     def stop(self):
         """Request simulation stop."""
@@ -75,6 +80,9 @@ class SimulationRunner:
 
             if not compiled.success:
                 self._status = SimulationStatus.ERROR
+                self._error_message = compiled.message
+                if compiled.errors:
+                    self._error_message = "; ".join(compiled.errors)
                 return
 
             # Initialize simulation
@@ -122,8 +130,11 @@ class SimulationRunner:
                 self._status = SimulationStatus.COMPLETED
 
         except Exception as e:
+            import traceback
             self._status = SimulationStatus.ERROR
+            self._error_message = str(e)
             print(f"Simulation error: {e}")
+            traceback.print_exc()
 
     def _record_outputs(self, t: float, outputs: Dict[str, float]):
         """Record simulation outputs."""

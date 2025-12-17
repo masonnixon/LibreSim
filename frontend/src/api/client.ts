@@ -66,7 +66,7 @@ export const api = {
     await apiClient.post('/simulate/resume')
   },
 
-  async getSimulationStatus(): Promise<{ status: string; progress: number; currentTime?: number }> {
+  async getSimulationStatus(): Promise<{ status: string; progress: number; currentTime?: number; error?: string }> {
     const response = await apiClient.get('/simulate/status')
     return response.data
   },

@@ -321,6 +321,9 @@ The toolbar supports:
 ## Known Issues / TODO
 - PID controller example may produce incorrect results (under investigation)
 
+## Development Workflow
+- **Wait for user confirmation** before committing changes to git. The user will test fixes before commits are made.
+
 ## Recent UI/UX Enhancements
 
 ### Mobile Support

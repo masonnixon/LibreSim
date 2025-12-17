@@ -324,9 +324,12 @@ export function Sidebar() {
               return (
                 <div key={library.id} className="border-b border-editor-border">
                   {/* Library Header */}
-                  <button
+                  <div
                     onClick={() => toggleLibrary(library.id)}
-                    className="w-full px-3 py-2 flex items-center justify-between hover:bg-editor-border text-left group"
+                    className="w-full px-3 py-2 flex items-center justify-between hover:bg-editor-border text-left group cursor-pointer"
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && toggleLibrary(library.id)}
                   >
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       <span className="w-3 h-3 rounded bg-cyan-500 flex-shrink-0" />
@@ -364,7 +367,7 @@ export function Sidebar() {
                         />
                       </svg>
                     </div>
-                  </button>
+                  </div>
 
                   {/* Library Blocks */}
                   {expandedLibraries.has(library.id) && (

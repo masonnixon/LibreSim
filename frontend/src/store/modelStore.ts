@@ -100,6 +100,116 @@ function findBlockAtPath(
   return { blocks: currentBlocks, connections: currentConnections }
 }
 
+/**
+ * Update a block's property at any level in the hierarchy.
+ * Returns a new blocks array with the update applied immutably.
+ */
+function updateBlockInHierarchy(
+  blocks: BlockInstance[],
+  path: SubsystemPathItem[],
+  blockId: string,
+  updater: (block: BlockInstance) => BlockInstance
+): BlockInstance[] {
+  if (path.length === 0) {
+    // At root level - update directly
+    return blocks.map(b => b.id === blockId ? updater(b) : b)
+  }
+
+  // Need to update a block inside a subsystem
+  const [first, ...rest] = path
+  return blocks.map(b => {
+    if (b.id === first.id && b.type === 'subsystem' && b.children) {
+      return {
+        ...b,
+        children: updateBlockInHierarchy(b.children, rest, blockId, updater)
+      }
+    }
+    return b
+  })
+}
+
+/**
+ * Add a connection at the current path level.
+ * Returns a new model with the connection added.
+ */
+function addConnectionInHierarchy(
+  model: Model,
+  path: SubsystemPathItem[],
+  connection: Connection
+): Model {
+  if (path.length === 0) {
+    return { ...model, connections: [...model.connections, connection] }
+  }
+
+  // Need to add connection inside a subsystem
+  const updateSubsystem = (blocks: BlockInstance[], remainingPath: SubsystemPathItem[]): BlockInstance[] => {
+    if (remainingPath.length === 0) return blocks
+
+    const [first, ...rest] = remainingPath
+    return blocks.map(b => {
+      if (b.id === first.id && b.type === 'subsystem') {
+        if (rest.length === 0) {
+          // This is the target subsystem
+          return {
+            ...b,
+            childConnections: [...(b.childConnections || []), connection]
+          }
+        } else {
+          // Go deeper
+          return {
+            ...b,
+            children: updateSubsystem(b.children || [], rest)
+          }
+        }
+      }
+      return b
+    })
+  }
+
+  return { ...model, blocks: updateSubsystem(model.blocks, path) }
+}
+
+/**
+ * Remove a connection at the current path level.
+ * Returns a new model with the connection removed.
+ */
+function removeConnectionInHierarchy(
+  model: Model,
+  path: SubsystemPathItem[],
+  connectionId: string
+): Model {
+  if (path.length === 0) {
+    return { ...model, connections: model.connections.filter(c => c.id !== connectionId) }
+  }
+
+  // Need to remove connection inside a subsystem
+  const updateSubsystem = (blocks: BlockInstance[], remainingPath: SubsystemPathItem[]): BlockInstance[] => {
+    if (remainingPath.length === 0) return blocks
+
+    const [first, ...rest] = remainingPath
+    return blocks.map(b => {
+      if (b.id === first.id && b.type === 'subsystem') {
+        if (rest.length === 0) {
+          // This is the target subsystem
+          return {
+            ...b,
+            childConnections: (b.childConnections || []).filter(c => c.id !== connectionId)
+          }
+        } else {
+          // Go deeper
+          return {
+            ...b,
+            children: updateSubsystem(b.children || [], rest)
+          }
+        }
+      }
+      return b
+    })
+  }
+
+  return { ...model, blocks: updateSubsystem(model.blocks, path) }
+}
+
 export const useModelStore = create<ModelState>((set, get) => ({
   model: null,
   isDirty: false,
@@ -170,31 +280,75 @@ export const useModelStore = create<ModelState>((set, get) => ({
 
       // Deep copy children with new IDs prefixed by block ID
       const idMap = new Map<string, string>() // old ID -> new ID
-      const children: BlockInstance[] = impl.blocks.map((child) => {
+      // Also map old port IDs to new port IDs for each block
+      const portIdMap = new Map<string, string>()
+
+      // Calculate position normalization - find bounding box and normalize positions
+      // to start from (100, 100) with minimum spacing of 150px between blocks
+      let minX = Infinity, minY = Infinity
+      impl.blocks.forEach((child) => {
+        minX = Math.min(minX, child.position.x)
+        minY = Math.min(minY, child.position.y)
+      })
+
+      // If all positions are the same (or very close), spread them out in a grid
+      const positions = impl.blocks.map((b) => b.position)
+      const uniquePositions = new Set(positions.map((p) => `${Math.round(p.x / 80)},${Math.round(p.y / 80)}`))
+      const needsSpread = uniquePositions.size < impl.blocks.length * 0.7 // More than 30% overlap
+
+      const children: BlockInstance[] = impl.blocks.map((child, index) => {
         const newChildId = `${blockId}__${nanoid()}`
         idMap.set(child.id, newChildId)
+
+        // Map input port IDs
+        const newInputPorts = child.inputPorts.map((port, idx) => {
+          const newPortId = `${newChildId}-in-${idx}`
+          portIdMap.set(port.id, newPortId)
+          return { ...port, id: newPortId }
+        })
+
+        // Map output port IDs
+        const newOutputPorts = child.outputPorts.map((port, idx) => {
+          const newPortId = `${newChildId}-out-${idx}`
+          portIdMap.set(port.id, newPortId)
+          return { ...port, id: newPortId }
+        })
+
+        // Normalize position: offset so minimum is (100, 100), or spread if needed
+        let newPosition: { x: number; y: number }
+        if (needsSpread) {
+          // Spread blocks in a grid pattern with more spacing
+          const cols = Math.ceil(Math.sqrt(impl.blocks.length))
+          const col = index % cols
+          const row = Math.floor(index / cols)
+          newPosition = { x: 100 + col * 250, y: 100 + row * 150 }
+        } else {
+          // Keep relative positions but offset to start from (100, 100) with scaling
+          // Scale up positions if they're too compressed
+          const scaleX = Math.max(1, 150 / Math.max(1, (impl.blocks.reduce((max, b) => Math.max(max, b.position.x), 0) - minX) / impl.blocks.length))
+          const scaleY = Math.max(1, 100 / Math.max(1, (impl.blocks.reduce((max, b) => Math.max(max, b.position.y), 0) - minY) / impl.blocks.length))
+          newPosition = {
+            x: 100 + (child.position.x - minX) * Math.min(scaleX, 2),
+            y: 100 + (child.position.y - minY) * Math.min(scaleY, 2),
+          }
+        }
 
         return {
           ...child,
           id: newChildId,
-          inputPorts: child.inputPorts.map((port, idx) => ({
-            ...port,
-            id: `${newChildId}-in-${idx}`,
-          })),
-          outputPorts: child.outputPorts.map((port, idx) => ({
-            ...port,
-            id: `${newChildId}-out-${idx}`,
-          })),
+          position: newPosition,
+          inputPorts: newInputPorts,
+          outputPorts: newOutputPorts,
         }
       })
 
-      // Deep copy connections with updated block IDs
+      // Deep copy connections with updated block and port IDs
       const childConnections: Connection[] = impl.connections.map((conn) => ({
         id: `${blockId}__${nanoid()}`,
         sourceBlockId: idMap.get(conn.sourceBlockId) || conn.sourceBlockId,
-        sourcePortId: conn.sourcePortId.replace(/^[^-]+-/, `${idMap.get(conn.sourceBlockId) || conn.sourceBlockId}-`),
+        sourcePortId: portIdMap.get(conn.sourcePortId) || conn.sourcePortId,
         targetBlockId: idMap.get(conn.targetBlockId) || conn.targetBlockId,
-        targetPortId: conn.targetPortId.replace(/^[^-]+-/, `${idMap.get(conn.targetBlockId) || conn.targetBlockId}-`),
+        targetPortId: portIdMap.get(conn.targetPortId) || conn.targetPortId,
       }))
 
       // Override block type to 'subsystem' since that's what the backend expects
@@ -233,56 +387,56 @@ export const useModelStore = create<ModelState>((set, get) => ({
   },
 
   updateBlockPosition: (blockId: string, position: { x: number; y: number }) => {
-    const { model } = get()
+    const { model, currentPath } = get()
     if (!model) return
 
     set({
       model: {
         ...model,
-        blocks: model.blocks.map((b) =>
-          b.id === blockId ? { ...b, position } : b
-        ),
+        blocks: updateBlockInHierarchy(model.blocks, currentPath, blockId, (b) => ({ ...b, position })),
       },
       isDirty: true,
     })
   },
 
   updateBlockParameters: (blockId: string, parameters: Record<string, unknown>) => {
-    const { model } = get()
+    const { model, currentPath } = get()
     if (!model) return
 
     set({
       model: {
         ...model,
-        blocks: model.blocks.map((b) =>
-          b.id === blockId ? { ...b, parameters: { ...b.parameters, ...parameters } } : b
-        ),
+        blocks: updateBlockInHierarchy(model.blocks, currentPath, blockId, (b) => ({
+          ...b,
+          parameters: { ...b.parameters, ...parameters }
+        })),
       },
       isDirty: true,
     })
   },
 
   renameBlock: (blockId: string, name: string) => {
-    const { model } = get()
+    const { model, currentPath } = get()
     if (!model) return
 
     set({
       model: {
         ...model,
-        blocks: model.blocks.map((b) =>
-          b.id === blockId ? { ...b, name } : b
-        ),
+        blocks: updateBlockInHierarchy(model.blocks, currentPath, blockId, (b) => ({ ...b, name })),
       },
       isDirty: true,
     })
   },
 
   addConnection: (connection: Omit<Connection, 'id'>) => {
-    const { model } = get()
+    const { model, currentPath } = get()
     if (!model) return null
 
+    // Get the current level's connections to check for duplicates
+    const currentConnections = get().getCurrentConnections()
+
     // Check if connection already exists
-    const exists = model.connections.some(
+    const exists = currentConnections.some(
       (c) =>
         c.sourceBlockId === connection.sourceBlockId &&
         c.sourcePortId === connection.sourcePortId &&
@@ -292,7 +446,7 @@ export const useModelStore = create<ModelState>((set, get) => ({
     if (exists) return null
 
     // Check if target port already has a connection
-    const targetConnected = model.connections.some(
+    const targetConnected = currentConnections.some(
       (c) =>
         c.targetBlockId === connection.targetBlockId &&
         c.targetPortId === connection.targetPortId
@@ -303,7 +457,7 @@ export const useModelStore = create<ModelState>((set, get) => ({
     const newConnection: Connection = { ...connection, id: connectionId }
 
     set({
-      model: { ...model, connections: [...model.connections, newConnection] },
+      model: addConnectionInHierarchy(model, currentPath, newConnection),
       isDirty: true,
     })
 
@@ -311,14 +465,11 @@ export const useModelStore = create<ModelState>((set, get) => ({
   },
 
   removeConnection: (connectionId: string) => {
-    const { model } = get()
+    const { model, currentPath } = get()
     if (!model) return
 
     set({
-      model: {
-        ...model,
-        connections: model.connections.filter((c) => c.id !== connectionId),
-      },
+      model: removeConnectionInHierarchy(model, currentPath, connectionId),
       isDirty: true,
       selectedConnectionIds: get().selectedConnectionIds.filter((id) => id !== connectionId),
     })
