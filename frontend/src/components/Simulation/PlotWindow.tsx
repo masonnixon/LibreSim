@@ -192,17 +192,69 @@ export function PlotWindow({
     }
   }, [isDragging, isResizing, dragOffset, resizeDirection, resizeStart, blockId, updatePlotWindowPosition, updatePlotWindowSize])
 
+  // Color palette for multiple traces
+  const traceColors = [
+    '#89b4fa', // Blue
+    '#f38ba8', // Red/Pink
+    '#a6e3a1', // Green
+    '#fab387', // Orange
+    '#cba6f7', // Purple
+    '#f9e2af', // Yellow
+    '#94e2d5', // Teal
+    '#f5c2e7', // Pink
+    '#74c7ec', // Light Blue
+    '#b4befe', // Lavender
+  ]
+
   const plotData = useMemo(() => {
     if (!signals || signals.length === 0) return []
 
-    return signals.map((signal) => ({
-      x: signal.times,
-      y: signal.values,
-      type: 'scatter' as const,
-      mode: 'lines' as const,
-      name: signal.name,
-    }))
+    const traces: Array<{
+      x: number[]
+      y: number[]
+      type: 'scatter'
+      mode: 'lines'
+      name: string
+      line: { color: string; width: number }
+    }> = []
+
+    signals.forEach((signal) => {
+      const numInputs = signal.numInputs || 1
+      const inputNames = signal.inputNames || []
+      const values = signal.values
+
+      if (numInputs > 1 && Array.isArray(values) && Array.isArray(values[0])) {
+        // Multi-input scope: create a trace for each input
+        for (let i = 0; i < numInputs; i++) {
+          const traceName = inputNames[i] || `Input ${i + 1}`
+          const traceValues = (values as number[][])[i] || []
+          traces.push({
+            x: signal.times,
+            y: traceValues,
+            type: 'scatter' as const,
+            mode: 'lines' as const,
+            name: traceName,
+            line: { color: traceColors[i % traceColors.length], width: 2 },
+          })
+        }
+      } else {
+        // Single-input scope or backward compatible format
+        traces.push({
+          x: signal.times,
+          y: values as number[],
+          type: 'scatter' as const,
+          mode: 'lines' as const,
+          name: signal.name,
+          line: { color: traceColors[0], width: 2 },
+        })
+      }
+    })
+
+    return traces
   }, [signals])
+
+  // Determine if we should show the legend (multiple traces)
+  const showLegend = plotData.length > 1
 
   // Resize handle component
   const ResizeHandle = ({ direction, className }: { direction: string; className: string }) => (
@@ -299,10 +351,15 @@ export function PlotWindow({
                 },
                 legend: {
                   orientation: 'h',
-                  y: -0.2,
+                  y: -0.15,
+                  x: 0.5,
+                  xanchor: 'center',
                   font: { size: 9 },
+                  bgcolor: 'rgba(30, 30, 46, 0.8)',
+                  bordercolor: '#45475a',
+                  borderwidth: 1,
                 },
-                showlegend: signals.length > 1,
+                showlegend: showLegend,
               }}
               style={{ width: '100%', height: '100%' }}
               useResizeHandler

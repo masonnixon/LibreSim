@@ -346,3 +346,180 @@ class Switch(Block):
 
     def getOutput(self, port=0):
         return self.output
+
+
+class Mux(Block):
+    """Mux block - combines multiple scalar inputs into a vector output.
+
+    The Mux block concatenates multiple scalar inputs into a single
+    vector (array) output. This preserves dimensionality for downstream
+    blocks that need to process the combined signal.
+    """
+
+    def __init__(self, num_inputs=2):
+        super().__init__()
+        # Ensure num_inputs is an integer (may come as float from JSON)
+        self.num_inputs = int(num_inputs)
+        self.inputs = [0.0] * self.num_inputs
+        self.input_blocks = [None] * self.num_inputs
+        # Output is a vector containing all inputs
+        self.outputs = [0.0] * self.num_inputs
+
+    def init(self):
+        self.inputs = [0.0] * self.num_inputs
+        self.outputs = [0.0] * self.num_inputs
+
+    def setInput(self, value, port=0):
+        if port < self.num_inputs:
+            self.inputs[port] = value
+
+    def connectInput(self, block, port=0):
+        if port < self.num_inputs:
+            self.input_blocks[port] = block
+
+    def update(self):
+        # Get inputs from connected blocks
+        for i, block in enumerate(self.input_blocks):
+            if block is not None:
+                self.inputs[i] = block.getOutput()
+
+        # Copy inputs to outputs (the muxed vector)
+        for i in range(self.num_inputs):
+            self.outputs[i] = self.inputs[i]
+
+    def getOutput(self, port=0):
+        """Get output - port 0 returns first element for scalar compat,
+        but the full vector is available via outputs attribute."""
+        if port < len(self.outputs):
+            return self.outputs[port]
+        return 0.0
+
+    def getOutputVector(self):
+        """Get the full output vector."""
+        return self.outputs.copy()
+
+
+class Demux(Block):
+    """Demux block - splits a vector input into multiple scalar outputs.
+
+    The Demux block takes a vector (array) input and splits it into
+    separate scalar outputs. It's the inverse of the Mux block.
+    """
+
+    def __init__(self, num_outputs=2):
+        super().__init__()
+        # Ensure num_outputs is an integer (may come as float from JSON)
+        self.num_outputs = int(num_outputs)
+        self.input = 0.0
+        self.input_vector = [0.0] * self.num_outputs
+        self.input_block = None
+        self.outputs = [0.0] * self.num_outputs
+
+    def init(self):
+        self.input_vector = [0.0] * self.num_outputs
+        self.outputs = [0.0] * self.num_outputs
+
+    def setInput(self, value, port=0):
+        """Set input - can accept scalar or vector."""
+        if isinstance(value, (list, tuple)):
+            for i, v in enumerate(value):
+                if i < len(self.input_vector):
+                    self.input_vector[i] = v
+        else:
+            self.input = value
+            # For scalar input, put it in the first slot
+            if len(self.input_vector) > 0:
+                self.input_vector[0] = value
+
+    def connectInput(self, block, port=0):
+        self.input_block = block
+
+    def update(self):
+        if self.input_block is not None:
+            # Check if the input block has a vector output (like Mux)
+            if hasattr(self.input_block, 'getOutputVector'):
+                vec = self.input_block.getOutputVector()
+                for i, v in enumerate(vec):
+                    if i < len(self.input_vector):
+                        self.input_vector[i] = v
+            elif hasattr(self.input_block, 'outputs') and isinstance(self.input_block.outputs, list):
+                # Access outputs array directly if available
+                for i, v in enumerate(self.input_block.outputs):
+                    if i < len(self.input_vector):
+                        self.input_vector[i] = v
+            else:
+                # Scalar input - put in first slot
+                self.input = self.input_block.getOutput()
+                if len(self.input_vector) > 0:
+                    self.input_vector[0] = self.input
+
+        # Copy to outputs
+        for i in range(self.num_outputs):
+            if i < len(self.input_vector):
+                self.outputs[i] = self.input_vector[i]
+            else:
+                self.outputs[i] = 0.0
+
+    def getOutput(self, port=0):
+        """Get output at specified port."""
+        if port < len(self.outputs):
+            return self.outputs[port]
+        return 0.0
+
+
+class Reshape(Block):
+    """Reshape block - passes through vector signals unchanged.
+
+    In LibreSim, Reshape is primarily used as a pass-through for vector signals
+    that may need reshaping in Simulink (e.g., from column to row vector).
+    Since we handle vectors as simple lists, this block just passes the signal through.
+    """
+
+    def __init__(self, output_dimensions=None, **kwargs):
+        super().__init__()
+        self.output_dimensions = output_dimensions
+        self.input = 0.0
+        self.input_block = None
+        self._input_vector = None
+        self._output_vector = None
+
+    def init(self):
+        self.input = 0.0
+        self._input_vector = None
+        self._output_vector = None
+
+    def setInput(self, value, port=0):
+        if isinstance(value, (list, tuple)):
+            self._input_vector = list(value)
+            self.input = value[0] if value else 0.0
+        else:
+            self.input = value
+            self._input_vector = None
+
+    def connectInput(self, block, port=0):
+        self.input_block = block
+
+    def update(self):
+        if self.input_block is not None:
+            # Check if source has vector output
+            if hasattr(self.input_block, 'getOutputVector'):
+                vec = self.input_block.getOutputVector()
+                if vec is not None:
+                    self._input_vector = vec
+                    self._output_vector = vec.copy()
+                    self.input = vec[0] if vec else 0.0
+                else:
+                    self.input = self.input_block.getOutput()
+                    self._input_vector = None
+                    self._output_vector = None
+            else:
+                self.input = self.input_block.getOutput()
+                self._input_vector = None
+                self._output_vector = None
+
+    def getOutput(self, port=0):
+        return self.input
+
+    def getOutputVector(self):
+        """Get the full output vector (pass-through from input)."""
+        return self._output_vector.copy() if self._output_vector else None

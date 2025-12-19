@@ -145,7 +145,8 @@ class SimulationRunner:
 
     def get_results(self) -> Dict[str, Any]:
         """Get simulation results."""
-        signals = []
+        # Group signals by block ID to combine multi-trace scopes
+        block_signals: Dict[str, Dict] = {}
 
         for key, data in self._results.items():
             # Key format: "blockId:portId:signalName" or "blockId:inputIndex:sourceName"
@@ -158,13 +159,32 @@ class SimulationRunner:
             times = [d[0] for d in data]
             values = [d[1] for d in data]
 
-            signals.append({
-                "blockId": block_id,
-                "portId": port_id,
-                "name": signal_name,
-                "times": times,
-                "values": values,
-            })
+            if block_id not in block_signals:
+                block_signals[block_id] = {
+                    "blockId": block_id,
+                    "portId": "out",
+                    "name": block_id,
+                    "times": times,
+                    "values": [],
+                    "inputNames": [],
+                    "numInputs": 0,
+                }
+
+            # Add this trace to the block's signal data
+            block_signals[block_id]["values"].append(values)
+            block_signals[block_id]["inputNames"].append(signal_name)
+            block_signals[block_id]["numInputs"] += 1
+
+        # Convert to list and handle single-trace case
+        signals = []
+        for block_data in block_signals.values():
+            if block_data["numInputs"] == 1:
+                # Single trace - flatten values array
+                block_data["values"] = block_data["values"][0]
+                block_data["name"] = block_data["inputNames"][0]
+                del block_data["inputNames"]
+                del block_data["numInputs"]
+            signals.append(block_data)
 
         return {
             "signals": signals,

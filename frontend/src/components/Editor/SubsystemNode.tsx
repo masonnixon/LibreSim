@@ -295,4 +295,36 @@ function SubsystemNodeComponent({ data, selected }: NodeProps<SubsystemNodeData>
   )
 }
 
-export const SubsystemNode = memo(SubsystemNodeComponent)
+// Custom comparison to ensure re-render when block data changes
+function arePropsEqual(
+  prevProps: NodeProps<SubsystemNodeData>,
+  nextProps: NodeProps<SubsystemNodeData>
+): boolean {
+  // Always re-render if selected state changes
+  if (prevProps.selected !== nextProps.selected) return false
+
+  // Compare block data
+  const prevBlock = prevProps.data.block
+  const nextBlock = nextProps.data.block
+
+  if (!prevBlock || !nextBlock) return prevBlock === nextBlock
+
+  // Check if key properties changed
+  if (prevBlock.id !== nextBlock.id) return false
+  if (prevBlock.name !== nextBlock.name) return false
+  if (prevBlock.isExpanded !== nextBlock.isExpanded) return false
+
+  // Check if parameters changed
+  if (JSON.stringify(prevBlock.parameters) !== JSON.stringify(nextBlock.parameters)) return false
+
+  // Check ports
+  if (prevBlock.inputPorts.length !== nextBlock.inputPorts.length) return false
+  if (prevBlock.outputPorts.length !== nextBlock.outputPorts.length) return false
+
+  // Check children count (for preview)
+  if ((prevBlock.children?.length || 0) !== (nextBlock.children?.length || 0)) return false
+
+  return true
+}
+
+export const SubsystemNode = memo(SubsystemNodeComponent, arePropsEqual)

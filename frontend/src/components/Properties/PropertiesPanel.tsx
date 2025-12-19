@@ -1,5 +1,10 @@
+import { useEffect } from 'react'
 import { useModelStore } from '../../store/modelStore'
 import { blockRegistry } from '../../blocks'
+
+// Track when Properties panel inputs are focused to prevent ReactFlow from stealing keyboard events
+let isPropertiesFocused = false
+export const getIsPropertiesFocused = () => isPropertiesFocused
 
 export function PropertiesPanel() {
   const { model, selectedBlockIds, updateBlockParameters, renameBlock, getCurrentBlocks } = useModelStore()
@@ -61,6 +66,12 @@ export function PropertiesPanel() {
           type="text"
           value={block.name}
           onChange={(e) => renameBlock(block.id, e.target.value)}
+          onKeyDown={(e) => {
+            e.stopPropagation()
+            e.nativeEvent.stopImmediatePropagation()
+          }}
+          onFocus={() => { isPropertiesFocused = true }}
+          onBlur={() => { isPropertiesFocused = false }}
           className="w-full px-2 py-1 bg-editor-bg border border-editor-border rounded text-sm focus:outline-none focus:border-blue-500"
         />
         <p className="text-xs text-gray-400 mt-1">{definition.description}</p>
@@ -111,6 +122,21 @@ export function PropertiesPanel() {
   )
 }
 
+// Prevent keyboard events from propagating to ReactFlow (which would deselect nodes)
+const stopPropagation = (e: React.KeyboardEvent) => {
+  e.stopPropagation()
+  e.nativeEvent.stopImmediatePropagation()
+}
+
+// Focus handlers to track when inputs are active
+const handleFocus = () => {
+  isPropertiesFocused = true
+}
+
+const handleBlur = () => {
+  isPropertiesFocused = false
+}
+
 function renderParameterInput(
   param: { type: string; options?: { value: string; label: string }[]; min?: number; max?: number; step?: number },
   value: unknown,
@@ -129,6 +155,9 @@ function renderParameterInput(
           max={param.max}
           step={param.step ?? 0.01}
           onChange={(e) => onChange(parseFloat(e.target.value))}
+          onKeyDown={stopPropagation}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
           className={baseInputClass}
         />
       )
@@ -139,6 +168,9 @@ function renderParameterInput(
           type="text"
           value={value as string}
           onChange={(e) => onChange(e.target.value)}
+          onKeyDown={stopPropagation}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
           className={baseInputClass}
         />
       )
@@ -150,6 +182,9 @@ function renderParameterInput(
             type="checkbox"
             checked={value as boolean}
             onChange={(e) => onChange(e.target.checked)}
+            onKeyDown={stopPropagation}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
             className="rounded border-editor-border bg-editor-bg"
           />
           <span className="text-sm">{value ? 'Enabled' : 'Disabled'}</span>
@@ -161,6 +196,9 @@ function renderParameterInput(
         <select
           value={value as string}
           onChange={(e) => onChange(e.target.value)}
+          onKeyDown={stopPropagation}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
           className={baseInputClass}
         >
           {param.options?.map((opt) => (
@@ -183,6 +221,9 @@ function renderParameterInput(
               // Invalid JSON, ignore
             }
           }}
+          onKeyDown={stopPropagation}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
           className={baseInputClass}
           placeholder="[1, 2, 3]"
         />
@@ -194,6 +235,9 @@ function renderParameterInput(
           type="text"
           value={String(value)}
           onChange={(e) => onChange(e.target.value)}
+          onKeyDown={stopPropagation}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
           className={baseInputClass}
         />
       )

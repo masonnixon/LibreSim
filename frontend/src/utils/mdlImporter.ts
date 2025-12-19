@@ -471,7 +471,15 @@ function convertBlockParameters(block: ParsedBlock, libreSimType: string): Recor
 
   switch (libreSimType) {
     case 'constant':
+      // MDL uses various property names for constant value
       if (block.Value !== undefined) params.value = parseValue(String(block.Value))
+      else if (block.ConstantValue !== undefined) params.value = parseValue(String(block.ConstantValue))
+      else if (block.Constant !== undefined) params.value = parseValue(String(block.Constant))
+      // Default to 1 if no value specified (MDL default)
+      if (params.value === undefined) {
+        console.log('[MDL Import] Constant block properties (no value found):', Object.keys(block))
+        params.value = 1 // Default constant value
+      }
       break
 
     case 'step':
@@ -586,24 +594,90 @@ function convertBlockParameters(block: ParsedBlock, libreSimType: string): Recor
 
     case 'inport':
     case 'outport':
+      // MDL uses various property names for port number
       if (block.Port !== undefined) params.portNumber = parseValue(String(block.Port))
+      else if (block.PortNumber !== undefined) params.portNumber = parseValue(String(block.PortNumber))
+      else if (block.PortNum !== undefined) params.portNumber = parseValue(String(block.PortNum))
+      else if (block.Number !== undefined) params.portNumber = parseValue(String(block.Number))
+      // Default to 1 if no port number specified
+      if (params.portNumber === undefined) {
+        console.log(`[MDL Import] ${libreSimType} block "${block.Name}" properties (no port found):`, Object.keys(block))
+        params.portNumber = 1 // Default port number
+      }
       break
 
     case 'mux':
+      // MDL uses various property names for input count
       if (block.Inputs !== undefined) params.numInputs = parseValue(String(block.Inputs))
+      else if (block.NumberOfInputs !== undefined) params.numInputs = parseValue(String(block.NumberOfInputs))
+      else if (block.NumInputs !== undefined) params.numInputs = parseValue(String(block.NumInputs))
+      // Also check Ports property - Ports [numInputs] for Mux
+      if (params.numInputs === undefined && block.Ports !== undefined) {
+        const ports = block.Ports
+        if (Array.isArray(ports) && ports[0]) {
+          params.numInputs = typeof ports[0] === 'number' ? ports[0] : parseInt(String(ports[0])) || 2
+        } else if (typeof ports === 'string') {
+          const match = ports.match(/\[?\s*(\d+)/)
+          if (match) params.numInputs = parseInt(match[1]) || 2
+        } else if (typeof ports === 'number') {
+          params.numInputs = ports
+        }
+      }
       break
 
     case 'demux':
+      // MDL uses various property names for output count
       if (block.Outputs !== undefined) params.numOutputs = parseValue(String(block.Outputs))
+      else if (block.NumberOfOutputs !== undefined) params.numOutputs = parseValue(String(block.NumberOfOutputs))
+      else if (block.NumOutputs !== undefined) params.numOutputs = parseValue(String(block.NumOutputs))
+      // Also check Ports property - Ports [numInputs, numOutputs] for Demux
+      if (params.numOutputs === undefined && block.Ports !== undefined) {
+        const ports = block.Ports
+        if (Array.isArray(ports) && ports[1]) {
+          params.numOutputs = typeof ports[1] === 'number' ? ports[1] : parseInt(String(ports[1])) || 2
+        } else if (typeof ports === 'string') {
+          const match = ports.match(/\[?\s*\d+\s*,\s*(\d+)/)
+          if (match) params.numOutputs = parseInt(match[1]) || 2
+        }
+      }
       break
 
     case 'math_function':
-      if (block.Operator !== undefined) params.operator = String(block.Operator)
+      // MDL Math Function block uses 'Operator' property, LibreSim uses 'function' parameter
+      if (block.Operator !== undefined) params.function = String(block.Operator).toLowerCase()
+      else if (block.Function !== undefined) params.function = String(block.Function).toLowerCase()
+      else if (block.MathFunction !== undefined) params.function = String(block.MathFunction).toLowerCase()
+      // Handle exponent parameter for power functions
+      if (block.Exponent !== undefined) params.exponent = parseValue(String(block.Exponent))
+      else if (block.Power !== undefined) params.exponent = parseValue(String(block.Power))
+      // Default to exp function if not specified
+      if (params.function === undefined) {
+        console.log('[MDL Import] math_function block properties (no function found):', Object.keys(block))
+        params.function = 'exp' // Default function
+      }
+      // Default exponent for power function
+      if (params.exponent === undefined && params.function === 'pow') {
+        params.exponent = 2
+      }
       break
 
     case 'reshape':
+      // Handle various property names for reshape parameters
       if (block.OutputDimensionality !== undefined) params.outputDimensionality = String(block.OutputDimensionality)
-      if (block.OutputDimensions !== undefined) params.outputDimensions = String(block.OutputDimensions)
+      else if (block.OutputDimensions !== undefined) params.outputDimensionality = String(block.OutputDimensions)
+      // Try multiple property names for output dimensions
+      if (block.OutputDimensions !== undefined) params.outputDimensions = parseValue(String(block.OutputDimensions))
+      else if (block.OutputSize !== undefined) params.outputDimensions = parseValue(String(block.OutputSize))
+      else if (block.Dimensions !== undefined) params.outputDimensions = parseValue(String(block.Dimensions))
+      else if (block.Size !== undefined) params.outputDimensions = parseValue(String(block.Size))
+      // Provide defaults if not found
+      if (params.outputDimensions === undefined) {
+        console.log('[MDL Import] reshape block properties (no dimensions found):', Object.keys(block))
+        params.outputDimensions = '[1]' // Default output dimensions
+      }
+      if (params.outputDimensionality === undefined) {
+        params.outputDimensionality = '1-D array' // Default dimensionality
+      }
       break
 
     case 'selector':
@@ -692,6 +766,50 @@ function createPorts(blockType: string, params: Record<string, unknown>): { inpu
       }
     }
 
+    // Handle mux with dynamic number of inputs
+    if (blockType === 'mux' && params.numInputs) {
+      const numInputs = typeof params.numInputs === 'number' ? params.numInputs : parseInt(String(params.numInputs)) || 2
+      inputPorts.length = 0
+      for (let i = 0; i < numInputs; i++) {
+        inputPorts.push({
+          id: `in_${i}`,
+          name: `in${i + 1}`,
+          dataType: 'double',
+          dimensions: [1],
+        })
+      }
+      // Update output dimensions to match
+      outputPorts.length = 0
+      outputPorts.push({
+        id: 'out_0',
+        name: 'out',
+        dataType: 'double',
+        dimensions: [numInputs],
+      })
+    }
+
+    // Handle demux with dynamic number of outputs
+    if (blockType === 'demux' && params.numOutputs) {
+      const numOutputs = typeof params.numOutputs === 'number' ? params.numOutputs : parseInt(String(params.numOutputs)) || 2
+      outputPorts.length = 0
+      for (let i = 0; i < numOutputs; i++) {
+        outputPorts.push({
+          id: `out_${i}`,
+          name: `out${i + 1}`,
+          dataType: 'double',
+          dimensions: [1],
+        })
+      }
+      // Update input dimensions to match
+      inputPorts.length = 0
+      inputPorts.push({
+        id: 'in_0',
+        name: 'in',
+        dataType: 'double',
+        dimensions: [numOutputs],
+      })
+    }
+
     return { inputPorts, outputPorts }
   }
 
@@ -734,7 +852,28 @@ function createPorts(blockType: string, params: Record<string, unknown>): { inpu
       outputPorts.push({ id: 'out_0', name: 'out', dataType: 'double', dimensions: [1] })
       break
 
-    case 'reshape':
+    case 'reshape': {
+      inputPorts.push({ id: 'in_0', name: 'in', dataType: 'double', dimensions: [1] })
+      // Parse output dimensions from parameters
+      let reshapeDims: number[] = [1]
+      if (params.outputDimensions) {
+        const dimStr = String(params.outputDimensions)
+        try {
+          const parsed = JSON.parse(dimStr)
+          if (Array.isArray(parsed) && parsed.every((n: unknown) => typeof n === 'number')) {
+            reshapeDims = parsed
+          }
+        } catch {
+          const matches = dimStr.match(/\d+/g)
+          if (matches) {
+            reshapeDims = matches.map(Number)
+          }
+        }
+      }
+      outputPorts.push({ id: 'out_0', name: 'out', dataType: 'double', dimensions: reshapeDims })
+      break
+    }
+
     case 'math_function':
     case 'sqrt':
     case 'unary_minus':
@@ -824,6 +963,181 @@ function createPorts(blockType: string, params: Record<string, unknown>): { inpu
   }
 
   return { inputPorts, outputPorts }
+}
+
+/**
+ * Get the output dimensions of a block by tracing through connections.
+ * This handles subsystems by looking at their Outport blocks.
+ * For blocks that pass through signals (like Gain), it traces back to the source.
+ */
+function getBlockOutputDimensions(
+  block: BlockInstance,
+  portId: string,
+  blockMap: Map<string, BlockInstance>,
+  connectionsByTarget: Map<string, Connection>,
+  visited: Set<string> = new Set()
+): number[] | null {
+  // Prevent infinite loops
+  const visitKey = `${block.id}:${portId}`
+  if (visited.has(visitKey)) {
+    return null
+  }
+  visited.add(visitKey)
+
+  const port = block.outputPorts.find(p => p.id === portId)
+  if (!port) return null
+
+  // If this block already has non-default dimensions, use them
+  if (port.dimensions && !(port.dimensions.length === 1 && port.dimensions[0] === 1)) {
+    return port.dimensions
+  }
+
+  // For subsystems, look at the corresponding Outport block inside
+  if (block.type === 'subsystem' && block.children) {
+    const portIndex = block.outputPorts.findIndex(p => p.id === portId)
+    if (portIndex >= 0) {
+      // Find the Outport block with matching port number
+      const outportBlock = block.children.find(
+        b => b.type === 'outport' && ((b.parameters.portNumber as number) || 1) === portIndex + 1
+      )
+      if (outportBlock && outportBlock.inputPorts.length > 0) {
+        // Trace back what's connected to this Outport
+        const outportInputPort = outportBlock.inputPorts[0]
+
+        // Build connection map for subsystem's internal connections
+        const childConnectionsByTarget = new Map<string, Connection>()
+        const childBlockMap = new Map<string, BlockInstance>()
+        block.children.forEach(b => childBlockMap.set(b.id, b))
+        ;(block.childConnections || []).forEach(conn => {
+          childConnectionsByTarget.set(`${conn.targetBlockId}:${conn.targetPortId}`, conn)
+        })
+
+        const connKey = `${outportBlock.id}:${outportInputPort.id}`
+        const conn = childConnectionsByTarget.get(connKey)
+        if (conn) {
+          const sourceBlock = childBlockMap.get(conn.sourceBlockId)
+          if (sourceBlock) {
+            const dims = getBlockOutputDimensions(
+              sourceBlock,
+              conn.sourcePortId,
+              childBlockMap,
+              childConnectionsByTarget,
+              new Set(visited)
+            )
+            if (dims) return dims
+          }
+        }
+      }
+    }
+  }
+
+  // For pass-through blocks (blocks that preserve input dimensions on output),
+  // trace back to the source if this block has a single input
+  const passThroughTypes = [
+    'gain', 'abs', 'sign', 'sqrt', 'unary_minus', 'bias',
+    'saturation', 'dead_zone', 'rate_limiter', 'quantizer',
+    'relay', 'memory', 'unit_delay', 'integrator', 'derivative',
+    'trigonometry', 'math_function', 'data_type_conversion'
+  ]
+
+  if (passThroughTypes.includes(block.type) && block.inputPorts.length > 0) {
+    // Look for what's connected to the first input
+    const inputPort = block.inputPorts[0]
+    const connKey = `${block.id}:${inputPort.id}`
+    const conn = connectionsByTarget.get(connKey)
+    if (conn) {
+      const sourceBlock = blockMap.get(conn.sourceBlockId)
+      if (sourceBlock) {
+        const dims = getBlockOutputDimensions(
+          sourceBlock,
+          conn.sourcePortId,
+          blockMap,
+          connectionsByTarget,
+          visited
+        )
+        if (dims) return dims
+      }
+    }
+  }
+
+  return port.dimensions || [1]
+}
+
+/**
+ * Propagate signal dimensions through a system.
+ * This traces connections to determine output dimensions for blocks like Outports.
+ * Exported for use in modelStore when subsystems are created dynamically.
+ */
+export function propagateDimensions(blocks: BlockInstance[], connections: Connection[]): void {
+  // First, recursively propagate dimensions in all nested subsystems (bottom-up)
+  blocks.forEach(block => {
+    if (block.type === 'subsystem' && block.children && block.childConnections) {
+      propagateDimensions(block.children, block.childConnections)
+    }
+  })
+
+  // Build maps for this level
+  const blockMap = new Map<string, BlockInstance>()
+  blocks.forEach(b => blockMap.set(b.id, b))
+
+  const connectionsByTarget = new Map<string, Connection>()
+  connections.forEach(conn => {
+    const key = `${conn.targetBlockId}:${conn.targetPortId}`
+    connectionsByTarget.set(key, conn)
+  })
+
+  // Multiple passes to propagate dimensions through the graph
+  // This handles chains of blocks where dimensions flow through
+  const maxPasses = 10
+  for (let pass = 0; pass < maxPasses; pass++) {
+    let changed = false
+
+    // For each block, try to determine its output dimensions from its inputs
+    blocks.forEach(block => {
+      // Update Outport blocks based on what's connected to them
+      if (block.type === 'outport' && block.inputPorts.length > 0) {
+        const inputPort = block.inputPorts[0]
+        const connKey = `${block.id}:${inputPort.id}`
+        const conn = connectionsByTarget.get(connKey)
+
+        if (conn) {
+          const sourceBlock = blockMap.get(conn.sourceBlockId)
+          if (sourceBlock) {
+            const dims = getBlockOutputDimensions(
+              sourceBlock,
+              conn.sourcePortId,
+              blockMap,
+              connectionsByTarget
+            )
+            if (dims && JSON.stringify(dims) !== JSON.stringify(inputPort.dimensions)) {
+              inputPort.dimensions = [...dims]
+              changed = true
+            }
+          }
+        }
+      }
+
+      // Update subsystem output ports based on their Outport blocks
+      if (block.type === 'subsystem' && block.children) {
+        const outportBlocks = block.children.filter(b => b.type === 'outport')
+        outportBlocks.forEach(outport => {
+          const portNumber = (outport.parameters.portNumber as number) || 1
+          const outputPortIndex = portNumber - 1
+          if (block.outputPorts[outputPortIndex] && outport.inputPorts[0]) {
+            const newDims = outport.inputPorts[0].dimensions || [1]
+            const currentDims = block.outputPorts[outputPortIndex].dimensions || [1]
+            if (JSON.stringify(newDims) !== JSON.stringify(currentDims)) {
+              block.outputPorts[outputPortIndex].dimensions = [...newDims]
+              changed = true
+            }
+          }
+        })
+      }
+    })
+
+    // If nothing changed, we've reached a fixed point
+    if (!changed) break
+  }
 }
 
 /**
@@ -1039,6 +1353,10 @@ function convertToModel(parsed: ParsedModel): Model {
     parsed.system.blocks,
     parsed.system.lines
   )
+
+  // Propagate signal dimensions through the system
+  // This ensures subsystem output ports have correct dimensions based on their internal connections
+  propagateDimensions(blocks, connections)
 
   // Determine solver
   const solverType = SOLVER_TO_LIBRESIM[parsed.Solver || 'ode4'] || 'rk4'

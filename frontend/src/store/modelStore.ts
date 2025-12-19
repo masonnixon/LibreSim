@@ -4,6 +4,7 @@ import type { BlockInstance, Connection, BlockDefinition } from '../types/block'
 import type { Model, ModelMetadata } from '../types/model'
 import type { SimulationConfig } from '../types/simulation'
 import { isLibraryBlockDefinition } from '../types/library'
+import { propagateDimensions } from '../utils/mdlImporter'
 
 // Path item for subsystem navigation
 interface SubsystemPathItem {
@@ -229,6 +230,9 @@ export const useModelStore = create<ModelState>((set, get) => ({
   },
 
   loadModel: (model: Model) => {
+    // Propagate signal dimensions when loading a model
+    // This ensures all subsystem output ports have correct dimensions
+    propagateDimensions(model.blocks, model.connections)
     set({ model, isDirty: false, currentPath: [], selectedBlockIds: [], selectedConnectionIds: [] })
   },
 
@@ -249,29 +253,76 @@ export const useModelStore = create<ModelState>((set, get) => ({
   },
 
   addBlock: (definition: BlockDefinition, position: { x: number; y: number }) => {
-    const { model } = get()
+    const { model, currentPath } = get()
     if (!model) return ''
 
     const blockId = nanoid()
-    const blockCount = model.blocks.filter((b) => b.type === definition.type).length
+    // Count blocks with the same base name at the current level
+    // This ensures proper unique naming for library blocks (e.g., Quaternion, Quaternion2, Quaternion3)
+    const currentBlocks = get().getCurrentBlocks()
+    const baseName = definition.name
+
+    // Find the highest number suffix for blocks with this base name
+    let maxSuffix = 0
+    const baseNamePattern = new RegExp(`^${baseName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\d*)$`)
+
+    currentBlocks.forEach((b) => {
+      const match = b.name.match(baseNamePattern)
+      if (match) {
+        const suffix = match[1] ? parseInt(match[1], 10) : 1
+        maxSuffix = Math.max(maxSuffix, suffix)
+      }
+    })
+
+    // Generate the new name with proper suffix
+    const newName = maxSuffix === 0 ? baseName : `${baseName}${maxSuffix + 1}`
+
+    // Build initial parameters from definition
+    const initialParams = definition.parameters.reduce(
+      (acc, param) => ({ ...acc, [param.name]: param.default }),
+      {} as Record<string, unknown>
+    )
+
+    // Build output ports, handling special cases like Reshape
+    let outputPorts = definition.outputs.map((output, idx) => ({
+      ...output,
+      id: `${blockId}-out-${idx}`,
+    }))
+
+    // For Reshape blocks, parse the outputDimensions parameter to set correct dimensions
+    if (definition.type === 'reshape' && initialParams.outputDimensions) {
+      let dims: number[] = [1]
+      const dimStr = String(initialParams.outputDimensions)
+      try {
+        const parsed = JSON.parse(dimStr)
+        if (Array.isArray(parsed) && parsed.every(n => typeof n === 'number')) {
+          dims = parsed
+        }
+      } catch {
+        const matches = dimStr.match(/\d+/g)
+        if (matches) {
+          dims = matches.map(Number)
+        }
+      }
+      outputPorts = [{
+        id: `${blockId}-out-0`,
+        name: 'out',
+        dataType: 'double' as const,
+        dimensions: dims,
+      }]
+    }
 
     const newBlock: BlockInstance = {
       id: blockId,
       type: definition.type,
-      name: `${definition.name}${blockCount > 0 ? blockCount + 1 : ''}`,
+      name: newName,
       position,
-      parameters: definition.parameters.reduce(
-        (acc, param) => ({ ...acc, [param.name]: param.default }),
-        {}
-      ),
+      parameters: initialParams,
       inputPorts: definition.inputs.map((input, idx) => ({
         ...input,
         id: `${blockId}-in-${idx}`,
       })),
-      outputPorts: definition.outputs.map((output, idx) => ({
-        ...output,
-        id: `${blockId}-out-${idx}`,
-      })),
+      outputPorts,
     }
 
     // If this is a library block, copy its implementation (children and connections)
@@ -358,32 +409,104 @@ export const useModelStore = create<ModelState>((set, get) => ({
       newBlock.isExpanded = false
     }
 
-    set({
-      model: { ...model, blocks: [...model.blocks, newBlock] },
-      isDirty: true,
-    })
+    // Add block at the current path level
+    if (currentPath.length === 0) {
+      // At root level - add directly to model.blocks
+      set({
+        model: { ...model, blocks: [...model.blocks, newBlock] },
+        isDirty: true,
+      })
+    } else {
+      // Inside a subsystem - need to add to the parent subsystem's children
+      const addBlockToSubsystem = (blocks: BlockInstance[], path: SubsystemPathItem[]): BlockInstance[] => {
+        if (path.length === 0) return blocks
+
+        const [current, ...rest] = path
+
+        return blocks.map(block => {
+          if (block.id === current.id && block.type === 'subsystem' && block.children) {
+            if (rest.length === 0) {
+              // This is the target subsystem - add the block to its children
+              return {
+                ...block,
+                children: [...block.children, newBlock],
+              }
+            } else {
+              // Recurse deeper
+              return {
+                ...block,
+                children: addBlockToSubsystem(block.children, rest),
+              }
+            }
+          }
+          return block
+        })
+      }
+
+      set({
+        model: { ...model, blocks: addBlockToSubsystem(model.blocks, currentPath) },
+        isDirty: true,
+      })
+    }
 
     return blockId
   },
 
   removeBlock: (blockId: string) => {
-    const { model } = get()
+    const { model, currentPath } = get()
     if (!model) return
 
-    // Remove block and all its connections
-    const connections = model.connections.filter(
-      (c) => c.sourceBlockId !== blockId && c.targetBlockId !== blockId
-    )
+    if (currentPath.length === 0) {
+      // At root level - remove from model.blocks and model.connections
+      const connections = model.connections.filter(
+        (c) => c.sourceBlockId !== blockId && c.targetBlockId !== blockId
+      )
 
-    set({
-      model: {
-        ...model,
-        blocks: model.blocks.filter((b) => b.id !== blockId),
-        connections,
-      },
-      isDirty: true,
-      selectedBlockIds: get().selectedBlockIds.filter((id) => id !== blockId),
-    })
+      set({
+        model: {
+          ...model,
+          blocks: model.blocks.filter((b) => b.id !== blockId),
+          connections,
+        },
+        isDirty: true,
+        selectedBlockIds: get().selectedBlockIds.filter((id) => id !== blockId),
+      })
+    } else {
+      // Inside a subsystem - need to remove from parent subsystem's children
+      const removeBlockFromSubsystem = (blocks: BlockInstance[], path: SubsystemPathItem[]): BlockInstance[] => {
+        if (path.length === 0) return blocks
+
+        const [current, ...rest] = path
+
+        return blocks.map(block => {
+          if (block.id === current.id && block.type === 'subsystem' && block.children) {
+            if (rest.length === 0) {
+              // This is the target subsystem - remove block and its connections
+              return {
+                ...block,
+                children: block.children.filter((b) => b.id !== blockId),
+                childConnections: (block.childConnections || []).filter(
+                  (c) => c.sourceBlockId !== blockId && c.targetBlockId !== blockId
+                ),
+              }
+            } else {
+              // Recurse deeper
+              return {
+                ...block,
+                children: removeBlockFromSubsystem(block.children, rest),
+              }
+            }
+          }
+          return block
+        })
+      }
+
+      set({
+        model: { ...model, blocks: removeBlockFromSubsystem(model.blocks, currentPath) },
+        isDirty: true,
+        selectedBlockIds: get().selectedBlockIds.filter((id) => id !== blockId),
+      })
+    }
   },
 
   updateBlockPosition: (blockId: string, position: { x: number; y: number }) => {
@@ -406,13 +529,122 @@ export const useModelStore = create<ModelState>((set, get) => ({
     set({
       model: {
         ...model,
-        blocks: updateBlockInHierarchy(model.blocks, currentPath, blockId, (b) => ({
-          ...b,
-          parameters: { ...b.parameters, ...parameters }
-        })),
+        blocks: updateBlockInHierarchy(model.blocks, currentPath, blockId, (b) => {
+          const updatedBlock = {
+            ...b,
+            parameters: { ...b.parameters, ...parameters }
+          }
+
+          // Handle dynamic port count updates for certain block types
+          if (b.type === 'mux' && 'numInputs' in parameters) {
+            const numInputs = Math.max(2, Math.min(32, Number(parameters.numInputs) || 2))
+            const newInputPorts = []
+            for (let i = 0; i < numInputs; i++) {
+              newInputPorts.push({
+                id: `${b.id}-in-${i}`,
+                name: `in${i + 1}`,
+                dataType: 'double' as const,
+                dimensions: [1],
+              })
+            }
+            updatedBlock.inputPorts = newInputPorts
+            // Update output dimensions to match
+            updatedBlock.outputPorts = [{
+              id: `${b.id}-out-0`,
+              name: 'out',
+              dataType: 'double' as const,
+              dimensions: [numInputs],
+            }]
+          }
+
+          if (b.type === 'demux' && 'numOutputs' in parameters) {
+            const numOutputs = Math.max(2, Math.min(32, Number(parameters.numOutputs) || 2))
+            const newOutputPorts = []
+            for (let i = 0; i < numOutputs; i++) {
+              newOutputPorts.push({
+                id: `${b.id}-out-${i}`,
+                name: `out${i + 1}`,
+                dataType: 'double' as const,
+                dimensions: [1],
+              })
+            }
+            updatedBlock.outputPorts = newOutputPorts
+            // Update input dimensions to match
+            updatedBlock.inputPorts = [{
+              id: `${b.id}-in-0`,
+              name: 'in',
+              dataType: 'double' as const,
+              dimensions: [numOutputs],
+            }]
+          }
+
+          // Handle Sum block signs parameter (determines number of inputs)
+          if (b.type === 'sum' && 'signs' in parameters) {
+            const signs = String(parameters.signs || '++')
+            const numInputs = signs.length
+            const newInputPorts = []
+            for (let i = 0; i < numInputs; i++) {
+              newInputPorts.push({
+                id: `${b.id}-in-${i}`,
+                name: `in${i + 1}`,
+                dataType: 'double' as const,
+                dimensions: [1],
+              })
+            }
+            updatedBlock.inputPorts = newInputPorts
+          }
+
+          // Handle Scope numInputs
+          if (b.type === 'scope' && 'numInputs' in parameters) {
+            const numInputs = Math.max(1, Math.min(16, Number(parameters.numInputs) || 1))
+            const newInputPorts = []
+            for (let i = 0; i < numInputs; i++) {
+              newInputPorts.push({
+                id: `${b.id}-in-${i}`,
+                name: `in${i + 1}`,
+                dataType: 'double' as const,
+                dimensions: [1],
+              })
+            }
+            updatedBlock.inputPorts = newInputPorts
+          }
+
+          // Handle Reshape outputDimensions
+          if (b.type === 'reshape' && 'outputDimensions' in parameters) {
+            let dims: number[] = [1]
+            const dimStr = String(parameters.outputDimensions || '[1]')
+            try {
+              const parsed = JSON.parse(dimStr)
+              if (Array.isArray(parsed) && parsed.every(n => typeof n === 'number')) {
+                dims = parsed
+              }
+            } catch {
+              // If parsing fails, try to extract numbers from the string
+              const matches = dimStr.match(/\d+/g)
+              if (matches) {
+                dims = matches.map(Number)
+              }
+            }
+            updatedBlock.outputPorts = [{
+              id: `${b.id}-out-0`,
+              name: 'out',
+              dataType: 'double' as const,
+              dimensions: dims,
+            }]
+          }
+
+          return updatedBlock
+        }),
       },
       isDirty: true,
     })
+
+    // Re-propagate dimensions after parameter changes that might affect signal dimensions
+    const { model: updatedModel } = get()
+    if (updatedModel) {
+      propagateDimensions(updatedModel.blocks, updatedModel.connections)
+      set({ model: { ...updatedModel } })
+    }
   },
 
   renameBlock: (blockId: string, name: string) => {
@@ -456,8 +688,14 @@ export const useModelStore = create<ModelState>((set, get) => ({
     const connectionId = nanoid()
     const newConnection: Connection = { ...connection, id: connectionId }
 
+    const updatedModel = addConnectionInHierarchy(model, currentPath, newConnection)
+
+    // Propagate signal dimensions after adding the connection
+    // This ensures subsystem output ports reflect the dimensions of connected signals
+    propagateDimensions(updatedModel.blocks, updatedModel.connections)
+
     set({
-      model: addConnectionInHierarchy(model, currentPath, newConnection),
+      model: updatedModel,
       isDirty: true,
     })
 
@@ -697,6 +935,12 @@ export const useModelStore = create<ModelState>((set, get) => ({
       (c) => !blockIds.includes(c.sourceBlockId) && !blockIds.includes(c.targetBlockId)
     )
 
+    // Propagate signal dimensions within the new subsystem
+    // This updates Outport blocks and the subsystem's output ports
+    if (subsystemBlock.children && subsystemBlock.childConnections) {
+      propagateDimensions([subsystemBlock], [])
+    }
+
     set({
       model: {
         ...model,
@@ -725,6 +969,188 @@ export const useModelStore = create<ModelState>((set, get) => ({
       },
       isDirty: true,
     })
+  },
+
+  /**
+   * Expand (dissolve) a subsystem, moving its children to the parent level.
+   * This is the inverse of createSubsystem.
+   * Works at the current navigation level.
+   */
+  expandSubsystem: (subsystemId: string) => {
+    const { model, currentPath } = get()
+    if (!model) return
+
+    // Get current level blocks and connections
+    const currentBlocks = get().getCurrentBlocks()
+    const currentConnections = get().getCurrentConnections()
+
+    // Find the subsystem to expand
+    const subsystem = currentBlocks.find(b => b.id === subsystemId && b.type === 'subsystem')
+    if (!subsystem || !subsystem.children) return
+
+    // Get the children (excluding Inport/Outport blocks)
+    const childBlocks = subsystem.children.filter(b => b.type !== 'inport' && b.type !== 'outport')
+    const inportBlocks = subsystem.children.filter(b => b.type === 'inport')
+    const outportBlocks = subsystem.children.filter(b => b.type === 'outport')
+    const childConnections = subsystem.childConnections || []
+
+    // Calculate position offset - children will be placed relative to subsystem position
+    const offsetX = subsystem.position.x - 100 // Offset to spread out children
+    const offsetY = subsystem.position.y - 50
+
+    // Create maps for port remapping
+    // Map from inport block ID to the connection coming into the subsystem
+    const inportToExternalSource = new Map<string, { sourceBlockId: string; sourcePortId: string }>()
+    // Map from outport block ID to the connections going out of the subsystem
+    const outportToExternalTargets = new Map<string, Array<{ targetBlockId: string; targetPortId: string }>>()
+
+    // Find external connections to this subsystem
+    currentConnections.forEach(conn => {
+      if (conn.targetBlockId === subsystemId) {
+        // Connection coming INTO the subsystem
+        // Find which port index this connects to
+        const portIndex = subsystem.inputPorts.findIndex(p => p.id === conn.targetPortId)
+        if (portIndex >= 0) {
+          // Find the corresponding inport block (by port number)
+          const inport = inportBlocks.find(b => (b.parameters.portNumber as number) === portIndex + 1)
+          if (inport) {
+            inportToExternalSource.set(inport.id, {
+              sourceBlockId: conn.sourceBlockId,
+              sourcePortId: conn.sourcePortId,
+            })
+          }
+        }
+      } else if (conn.sourceBlockId === subsystemId) {
+        // Connection going OUT of the subsystem
+        const portIndex = subsystem.outputPorts.findIndex(p => p.id === conn.sourcePortId)
+        if (portIndex >= 0) {
+          // Find the corresponding outport block (by port number)
+          const outport = outportBlocks.find(b => (b.parameters.portNumber as number) === portIndex + 1)
+          if (outport) {
+            const existing = outportToExternalTargets.get(outport.id) || []
+            existing.push({
+              targetBlockId: conn.targetBlockId,
+              targetPortId: conn.targetPortId,
+            })
+            outportToExternalTargets.set(outport.id, existing)
+          }
+        }
+      }
+    })
+
+    // Adjust child block positions
+    const repositionedChildren = childBlocks.map(child => ({
+      ...child,
+      position: {
+        x: child.position.x + offsetX,
+        y: child.position.y + offsetY,
+      },
+    }))
+
+    // Build new connections:
+    // 1. Internal connections between child blocks (not involving inports/outports)
+    const newConnections: Connection[] = []
+
+    childConnections.forEach(conn => {
+      const sourceIsInport = inportBlocks.some(b => b.id === conn.sourceBlockId)
+      const targetIsOutport = outportBlocks.some(b => b.id === conn.targetBlockId)
+      const sourceIsChild = childBlocks.some(b => b.id === conn.sourceBlockId)
+      const targetIsChild = childBlocks.some(b => b.id === conn.targetBlockId)
+
+      if (sourceIsChild && targetIsChild) {
+        // Internal connection between two child blocks - keep as is
+        newConnections.push({ ...conn, id: nanoid() })
+      } else if (sourceIsInport && targetIsChild) {
+        // Connection from inport to child - remap to external source
+        const externalSource = inportToExternalSource.get(conn.sourceBlockId)
+        if (externalSource) {
+          newConnections.push({
+            id: nanoid(),
+            sourceBlockId: externalSource.sourceBlockId,
+            sourcePortId: externalSource.sourcePortId,
+            targetBlockId: conn.targetBlockId,
+            targetPortId: conn.targetPortId,
+          })
+        }
+      } else if (sourceIsChild && targetIsOutport) {
+        // Connection from child to outport - remap to external targets
+        const externalTargets = outportToExternalTargets.get(conn.targetBlockId)
+        if (externalTargets) {
+          externalTargets.forEach(target => {
+            newConnections.push({
+              id: nanoid(),
+              sourceBlockId: conn.sourceBlockId,
+              sourcePortId: conn.sourcePortId,
+              targetBlockId: target.targetBlockId,
+              targetPortId: target.targetPortId,
+            })
+          })
+        }
+      }
+    })
+
+    // Remove connections that were connected to the subsystem
+    const remainingConnections = currentConnections.filter(
+      conn => conn.sourceBlockId !== subsystemId && conn.targetBlockId !== subsystemId
+    )
+
+    // Update the model based on current path
+    if (currentPath.length === 0) {
+      // At root level
+      const remainingBlocks = model.blocks.filter(b => b.id !== subsystemId)
+      set({
+        model: {
+          ...model,
+          blocks: [...remainingBlocks, ...repositionedChildren],
+          connections: [...remainingConnections, ...newConnections],
+        },
+        isDirty: true,
+        selectedBlockIds: repositionedChildren.map(b => b.id),
+      })
+    } else {
+      // Inside a subsystem - need to update the parent subsystem's children
+      const updateParentSubsystem = (blocks: BlockInstance[], path: SubsystemPathItem[]): BlockInstance[] => {
+        if (path.length === 0) {
+          // This shouldn't happen, but handle it
+          return blocks
+        }
+
+        const [current, ...rest] = path
+
+        return blocks.map(block => {
+          if (block.id === current.id && block.type === 'subsystem' && block.children) {
+            if (rest.length === 0) {
+              // This is the parent subsystem - update its children
+              const remainingChildren = block.children.filter(b => b.id !== subsystemId)
+              const remainingChildConns = (block.childConnections || []).filter(
+                conn => conn.sourceBlockId !== subsystemId && conn.targetBlockId !== subsystemId
+              )
+              return {
+                ...block,
+                children: [...remainingChildren, ...repositionedChildren],
+                childConnections: [...remainingChildConns, ...newConnections],
+              }
+            } else {
+              // Recurse deeper
+              return {
+                ...block,
+                children: updateParentSubsystem(block.children, rest),
+              }
+            }
+          }
+          return block
+        })
+      }
+
+      set({
+        model: {
+          ...model,
+          blocks: updateParentSubsystem(model.blocks, currentPath),
+        },
+        isDirty: true,
+        selectedBlockIds: repositionedChildren.map(b => b.id),
+      })
+    }
   },
 
   enterSubsystem: (subsystemId: string) => {

@@ -31,7 +31,9 @@ export interface SignalData {
   portId: string
   name: string
   times: number[]
-  values: number[]
+  values: number[] | number[][]  // Single array for single-input, array of arrays for multi-input
+  inputNames?: string[]  // Names for each input trace (for legend)
+  numInputs?: number  // Number of inputs (1 for single-input scopes)
 }
 
 export interface SimulationResults {

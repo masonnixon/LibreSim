@@ -216,7 +216,8 @@ class ExtendedKalmanFilter(Block):
 
     def __init__(self, n_states=1, Q=None, R=None, initial_state=None):
         super().__init__()
-        self.n = n_states
+        # Ensure n_states is an integer (may come as float from JSON)
+        self.n = int(n_states)
 
         # Noise covariances
         self.Q = np.array(Q) if Q is not None else np.eye(self.n) * 0.01

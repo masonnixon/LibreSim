@@ -8,7 +8,7 @@ from .sources import Constant, Step, Ramp, SineWave, Clock
 from .sinks import Scope, ToWorkspace
 from .continuous import Integrator, Derivative, TransferFunction, StateSpace, PIDController
 from .discrete import UnitDelay, ZeroOrderHold
-from .math_ops import Sum, Gain, Product, Abs, Saturation
+from .math_ops import Sum, Gain, Product, Abs, Saturation, Switch, Mux, Demux, MathFunction, Trigonometry, Sign, DeadZone
 from .subsystems import Inport, Outport, Subsystem
 from .signal_processing import (
     RateLimiter, MovingAverage, LowPassFilter, HighPassFilter, BandPassFilter, Backlash
@@ -28,7 +28,8 @@ __all__ = [
     # Discrete
     "UnitDelay", "ZeroOrderHold",
     # Math
-    "Sum", "Gain", "Product", "Abs", "Saturation",
+    "Sum", "Gain", "Product", "Abs", "Saturation", "Switch", "Mux", "Demux",
+    "MathFunction", "Trigonometry", "Sign", "DeadZone",
     # Subsystems
     "Inport", "Outport", "Subsystem",
     # Signal Processing

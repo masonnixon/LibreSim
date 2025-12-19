@@ -14,6 +14,20 @@ function BlockNodeComponent({ data, selected }: NodeProps<BlockNodeData>) {
     return <div className="p-2 bg-red-500 text-white rounded">Invalid Block</div>
   }
 
+  // Get dynamic icon based on block type and parameters
+  const getDynamicIcon = () => {
+    switch (block.type) {
+      case 'constant':
+        return block.parameters.value !== undefined ? String(block.parameters.value) : definition.icon
+      case 'gain':
+        return block.parameters.gain !== undefined ? String(block.parameters.gain) : definition.icon
+      default:
+        return definition.icon
+    }
+  }
+
+  const displayIcon = getDynamicIcon()
+
   const getCategoryClass = () => {
     switch (definition.category) {
       case 'sources':
@@ -68,7 +82,7 @@ function BlockNodeComponent({ data, selected }: NodeProps<BlockNodeData>) {
       {/* Block Content */}
       <div className="text-center text-gray-900">
         <div className="font-semibold text-sm truncate max-w-[120px]">{block.name}</div>
-        {definition.icon && <div className="text-lg mt-1">{definition.icon}</div>}
+        {displayIcon && <div className="text-lg mt-1">{displayIcon}</div>}
       </div>
 
       {/* Output Handles */}
@@ -90,4 +104,33 @@ function BlockNodeComponent({ data, selected }: NodeProps<BlockNodeData>) {
   )
 }
 
-export const BlockNode = memo(BlockNodeComponent)
+// Custom comparison to ensure re-render when block data changes
+function arePropsEqual(
+  prevProps: NodeProps<BlockNodeData>,
+  nextProps: NodeProps<BlockNodeData>
+): boolean {
+  // Always re-render if selected state changes
+  if (prevProps.selected !== nextProps.selected) return false
+
+  // Compare block data
+  const prevBlock = prevProps.data.block
+  const nextBlock = nextProps.data.block
+
+  if (!prevBlock || !nextBlock) return prevBlock === nextBlock
+
+  // Check if key properties changed
+  if (prevBlock.id !== nextBlock.id) return false
+  if (prevBlock.name !== nextBlock.name) return false
+  if (prevBlock.type !== nextBlock.type) return false
+
+  // Check if parameters changed (simple JSON comparison for now)
+  if (JSON.stringify(prevBlock.parameters) !== JSON.stringify(nextBlock.parameters)) return false
+
+  // Check ports
+  if (prevBlock.inputPorts.length !== nextBlock.inputPorts.length) return false
+  if (prevBlock.outputPorts.length !== nextBlock.outputPorts.length) return false
+
+  return true
+}
+
+export const BlockNode = memo(BlockNodeComponent, arePropsEqual)

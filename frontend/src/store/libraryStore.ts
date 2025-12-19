@@ -9,6 +9,7 @@ import type {
   LibraryImportOptions,
   LibraryBlockImplementation,
 } from '../types/library'
+import { blockRegistry } from '../blocks'
 
 interface LibraryState {
   /** All imported libraries */
@@ -63,7 +64,7 @@ export const useLibraryStore = create<LibraryState>()(
       libraryBlockMap: new Map(),
 
       importLibrary: (libraryData, options = {}) => {
-        const { libraries, libraryMap } = get()
+        const { libraries } = get()
         const errors: string[] = []
         const warnings: string[] = []
 
@@ -210,11 +211,13 @@ export const useLibraryStore = create<LibraryState>()(
         const { libraries } = get()
         const newLibraryMap = new Map<string, Library>()
         const newBlockMap = new Map<string, LibraryBlockDefinition>()
+        const allLibraryBlocks: LibraryBlockDefinition[] = []
 
         libraries.forEach((library) => {
           newLibraryMap.set(library.id, library)
           library.blocks.forEach((block) => {
             newBlockMap.set(block.type, block)
+            allLibraryBlocks.push(block)
           })
         })
 
@@ -222,6 +225,12 @@ export const useLibraryStore = create<LibraryState>()(
           libraryMap: newLibraryMap,
           libraryBlockMap: newBlockMap,
         })
+
+        // Also register library blocks with the block registry so they appear in the sidebar
+        if (allLibraryBlocks.length > 0) {
+          blockRegistry.registerLibraryBlocks(allLibraryBlocks)
+          console.log(`[LibraryStore] Restored ${allLibraryBlocks.length} library blocks to registry`)
+        }
       },
     }),
     {

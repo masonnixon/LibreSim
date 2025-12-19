@@ -31,7 +31,7 @@ from ..osk.blocks import (
     # Observers
     LuenbergerObserver, KalmanFilter, ExtendedKalmanFilter,
 )
-from ..osk.blocks.math_ops import Switch, MathFunction, Trigonometry, DeadZone, Sign
+from ..osk.blocks.math_ops import Switch, MathFunction, Trigonometry, DeadZone, Sign, Mux, Demux, Reshape
 from ..osk.blocks.sinks import Display, Terminator
 from ..osk.blocks.sources import PulseGenerator
 from ..osk.blocks.discrete import DiscreteIntegrator, DiscreteDerivative, DiscreteTransferFunction
@@ -74,6 +74,9 @@ BLOCK_TYPE_MAP: Dict[str, Type[Block]] = {
     "math_function": MathFunction,
     "trigonometry": Trigonometry,
     "switch": Switch,
+    "mux": Mux,
+    "demux": Demux,
+    "reshape": Reshape,
     # Subsystems
     "inport": Inport,
     "outport": Outport,
@@ -125,6 +128,9 @@ PARAM_MAP: Dict[str, Dict[str, str]] = {
     "math_function": {"function": "function", "exponent": "exponent"},
     "trigonometry": {"function": "function"},
     "switch": {"threshold": "threshold", "criteria": "criteria"},
+    "mux": {"numInputs": "num_inputs"},
+    "demux": {"numOutputs": "num_outputs"},
+    "reshape": {"outputDimensions": "output_dimensions"},
     # Subsystems
     "inport": {"portNumber": "port_number"},
     "outport": {"portNumber": "port_number"},
@@ -270,9 +276,12 @@ class OSKAdapter:
                         if i < len(osk_block.input_blocks):
                             osk_block.input_blocks[i] = source_osk_block
 
-                # Track source name for scope inputs
+                # Track source name for scope inputs and set on the scope block
                 if block.type == "scope" and source_compiled_block:
                     self._scope_input_names[block.id][i] = source_compiled_block.name
+                    # Also set the input name on the scope block itself for legend display
+                    if hasattr(osk_block, 'setInputName'):
+                        osk_block.setInputName(source_compiled_block.name, i)
 
     def step(self, t: float, dt: float) -> Dict[str, float]:
         """Execute one simulation step.
@@ -307,7 +316,10 @@ class OSKAdapter:
                 continue
 
             # For blocks without automatic input connection, set inputs manually
-            if not hasattr(osk_block, 'input_block') or osk_block.input_block is None:
+            # Skip blocks that have input_blocks (like Scope) - they get inputs via connectInput
+            has_input_block = hasattr(osk_block, 'input_block') and osk_block.input_block is not None
+            has_input_blocks = hasattr(osk_block, 'input_blocks') and any(b is not None for b in osk_block.input_blocks)
+            if not has_input_block and not has_input_blocks:
                 for i, conn in enumerate(compiled_block.input_connections):
                     source_block_id, _ = conn.split(":")
                     source_block = self._osk_blocks.get(source_block_id)
@@ -320,15 +332,28 @@ class OSKAdapter:
 
             # Record sink block outputs
             if block_id in self._sink_blocks:
-                # For scopes with multiple inputs, record each input separately
+                # For scopes with multiple inputs or vector inputs, record each trace separately
                 if block_id in self._scope_input_names and hasattr(osk_block, 'inputs'):
                     input_names = self._scope_input_names[block_id]
-                    for i, (value, name) in enumerate(zip(osk_block.inputs, input_names)):
-                        # Use source block name as the signal name
-                        signal_name = name if name else f"Input {i+1}"
-                        key = f"{block_id}:{i}:{signal_name}"
-                        if isinstance(value, (int, float)):
-                            recorded_outputs[key] = float(value)
+                    trace_idx = 0
+                    for i in range(len(osk_block.inputs)):
+                        base_name = input_names[i] if i < len(input_names) else f"Input {i+1}"
+                        # Check if this input is a vector (from Mux)
+                        if hasattr(osk_block, '_vector_inputs') and i in osk_block._vector_inputs:
+                            vec = osk_block._vector_inputs[i]
+                            for j, val in enumerate(vec):
+                                signal_name = f"{base_name}[{j+1}]"
+                                key = f"{block_id}:{trace_idx}:{signal_name}"
+                                if isinstance(val, (int, float)):
+                                    recorded_outputs[key] = float(val)
+                                trace_idx += 1
+                        else:
+                            # Scalar input
+                            value = osk_block.inputs[i] if i < len(osk_block.inputs) else 0.0
+                            key = f"{block_id}:{trace_idx}:{base_name}"
+                            if isinstance(value, (int, float)):
+                                recorded_outputs[key] = float(value)
+                            trace_idx += 1
                 else:
                     # Single-input sink block
                     output = osk_block.getOutput()
@@ -381,13 +406,31 @@ class OSKAdapter:
             osk_block = self._osk_blocks.get(block_id)
             if osk_block and hasattr(osk_block, 'getData'):
                 data = osk_block.getData()
-                signals.append({
-                    "blockId": block_id,
-                    "portId": "out",
-                    "name": data.get("name", block_id),
-                    "times": data.get("times", []),
-                    "values": data.get("values", []) if "values" in data else data.get("values", [[]])[0]
-                })
+                num_inputs = data.get("numInputs", 1)
+                input_names = data.get("inputNames", [])
+                values = data.get("values", [])
+                times = data.get("times", [])
+
+                if num_inputs > 1 and isinstance(values, list) and len(values) == num_inputs:
+                    # Multi-input scope: create a signal entry with all traces
+                    signals.append({
+                        "blockId": block_id,
+                        "portId": "out",
+                        "name": data.get("name", block_id),
+                        "times": times,
+                        "values": values,  # List of lists, one per input
+                        "inputNames": input_names,
+                        "numInputs": num_inputs
+                    })
+                else:
+                    # Single-input scope or backward compatibility
+                    signals.append({
+                        "blockId": block_id,
+                        "portId": "out",
+                        "name": data.get("name", block_id),
+                        "times": times,
+                        "values": values[0] if isinstance(values, list) and len(values) > 0 and isinstance(values[0], list) else values
+                    })
 
         return {
             "signals": signals,
