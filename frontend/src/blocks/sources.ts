@@ -11,10 +11,10 @@ export const sourceBlocks: BlockDefinition[] = [
     parameters: [
       {
         name: 'value',
-        type: 'number',
-        default: 1,
+        type: 'string', // String to support both numbers and expressions like eye(4)
+        default: '1',
         label: 'Constant Value',
-        description: 'The constant output value',
+        description: 'The constant output value (number or expression)',
       },
     ],
     icon: '1',

@@ -982,22 +982,39 @@ function createPorts(blockType: string, params: Record<string, unknown>): { inpu
     case 'reshape': {
       inputPorts.push({ id: 'in_0', name: 'in', dataType: 'double', dimensions: [1] })
       // Parse output dimensions from parameters
+      // For "Column vector (2-D)" or "1-D array" mode without explicit dimensions,
+      // the output dimension should match input (handled by dimension propagation)
       let reshapeDims: number[] = [1]
+      const dimMode = String(params.outputDimensionality || '').toLowerCase()
+
       if (params.outputDimensions) {
-        const dimStr = String(params.outputDimensions)
-        try {
-          const parsed = JSON.parse(dimStr)
-          if (Array.isArray(parsed) && parsed.every((n: unknown) => typeof n === 'number')) {
-            reshapeDims = parsed
-          }
-        } catch {
-          const matches = dimStr.match(/\d+/g)
-          if (matches) {
-            reshapeDims = matches.map(Number)
+        // outputDimensions might already be an array from parseValue, or a string
+        if (Array.isArray(params.outputDimensions)) {
+          reshapeDims = params.outputDimensions.map((n: unknown) => typeof n === 'number' ? n : parseInt(String(n)) || 1)
+        } else {
+          const dimStr = String(params.outputDimensions)
+          try {
+            const parsed = JSON.parse(dimStr)
+            if (Array.isArray(parsed) && parsed.every((n: unknown) => typeof n === 'number')) {
+              reshapeDims = parsed
+            }
+          } catch {
+            const matches = dimStr.match(/\d+/g)
+            if (matches) {
+              reshapeDims = matches.map(Number)
+            }
           }
         }
+      } else if (dimMode.includes('column vector') || dimMode.includes('1-d array')) {
+        // For column vector or 1-D array mode without explicit dimensions,
+        // use -1 as a marker to indicate "same as input" (dimension propagation will fix it)
+        reshapeDims = [-1]
       }
-      outputPorts.push({ id: 'out_0', name: 'out', dataType: 'double', dimensions: reshapeDims })
+
+      // Calculate total dimension for vector representation
+      // -1 means "inherit from input", which dimension propagation will handle
+      const totalDim = reshapeDims[0] === -1 ? -1 : reshapeDims.reduce((a, b) => a * b, 1)
+      outputPorts.push({ id: 'out_0', name: 'out', dataType: 'double', dimensions: totalDim === -1 ? [-1] : [totalDim] })
       break
     }
 
@@ -1164,7 +1181,8 @@ function getBlockOutputDimensions(
     'gain', 'abs', 'sign', 'sqrt', 'unary_minus', 'bias',
     'saturation', 'dead_zone', 'rate_limiter', 'quantizer',
     'relay', 'memory', 'unit_delay', 'integrator', 'derivative',
-    'trigonometry', 'math_function', 'data_type_conversion'
+    'trigonometry', 'math_function', 'data_type_conversion',
+    'reshape' // Reshape often preserves total element count, passes through dimensions
   ]
 
   if (passThroughTypes.includes(block.type) && block.inputPorts.length > 0) {
@@ -1221,6 +1239,32 @@ export function propagateDimensions(blocks: BlockInstance[], connections: Connec
 
     // For each block, try to determine its output dimensions from its inputs
     blocks.forEach(block => {
+      // Update Reshape blocks that have -1 dimensions (inherit from input)
+      if (block.type === 'reshape' && block.outputPorts.length > 0) {
+        const outputPort = block.outputPorts[0]
+        if (outputPort.dimensions && outputPort.dimensions[0] === -1 && block.inputPorts.length > 0) {
+          // Get dimensions from input source
+          const inputPort = block.inputPorts[0]
+          const connKey = `${block.id}:${inputPort.id}`
+          const conn = connectionsByTarget.get(connKey)
+          if (conn) {
+            const sourceBlock = blockMap.get(conn.sourceBlockId)
+            if (sourceBlock) {
+              const dims = getBlockOutputDimensions(
+                sourceBlock,
+                conn.sourcePortId,
+                blockMap,
+                connectionsByTarget
+              )
+              if (dims && dims[0] !== -1) {
+                outputPort.dimensions = [...dims]
+                changed = true
+              }
+            }
+          }
+        }
+      }
+
       // Update Outport blocks based on what's connected to them
       if (block.type === 'outport' && block.inputPorts.length > 0) {
         const inputPort = block.inputPorts[0]
@@ -1851,13 +1895,19 @@ function resolveReferenceBlocks(
             const { block: copiedBlock } = deepCopyBlockWithNewIds(referencedBlock, child.id)
 
             // Convert reference to subsystem with copied implementation
-            block.children[i] = {
+            const resolvedBlock: BlockInstance = {
               ...child,
               type: 'subsystem',
               children: copiedBlock.children,
               childConnections: copiedBlock.childConnections,
               inputPorts: copiedBlock.inputPorts,
               outputPorts: copiedBlock.outputPorts,
+            }
+            block.children[i] = resolvedBlock
+
+            // Recursively resolve any references within the newly resolved block
+            if (resolvedBlock.children) {
+              resolveReferenceBlocks([resolvedBlock], subsystemMap, libraryName, unresolvedRefs)
             }
           } else {
             // Track unresolved reference
