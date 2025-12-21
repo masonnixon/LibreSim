@@ -150,7 +150,7 @@ function renderParameterInput(
       return (
         <input
           type="number"
-          value={value as number}
+          value={value !== undefined && value !== null ? (value as number) : 0}
           min={param.min}
           max={param.max}
           step={param.step ?? 0.01}
@@ -166,7 +166,7 @@ function renderParameterInput(
       return (
         <input
           type="text"
-          value={value as string}
+          value={value !== undefined && value !== null ? String(value) : ''}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={stopPropagation}
           onFocus={handleFocus}
@@ -194,7 +194,7 @@ function renderParameterInput(
     case 'select':
       return (
         <select
-          value={value as string}
+          value={value !== undefined && value !== null ? String(value) : ''}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={stopPropagation}
           onFocus={handleFocus}
@@ -213,7 +213,7 @@ function renderParameterInput(
       return (
         <input
           type="text"
-          value={JSON.stringify(value)}
+          value={value !== undefined && value !== null ? JSON.stringify(value) : '[]'}
           onChange={(e) => {
             try {
               onChange(JSON.parse(e.target.value))
@@ -233,7 +233,7 @@ function renderParameterInput(
       return (
         <input
           type="text"
-          value={String(value)}
+          value={value !== undefined && value !== null ? String(value) : ''}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={stopPropagation}
           onFocus={handleFocus}

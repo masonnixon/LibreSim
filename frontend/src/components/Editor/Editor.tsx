@@ -14,13 +14,79 @@ import {
   OnConnect,
   Panel,
 } from '@xyflow/react'
+import { nanoid } from 'nanoid'
 import { useModelStore } from '../../store/modelStore'
 import { useUIStore } from '../../store/uiStore'
 import { BlockNode } from './BlockNode'
 import { SubsystemNode } from './SubsystemNode'
 import { blockRegistry } from '../../blocks'
 import { getIsPropertiesFocused } from '../Properties/PropertiesPanel'
-import type { BlockDefinition, BlockInstance } from '../../types/block'
+import type { BlockDefinition, BlockInstance, Connection as ConnectionType } from '../../types/block'
+
+/**
+ * Deep copy a subsystem's children and connections with new IDs
+ */
+function deepCopySubsystemContents(
+  children: BlockInstance[] | undefined,
+  childConnections: ConnectionType[] | undefined,
+  newParentId: string
+): { children: BlockInstance[]; childConnections: ConnectionType[] } {
+  if (!children || children.length === 0) {
+    return { children: [], childConnections: [] }
+  }
+
+  const idMap = new Map<string, string>() // old ID -> new ID
+  const portIdMap = new Map<string, string>() // old port ID -> new port ID
+
+  // Deep copy children with new IDs
+  const newChildren: BlockInstance[] = children.map(child => {
+    const newChildId = `${newParentId}__${nanoid()}`
+    idMap.set(child.id, newChildId)
+
+    // Map input port IDs
+    const newInputPorts = child.inputPorts.map((port, idx) => {
+      const newPortId = `${newChildId}-in-${idx}`
+      portIdMap.set(port.id, newPortId)
+      return { ...port, id: newPortId }
+    })
+
+    // Map output port IDs
+    const newOutputPorts = child.outputPorts.map((port, idx) => {
+      const newPortId = `${newChildId}-out-${idx}`
+      portIdMap.set(port.id, newPortId)
+      return { ...port, id: newPortId }
+    })
+
+    // Recursively copy nested subsystems
+    let nestedChildren: BlockInstance[] | undefined
+    let nestedConnections: ConnectionType[] | undefined
+    if (child.children && child.children.length > 0) {
+      const nested = deepCopySubsystemContents(child.children, child.childConnections, newChildId)
+      nestedChildren = nested.children
+      nestedConnections = nested.childConnections
+    }
+
+    return {
+      ...child,
+      id: newChildId,
+      inputPorts: newInputPorts,
+      outputPorts: newOutputPorts,
+      children: nestedChildren,
+      childConnections: nestedConnections,
+    }
+  })
+
+  // Deep copy connections with new IDs
+  const newChildConnections: ConnectionType[] = (childConnections || []).map(conn => ({
+    id: `${newParentId}__conn__${nanoid()}`,
+    sourceBlockId: idMap.get(conn.sourceBlockId) || conn.sourceBlockId,
+    sourcePortId: portIdMap.get(conn.sourcePortId) || conn.sourcePortId,
+    targetBlockId: idMap.get(conn.targetBlockId) || conn.targetBlockId,
+    targetPortId: portIdMap.get(conn.targetPortId) || conn.targetPortId,
+  }))
+
+  return { children: newChildren, childConnections: newChildConnections }
+}
 
 // Create a fallback definition for unknown block types
 function getDefinitionOrFallback(block: BlockInstance): BlockDefinition {
@@ -576,6 +642,29 @@ export function Editor() {
                   // Use setTimeout to ensure the block is created before updating
                   setTimeout(() => {
                     useModelStore.getState().updateBlockParameters(newId, block.parameters)
+                  }, 0)
+                }
+
+                // For subsystems, deep copy the children and internal connections
+                if (block.type === 'subsystem' && block.children && block.children.length > 0) {
+                  const { children, childConnections } = deepCopySubsystemContents(
+                    block.children,
+                    block.childConnections,
+                    newId
+                  )
+                  // Update the block with copied children and connections
+                  setTimeout(() => {
+                    const state = useModelStore.getState()
+                    const model = state.model
+                    if (model) {
+                      const blockToUpdate = model.blocks.find(b => b.id === newId)
+                      if (blockToUpdate) {
+                        blockToUpdate.children = children
+                        blockToUpdate.childConnections = childConnections
+                        // Trigger a state update
+                        state.updateBlockParameters(newId, blockToUpdate.parameters)
+                      }
+                    }
                   }, 0)
                 }
               }
