@@ -8,6 +8,118 @@ import type {
 } from '../types/library'
 import { blockRegistry } from '../blocks'
 
+/**
+ * Global registry of library blocks for cross-library reference resolution.
+ * Maps "libraryName/blockName" paths to their BlockInstance implementations.
+ */
+const globalLibraryRegistry = new Map<string, BlockInstance>()
+
+/**
+ * Register a library's blocks in the global registry for cross-library reference resolution.
+ * Call this after importing a library so its blocks can be referenced by other libraries.
+ *
+ * Blocks are registered under both the full library name (e.g., "quaternionLib_2009b/Quaternion")
+ * and the normalized name without version suffix (e.g., "quaternionLib/Quaternion").
+ *
+ * @param libraryName - The name of the library (e.g., "quaternionLib_2009b")
+ * @param blocks - Array of subsystem BlockInstance objects from the library
+ */
+export function registerLibraryBlocks(libraryName: string, blocks: BlockInstance[]): void {
+  // Normalize the library name by removing version suffix (e.g., "_2009b" -> "")
+  const normalizedName = libraryName.replace(/_\d+[a-z]*$/i, '')
+  const hasVersionSuffix = normalizedName !== libraryName
+
+  console.log(`[MDL Registry] Registering ${blocks.length} blocks from library "${libraryName}"${hasVersionSuffix ? ` (also as "${normalizedName}")` : ''}`)
+
+  blocks.forEach(block => {
+    // Register under the full name
+    const fullPath = `${libraryName}/${block.name}`
+    globalLibraryRegistry.set(fullPath, block)
+
+    // Also register under the normalized name if different
+    if (hasVersionSuffix) {
+      const normalizedPath = `${normalizedName}/${block.name}`
+      globalLibraryRegistry.set(normalizedPath, block)
+      console.log(`[MDL Registry]   Registered: ${fullPath} (and ${normalizedPath})`)
+    } else {
+      console.log(`[MDL Registry]   Registered: ${fullPath}`)
+    }
+  })
+}
+
+/**
+ * Unregister all blocks from a library.
+ *
+ * @param libraryName - The name of the library to unregister
+ */
+export function unregisterLibraryBlocks(libraryName: string): void {
+  // Also remove normalized name entries
+  const normalizedName = libraryName.replace(/_\d+[a-z]*$/i, '')
+  const prefixes = [libraryName, normalizedName].filter((v, i, a) => a.indexOf(v) === i).map(n => `${n}/`)
+
+  const keysToDelete: string[] = []
+  globalLibraryRegistry.forEach((_, key) => {
+    if (prefixes.some(p => key.startsWith(p))) {
+      keysToDelete.push(key)
+    }
+  })
+  keysToDelete.forEach(key => globalLibraryRegistry.delete(key))
+  console.log(`[MDL Registry] Unregistered ${keysToDelete.length} blocks from library "${libraryName}"`)
+}
+
+/**
+ * Get a block from the global registry by its path.
+ *
+ * @param path - The path to the block (e.g., "quaternionLib/Quaternion")
+ * @returns The BlockInstance if found, undefined otherwise
+ */
+export function getRegisteredBlock(path: string): BlockInstance | undefined {
+  return globalLibraryRegistry.get(path)
+}
+
+/**
+ * Clear all registered library blocks.
+ */
+export function clearLibraryRegistry(): void {
+  globalLibraryRegistry.clear()
+  console.log('[MDL Registry] Cleared all registered blocks')
+}
+
+/**
+ * Get all registered library names.
+ */
+export function getRegisteredLibraryNames(): string[] {
+  const names = new Set<string>()
+  globalLibraryRegistry.forEach((_, key) => {
+    const parts = key.split('/')
+    if (parts.length > 0) {
+      names.add(parts[0])
+    }
+  })
+  return Array.from(names)
+}
+
+/**
+ * Interface for dependency analysis results
+ */
+export interface LibraryDependencies {
+  /** External library references found in this library */
+  externalReferences: Array<{
+    /** The full path of the reference (e.g., "quaternionLib/Quaternion") */
+    path: string
+    /** The library name (first part of path) */
+    libraryName: string
+    /** The block name (last part of path) */
+    blockName: string
+    /** Whether this reference is currently resolvable */
+    isResolvable: boolean
+  }>
+  /** List of unique library names that are required but not available */
+  missingLibraries: string[]
+  /** List of unique library names that are required and available */
+  availableLibraries: string[]
+}
+
 // Counter for generating unique IDs when crypto.randomUUID is not available
 let idCounter = 0
 
@@ -1593,13 +1705,95 @@ function subsystemToLibraryBlock(
 }
 
 /**
+ * Helper function to deep copy a block with new IDs.
+ * Used when resolving references to copy the implementation.
+ */
+function deepCopyBlockWithNewIds(
+  sourceBlock: BlockInstance,
+  newId: string
+): { block: BlockInstance; idMap: Map<string, string>; portIdMap: Map<string, string> } {
+  const idMap = new Map<string, string>()
+  const portIdMap = new Map<string, string>()
+
+  // Recursively copy children with new IDs
+  function copyChildren(children: BlockInstance[] | undefined, parentId: string): BlockInstance[] {
+    if (!children) return []
+
+    return children.map(c => {
+      const newChildId = `${parentId}__${generateUniqueId('ref_')}`
+      idMap.set(c.id, newChildId)
+
+      const newInputPorts = c.inputPorts.map((p, idx) => {
+        const newPortId = `${newChildId}-in-${idx}`
+        portIdMap.set(p.id, newPortId)
+        return { ...p, id: newPortId }
+      })
+
+      const newOutputPorts = c.outputPorts.map((p, idx) => {
+        const newPortId = `${newChildId}-out-${idx}`
+        portIdMap.set(p.id, newPortId)
+        return { ...p, id: newPortId }
+      })
+
+      // Recursively copy nested children
+      const nestedChildren = copyChildren(c.children, newChildId)
+      const nestedConnections = (c.childConnections || []).map(conn => ({
+        id: `${newChildId}__${generateUniqueId('conn_')}`,
+        sourceBlockId: idMap.get(conn.sourceBlockId) || conn.sourceBlockId,
+        sourcePortId: portIdMap.get(conn.sourcePortId) || conn.sourcePortId,
+        targetBlockId: idMap.get(conn.targetBlockId) || conn.targetBlockId,
+        targetPortId: portIdMap.get(conn.targetPortId) || conn.targetPortId,
+      }))
+
+      return {
+        ...c,
+        id: newChildId,
+        inputPorts: newInputPorts,
+        outputPorts: newOutputPorts,
+        children: nestedChildren.length > 0 ? nestedChildren : undefined,
+        childConnections: nestedConnections.length > 0 ? nestedConnections : undefined,
+      }
+    })
+  }
+
+  const newChildren = copyChildren(sourceBlock.children, newId)
+  const newConnections = (sourceBlock.childConnections || []).map(conn => ({
+    id: `${newId}__${generateUniqueId('conn_')}`,
+    sourceBlockId: idMap.get(conn.sourceBlockId) || conn.sourceBlockId,
+    sourcePortId: portIdMap.get(conn.sourcePortId) || conn.sourcePortId,
+    targetBlockId: idMap.get(conn.targetBlockId) || conn.targetBlockId,
+    targetPortId: portIdMap.get(conn.targetPortId) || conn.targetPortId,
+  }))
+
+  const block: BlockInstance = {
+    ...sourceBlock,
+    id: newId,
+    children: newChildren.length > 0 ? newChildren : undefined,
+    childConnections: newConnections.length > 0 ? newConnections : undefined,
+    inputPorts: sourceBlock.inputPorts.map((p, idx) => ({ ...p, id: `${newId}-in-${idx}` })),
+    outputPorts: sourceBlock.outputPorts.map((p, idx) => ({ ...p, id: `${newId}-out-${idx}` })),
+  }
+
+  return { block, idMap, portIdMap }
+}
+
+/**
  * Resolve reference blocks within a library by copying the implementation
  * from the referenced subsystem block.
+ *
+ * This function checks both the local subsystemMap (same library) and the
+ * global library registry (cross-library references).
+ *
+ * @param blocks - Blocks to process
+ * @param subsystemMap - Map of block names to blocks within the current library
+ * @param libraryName - Name of the current library being imported
+ * @param unresolvedRefs - Set to collect unresolved reference paths (optional)
  */
 function resolveReferenceBlocks(
   blocks: BlockInstance[],
   subsystemMap: Map<string, BlockInstance>,
-  libraryName: string
+  libraryName: string,
+  unresolvedRefs: Set<string> = new Set()
 ): void {
   for (const block of blocks) {
     // Check children for reference blocks
@@ -1610,87 +1804,214 @@ function resolveReferenceBlocks(
           // Parse the source block path (e.g., "quaternionLib/Quaternion" or just "Quaternion")
           const sourcePath = String(child.parameters.sourceBlock)
           const parts = sourcePath.split('/')
+          const sourceLibraryName = parts.length > 1 ? parts[0] : libraryName
           const targetName = parts[parts.length - 1] // Get the last part (block name)
 
           console.log(`[MDL Library Import] Resolving reference: ${child.name} -> ${sourcePath}`)
 
-          // Find the referenced subsystem
-          const referencedBlock = subsystemMap.get(targetName)
-          if (referencedBlock && referencedBlock.children) {
-            console.log(`[MDL Library Import] Found referenced block: ${targetName} with ${referencedBlock.children.length} children`)
+          // Try to find the referenced block
+          let referencedBlock: BlockInstance | undefined
 
-            // Create ID mapping for proper connection resolution
-            const idMap = new Map<string, string>()
-            const portIdMap = new Map<string, string>()
-            const newId = child.id
+          // First, check if it's a local reference (same library)
+          if (parts.length === 1 || sourceLibraryName === libraryName) {
+            referencedBlock = subsystemMap.get(targetName)
+            if (referencedBlock) {
+              console.log(`[MDL Library Import] Found local reference: ${targetName}`)
+            }
+          }
 
-            // Copy children with new IDs
-            const newChildren = referencedBlock.children.map(c => {
-              const newChildId = `${newId}__${generateUniqueId('ref_')}`
-              idMap.set(c.id, newChildId)
+          // If not found locally, check the global registry
+          if (!referencedBlock) {
+            // Try the full path first
+            referencedBlock = globalLibraryRegistry.get(sourcePath)
+            if (!referencedBlock && parts.length > 1) {
+              // Try normalized path (library name might have different casing or suffix like _2009b)
+              // Try common variations
+              const variations = [
+                sourcePath,
+                `${sourceLibraryName}/${targetName}`,
+                // Handle version suffixes like quaternionLib_2009b -> quaternionLib
+                `${sourceLibraryName.replace(/_\d+[a-z]*$/i, '')}/${targetName}`,
+              ]
 
-              const newInputPorts = c.inputPorts.map((p, idx) => {
-                const newPortId = `${newChildId}-in-${idx}`
-                portIdMap.set(p.id, newPortId)
-                return { ...p, id: newPortId }
-              })
-
-              const newOutputPorts = c.outputPorts.map((p, idx) => {
-                const newPortId = `${newChildId}-out-${idx}`
-                portIdMap.set(p.id, newPortId)
-                return { ...p, id: newPortId }
-              })
-
-              return {
-                ...c,
-                id: newChildId,
-                inputPorts: newInputPorts,
-                outputPorts: newOutputPorts,
+              for (const variation of variations) {
+                referencedBlock = globalLibraryRegistry.get(variation)
+                if (referencedBlock) {
+                  console.log(`[MDL Library Import] Found external reference via: ${variation}`)
+                  break
+                }
               }
-            })
+            }
+          }
 
-            // Copy connections with remapped IDs
-            const newConnections = (referencedBlock.childConnections || []).map(conn => ({
-              id: `${newId}__${generateUniqueId('conn_')}`,
-              sourceBlockId: idMap.get(conn.sourceBlockId) || conn.sourceBlockId,
-              sourcePortId: portIdMap.get(conn.sourcePortId) || conn.sourcePortId,
-              targetBlockId: idMap.get(conn.targetBlockId) || conn.targetBlockId,
-              targetPortId: portIdMap.get(conn.targetPortId) || conn.targetPortId,
-            }))
+          if (referencedBlock && referencedBlock.children) {
+            console.log(`[MDL Library Import] Resolved reference: ${targetName} with ${referencedBlock.children.length} children`)
+
+            // Deep copy the referenced block with new IDs
+            const { block: copiedBlock } = deepCopyBlockWithNewIds(referencedBlock, child.id)
 
             // Convert reference to subsystem with copied implementation
             block.children[i] = {
               ...child,
               type: 'subsystem',
-              children: newChildren,
-              childConnections: newConnections,
-              inputPorts: referencedBlock.inputPorts.map((p, idx) => ({ ...p, id: `${child.id}-in-${idx}` })),
-              outputPorts: referencedBlock.outputPorts.map((p, idx) => ({ ...p, id: `${child.id}-out-${idx}` })),
+              children: copiedBlock.children,
+              childConnections: copiedBlock.childConnections,
+              inputPorts: copiedBlock.inputPorts,
+              outputPorts: copiedBlock.outputPorts,
             }
           } else {
-            console.warn(`[MDL Library Import] Could not resolve reference to: ${targetName}`)
+            // Track unresolved reference
+            unresolvedRefs.add(sourcePath)
+            console.warn(`[MDL Library Import] Could not resolve reference to: ${sourcePath}`)
           }
         }
       }
 
       // Recursively resolve references in nested subsystems
-      resolveReferenceBlocks(block.children, subsystemMap, libraryName)
+      resolveReferenceBlocks(block.children, subsystemMap, libraryName, unresolvedRefs)
     }
   }
 }
 
 /**
+ * Analyze a library's MDL content to detect external dependencies.
+ * This can be called before import to check what dependencies are needed.
+ *
+ * @param content - The MDL file content
+ * @returns Dependencies analysis result
+ */
+export function analyzeLibraryDependencies(content: string): LibraryDependencies {
+  const externalReferences: LibraryDependencies['externalReferences'] = []
+  const seenPaths = new Set<string>()
+
+  try {
+    const parsed = parseMDL(content)
+    const libraryName = parsed.Name
+
+    // Scan all blocks for Reference blocks with SourceBlock property
+    function scanBlocks(blocks: ParsedBlock[]) {
+      for (const block of blocks) {
+        if (block.BlockType === 'Reference' && block.SourceBlock) {
+          const sourcePath = String(block.SourceBlock).replace(/\n/g, '')
+          const parts = sourcePath.split('/')
+          const sourceLibraryName = parts.length > 1 ? parts[0] : libraryName
+
+          // Only track external references (different library)
+          if (sourceLibraryName !== libraryName && !seenPaths.has(sourcePath)) {
+            seenPaths.add(sourcePath)
+            const blockName = parts[parts.length - 1]
+            const isResolvable = globalLibraryRegistry.has(sourcePath) ||
+              globalLibraryRegistry.has(`${sourceLibraryName.replace(/_\d+[a-z]*$/i, '')}/${blockName}`)
+
+            externalReferences.push({
+              path: sourcePath,
+              libraryName: sourceLibraryName,
+              blockName,
+              isResolvable,
+            })
+          }
+        }
+
+        // Check nested systems
+        if (block.systems) {
+          for (const sys of block.systems as Record<string, unknown>[]) {
+            if (sys.blocks) {
+              scanBlocks(sys.blocks as ParsedBlock[])
+            }
+          }
+        }
+      }
+    }
+
+    scanBlocks(parsed.system.blocks)
+
+    // Also scan systems in the systemMap
+    if (parsed.systemMap) {
+      parsed.systemMap.forEach(system => {
+        scanBlocks(system.blocks)
+      })
+    }
+  } catch (error) {
+    console.error('[MDL Dependency Analysis] Error:', error)
+  }
+
+  // Compute missing and available libraries
+  const libraryNames = new Set(externalReferences.map(ref => ref.libraryName))
+  const missingLibraries: string[] = []
+  const availableLibraries: string[] = []
+
+  libraryNames.forEach(name => {
+    // Check if this library has any blocks registered
+    const hasBlocks = Array.from(globalLibraryRegistry.keys()).some(key =>
+      key.startsWith(`${name}/`) || key.startsWith(`${name.replace(/_\d+[a-z]*$/i, '')}/`)
+    )
+    if (hasBlocks) {
+      availableLibraries.push(name)
+    } else {
+      missingLibraries.push(name)
+    }
+  })
+
+  return {
+    externalReferences,
+    missingLibraries,
+    availableLibraries,
+  }
+}
+
+/**
+ * Options for importing an MDL library
+ */
+export interface ImportMDLLibraryOptions {
+  /** Source file path for display */
+  sourcePath?: string
+  /** Whether to register the library's blocks in the global registry after import */
+  registerBlocks?: boolean
+}
+
+/**
+ * Result of importing an MDL library
+ */
+export interface ImportMDLLibraryResult {
+  /** The imported library data */
+  library: Omit<Library, 'id' | 'importedAt'>
+  /** Subsystem blocks from this library (for registration) */
+  subsystemBlocks: BlockInstance[]
+  /** List of unresolved reference paths */
+  unresolvedReferences: string[]
+  /** Dependency analysis */
+  dependencies: LibraryDependencies
+}
+
+/**
  * Import an MDL file as a library of reusable blocks.
  * This extracts all top-level subsystem blocks as library block definitions.
+ *
+ * @param content - The MDL file content
+ * @param options - Import options
+ * @returns Import result with library data and dependency info
  */
 export function importMDLAsLibrary(
   content: string,
-  sourcePath?: string
-): Omit<Library, 'id' | 'importedAt'> {
+  options: ImportMDLLibraryOptions = {}
+): ImportMDLLibraryResult {
+  const { sourcePath, registerBlocks = true } = options
+
   try {
     const parsed = parseMDL(content)
-    console.log('[MDL Library Import] Parsed library name:', parsed.Name)
+    const libraryName = parsed.Name || 'Imported Library'
+
+    console.log('[MDL Library Import] Parsed library name:', libraryName)
     console.log('[MDL Library Import] Total blocks in system:', parsed.system.blocks.length)
+
+    // Analyze dependencies first
+    const dependencies = analyzeLibraryDependencies(content)
+    if (dependencies.missingLibraries.length > 0) {
+      console.warn('[MDL Library Import] Missing dependencies:', dependencies.missingLibraries)
+    }
+    if (dependencies.availableLibraries.length > 0) {
+      console.log('[MDL Library Import] Available dependencies:', dependencies.availableLibraries)
+    }
 
     // Get the main system name for path construction
     const mainSystemName = parsed.system.Name || ''
@@ -1720,29 +2041,56 @@ export function importMDLAsLibrary(
       subsystemMap.set(block.name, block)
     })
 
+    // Track unresolved references
+    const unresolvedRefs = new Set<string>()
+
     // Resolve any reference blocks within subsystems
-    resolveReferenceBlocks(subsystemBlocks, subsystemMap, parsed.Name)
+    resolveReferenceBlocks(subsystemBlocks, subsystemMap, libraryName, unresolvedRefs)
+
+    // Register blocks in global registry if requested
+    if (registerBlocks) {
+      registerLibraryBlocks(libraryName, subsystemBlocks)
+    }
 
     // Temporary library ID for processing (will be replaced by store)
     const tempLibraryId = generateUniqueId('lib_')
 
     // Convert each subsystem to a LibraryBlockDefinition
     const libraryBlocks: LibraryBlockDefinition[] = subsystemBlocks.map(block =>
-      subsystemToLibraryBlock(block, tempLibraryId, parsed.Name)
+      subsystemToLibraryBlock(block, tempLibraryId, libraryName)
     )
 
-    return {
-      name: parsed.Name || 'Imported Library',
+    const library: Omit<Library, 'id' | 'importedAt'> = {
+      name: libraryName,
       description: `Imported from ${sourcePath || 'MDL file'}`,
       version: '1.0.0',
       sourcePath,
       sourceFormat: 'mdl',
       blocks: libraryBlocks,
     }
+
+    return {
+      library,
+      subsystemBlocks,
+      unresolvedReferences: Array.from(unresolvedRefs),
+      dependencies,
+    }
   } catch (error) {
     console.error('MDL library import error:', error)
     throw new Error(`Failed to import MDL library: ${error instanceof Error ? error.message : 'Unknown error'}`)
   }
+}
+
+/**
+ * Legacy function signature for backward compatibility.
+ * @deprecated Use importMDLAsLibrary with options object instead.
+ */
+export function importMDLAsLibraryLegacy(
+  content: string,
+  sourcePath?: string
+): Omit<Library, 'id' | 'importedAt'> {
+  const result = importMDLAsLibrary(content, { sourcePath, registerBlocks: true })
+  return result.library
 }
 
 /**

@@ -5,6 +5,7 @@ export interface ToastMessage {
   type: 'success' | 'info' | 'warning'
   title: string
   message: string
+  duration?: number // Duration in ms, undefined = use default
 }
 
 interface ToastProps {
@@ -12,13 +13,21 @@ interface ToastProps {
   onDismiss: (id: string) => void
 }
 
+// Default durations by type (in ms)
+const DEFAULT_DURATIONS: Record<ToastMessage['type'], number> = {
+  success: 4000,
+  info: 5000,
+  warning: 8000, // Warnings stay longer
+}
+
 function ToastItem({ toast, onDismiss }: ToastProps) {
   useEffect(() => {
+    const duration = toast.duration ?? DEFAULT_DURATIONS[toast.type]
     const timer = setTimeout(() => {
       onDismiss(toast.id)
-    }, 4000)
+    }, duration)
     return () => clearTimeout(timer)
-  }, [toast.id, onDismiss])
+  }, [toast.id, toast.duration, toast.type, onDismiss])
 
   return (
     <div className={`toast toast-${toast.type}`} onClick={() => onDismiss(toast.id)}>
@@ -34,19 +43,20 @@ let currentToasts: ToastMessage[] = []
 let toastCounter = 0
 
 export const toast = {
-  show: (type: ToastMessage['type'], title: string, message: string) => {
+  show: (type: ToastMessage['type'], title: string, message: string, duration?: number) => {
     const newToast: ToastMessage = {
       id: `${Date.now()}-${toastCounter++}`,
       type,
       title,
       message,
+      duration,
     }
     currentToasts = [...currentToasts, newToast]
     toastListeners.forEach((listener) => listener(currentToasts))
   },
-  success: (title: string, message: string) => toast.show('success', title, message),
-  info: (title: string, message: string) => toast.show('info', title, message),
-  warning: (title: string, message: string) => toast.show('warning', title, message),
+  success: (title: string, message: string, duration?: number) => toast.show('success', title, message, duration),
+  info: (title: string, message: string, duration?: number) => toast.show('info', title, message, duration),
+  warning: (title: string, message: string, duration?: number) => toast.show('warning', title, message, duration),
   dismiss: (id: string) => {
     currentToasts = currentToasts.filter((t) => t.id !== id)
     toastListeners.forEach((listener) => listener(currentToasts))

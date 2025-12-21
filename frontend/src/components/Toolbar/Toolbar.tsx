@@ -7,7 +7,7 @@ import { api } from '../../api/client'
 import { toast } from '../Toast/Toast'
 import { exampleList, getExample } from '../../data/examples'
 import { exportModelAsMDL } from '../../utils/mdlExporter'
-import { importMDL, isMDLFile, importMDLAsLibrary, isMDLLibrary } from '../../utils/mdlImporter'
+import { importMDL, isMDLFile, importMDLAsLibrary } from '../../utils/mdlImporter'
 import { blockRegistry } from '../../blocks'
 import type { Model } from '../../types/model'
 
@@ -206,12 +206,32 @@ export function Toolbar() {
         return
       }
 
-      // Parse as library
-      const libraryData = importMDLAsLibrary(text, file.name)
+      // Parse as library (with new return type that includes dependency info)
+      console.group(`[Library Import] Importing: ${file.name}`)
+      const importResult = importMDLAsLibrary(text, { sourcePath: file.name, registerBlocks: true })
+      const { library: libraryData, unresolvedReferences, dependencies } = importResult
 
       if (libraryData.blocks.length === 0) {
+        console.warn('No subsystem blocks found')
+        console.groupEnd()
         toast.warning('No Library Blocks', 'No subsystem blocks found in this MDL file. Import it as a model instead.')
         return
+      }
+
+      // Warn about missing dependencies
+      if (dependencies.missingLibraries.length > 0) {
+        const missingMsg = `This library requires: ${dependencies.missingLibraries.join(', ')}. Import those libraries first for full functionality.`
+        console.warn(`Missing Dependencies: ${missingMsg}`)
+        toast.warning('Missing Dependencies', missingMsg)
+      }
+
+      // Log external references for debugging
+      if (dependencies.externalReferences.length > 0) {
+        console.log(`External references found: ${dependencies.externalReferences.length}`)
+        dependencies.externalReferences.forEach(ref => {
+          const status = ref.isResolvable ? '✓' : '✗'
+          console.log(`  ${status} ${ref.path}`)
+        })
       }
 
       // Import into library store
@@ -221,17 +241,35 @@ export function Toolbar() {
         // Register blocks with the block registry
         blockRegistry.registerLibraryBlocks(result.library.blocks)
 
-        toast.success(
-          'Library Imported',
-          `Imported "${result.library.name}" with ${result.library.blocks.length} reusable blocks`
-        )
+        // Build success message
+        let successMsg = `Imported "${result.library.name}" with ${result.library.blocks.length} reusable blocks`
+        if (unresolvedReferences.length > 0) {
+          successMsg += ` (${unresolvedReferences.length} unresolved references)`
+          console.warn(`Unresolved references: ${unresolvedReferences.join(', ')}`)
+        }
+
+        console.log(`Success: ${successMsg}`)
+        toast.success('Library Imported', successMsg)
 
         if (result.warnings.length > 0) {
-          result.warnings.forEach((warn) => toast.info('Note', warn))
+          result.warnings.forEach((warn) => {
+            console.warn(`Warning: ${warn}`)
+            toast.info('Note', warn)
+          })
+        }
+
+        // Show info about resolved cross-library references
+        if (dependencies.availableLibraries.length > 0) {
+          const depsMsg = `Used blocks from: ${dependencies.availableLibraries.join(', ')}`
+          console.log(`Dependencies Resolved: ${depsMsg}`)
+          toast.info('Dependencies Resolved', depsMsg)
         }
       } else {
-        toast.warning('Import Failed', result.errors.join(', '))
+        const errorMsg = result.errors.join(', ')
+        console.error(`Failed: ${errorMsg}`)
+        toast.warning('Import Failed', errorMsg)
       }
+      console.groupEnd()
     } catch (error) {
       console.error('Failed to import library:', error)
       toast.warning('Library Import Failed', `${error instanceof Error ? error.message : 'Unknown error'}`)
