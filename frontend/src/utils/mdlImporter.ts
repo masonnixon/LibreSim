@@ -1,5 +1,5 @@
 import type { Model, ModelMetadata } from '../types/model'
-import type { BlockInstance, Connection, Port, BlockDefinition } from '../types/block'
+import type { BlockInstance, Connection, Port } from '../types/block'
 import type {
   Library,
   LibraryBlockDefinition,
@@ -160,6 +160,8 @@ interface ParsedLine {
   DstBlock: string
   DstPort: number | string
   Points?: number[][]
+  // Allow additional properties like branchs
+  [key: string]: unknown
 }
 
 interface ParsedSystem {
@@ -176,6 +178,8 @@ interface ParsedModel {
   Solver?: string
   FixedStep?: string
   system: ParsedSystem
+  // Map of system path names to their content (for nested subsystems)
+  systemMap?: Map<string, ParsedSystem>
 }
 
 /**
@@ -390,10 +394,20 @@ function parseMDL(content: string): ParsedModel {
     const mainSystem = systems[0] || {}
     console.log('[MDL Parse] Main system keys:', Object.keys(mainSystem))
 
-    // Log all systems' block counts
+    // Build a map of system names to their content for looking up subsystem internals
+    const systemMap = new Map<string, ParsedSystem>()
     systems.forEach((sys, i) => {
       const sysBlocks = (sys.blocks as ParsedBlock[]) || []
-      console.log(`[MDL Parse] System ${i} name: "${sys.Name}", blocks: ${sysBlocks.length}`)
+      const sysLines = (sys.lines as ParsedLine[]) || []
+      const sysName = sys.Name as string || ''
+      console.log(`[MDL Parse] System ${i} name: "${sysName}", blocks: ${sysBlocks.length}`)
+      if (sysName) {
+        systemMap.set(sysName, {
+          Name: sysName,
+          blocks: sysBlocks,
+          lines: sysLines,
+        })
+      }
     })
 
     // For libraries, collect all top-level subsystem blocks as the main content
@@ -436,7 +450,8 @@ function parseMDL(content: string): ParsedModel {
         Name: mainSystem.Name as string || 'Main',
         blocks,
         lines,
-      }
+      },
+      systemMap,
     }
   }
 
@@ -1142,17 +1157,24 @@ export function propagateDimensions(blocks: BlockInstance[], connections: Connec
 
 /**
  * Recursively convert a parsed system (blocks and lines) to LibreSim format
+ *
+ * @param parsedBlocks - Array of parsed block objects
+ * @param parsedLines - Array of parsed line (connection) objects
+ * @param idPrefix - Prefix for generating unique IDs
+ * @param systemMap - Map of system path names to their content (for nested subsystems)
+ * @param currentPath - Current system path for looking up nested systems
  */
 function convertSystem(
   parsedBlocks: ParsedBlock[],
   parsedLines: ParsedLine[],
-  idPrefix: string = ''
+  idPrefix: string = '',
+  systemMap: Map<string, ParsedSystem> = new Map(),
+  currentPath: string = ''
 ): { blocks: BlockInstance[]; connections: Connection[] } {
   const blockMap = new Map<string, BlockInstance>()
   const blocks: BlockInstance[] = []
   const connections: Connection[] = []
   let blockCounter = 0
-  let connCounter = 0
 
   // Convert blocks
   for (const parsedBlock of parsedBlocks) {
@@ -1210,47 +1232,107 @@ function convertSystem(
     }
 
     // Check for nested System inside this block (for subsystems)
-    const nestedSystems = parsedBlock.systems as Record<string, unknown>[] | undefined
-    if (nestedSystems && nestedSystems.length > 0 && finalType === 'subsystem') {
-      const nestedSystem = nestedSystems[0]
-      const nestedBlocks = (nestedSystem.blocks as ParsedBlock[]) || []
-      const nestedLines = (nestedSystem.lines as ParsedLine[]) || []
+    // MDL files store all systems as siblings at the top level, linked by path names
+    // e.g., "Model/Subsystem1/NestedSub" is a sibling of "Model/Subsystem1" in the systemMap
+    if (finalType === 'subsystem') {
+      // Build the path for this subsystem's content
+      const subsystemPath = currentPath ? `${currentPath}/${blockName}` : blockName
+      console.log(`[MDL Import] Looking for subsystem content at path: "${subsystemPath}"`)
 
-      if (nestedBlocks.length > 0) {
-        // Recursively convert nested system
-        const { blocks: childBlocks, connections: childConns } = convertSystem(
-          nestedBlocks,
-          nestedLines,
-          `${blockId}_`
-        )
-        block.children = childBlocks
-        block.childConnections = childConns
+      // First check the systemMap for the subsystem's content
+      const nestedSystem = systemMap.get(subsystemPath)
 
-        // Update port counts based on actual Inport/Outport blocks found
-        const inportCount = childBlocks.filter(b => b.type === 'inport').length
-        const outportCount = childBlocks.filter(b => b.type === 'outport').length
-        if (inportCount > 0 || outportCount > 0) {
-          // Regenerate ports based on actual inport/outport blocks
-          // Use block ID prefix for consistent port ID format
-          block.inputPorts = []
-          block.outputPorts = []
-          for (let i = 0; i < inportCount; i++) {
-            block.inputPorts.push({
-              id: `${blockId}-in-${i}`,
-              name: `in${i + 1}`,
-              dataType: 'double',
-              dimensions: [1],
-            })
-          }
-          for (let i = 0; i < outportCount; i++) {
-            block.outputPorts.push({
-              id: `${blockId}-out-${i}`,
-              name: `out${i + 1}`,
-              dataType: 'double',
-              dimensions: [1],
-            })
+      // Also check for nested systems in the block itself (older MDL format or inline subsystems)
+      const inlineNestedSystems = parsedBlock.systems as Record<string, unknown>[] | undefined
+
+      if (nestedSystem) {
+        console.log(`[MDL Import] Found subsystem "${blockName}" in systemMap with ${nestedSystem.blocks.length} blocks`)
+        const nestedBlocks = nestedSystem.blocks || []
+        const nestedLines = nestedSystem.lines || []
+
+        if (nestedBlocks.length > 0) {
+          // Recursively convert nested system, passing the systemMap and new path
+          console.log(`[MDL Import] Converting ${nestedBlocks.length} child blocks for "${blockName}"`)
+          const { blocks: childBlocks, connections: childConns } = convertSystem(
+            nestedBlocks,
+            nestedLines,
+            `${blockId}_`,
+            systemMap,
+            subsystemPath
+          )
+          block.children = childBlocks
+          block.childConnections = childConns
+          console.log(`[MDL Import] Subsystem "${blockName}" now has ${childBlocks.length} children`)
+
+          // Update port counts based on actual Inport/Outport blocks found
+          const inportCount = childBlocks.filter(b => b.type === 'inport').length
+          const outportCount = childBlocks.filter(b => b.type === 'outport').length
+          if (inportCount > 0 || outportCount > 0) {
+            block.inputPorts = []
+            block.outputPorts = []
+            for (let i = 0; i < inportCount; i++) {
+              block.inputPorts.push({
+                id: `${blockId}-in-${i}`,
+                name: `in${i + 1}`,
+                dataType: 'double',
+                dimensions: [1],
+              })
+            }
+            for (let i = 0; i < outportCount; i++) {
+              block.outputPorts.push({
+                id: `${blockId}-out-${i}`,
+                name: `out${i + 1}`,
+                dataType: 'double',
+                dimensions: [1],
+              })
+            }
           }
         }
+      } else if (inlineNestedSystems && inlineNestedSystems.length > 0) {
+        // Fallback: check for inline nested systems (older MDL format)
+        console.log(`[MDL Import] Subsystem "${blockName}" has inline systems: ${inlineNestedSystems.length}`)
+        const inlineSystem = inlineNestedSystems[0]
+        const nestedBlocks = (inlineSystem.blocks as ParsedBlock[]) || []
+        const nestedLines = (inlineSystem.lines as ParsedLine[]) || []
+
+        if (nestedBlocks.length > 0) {
+          console.log(`[MDL Import] Converting ${nestedBlocks.length} inline child blocks for "${blockName}"`)
+          const { blocks: childBlocks, connections: childConns } = convertSystem(
+            nestedBlocks,
+            nestedLines,
+            `${blockId}_`,
+            systemMap,
+            subsystemPath
+          )
+          block.children = childBlocks
+          block.childConnections = childConns
+          console.log(`[MDL Import] Subsystem "${blockName}" now has ${childBlocks.length} children`)
+
+          const inportCount = childBlocks.filter(b => b.type === 'inport').length
+          const outportCount = childBlocks.filter(b => b.type === 'outport').length
+          if (inportCount > 0 || outportCount > 0) {
+            block.inputPorts = []
+            block.outputPorts = []
+            for (let i = 0; i < inportCount; i++) {
+              block.inputPorts.push({
+                id: `${blockId}-in-${i}`,
+                name: `in${i + 1}`,
+                dataType: 'double',
+                dimensions: [1],
+              })
+            }
+            for (let i = 0; i < outportCount; i++) {
+              block.outputPorts.push({
+                id: `${blockId}-out-${i}`,
+                name: `out${i + 1}`,
+                dataType: 'double',
+                dimensions: [1],
+              })
+            }
+          }
+        }
+      } else {
+        console.log(`[MDL Import] No content found for subsystem "${blockName}" (path: "${subsystemPath}")`)
       }
     }
 
@@ -1330,7 +1412,7 @@ function convertSystem(
     const srcPortNum = typeof srcPort === 'number' ? srcPort - 1 : parseInt(String(srcPort)) - 1 || 0
 
     // Check if this line has branches (one source to multiple destinations)
-    const branches = (line as Record<string, unknown>).branchs as Array<Record<string, unknown>> | undefined
+    const branches = line.branchs as Array<Record<string, unknown>> | undefined
 
     if (branches && branches.length > 0) {
       // Process all branches from this source
@@ -1349,9 +1431,15 @@ function convertSystem(
  * Convert parsed MDL to LibreSim Model
  */
 function convertToModel(parsed: ParsedModel): Model {
+  // Get the main system name for path construction
+  const mainSystemName = parsed.system.Name || ''
+
   const { blocks, connections } = convertSystem(
     parsed.system.blocks,
-    parsed.system.lines
+    parsed.system.lines,
+    '',
+    parsed.systemMap || new Map(),
+    mainSystemName
   )
 
   // Propagate signal dimensions through the system
@@ -1604,8 +1692,17 @@ export function importMDLAsLibrary(
     console.log('[MDL Library Import] Parsed library name:', parsed.Name)
     console.log('[MDL Library Import] Total blocks in system:', parsed.system.blocks.length)
 
+    // Get the main system name for path construction
+    const mainSystemName = parsed.system.Name || ''
+
     // Convert all blocks first (to get subsystems with their children)
-    const { blocks } = convertSystem(parsed.system.blocks, parsed.system.lines)
+    const { blocks } = convertSystem(
+      parsed.system.blocks,
+      parsed.system.lines,
+      '',
+      parsed.systemMap || new Map(),
+      mainSystemName
+    )
 
     // Filter to only subsystem blocks that have children (these are the reusable library blocks)
     const subsystemBlocks = blocks.filter(
