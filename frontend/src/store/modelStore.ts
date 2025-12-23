@@ -35,6 +35,7 @@ interface ModelState {
   updateBlockPosition: (blockId: string, position: { x: number; y: number }) => void
   updateBlockParameters: (blockId: string, parameters: Record<string, unknown>) => void
   renameBlock: (blockId: string, name: string) => void
+  addScopeInput: (blockId: string) => string | null // Returns the new port ID
 
   // Connection operations
   addConnection: (connection: Omit<Connection, 'id'>) => string | null
@@ -639,11 +640,67 @@ export const useModelStore = create<ModelState>((set, get) => ({
       isDirty: true,
     })
 
-    // Re-propagate dimensions after parameter changes that might affect signal dimensions
-    const { model: updatedModel } = get()
+    // Clean up orphaned connections (connections to ports that no longer exist)
+    const { model: updatedModel, currentPath: path } = get()
     if (updatedModel) {
-      propagateDimensions(updatedModel.blocks, updatedModel.connections)
-      set({ model: { ...updatedModel } })
+      // Get the updated block to check its current ports
+      const currentBlocks = path.length === 0
+        ? updatedModel.blocks
+        : findBlockAtPath(updatedModel.blocks, path)?.blocks || []
+      const updatedBlock = currentBlocks.find(b => b.id === blockId)
+
+      if (updatedBlock) {
+        const validInputPortIds = new Set(updatedBlock.inputPorts.map(p => p.id))
+        const validOutputPortIds = new Set(updatedBlock.outputPorts.map(p => p.id))
+
+        // Filter out connections that reference non-existent ports on this block
+        const filterConnections = (connections: Connection[]) =>
+          connections.filter(c => {
+            // Check if this connection involves the updated block
+            if (c.targetBlockId === blockId && !validInputPortIds.has(c.targetPortId)) {
+              return false // Remove - target port no longer exists
+            }
+            if (c.sourceBlockId === blockId && !validOutputPortIds.has(c.sourcePortId)) {
+              return false // Remove - source port no longer exists
+            }
+            return true
+          })
+
+        if (path.length === 0) {
+          // At root level
+          const filteredConnections = filterConnections(updatedModel.connections)
+          if (filteredConnections.length !== updatedModel.connections.length) {
+            set({ model: { ...updatedModel, connections: filteredConnections } })
+          }
+        } else {
+          // Inside a subsystem - need to update connections within the subsystem
+          const updateSubsystemConnections = (blocks: BlockInstance[], remainingPath: SubsystemPathItem[]): BlockInstance[] => {
+            if (remainingPath.length === 0) return blocks
+            const [first, ...rest] = remainingPath
+            return blocks.map(b => {
+              if (b.id === first.id && b.type === 'subsystem') {
+                if (rest.length === 0 && b.internalConnections) {
+                  // This is the target subsystem
+                  const filteredConnections = filterConnections(b.internalConnections)
+                  return { ...b, internalConnections: filteredConnections }
+                }
+                if (b.children) {
+                  return { ...b, children: updateSubsystemConnections(b.children, rest) }
+                }
+              }
+              return b
+            })
+          }
+          set({ model: { ...updatedModel, blocks: updateSubsystemConnections(updatedModel.blocks, path) } })
+        }
+      }
+
+      // Re-propagate dimensions after parameter changes that might affect signal dimensions
+      const { model: finalModel } = get()
+      if (finalModel) {
+        propagateDimensions(finalModel.blocks, finalModel.connections)
+        set({ model: { ...finalModel } })
+      }
     }
   },
 
@@ -658,6 +715,44 @@ export const useModelStore = create<ModelState>((set, get) => ({
       },
       isDirty: true,
     })
+  },
+
+  addScopeInput: (blockId: string) => {
+    const { model, currentPath } = get()
+    if (!model) return null
+
+    // Find the block and verify it's a scope
+    const currentBlocks = get().getCurrentBlocks()
+    const block = currentBlocks.find((b) => b.id === blockId)
+    if (!block || block.type !== 'scope') return null
+
+    // Calculate the new port index
+    const newPortIndex = block.inputPorts.length
+    const newPortId = `${blockId}-in-${newPortIndex}`
+    const newNumInputs = newPortIndex + 1
+
+    // Update the block with new port and numInputs parameter
+    set({
+      model: {
+        ...model,
+        blocks: updateBlockInHierarchy(model.blocks, currentPath, blockId, (b) => ({
+          ...b,
+          parameters: { ...b.parameters, numInputs: newNumInputs },
+          inputPorts: [
+            ...b.inputPorts,
+            {
+              id: newPortId,
+              name: `in${newNumInputs}`,
+              dataType: 'double' as const,
+              dimensions: [1],
+            },
+          ],
+        })),
+      },
+      isDirty: true,
+    })
+
+    return newPortId
   },
 
   addConnection: (connection: Omit<Connection, 'id'>) => {

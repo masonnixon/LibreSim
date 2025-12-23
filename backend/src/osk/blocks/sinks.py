@@ -10,6 +10,8 @@ class Scope(Block):
     Supports multiple inputs and tracks the source block name for each input
     to enable legend display in the visualization. Also handles vector inputs
     from Mux blocks, expanding them into separate traces.
+
+    Only records and displays data for inputs that are actually connected.
     """
 
     def __init__(self, num_inputs=1, **kwargs):
@@ -21,18 +23,18 @@ class Scope(Block):
         self.input_blocks = [None] * self.num_inputs
         self.input_names = [f"Input {i+1}" for i in range(self.num_inputs)]
         self.times = []
-        self.values = [[] for _ in range(self.num_inputs)]
+        self.values = []  # Will be built dynamically based on connected inputs
         # Track vector inputs (expanded from Mux blocks)
         self._vector_inputs = {}  # port -> list of values
         self._vector_names = {}   # port -> list of names
-        self._total_traces = self.num_inputs
+        self._total_traces = 0
 
     def init(self):
         self.times = []
+        self.values = []
         self._vector_inputs = {}
         self._vector_names = {}
-        self._total_traces = self.num_inputs
-        # Values will be rebuilt once we know actual dimensions
+        self._total_traces = 0
 
     def setInput(self, value, port=0):
         if port < self.num_inputs:
@@ -79,48 +81,51 @@ class Scope(Block):
                         del self._vector_names[i]
 
     def rpt(self):
-        # Record data when ready
+        # Record data when ready - only for connected inputs
         if State.ready:
             self.times.append(State.t)
 
-            # Calculate total number of traces needed
+            # Calculate total number of traces needed (only connected inputs)
             total_traces = 0
             for i in range(self.num_inputs):
-                if i in self._vector_inputs:
-                    total_traces += len(self._vector_inputs[i])
-                else:
-                    total_traces += 1
+                if self.input_blocks[i] is not None:  # Only count connected inputs
+                    if i in self._vector_inputs:
+                        total_traces += len(self._vector_inputs[i])
+                    else:
+                        total_traces += 1
 
             # Initialize values array if needed
             if len(self.values) != total_traces:
                 self.values = [[] for _ in range(total_traces)]
 
-            # Record values, expanding vectors
+            # Record values, expanding vectors - only for connected inputs
             trace_idx = 0
             for i in range(self.num_inputs):
-                if i in self._vector_inputs:
-                    for val in self._vector_inputs[i]:
+                if self.input_blocks[i] is not None:  # Only record connected inputs
+                    if i in self._vector_inputs:
+                        for val in self._vector_inputs[i]:
+                            if trace_idx < len(self.values):
+                                self.values[trace_idx].append(val)
+                            trace_idx += 1
+                    else:
                         if trace_idx < len(self.values):
-                            self.values[trace_idx].append(val)
+                            self.values[trace_idx].append(self.inputs[i])
                         trace_idx += 1
-                else:
-                    if trace_idx < len(self.values):
-                        self.values[trace_idx].append(self.inputs[i])
-                    trace_idx += 1
 
             self._total_traces = total_traces
 
     def getData(self):
         """Get recorded data with input names for legend."""
-        # Build the full list of input names, expanding vector inputs
+        # Build the list of input names for connected inputs only
         all_names = []
         for i in range(self.num_inputs):
-            if i in self._vector_names:
-                all_names.extend(self._vector_names[i])
-            elif i < len(self.input_names):
-                all_names.append(self.input_names[i])
-            else:
-                all_names.append(f"Input {i+1}")
+            if self.input_blocks[i] is not None:  # Only include connected inputs
+                if i in self._vector_names:
+                    all_names.extend(self._vector_names[i])
+                elif i < len(self.input_names):
+                    all_names.append(self.input_names[i])
+                else:
+                    all_names.append(f"Input {i+1}")
 
         return {
             'times': self.times,

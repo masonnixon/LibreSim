@@ -116,7 +116,7 @@ function getDefinitionOrFallback(block: BlockInstance): BlockDefinition {
 
 export function Editor() {
   const reactFlowWrapper = useRef<HTMLDivElement>(null)
-  const { screenToFlowPosition, getNodes } = useReactFlow()
+  const { screenToFlowPosition, getNodes, fitView } = useReactFlow()
 
   // Mobile detection for responsive MiniMap
   const [isMobile, setIsMobile] = useState(false)
@@ -177,6 +177,7 @@ export function Editor() {
     addBlock,
     updateBlockPosition,
     addConnection,
+    addScopeInput,
     removeBlock,
     removeConnection,
     selectBlocks,
@@ -376,6 +377,107 @@ export function Editor() {
     [addConnection]
   )
 
+  // Handle connection end for auto-expanding Scope inputs
+  // This handles two cases:
+  // 1. Dropping on Scope body (invalid connection) - auto-expand and connect
+  // 2. Dropping on already-connected Scope port - auto-expand and connect to new port
+  const onConnectEnd = useCallback(
+    (event: MouseEvent | TouchEvent, connectionState: {
+      fromNode?: { id: string } | null
+      fromHandle?: { id: string } | null
+      toNode?: { id: string } | null
+      toHandle?: { id: string } | null
+      isValid?: boolean
+    }) => {
+      const fromNodeId = connectionState.fromNode?.id
+      const fromHandleId = connectionState.fromHandle?.id
+      if (!fromNodeId || !fromHandleId) return
+
+      // Case 1: Invalid connection - check if dropped on Scope body
+      if (!connectionState.isValid) {
+        const target = (event as MouseEvent).target as HTMLElement
+        if (!target) return
+
+        const nodeElement = target.closest('.react-flow__node')
+        if (!nodeElement) return
+
+        const nodeId = nodeElement.getAttribute('data-id')
+        if (!nodeId) return
+
+        const targetBlock = currentBlocks.find(b => b.id === nodeId)
+        if (!targetBlock || targetBlock.type !== 'scope') return
+
+        // Auto-expand the Scope and connect to the new port
+        const newPortId = addScopeInput(nodeId)
+        if (newPortId) {
+          setTimeout(() => {
+            addConnection({
+              sourceBlockId: fromNodeId,
+              sourcePortId: fromHandleId,
+              targetBlockId: nodeId,
+              targetPortId: newPortId,
+            })
+          }, 0)
+        }
+        return
+      }
+
+      // Case 2: Valid connection to a Scope - check if port was already connected BEFORE this connection
+      // We need to check this BEFORE onConnect added the new connection, so we use a microtask
+      // to let onConnect finish, then check if there are now 2+ connections to the same port
+      const toNodeId = connectionState.toNode?.id
+      const toHandleId = connectionState.toHandle?.id
+      if (!toNodeId || !toHandleId) return
+
+      const targetBlock = currentBlocks.find(b => b.id === toNodeId)
+      if (!targetBlock || targetBlock.type !== 'scope') return
+
+      // Use setTimeout to run after onConnect has completed
+      setTimeout(() => {
+        const freshConnections = getCurrentConnections()
+        // Count connections to the target handle
+        const connectionsToHandle = freshConnections.filter(
+          c => c.targetBlockId === toNodeId && c.targetPortId === toHandleId
+        )
+
+        // If there are 2+ connections to the same handle, the last one was a duplicate attempt
+        // This means the port was already connected - we should expand
+        if (connectionsToHandle.length >= 2) {
+          // Remove the duplicate connection we just added
+          const duplicateConnection = connectionsToHandle.find(
+            c => c.sourceBlockId === fromNodeId && c.sourcePortId === fromHandleId
+          )
+          // Note: addConnection already prevents duplicates, so this won't happen
+          // But if the store allowed it, we'd remove it here
+        }
+
+        // Actually, since addConnection prevents duplicate target ports,
+        // if the port was already connected, our connection was rejected.
+        // So we need to check if our connection exists - if not, auto-expand
+        const ourConnection = freshConnections.find(
+          c => c.sourceBlockId === fromNodeId &&
+               c.sourcePortId === fromHandleId &&
+               c.targetBlockId === toNodeId &&
+               c.targetPortId === toHandleId
+        )
+
+        if (!ourConnection) {
+          // Our connection was rejected (port already connected) - auto-expand
+          const newPortId = addScopeInput(toNodeId)
+          if (newPortId) {
+            addConnection({
+              sourceBlockId: fromNodeId,
+              sourcePortId: fromHandleId,
+              targetBlockId: toNodeId,
+              targetPortId: newPortId,
+            })
+          }
+        }
+      }, 10) // Small delay to ensure onConnect has completed
+    },
+    [currentBlocks, addScopeInput, addConnection, getCurrentConnections]
+  )
+
   const onNodesDelete = useCallback(
     (deleted: Node[]) => {
       deleted.forEach((node) => removeBlock(node.id))
@@ -534,19 +636,25 @@ export function Editor() {
     [enterSubsystem, currentBlocks, openPlotWindow]
   )
 
-  // Handle keyboard navigation (Escape to exit subsystem)
+  // Handle keyboard navigation (Escape to exit subsystem, Space to fit view)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't handle keyboard events when Properties panel inputs are focused
-      if (getIsPropertiesFocused()) return
+      // Don't handle keyboard events when input fields are focused
+      if (inputFocused || getIsPropertiesFocused()) return
 
       if (e.key === 'Escape' && currentPath.length > 0) {
         exitSubsystem()
       }
+
+      // Space bar - fit view to show all elements
+      if (e.key === ' ' || e.code === 'Space') {
+        e.preventDefault()
+        fitView({ padding: 0.2, duration: 300 })
+      }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [currentPath, exitSubsystem])
+  }, [currentPath, exitSubsystem, fitView, inputFocused])
 
   // Handle keyboard shortcuts (Delete, Ctrl+C, Ctrl+V, Ctrl+A)
   useEffect(() => {
@@ -747,6 +855,7 @@ export function Editor() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onConnectEnd={onConnectEnd}
         onNodeDragStop={onNodeDragStop}
         onNodesDelete={onNodesDelete}
         onEdgesDelete={onEdgesDelete}

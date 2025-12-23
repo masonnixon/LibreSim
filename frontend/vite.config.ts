@@ -16,6 +16,11 @@ export default defineConfig({
     port: 4200,
     host: true,
     allowedHosts: ['irongiant.tail7d452.ts.net'],
+    watch: {
+      // Use polling for Docker on Windows (file system events don't propagate reliably)
+      usePolling: true,
+      interval: 1000,
+    },
     proxy: {
       '/api': {
         target: backendUrl,

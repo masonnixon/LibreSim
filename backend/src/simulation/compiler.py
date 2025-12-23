@@ -119,13 +119,17 @@ class ModelCompiler:
     def _build_input_map(
         self, connections: List[Connection]
     ) -> Dict[str, List[str]]:
-        """Build map of block ID -> list of input connections."""
+        """Build map of block ID -> list of input connections.
+
+        Each connection is formatted as "source_block_id:source_port_id@target_port_id"
+        to preserve information about which target port the connection goes to.
+        """
         result: Dict[str, List[str]] = {}
         for conn in connections:
             if conn.target_block_id not in result:
                 result[conn.target_block_id] = []
             result[conn.target_block_id].append(
-                f"{conn.source_block_id}:{conn.source_port_id}"
+                f"{conn.source_block_id}:{conn.source_port_id}@{conn.target_port_id}"
             )
         return result
 

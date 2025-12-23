@@ -257,31 +257,51 @@ class OSKAdapter:
 
             # For scope blocks, track the source block names for each input
             if block.type == "scope":
-                num_inputs = len(block.input_connections)
+                # Get the actual number of inputs from the block parameters
+                num_inputs = int(block.parameters.get('numInputs', 1))
                 self._scope_input_names[block.id] = [""] * num_inputs
 
             # Connect inputs
-            for i, conn in enumerate(block.input_connections):
-                source_block_id, source_port = conn.split(":")
+            # Connection format: "source_block_id:source_port_id@target_port_id"
+            for conn in block.input_connections:
+                # Parse the connection string to get source and target port info
+                if "@" in conn:
+                    source_part, target_port_id = conn.split("@")
+                    source_block_id, source_port = source_part.split(":")
+                else:
+                    # Fallback for old format without target port
+                    source_block_id, source_port = conn.split(":")
+                    target_port_id = None
+
                 source_osk_block = self._osk_blocks.get(source_block_id)
                 source_compiled_block = self._block_map.get(source_block_id)
+
+                # Extract the port index from target_port_id (e.g., "block-in-1" -> 1)
+                target_port_index = 0
+                if target_port_id:
+                    # Parse port index from ID like "blockid-in-2"
+                    parts = target_port_id.rsplit("-", 1)
+                    if len(parts) == 2 and parts[1].isdigit():
+                        target_port_index = int(parts[1])
+
 
                 if source_osk_block:
                     # Use connectInput if available, otherwise we'll handle in step()
                     if hasattr(osk_block, 'connectInput'):
-                        osk_block.connectInput(source_osk_block, i)
+                        osk_block.connectInput(source_osk_block, target_port_index)
                     elif hasattr(osk_block, 'input_block'):
                         osk_block.input_block = source_osk_block
                     elif hasattr(osk_block, 'input_blocks'):
-                        if i < len(osk_block.input_blocks):
-                            osk_block.input_blocks[i] = source_osk_block
+                        if target_port_index < len(osk_block.input_blocks):
+                            osk_block.input_blocks[target_port_index] = source_osk_block
 
                 # Track source name for scope inputs and set on the scope block
                 if block.type == "scope" and source_compiled_block:
-                    self._scope_input_names[block.id][i] = source_compiled_block.name
+                    if target_port_index < len(self._scope_input_names[block.id]):
+                        self._scope_input_names[block.id][target_port_index] = source_compiled_block.name
                     # Also set the input name on the scope block itself for legend display
                     if hasattr(osk_block, 'setInputName'):
-                        osk_block.setInputName(source_compiled_block.name, i)
+                        osk_block.setInputName(source_compiled_block.name, target_port_index)
 
     def step(self, t: float, dt: float) -> Dict[str, float]:
         """Execute one simulation step.
@@ -333,10 +353,16 @@ class OSKAdapter:
             # Record sink block outputs
             if block_id in self._sink_blocks:
                 # For scopes with multiple inputs or vector inputs, record each trace separately
+                # Only record CONNECTED inputs (where input_blocks[i] is not None)
                 if block_id in self._scope_input_names and hasattr(osk_block, 'inputs'):
                     input_names = self._scope_input_names[block_id]
+                    input_blocks = getattr(osk_block, 'input_blocks', [])
                     trace_idx = 0
                     for i in range(len(osk_block.inputs)):
+                        # Skip unconnected inputs
+                        if i < len(input_blocks) and input_blocks[i] is None:
+                            continue
+
                         base_name = input_names[i] if i < len(input_names) else f"Input {i+1}"
                         # Check if this input is a vector (from Mux)
                         if hasattr(osk_block, '_vector_inputs') and i in osk_block._vector_inputs:

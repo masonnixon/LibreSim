@@ -10,7 +10,15 @@ class Constant(Block):
 
     def __init__(self, value=1.0):
         super().__init__()
-        self.value = value
+        # Parse value - it might be a string from the frontend
+        if isinstance(value, str):
+            try:
+                self.value = float(value)
+            except ValueError:
+                # Could be an expression - for now default to 1.0
+                self.value = 1.0
+        else:
+            self.value = float(value) if value is not None else 1.0
         self.output = 0.0
 
     def init(self):
