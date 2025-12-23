@@ -1,9 +1,9 @@
 """Import/Export API routes for Simulink MDL files."""
 
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, File, HTTPException, UploadFile
 
-from ...parsers.mdl_parser import MDLParser
 from ...models.model import Model
+from ...parsers.mdl_parser import MDLParser
 
 router = APIRouter()
 

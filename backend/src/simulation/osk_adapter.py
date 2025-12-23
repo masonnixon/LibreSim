@@ -4,41 +4,77 @@ This module provides the bridge between LibreSim's compiled model and OSK's
 simulation engine. It creates OSK block instances and manages simulation execution.
 """
 
-from typing import Dict, Any, List, Type
+from typing import Any
 
 from ..models.simulation import SimulationConfig, SolverType
-from .compiler import CompiledModel, CompiledBlock
 
 # Import OSK components
-from ..osk import Block, State, Sim
+from ..osk import Block, Sim, State
 from ..osk.blocks import (
+    Abs,
+    Backlash,
+    BandPassFilter,
+    Clock,
     # Sources
-    Constant, Step, Ramp, SineWave, Clock,
-    # Sinks
-    Scope, ToWorkspace,
-    # Continuous
-    Integrator, Derivative, TransferFunction, StateSpace, PIDController,
-    # Discrete
-    UnitDelay, ZeroOrderHold,
-    # Math
-    Sum, Gain, Product, Abs, Saturation,
+    Constant,
+    Coulomb,
+    Derivative,
+    ExtendedKalmanFilter,
+    Gain,
+    HighPassFilter,
     # Subsystems
-    Inport, Outport, Subsystem,
-    # Signal Processing
-    RateLimiter, MovingAverage, LowPassFilter, HighPassFilter, BandPassFilter, Backlash,
+    Inport,
+    # Continuous
+    Integrator,
+    KalmanFilter,
     # Nonlinear
-    LookupTable1D, LookupTable2D, Quantizer, Relay, Coulomb, VariableTransportDelay,
+    LookupTable1D,
+    LookupTable2D,
+    LowPassFilter,
     # Observers
-    LuenbergerObserver, KalmanFilter, ExtendedKalmanFilter,
+    LuenbergerObserver,
+    MovingAverage,
+    Outport,
+    PIDController,
+    Product,
+    Quantizer,
+    Ramp,
+    # Signal Processing
+    RateLimiter,
+    Relay,
+    Saturation,
+    # Sinks
+    Scope,
+    SineWave,
+    StateSpace,
+    Step,
+    Subsystem,
+    # Math
+    Sum,
+    ToWorkspace,
+    TransferFunction,
+    # Discrete
+    UnitDelay,
+    VariableTransportDelay,
+    ZeroOrderHold,
 )
-from ..osk.blocks.math_ops import Switch, MathFunction, Trigonometry, DeadZone, Sign, Mux, Demux, Reshape
+from ..osk.blocks.discrete import DiscreteDerivative, DiscreteIntegrator, DiscreteTransferFunction
+from ..osk.blocks.math_ops import (
+    DeadZone,
+    Demux,
+    MathFunction,
+    Mux,
+    Reshape,
+    Sign,
+    Switch,
+    Trigonometry,
+)
 from ..osk.blocks.sinks import Display, Terminator
 from ..osk.blocks.sources import PulseGenerator
-from ..osk.blocks.discrete import DiscreteIntegrator, DiscreteDerivative, DiscreteTransferFunction
-
+from .compiler import CompiledBlock, CompiledModel
 
 # Mapping from LibreSim block types to OSK block classes
-BLOCK_TYPE_MAP: Dict[str, Type[Block]] = {
+BLOCK_TYPE_MAP: dict[str, type[Block]] = {
     # Sources
     "constant": Constant,
     "step": Step,
@@ -102,7 +138,7 @@ BLOCK_TYPE_MAP: Dict[str, Type[Block]] = {
 }
 
 # Parameter name mapping from LibreSim to OSK constructor arguments
-PARAM_MAP: Dict[str, Dict[str, str]] = {
+PARAM_MAP: dict[str, dict[str, str]] = {
     "constant": {"value": "value"},
     "step": {"stepTime": "step_time", "initialValue": "initial_value", "finalValue": "final_value"},
     "ramp": {"slope": "slope", "startTime": "start_time", "initialOutput": "initial_output"},
@@ -166,11 +202,11 @@ class OSKAdapter:
     def __init__(self):
         self._compiled_model: CompiledModel | None = None
         self._config: SimulationConfig | None = None
-        self._osk_blocks: Dict[str, Block] = {}
-        self._block_map: Dict[str, CompiledBlock] = {}
-        self._sink_blocks: List[str] = []
+        self._osk_blocks: dict[str, Block] = {}
+        self._block_map: dict[str, CompiledBlock] = {}
+        self._sink_blocks: list[str] = []
         # Track source block names for each scope input: scope_id -> [source_name, ...]
-        self._scope_input_names: Dict[str, List[str]] = {}
+        self._scope_input_names: dict[str, list[str]] = {}
 
     def initialize(self, compiled_model: CompiledModel, config: SimulationConfig):
         """Initialize the simulation with a compiled model.
@@ -234,7 +270,7 @@ class OSKAdapter:
             # Create a default block as fallback
             self._osk_blocks[compiled_block.id] = Gain(gain=1.0)
 
-    def _map_parameters(self, block_type: str, params: Dict[str, Any]) -> Dict[str, Any]:
+    def _map_parameters(self, block_type: str, params: dict[str, Any]) -> dict[str, Any]:
         """Map LibreSim parameter names to OSK constructor arguments."""
         param_mapping = PARAM_MAP.get(block_type, {})
         osk_params = {}
@@ -303,7 +339,7 @@ class OSKAdapter:
                     if hasattr(osk_block, 'setInputName'):
                         osk_block.setInputName(source_compiled_block.name, target_port_index)
 
-    def step(self, t: float, dt: float) -> Dict[str, float]:
+    def step(self, t: float, dt: float) -> dict[str, float]:
         """Execute one simulation step.
 
         This method manually steps through the simulation, updating
@@ -325,7 +361,7 @@ class OSKAdapter:
         State.dtp = dt
         State.ready = 1
 
-        recorded_outputs: Dict[str, float] = {}
+        recorded_outputs: dict[str, float] = {}
 
         # Execute blocks in topological order
         for block_id in self._compiled_model.execution_order:
@@ -398,7 +434,7 @@ class OSKAdapter:
 
         return recorded_outputs
 
-    def run_simulation(self) -> Dict[str, Any]:
+    def run_simulation(self) -> dict[str, Any]:
         """Run a complete simulation using OSK's Sim class.
 
         This is an alternative to using step() repeatedly,
@@ -489,7 +525,7 @@ class OSKAdapter:
         """
         return self._osk_blocks.get(block_id)
 
-    def get_all_blocks(self) -> Dict[str, Block]:
+    def get_all_blocks(self) -> dict[str, Block]:
         """Get all OSK block instances.
 
         Returns:

@@ -1,10 +1,10 @@
 """Model compiler - converts visual model to OSK representation."""
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Any, Set
+from typing import Any
 
-from ..models.model import Model
 from ..models.block import Block, Connection
+from ..models.model import Model
 
 
 @dataclass
@@ -14,9 +14,9 @@ class CompiledBlock:
     id: str
     type: str
     name: str
-    parameters: Dict[str, Any]
-    input_connections: List[str] = field(default_factory=list)  # ["block_id:port_id", ...]
-    output_connections: List[str] = field(default_factory=list)
+    parameters: dict[str, Any]
+    input_connections: list[str] = field(default_factory=list)  # ["block_id:port_id", ...]
+    output_connections: list[str] = field(default_factory=list)
     execution_order: int = 0
 
 
@@ -26,9 +26,9 @@ class CompiledModel:
 
     success: bool
     message: str
-    blocks: List[CompiledBlock] = field(default_factory=list)
-    execution_order: List[str] = field(default_factory=list)  # Block IDs in execution order
-    errors: List[str] = field(default_factory=list)
+    blocks: list[CompiledBlock] = field(default_factory=list)
+    execution_order: list[str] = field(default_factory=list)  # Block IDs in execution order
+    errors: list[str] = field(default_factory=list)
 
 
 class ModelCompiler:
@@ -117,14 +117,14 @@ class ModelCompiler:
             )
 
     def _build_input_map(
-        self, connections: List[Connection]
-    ) -> Dict[str, List[str]]:
+        self, connections: list[Connection]
+    ) -> dict[str, list[str]]:
         """Build map of block ID -> list of input connections.
 
         Each connection is formatted as "source_block_id:source_port_id@target_port_id"
         to preserve information about which target port the connection goes to.
         """
-        result: Dict[str, List[str]] = {}
+        result: dict[str, list[str]] = {}
         for conn in connections:
             if conn.target_block_id not in result:
                 result[conn.target_block_id] = []
@@ -134,10 +134,10 @@ class ModelCompiler:
         return result
 
     def _build_output_map(
-        self, connections: List[Connection]
-    ) -> Dict[str, List[str]]:
+        self, connections: list[Connection]
+    ) -> dict[str, list[str]]:
         """Build map of block ID -> list of output connections."""
-        result: Dict[str, List[str]] = {}
+        result: dict[str, list[str]] = {}
         for conn in connections:
             if conn.source_block_id not in result:
                 result[conn.source_block_id] = []
@@ -172,9 +172,9 @@ class ModelCompiler:
     }
 
     def _build_dependency_graph(
-        self, blocks: List[Block], input_connections: Dict[str, List[str]],
+        self, blocks: list[Block], input_connections: dict[str, list[str]],
         for_algebraic_loop_detection: bool = False
-    ) -> Dict[str, Set[str]]:
+    ) -> dict[str, set[str]]:
         """Build graph of block dependencies (block -> set of blocks it depends on).
 
         Args:
@@ -186,7 +186,7 @@ class ModelCompiler:
         Returns:
             Dictionary mapping block_id -> set of block_ids it depends on
         """
-        dependencies: Dict[str, Set[str]] = {b.id: set() for b in blocks}
+        dependencies: dict[str, set[str]] = {b.id: set() for b in blocks}
         block_types = {b.id: b.type for b in blocks}
 
         for block in blocks:
@@ -206,14 +206,14 @@ class ModelCompiler:
         return dependencies
 
     def _detect_algebraic_loops(
-        self, dependencies: Dict[str, Set[str]]
-    ) -> List[str] | None:
+        self, dependencies: dict[str, set[str]]
+    ) -> list[str] | None:
         """Detect algebraic loops using DFS. Returns loop if found, None otherwise."""
         WHITE, GRAY, BLACK = 0, 1, 2
-        color: Dict[str, int] = {node: WHITE for node in dependencies}
-        path: List[str] = []
+        color: dict[str, int] = {node: WHITE for node in dependencies}
+        path: list[str] = []
 
-        def dfs(node: str) -> List[str] | None:
+        def dfs(node: str) -> list[str] | None:
             color[node] = GRAY
             path.append(node)
 
@@ -240,11 +240,11 @@ class ModelCompiler:
         return None
 
     def _topological_sort(
-        self, blocks: List[Block], dependencies: Dict[str, Set[str]]
-    ) -> List[str]:
+        self, blocks: list[Block], dependencies: dict[str, set[str]]
+    ) -> list[str]:
         """Sort blocks in execution order using Kahn's algorithm."""
         # Calculate in-degrees
-        in_degree: Dict[str, int] = {b.id: 0 for b in blocks}
+        in_degree: dict[str, int] = {b.id: 0 for b in blocks}
         for block_id, deps in dependencies.items():
             in_degree[block_id] = len(deps)
 
@@ -266,8 +266,8 @@ class ModelCompiler:
         return result
 
     def _flatten_subsystems(
-        self, blocks: List[Block], connections: List[Connection]
-    ) -> tuple[List[Block], List[Connection]]:
+        self, blocks: list[Block], connections: list[Connection]
+    ) -> tuple[list[Block], list[Connection]]:
         """Flatten subsystems by extracting child blocks and rewiring connections.
 
         For each subsystem block:
@@ -282,13 +282,13 @@ class ModelCompiler:
         Returns:
             Tuple of (flattened_blocks, flattened_connections)
         """
-        flattened_blocks: List[Block] = []
-        flattened_connections: List[Connection] = list(connections)
+        flattened_blocks: list[Block] = []
+        flattened_connections: list[Connection] = list(connections)
 
         # Track subsystem input/output mappings for connection rewiring
         # subsystem_id -> port_index -> internal_block_id
-        subsystem_inport_map: Dict[str, Dict[int, str]] = {}
-        subsystem_outport_map: Dict[str, Dict[int, str]] = {}
+        subsystem_inport_map: dict[str, dict[int, str]] = {}
+        subsystem_outport_map: dict[str, dict[int, str]] = {}
 
         for block in blocks:
             if block.type != "subsystem" or not block.children:
@@ -339,7 +339,7 @@ class ModelCompiler:
                     flattened_connections.append(prefixed_conn)
 
         # Now rewire connections that went to/from subsystems
-        rewired_connections: List[Connection] = []
+        rewired_connections: list[Connection] = []
         for conn in flattened_connections:
             source_id = conn.source_block_id
             target_id = conn.target_block_id

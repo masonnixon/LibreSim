@@ -1,7 +1,8 @@
 """Model management API routes."""
 
+from typing import Any
+
 from fastapi import APIRouter, HTTPException
-from typing import Dict, Any
 
 from ...models.model import Model, ModelCreate, ModelUpdate
 from ...services.model_service import ModelService
@@ -41,7 +42,7 @@ async def update_model(model_id: str, model: ModelUpdate) -> Model:
 
 
 @router.delete("/{model_id}")
-async def delete_model(model_id: str) -> Dict[str, str]:
+async def delete_model(model_id: str) -> dict[str, str]:
     """Delete a model."""
     success = model_service.delete_model(model_id)
     if not success:
@@ -50,7 +51,7 @@ async def delete_model(model_id: str) -> Dict[str, str]:
 
 
 @router.post("/{model_id}/validate")
-async def validate_model(model_id: str) -> Dict[str, Any]:
+async def validate_model(model_id: str) -> dict[str, Any]:
     """Validate a model for simulation."""
     model = model_service.get_model(model_id)
     if not model:
@@ -61,7 +62,7 @@ async def validate_model(model_id: str) -> Dict[str, Any]:
 
 
 @router.post("/{model_id}/compile")
-async def compile_model(model_id: str) -> Dict[str, Any]:
+async def compile_model(model_id: str) -> dict[str, Any]:
     """Compile a model for simulation."""
     model = model_service.get_model(model_id)
     if not model:

@@ -1,7 +1,6 @@
 """Continuous-time blocks for OSK-based simulation."""
 
 from ..block import Block
-from ..state import State
 
 
 class Integrator(Block):
@@ -37,9 +36,7 @@ class Integrator(Block):
 
         # Apply limits if enabled
         if self.limit_output:
-            if self.x[0] >= self.upper_limit and self.x[1] > 0:
-                self.x[1] = 0.0
-            elif self.x[0] <= self.lower_limit and self.x[1] < 0:
+            if self.x[0] >= self.upper_limit and self.x[1] > 0 or self.x[0] <= self.lower_limit and self.x[1] < 0:
                 self.x[1] = 0.0
 
     def getOutput(self, port=0):

@@ -2,9 +2,9 @@
 
 import uuid
 from datetime import datetime
-from typing import Dict, Any
+from typing import Any
 
-from ..models.model import Model, ModelCreate, ModelUpdate, ModelMetadata
+from ..models.model import Model, ModelCreate, ModelMetadata, ModelUpdate
 from ..models.simulation import SimulationConfig
 
 
@@ -12,7 +12,7 @@ class ModelService:
     """Service for managing simulation models."""
 
     # In-memory storage (replace with database for persistence)
-    _models: Dict[str, Model] = {}
+    _models: dict[str, Model] = {}
 
     def list_models(self) -> list[Model]:
         """List all models."""
@@ -73,7 +73,7 @@ class ModelService:
             return True
         return False
 
-    def validate_model(self, model: Model) -> Dict[str, Any]:
+    def validate_model(self, model: Model) -> dict[str, Any]:
         """Validate a model for simulation.
 
         Checks:
@@ -124,7 +124,7 @@ class ModelService:
             "warnings": warnings,
         }
 
-    def compile_model(self, model: Model) -> Dict[str, Any]:
+    def compile_model(self, model: Model) -> dict[str, Any]:
         """Compile a model for simulation.
 
         This creates the internal representation needed by OSK.

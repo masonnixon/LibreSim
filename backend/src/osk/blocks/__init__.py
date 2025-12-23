@@ -4,19 +4,42 @@ This package contains simulation block implementations that use
 the OSK (Object-oriented Simulation Kernel) framework.
 """
 
-from .sources import Constant, Step, Ramp, SineWave, Clock
-from .sinks import Scope, ToWorkspace
-from .continuous import Integrator, Derivative, TransferFunction, StateSpace, PIDController
+from .continuous import Derivative, Integrator, PIDController, StateSpace, TransferFunction
 from .discrete import UnitDelay, ZeroOrderHold
-from .math_ops import Sum, Gain, Product, Abs, Saturation, Switch, Mux, Demux, MathFunction, Trigonometry, Sign, DeadZone
-from .subsystems import Inport, Outport, Subsystem
-from .signal_processing import (
-    RateLimiter, MovingAverage, LowPassFilter, HighPassFilter, BandPassFilter, Backlash
+from .math_ops import (
+    Abs,
+    DeadZone,
+    Demux,
+    Gain,
+    MathFunction,
+    Mux,
+    Product,
+    Saturation,
+    Sign,
+    Sum,
+    Switch,
+    Trigonometry,
 )
 from .nonlinear import (
-    LookupTable1D, LookupTable2D, Quantizer, Relay, Coulomb, VariableTransportDelay
+    Coulomb,
+    LookupTable1D,
+    LookupTable2D,
+    Quantizer,
+    Relay,
+    VariableTransportDelay,
 )
-from .observers import LuenbergerObserver, KalmanFilter, ExtendedKalmanFilter
+from .observers import ExtendedKalmanFilter, KalmanFilter, LuenbergerObserver
+from .signal_processing import (
+    Backlash,
+    BandPassFilter,
+    HighPassFilter,
+    LowPassFilter,
+    MovingAverage,
+    RateLimiter,
+)
+from .sinks import Scope, ToWorkspace
+from .sources import Clock, Constant, Ramp, SineWave, Step
+from .subsystems import Inport, Outport, Subsystem
 
 __all__ = [
     # Sources

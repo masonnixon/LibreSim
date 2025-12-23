@@ -9,8 +9,8 @@ Core classes:
 - Sim: Simulation orchestrator
 """
 
-from .state import State
 from .block import Block
 from .sim import Sim
+from .state import State
 
 __all__ = ["State", "Block", "Sim"]

@@ -1,15 +1,13 @@
 """Block registry - defines all available block types."""
 
-from typing import Dict, List, Any
-
-from ..models.block import BlockDefinition, BlockCategory, Port, Parameter, ParameterType, DataType
+from typing import Any
 
 
 class BlockRegistry:
     """Registry of all available block definitions."""
 
     def __init__(self):
-        self._blocks: Dict[str, Dict[str, Any]] = {}
+        self._blocks: dict[str, dict[str, Any]] = {}
         self._register_all_blocks()
 
     def _register_all_blocks(self):
@@ -363,19 +361,19 @@ class BlockRegistry:
         for block in blocks:
             self._blocks[block["type"]] = block
 
-    def get(self, block_type: str) -> Dict[str, Any] | None:
+    def get(self, block_type: str) -> dict[str, Any] | None:
         """Get a block definition by type."""
         return self._blocks.get(block_type)
 
-    def get_all_definitions(self) -> List[Dict[str, Any]]:
+    def get_all_definitions(self) -> list[dict[str, Any]]:
         """Get all block definitions."""
         return list(self._blocks.values())
 
-    def get_categories(self) -> List[str]:
+    def get_categories(self) -> list[str]:
         """Get all block categories."""
         return list(set(b["category"] for b in self._blocks.values()))
 
-    def get_by_category(self, category: str) -> List[Dict[str, Any]]:
+    def get_by_category(self, category: str) -> list[dict[str, Any]]:
         """Get all blocks in a category."""
         return [b for b in self._blocks.values() if b["category"] == category]
 

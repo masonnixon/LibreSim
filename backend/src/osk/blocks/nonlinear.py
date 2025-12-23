@@ -5,6 +5,7 @@ including lookup tables, quantizers, and relay blocks.
 """
 
 import bisect
+
 from ..block import Block
 from ..state import State
 

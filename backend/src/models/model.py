@@ -1,8 +1,8 @@
 """Model-related Pydantic models."""
 
 from datetime import datetime
-from typing import Any
-from pydantic import BaseModel, Field, ConfigDict
+
+from pydantic import BaseModel, ConfigDict, Field
 
 from .block import Block, Connection
 from .simulation import SimulationConfig

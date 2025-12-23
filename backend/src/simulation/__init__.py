@@ -1,6 +1,6 @@
 """Simulation package."""
 
-from .runner import SimulationRunner
 from .compiler import ModelCompiler
+from .runner import SimulationRunner
 
 __all__ = ["SimulationRunner", "ModelCompiler"]

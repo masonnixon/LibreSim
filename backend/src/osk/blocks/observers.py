@@ -5,6 +5,7 @@ Luenberger observers and Kalman filters.
 """
 
 import numpy as np
+
 from ..block import Block
 from ..state import State
 

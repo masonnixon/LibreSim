@@ -24,13 +24,12 @@ Example MDL structure:
     }
 """
 
-import re
 import uuid
-from typing import Dict, List, Any, Tuple
 from datetime import datetime
+from typing import Any
 
-from ..models.model import Model, ModelMetadata
 from ..models.block import Block, Connection, Port, Position
+from ..models.model import Model, ModelMetadata
 from ..models.simulation import SimulationConfig
 
 
@@ -71,8 +70,8 @@ class MDLParser:
     def __init__(self):
         self._content = ""
         self._pos = 0
-        self._blocks: List[Dict[str, Any]] = []
-        self._lines: List[Dict[str, Any]] = []
+        self._blocks: list[dict[str, Any]] = []
+        self._lines: list[dict[str, Any]] = []
 
     def parse(self, content: str, filename: str = "imported.mdl") -> Model:
         """Parse an MDL file and return a LibreSim Model.
@@ -124,9 +123,9 @@ class MDLParser:
 
         return model
 
-    def _parse_block(self) -> Dict[str, Any]:
+    def _parse_block(self) -> dict[str, Any]:
         """Parse a block (hierarchical key-value structure)."""
-        result: Dict[str, Any] = {}
+        result: dict[str, Any] = {}
 
         self._skip_whitespace()
 
@@ -263,18 +262,18 @@ class MDLParser:
             else:
                 break
 
-    def _get_value(self, data: Dict, key: str, default: str = "") -> str:
+    def _get_value(self, data: dict, key: str, default: str = "") -> str:
         """Get a value from parsed data, with default."""
         return data.get(key, default)
 
-    def _find_system(self, model_data: Dict) -> Dict:
+    def _find_system(self, model_data: dict) -> dict:
         """Find the main System block in the model."""
         system = model_data.get("System", {})
         if isinstance(system, list):
             return system[0] if system else {}
         return system
 
-    def _parse_blocks(self, system_data: Dict) -> List[Block]:
+    def _parse_blocks(self, system_data: dict) -> list[Block]:
         """Parse all blocks from the system."""
         blocks = []
         block_data = system_data.get("Block", [])
@@ -289,7 +288,7 @@ class MDLParser:
 
         return blocks
 
-    def _convert_block(self, block_data: Dict, index: int) -> Block | None:
+    def _convert_block(self, block_data: dict, index: int) -> Block | None:
         """Convert an MDL block to a LibreSim Block."""
         block_type_mdl = block_data.get("BlockType", "")
         block_type = self.BLOCK_TYPE_MAP.get(block_type_mdl)
@@ -336,9 +335,9 @@ class MDLParser:
 
         return Position(x=100.0, y=100.0)
 
-    def _extract_parameters(self, block_data: Dict, block_type: str) -> Dict[str, Any]:
+    def _extract_parameters(self, block_data: dict, block_type: str) -> dict[str, Any]:
         """Extract block parameters from MDL data."""
-        params: Dict[str, Any] = {}
+        params: dict[str, Any] = {}
 
         # Map MDL parameter names to LibreSim parameter names
         param_map = {
@@ -400,8 +399,8 @@ class MDLParser:
         return value
 
     def _create_ports(
-        self, block_type: str, block_id: str, parameters: Dict
-    ) -> Tuple[List[Port], List[Port]]:
+        self, block_type: str, block_id: str, parameters: dict
+    ) -> tuple[list[Port], list[Port]]:
         """Create input and output ports based on block type."""
         input_ports = []
         output_ports = []
@@ -462,8 +461,8 @@ class MDLParser:
         return input_ports, output_ports
 
     def _parse_connections(
-        self, system_data: Dict, blocks: List[Block]
-    ) -> List[Connection]:
+        self, system_data: dict, blocks: list[Block]
+    ) -> list[Connection]:
         """Parse connections (Lines) from the system."""
         connections = []
         line_data = system_data.get("Line", [])
@@ -482,7 +481,7 @@ class MDLParser:
         return connections
 
     def _convert_connection(
-        self, line_data: Dict, block_map: Dict[str, Block]
+        self, line_data: dict, block_map: dict[str, Block]
     ) -> Connection | None:
         """Convert an MDL Line to a LibreSim Connection."""
         src_block_name = line_data.get("SrcBlock", "")
@@ -513,7 +512,7 @@ class MDLParser:
             targetPortId=dst_port_id,
         )
 
-    def _parse_simulation_config(self, model_data: Dict) -> SimulationConfig:
+    def _parse_simulation_config(self, model_data: dict) -> SimulationConfig:
         """Extract simulation configuration from model data."""
         start_time = float(model_data.get("StartTime", 0))
         stop_time = float(model_data.get("StopTime", 10))

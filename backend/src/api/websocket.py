@@ -1,21 +1,20 @@
 """WebSocket handler for real-time simulation data."""
 
-import asyncio
 import json
+
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from typing import Set
 
 router = APIRouter()
 
 # Connected clients
-connected_clients: Set[WebSocket] = set()
+connected_clients: set[WebSocket] = set()
 
 
 class ConnectionManager:
     """Manage WebSocket connections."""
 
     def __init__(self):
-        self.active_connections: Set[WebSocket] = set()
+        self.active_connections: set[WebSocket] = set()
 
     async def connect(self, websocket: WebSocket):
         """Accept a new WebSocket connection."""

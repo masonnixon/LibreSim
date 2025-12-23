@@ -18,7 +18,10 @@ def sample_model():
     """Create a sample model for testing."""
     return {
         "id": "test-model-1",
-        "name": "Test Model",
+        "metadata": {
+            "name": "Test Model",
+            "description": "A sample model for testing",
+        },
         "blocks": [
             {
                 "id": "const-1",
@@ -58,5 +61,5 @@ def simulation_config():
         "startTime": 0.0,
         "stopTime": 10.0,
         "stepSize": 0.01,
-        "solver": "RK4",
+        "solver": "rk4",
     }

@@ -7,7 +7,6 @@ These blocks primarily serve as interface points for the flattening process.
 """
 
 from ..block import Block
-from ..state import State
 
 
 class Inport(Block):

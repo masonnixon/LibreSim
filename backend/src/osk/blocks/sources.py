@@ -1,6 +1,7 @@
 """Source blocks for OSK-based simulation."""
 
 import math
+
 from ..block import Block
 from ..state import State
 

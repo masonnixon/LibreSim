@@ -6,6 +6,7 @@ control systems and signal processing applications.
 
 import math
 from collections import deque
+
 from ..block import Block
 from ..state import State
 

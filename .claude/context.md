@@ -321,6 +321,103 @@ The toolbar supports:
 ## Known Issues / TODO
 - PID controller example may produce incorrect results (under investigation)
 
+## Development Environment
+
+### Anaconda Setup
+The project uses Anaconda for Python environment management. Create and activate the `libresim` environment:
+
+```bash
+# Create the conda environment
+conda create -n libresim python=3.11 -y
+
+# Activate the environment
+conda activate libresim
+
+# Install backend dependencies
+cd backend
+pip install -e ".[dev]"
+
+# Install pre-commit hooks
+pip install pre-commit
+pre-commit install
+```
+
+### Docker Development
+For running the full application stack:
+```bash
+docker compose up
+```
+- Frontend: http://localhost:4200
+- Backend: http://localhost:9000
+
+## SQA (Software Quality Assurance)
+
+### Overview
+LibreSim uses a comprehensive SQA toolkit for maintaining code quality:
+
+| Tool | Purpose | Configuration |
+|------|---------|---------------|
+| **Ruff** | Python linting & formatting | `backend/pyproject.toml` |
+| **MyPy** | Python type checking | `backend/pyproject.toml` |
+| **Bandit** | Python security scanning | `backend/pyproject.toml` |
+| **Pytest** | Python testing + coverage | `backend/pyproject.toml` |
+| **ESLint** | TypeScript linting | `frontend/eslint.config.js` |
+| **detect-secrets** | Secret detection | `.secrets.baseline` |
+
+### Pre-commit Hooks
+Pre-commit hooks run automatically before each commit:
+```bash
+# Install hooks (one-time setup)
+pre-commit install
+
+# Run all hooks manually
+pre-commit run --all-files
+
+# Run specific hook
+pre-commit run ruff --all-files
+```
+
+**Configured hooks** (`.pre-commit-config.yaml`):
+- Ruff (lint + format) for Python
+- MyPy for Python type checking
+- Bandit for security scanning
+- ESLint + TSC for frontend
+- detect-secrets for secret detection
+- General file checks (large files, merge conflicts, trailing whitespace)
+
+### Running Tests
+```bash
+# Activate conda environment
+conda activate libresim
+cd backend
+
+# Run all tests with coverage
+pytest
+
+# Run specific test file
+pytest tests/test_blocks.py
+
+# Run with parallel execution
+pytest -n auto
+
+# Run with verbose output
+pytest -v
+```
+
+### GitLab CI Pipeline
+The `.gitlab-ci.yml` defines automated CI/CD:
+- **Lint stage**: ruff-lint, ruff-format, eslint, typescript-check
+- **Test stage**: mypy, pytest (with coverage), frontend-test
+- **Security stage**: bandit, dependency-check, npm-audit
+- **Build stage**: build-frontend, build-docker
+
+### SQA Documentation
+Full documentation in `docs/SQA.md` covers:
+- Tool configurations and usage
+- Test writing conventions
+- Continuous improvement guidelines
+- Troubleshooting common issues
+
 ## Development Workflow
 - **Wait for user confirmation** before committing changes to git. The user will test fixes before commits are made.
 

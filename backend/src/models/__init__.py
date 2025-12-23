@@ -1,8 +1,8 @@
 """Pydantic models package."""
 
-from .block import Block, BlockDefinition, Port, Parameter
-from .model import Model, ModelCreate, ModelUpdate, ModelMetadata
-from .simulation import SimulationConfig, SimulationStatus, SimulationResults
+from .block import Block, BlockDefinition, Parameter, Port
+from .model import Model, ModelCreate, ModelMetadata, ModelUpdate
+from .simulation import SimulationConfig, SimulationResults, SimulationStatus
 
 __all__ = [
     "Block",

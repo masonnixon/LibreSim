@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .api.routes import models, blocks, simulation, import_export
+from .api.routes import blocks, import_export, models, simulation
 from .api.websocket import router as ws_router
 from .config import settings
 

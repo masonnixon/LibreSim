@@ -1,11 +1,12 @@
 """Simulation control API routes."""
 
 import traceback
-from fastapi import APIRouter, HTTPException, BackgroundTasks
-from typing import Dict, Any
+from typing import Any
+
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 
 from ...models.model import Model
-from ...models.simulation import SimulationConfig, SimulationStatus
+from ...models.simulation import SimulationConfig
 from ...simulation.runner import SimulationRunner
 
 router = APIRouter()
@@ -14,7 +15,7 @@ print("Simulation router loaded successfully")
 
 
 @router.get("/test")
-async def test_endpoint() -> Dict[str, str]:
+async def test_endpoint() -> dict[str, str]:
     """Simple test endpoint."""
     return {"status": "ok", "message": "Simulation API is working"}
 
@@ -31,9 +32,9 @@ def get_runner() -> SimulationRunner | None:
 
 @router.post("/start")
 async def start_simulation(
-    request: Dict[str, Any],
+    request: dict[str, Any],
     background_tasks: BackgroundTasks,
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """Start a simulation."""
     global _runner
 
@@ -80,7 +81,7 @@ async def start_simulation(
 
 
 @router.post("/stop")
-async def stop_simulation() -> Dict[str, str]:
+async def stop_simulation() -> dict[str, str]:
     """Stop the current simulation."""
     global _runner
 
@@ -92,7 +93,7 @@ async def stop_simulation() -> Dict[str, str]:
 
 
 @router.post("/pause")
-async def pause_simulation() -> Dict[str, str]:
+async def pause_simulation() -> dict[str, str]:
     """Pause the current simulation."""
     global _runner
 
@@ -104,7 +105,7 @@ async def pause_simulation() -> Dict[str, str]:
 
 
 @router.post("/resume")
-async def resume_simulation() -> Dict[str, str]:
+async def resume_simulation() -> dict[str, str]:
     """Resume a paused simulation."""
     global _runner
 
@@ -116,7 +117,7 @@ async def resume_simulation() -> Dict[str, str]:
 
 
 @router.get("/status")
-async def get_simulation_status() -> Dict[str, Any]:
+async def get_simulation_status() -> dict[str, Any]:
     """Get current simulation status."""
     global _runner
 
@@ -137,7 +138,7 @@ async def get_simulation_status() -> Dict[str, Any]:
 
 
 @router.get("/results")
-async def get_simulation_results() -> Dict[str, Any]:
+async def get_simulation_results() -> dict[str, Any]:
     """Get simulation results."""
     global _runner
 
@@ -148,7 +149,7 @@ async def get_simulation_results() -> Dict[str, Any]:
 
 
 @router.post("/debug")
-async def debug_simulation(request: Dict[str, Any]) -> Dict[str, Any]:
+async def debug_simulation(request: dict[str, Any]) -> dict[str, Any]:
     """Debug endpoint to test model parsing."""
     model_data = request.get("model")
     config_data = request.get("config", {})

@@ -2,10 +2,10 @@
 
 import pytest
 
-from src.osk.blocks.sources import Constant, Step, Ramp, SineWave
-from src.osk.blocks.sinks import Scope
-from src.osk.blocks.math_ops import Sum, Gain, Product
 from src.osk.blocks.continuous import Integrator
+from src.osk.blocks.math_ops import Gain, Sum
+from src.osk.blocks.sinks import Scope
+from src.osk.blocks.sources import Constant, Step
 from src.osk.state import State
 
 
@@ -15,16 +15,19 @@ class TestConstantBlock:
     def test_constant_output(self):
         """Test that Constant block outputs the configured value."""
         const = Constant(value=5.0)
+        const.init()
         assert const.getOutput() == 5.0
 
     def test_constant_string_value(self):
         """Test that Constant block parses string values."""
         const = Constant(value="3.14")
+        const.init()
         assert const.getOutput() == pytest.approx(3.14)
 
     def test_constant_default_value(self):
         """Test that Constant block has default value of 1.0."""
         const = Constant()
+        const.init()
         assert const.getOutput() == 1.0
 
 

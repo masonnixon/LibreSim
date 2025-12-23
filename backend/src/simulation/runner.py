@@ -3,15 +3,12 @@
 import asyncio
 import time
 import uuid
-from typing import Dict, List, Any
+from typing import Any
 
 from ..models.model import Model
 from ..models.simulation import (
     SimulationConfig,
     SimulationStatus,
-    SimulationResults,
-    SignalData,
-    SimulationStatistics,
 )
 from .compiler import ModelCompiler
 from .osk_adapter import OSKAdapter
@@ -32,7 +29,7 @@ class SimulationRunner:
         self._is_paused = False
         self._error_message: str | None = None
 
-        self._results: Dict[str, List[tuple[float, float]]] = {}
+        self._results: dict[str, list[tuple[float, float]]] = {}
         self._start_time: float = 0
         self._execution_time: float = 0
         self._total_steps: int = 0
@@ -136,17 +133,17 @@ class SimulationRunner:
             print(f"Simulation error: {e}")
             traceback.print_exc()
 
-    def _record_outputs(self, t: float, outputs: Dict[str, float]):
+    def _record_outputs(self, t: float, outputs: dict[str, float]):
         """Record simulation outputs."""
         for key, value in outputs.items():
             if key not in self._results:
                 self._results[key] = []
             self._results[key].append((t, value))
 
-    def get_results(self) -> Dict[str, Any]:
+    def get_results(self) -> dict[str, Any]:
         """Get simulation results."""
         # Group signals by block ID to combine multi-trace scopes
-        block_signals: Dict[str, Dict] = {}
+        block_signals: dict[str, dict] = {}
 
         for key, data in self._results.items():
             # Key format: "blockId:portId:signalName" or "blockId:inputIndex:sourceName"

@@ -1,10 +1,14 @@
 """Tests for the model compiler."""
 
-import pytest
 
-from src.simulation.compiler import ModelCompiler, CompiledModel
 from src.models.block import Block, Connection
-from src.models.model import Model
+from src.models.model import Model, ModelMetadata
+from src.simulation.compiler import ModelCompiler
+
+
+def make_metadata(name: str) -> ModelMetadata:
+    """Create a test ModelMetadata instance."""
+    return ModelMetadata(name=name)
 
 
 class TestModelCompiler:
@@ -13,7 +17,7 @@ class TestModelCompiler:
     def test_compile_empty_model(self):
         """Test compiling an empty model fails."""
         compiler = ModelCompiler()
-        model = Model(id="test", name="Empty", blocks=[], connections=[])
+        model = Model(id="test", metadata=make_metadata("Empty"), blocks=[], connections=[])
 
         result = compiler.compile(model)
 
@@ -35,7 +39,7 @@ class TestModelCompiler:
                 output_ports=[{"id": "const-1-out-0", "name": "out"}],
             )
         ]
-        model = Model(id="test", name="Simple", blocks=blocks, connections=[])
+        model = Model(id="test", metadata=make_metadata("Simple"), blocks=blocks, connections=[])
 
         result = compiler.compile(model)
 
@@ -76,7 +80,12 @@ class TestModelCompiler:
                 target_port_id="gain-1-in-0",
             )
         ]
-        model = Model(id="test", name="Connected", blocks=blocks, connections=connections)
+        model = Model(
+            id="test",
+            metadata=make_metadata("Connected"),
+            blocks=blocks,
+            connections=connections,
+        )
 
         result = compiler.compile(model)
 
@@ -123,7 +132,12 @@ class TestModelCompiler:
                 target_port_id="scope-1-in-1",  # Connect to second port
             )
         ]
-        model = Model(id="test", name="PortTest", blocks=blocks, connections=connections)
+        model = Model(
+            id="test",
+            metadata=make_metadata("PortTest"),
+            blocks=blocks,
+            connections=connections,
+        )
 
         result = compiler.compile(model)
 
@@ -174,7 +188,12 @@ class TestModelCompiler:
                 target_port_id="gain-1-in-0",
             ),
         ]
-        model = Model(id="test", name="Loop", blocks=blocks, connections=connections)
+        model = Model(
+            id="test",
+            metadata=make_metadata("Loop"),
+            blocks=blocks,
+            connections=connections,
+        )
 
         result = compiler.compile(model)
 
@@ -225,7 +244,12 @@ class TestModelCompiler:
                 target_port_id="sum-1-in-1",
             ),
         ]
-        model = Model(id="test", name="Feedback", blocks=blocks, connections=connections)
+        model = Model(
+            id="test",
+            metadata=make_metadata("Feedback"),
+            blocks=blocks,
+            connections=connections,
+        )
 
         result = compiler.compile(model)
 
