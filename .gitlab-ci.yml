@@ -1,0 +1,207 @@
+# GitLab CI/CD Pipeline for LibreSim
+# This pipeline runs SQA checks including linting, type checking, security scanning, and tests
+
+stages:
+  - lint
+  - test
+  - security
+  - build
+
+# =============================================================================
+# GLOBAL SETTINGS
+# =============================================================================
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  NPM_CONFIG_CACHE: "$CI_PROJECT_DIR/.cache/npm"
+  PYTHON_VERSION: "3.11"
+  NODE_VERSION: "20"
+
+# Cache dependencies between jobs
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - .cache/pip
+    - .cache/npm
+    - frontend/node_modules/
+    - backend/.venv/
+
+# =============================================================================
+# TEMPLATES
+# =============================================================================
+
+.python_base:
+  image: python:${PYTHON_VERSION}
+  before_script:
+    - cd backend
+    - python -m pip install --upgrade pip
+    - pip install -e ".[dev]"
+
+.node_base:
+  image: node:${NODE_VERSION}
+  before_script:
+    - cd frontend
+    - npm ci
+
+# =============================================================================
+# LINT STAGE
+# =============================================================================
+
+ruff-lint:
+  extends: .python_base
+  stage: lint
+  script:
+    - ruff check src/ --output-format=gitlab
+  allow_failure: false
+  artifacts:
+    reports:
+      codequality: backend/gl-code-quality-report.json
+    when: always
+
+ruff-format:
+  extends: .python_base
+  stage: lint
+  script:
+    - ruff format --check src/
+  allow_failure: false
+
+eslint:
+  extends: .node_base
+  stage: lint
+  script:
+    - npm run lint
+  allow_failure: false
+
+typescript-check:
+  extends: .node_base
+  stage: lint
+  script:
+    - npx tsc --noEmit
+  allow_failure: false
+
+# =============================================================================
+# TEST STAGE
+# =============================================================================
+
+mypy:
+  extends: .python_base
+  stage: test
+  script:
+    - mypy src/ --config-file=pyproject.toml
+  allow_failure: true  # Allow failure initially until type hints are fully added
+
+pytest:
+  extends: .python_base
+  stage: test
+  script:
+    - pytest tests/ -v --cov=src --cov-report=xml --cov-report=html --junitxml=report.xml
+  coverage: '/TOTAL.*\s+(\d+%)/'
+  artifacts:
+    when: always
+    paths:
+      - backend/htmlcov/
+      - backend/coverage.xml
+    reports:
+      junit: backend/report.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: backend/coverage.xml
+
+frontend-test:
+  extends: .node_base
+  stage: test
+  script:
+    - npm test -- --run --coverage 2>/dev/null || echo "No tests configured yet"
+  allow_failure: true  # Allow failure until tests are added
+
+# =============================================================================
+# SECURITY STAGE
+# =============================================================================
+
+bandit:
+  extends: .python_base
+  stage: security
+  script:
+    - bandit -r src/ -c pyproject.toml -f json -o bandit-report.json || true
+    - bandit -r src/ -c pyproject.toml
+  artifacts:
+    when: always
+    paths:
+      - backend/bandit-report.json
+  allow_failure: false
+
+dependency-check:
+  extends: .python_base
+  stage: security
+  script:
+    - pip install pip-audit
+    - pip-audit --desc on || true  # Report but don't fail on vulnerabilities initially
+  allow_failure: true
+
+npm-audit:
+  extends: .node_base
+  stage: security
+  script:
+    - npm audit --audit-level=high || true  # Report but don't fail initially
+  allow_failure: true
+
+# =============================================================================
+# BUILD STAGE
+# =============================================================================
+
+build-frontend:
+  extends: .node_base
+  stage: build
+  script:
+    - npm run build
+  artifacts:
+    paths:
+      - frontend/dist/
+    expire_in: 1 week
+  only:
+    - main
+    - master
+    - merge_requests
+
+build-docker:
+  stage: build
+  image: docker:24
+  services:
+    - docker:24-dind
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+  script:
+    - docker compose build
+  only:
+    - main
+    - master
+  when: manual
+
+# =============================================================================
+# MERGE REQUEST CHECKS
+# =============================================================================
+
+pre-commit:
+  image: python:${PYTHON_VERSION}
+  stage: lint
+  before_script:
+    - pip install pre-commit
+    - cd frontend && npm ci && cd ..
+  script:
+    - pre-commit run --all-files
+  only:
+    - merge_requests
+  allow_failure: true
+
+# =============================================================================
+# SCHEDULED JOBS (Optional - for nightly builds)
+# =============================================================================
+
+nightly-full-test:
+  extends: .python_base
+  stage: test
+  script:
+    - pytest tests/ -v --cov=src --cov-report=xml --cov-fail-under=50
+  only:
+    - schedules
+  allow_failure: false

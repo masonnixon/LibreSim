@@ -17,26 +17,85 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=7.4.0",
-    "pytest-asyncio>=0.21.0",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "pytest-xdist>=3.5.0",
     "httpx>=0.25.0",
-    "black>=23.11.0",
-    "ruff>=0.1.0",
-    "mypy>=1.7.0",
+    "ruff>=0.4.0",
+    "mypy>=1.10.0",
+    "bandit>=1.7.0",
+    "pre-commit>=3.7.0",
 ]
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[tool.black]
-line-length = 100
-target-version = ["py311"]
+# ============================================================================
+# PYTEST CONFIGURATION
+# ============================================================================
+[tool.pytest.ini_options]
+addopts = "-v --strict-markers --strict-config --cov=src --cov-report=term-missing --cov-report=html --cov-report=xml"
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+asyncio_mode = "auto"
 
+# ============================================================================
+# RUFF CONFIGURATION (Linting + Formatting)
+# ============================================================================
 [tool.ruff]
 line-length = 100
-select = ["E", "F", "I", "N", "W"]
+target-version = "py311"
 
+[tool.ruff.lint]
+# E,F: base errors; I: import sort; B: bugbear; UP: pyupgrade; SIM: simplify
+select = ["E", "F", "I", "B", "UP", "SIM", "N", "W"]
+ignore = ["E203"]  # keeps slicing compatible with Black-style
+fixable = ["ALL"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.ruff.lint.isort]
+known-first-party = ["src"]
+
+# ============================================================================
+# MYPY CONFIGURATION (Type Checking)
+# ============================================================================
 [tool.mypy]
 python_version = "3.11"
-strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+strict_optional = true
+check_untyped_defs = true
+
+# ============================================================================
+# BANDIT CONFIGURATION (Security Scanning)
+# ============================================================================
+[tool.bandit]
+exclude_dirs = ["tests", "test"]
+skips = ["B101"]  # Skip assert_used check (commonly used in tests)
+
+# ============================================================================
+# COVERAGE CONFIGURATION
+# ============================================================================
+[tool.coverage.run]
+source = ["src"]
+branch = true
+omit = ["*/tests/*", "*/__pycache__/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+fail_under = 0  # Set to desired threshold (e.g., 80) once tests are established

@@ -1,0 +1,116 @@
+# Pre-commit hooks for LibreSim
+# Install: pre-commit install
+# Run manually: pre-commit run --all-files
+# See https://pre-commit.com for more information
+
+repos:
+  # ==========================================================================
+  # BACKEND (Python) HOOKS
+  # ==========================================================================
+
+  # Ruff - Fast Python linter and formatter
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.4.10
+    hooks:
+      # Linting with auto-fix
+      - id: ruff
+        name: ruff (lint)
+        args: [--fix, --exit-non-zero-on-fix]
+        files: ^backend/
+      # Code formatting
+      - id: ruff-format
+        name: ruff (format)
+        files: ^backend/
+
+  # MyPy - Static type checking
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.10.0
+    hooks:
+      - id: mypy
+        name: mypy (type check)
+        files: ^backend/src/
+        args: [--config-file=backend/pyproject.toml]
+        additional_dependencies:
+          - fastapi>=0.104.0
+          - pydantic>=2.5.0
+          - numpy>=1.26.0
+
+  # Bandit - Security vulnerability scanner
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.9
+    hooks:
+      - id: bandit
+        name: bandit (security)
+        args: [-c, backend/pyproject.toml, -r]
+        files: ^backend/src/
+
+  # ==========================================================================
+  # FRONTEND (TypeScript/JavaScript) HOOKS
+  # ==========================================================================
+
+  # ESLint - TypeScript/JavaScript linting
+  - repo: local
+    hooks:
+      - id: eslint
+        name: eslint (frontend)
+        entry: bash -c 'cd frontend && npm run lint'
+        language: system
+        files: ^frontend/.*\.(ts|tsx|js|jsx)$
+        pass_filenames: false
+
+      - id: tsc
+        name: tsc (typecheck)
+        entry: bash -c 'cd frontend && npx tsc --noEmit'
+        language: system
+        files: ^frontend/.*\.(ts|tsx)$
+        pass_filenames: false
+
+  # ==========================================================================
+  # GENERAL HOOKS
+  # ==========================================================================
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      # Prevent large files from being committed
+      - id: check-added-large-files
+        args: [--maxkb=1000]
+      # Check for files that would conflict on case-insensitive filesystems
+      - id: check-case-conflict
+      # Check for merge conflict markers
+      - id: check-merge-conflict
+      # Check YAML syntax
+      - id: check-yaml
+        args: [--unsafe]
+      # Check JSON syntax
+      - id: check-json
+      # Ensure files end with newline
+      - id: end-of-file-fixer
+        exclude: ^(.*\.min\.js|.*\.min\.css)$
+      # Remove trailing whitespace
+      - id: trailing-whitespace
+        exclude: ^(.*\.min\.js|.*\.min\.css|.*\.md)$
+      # Check for debugger statements in Python
+      - id: debug-statements
+        files: ^backend/
+      # Check Python AST
+      - id: check-ast
+        files: ^backend/
+
+  # Detect secrets
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: [--baseline, .secrets.baseline]
+        exclude: (package-lock\.json|\.secrets\.baseline)$
+
+# Configuration
+default_language_version:
+  python: python3.11
+
+ci:
+  autofix_commit_msg: |
+    [pre-commit.ci] auto fixes from pre-commit hooks
+  autofix_prs: true
+  autoupdate_commit_msg: "[pre-commit.ci] pre-commit autoupdate"
