@@ -312,13 +312,25 @@ class OSKAdapter:
                 source_osk_block = self._osk_blocks.get(source_block_id)
                 source_compiled_block = self._block_map.get(source_block_id)
 
-                # Extract the port index from target_port_id (e.g., "block-in-1" -> 1)
+                # Extract the port index from target_port_id
+                # Handles formats like:
+                #   "block-in-0", "block-in-1" (numeric suffix, 0-indexed)
+                #   "sum1-in1", "sum1-in2" (named suffix like in1/in2, 1-indexed)
                 target_port_index = 0
                 if target_port_id:
-                    # Parse port index from ID like "blockid-in-2"
+                    # Parse port index from ID
                     parts = target_port_id.rsplit("-", 1)
-                    if len(parts) == 2 and parts[1].isdigit():
-                        target_port_index = int(parts[1])
+                    if len(parts) == 2:
+                        suffix = parts[1]
+                        if suffix.isdigit():
+                            # Pure numeric: "block-in-0" -> index 0
+                            target_port_index = int(suffix)
+                        elif suffix.startswith("in") and suffix[2:].isdigit():
+                            # Named format: "sum1-in1" -> index 0, "sum1-in2" -> index 1
+                            target_port_index = int(suffix[2:]) - 1
+                        elif suffix.startswith("out") and suffix[3:].isdigit():
+                            # Output format: "block-out1" -> index 0
+                            target_port_index = int(suffix[3:]) - 1
 
 
                 if source_osk_block:
