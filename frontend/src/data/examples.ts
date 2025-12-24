@@ -77,7 +77,7 @@ export const embeddedExamples: Record<string, Model> = {
     id: 'example-sine-wave',
     metadata: {
       name: 'Sine Wave Basic',
-      description: 'A simple sine wave generator connected to a scope for visualization.',
+      description: 'A simple sine wave generator connected to a scope for visualization. Reference: https://www.mathworks.com/help/simulink/slref/sinewave.html',
       author: 'LibreSim Examples',
       createdAt: '2024-01-01T00:00:00Z',
       modifiedAt: '2024-01-01T00:00:00Z',
@@ -112,7 +112,7 @@ export const embeddedExamples: Record<string, Model> = {
     id: 'example-first-order',
     metadata: {
       name: 'First-Order Step Response',
-      description: 'Step response of a first-order system G(s) = 1/(s+1).',
+      description: 'Step response of a first-order system G(s) = 1/(s+1). Reference: https://www.mathworks.com/help/simulink/slref/transferfcn.html',
       author: 'LibreSim Examples',
       createdAt: '2024-01-01T00:00:00Z',
       modifiedAt: '2024-01-01T00:00:00Z',
@@ -161,7 +161,7 @@ export const embeddedExamples: Record<string, Model> = {
     id: 'example-pid-controller',
     metadata: {
       name: 'PID Controller',
-      description: 'Closed-loop PID control of a second-order plant.',
+      description: 'Closed-loop PID control of a second-order plant. Reference: https://www.mathworks.com/help/simulink/slref/pidcontroller.html',
       author: 'LibreSim Examples',
       createdAt: '2024-01-01T00:00:00Z',
       modifiedAt: '2024-01-01T00:00:00Z',
@@ -234,7 +234,7 @@ export const embeddedExamples: Record<string, Model> = {
     id: 'example-mass-spring-damper',
     metadata: {
       name: 'Mass-Spring-Damper',
-      description: 'Mechanical vibration system simulation.',
+      description: 'Mechanical vibration system simulation. Reference: https://www.mathworks.com/help/simscape/ug/mass-spring-damper-in-simulink-and-simscape.html',
       author: 'LibreSim Examples',
       createdAt: '2024-01-01T00:00:00Z',
       modifiedAt: '2024-01-01T00:00:00Z',
@@ -339,7 +339,7 @@ export const embeddedExamples: Record<string, Model> = {
     id: 'example-signal-filtering',
     metadata: {
       name: 'Signal Filtering Comparison',
-      description: 'Demonstrates signal processing blocks by filtering a composite signal (1Hz + 10Hz sine waves).',
+      description: 'Demonstrates signal processing blocks by filtering a composite signal (1Hz + 10Hz sine waves). Reference: https://www.mathworks.com/help/dsp/ref/lowpassfilter.html and https://www.mathworks.com/help/dsp/ref/movingaverage.html',
       author: 'LibreSim Examples',
       createdAt: '2024-01-01T00:00:00Z',
       modifiedAt: '2024-01-01T00:00:00Z',
@@ -423,7 +423,7 @@ export const embeddedExamples: Record<string, Model> = {
     id: 'example-kalman-filter',
     metadata: {
       name: 'Kalman Filter State Estimation',
-      description: 'Demonstrates Kalman filter for estimating a ramp signal.',
+      description: 'Demonstrates Kalman filter for estimating a ramp signal. Reference: https://www.mathworks.com/help/control/ug/kalman-filtering.html',
       author: 'LibreSim Examples',
       createdAt: '2024-01-01T00:00:00Z',
       modifiedAt: '2024-01-01T00:00:00Z',
@@ -493,7 +493,7 @@ export const embeddedExamples: Record<string, Model> = {
     id: 'example-thermostat-relay',
     metadata: {
       name: 'Thermostat Relay Control (Bang-Bang)',
-      description: 'Thermostat-style temperature control using a relay with hysteresis.',
+      description: 'Thermostat-style temperature control using a relay with hysteresis. Reference: https://www.mathworks.com/help/simulink/ug/model-a-house-heating-system.html',
       author: 'LibreSim Examples',
       createdAt: '2024-01-01T00:00:00Z',
       modifiedAt: '2024-01-01T00:00:00Z',
@@ -592,7 +592,7 @@ export const embeddedExamples: Record<string, Model> = {
     id: 'example-lookup-table',
     metadata: {
       name: 'Lookup Table Nonlinearity',
-      description: 'Demonstrates 1D lookup table for modeling nonlinear characteristics.',
+      description: 'Demonstrates 1D lookup table for modeling nonlinear characteristics. Reference: https://www.mathworks.com/help/simulink/slref/1dlookuptable.html',
       author: 'LibreSim Examples',
       createdAt: '2024-01-01T00:00:00Z',
       modifiedAt: '2024-01-01T00:00:00Z',
@@ -656,7 +656,7 @@ export const embeddedExamples: Record<string, Model> = {
     id: 'example-second-order-damping',
     metadata: {
       name: 'Second-Order Damping',
-      description: 'Comparison of different damping ratios.',
+      description: 'Comparison of different damping ratios (underdamped, critically damped, overdamped). Reference: https://ctms.engin.umich.edu/CTMS/index.php?example=Introduction&section=SystemAnalysis',
       author: 'LibreSim Examples',
       createdAt: '2024-01-01T00:00:00Z',
       modifiedAt: '2024-01-01T00:00:00Z',
@@ -727,7 +727,7 @@ export const embeddedExamples: Record<string, Model> = {
     id: 'example-rate-limit-quantize',
     metadata: {
       name: 'Rate Limiting and Quantization Effects',
-      description: 'Demonstrates actuator limitations: rate limiting and quantization.',
+      description: 'Demonstrates actuator limitations: rate limiting and quantization. Reference: https://www.mathworks.com/help/simulink/slref/ratelimiter.html and https://www.mathworks.com/help/simulink/slref/quantizer.html',
       author: 'LibreSim Examples',
       createdAt: '2024-01-01T00:00:00Z',
       modifiedAt: '2024-01-01T00:00:00Z',
