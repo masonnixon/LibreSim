@@ -3292,3 +3292,151 @@ class TestSinkBlocksExtended:
         assert ws.getOutput() == 10.0
         data = ws.getData()
         assert data["name"] == "test_var"  # ToWorkspace uses 'name', not 'variableName'
+
+
+class TestObserverBlocksExtended:
+    """Extended tests for observer blocks to increase coverage."""
+
+    def test_luenberger_init_with_initial_state(self):
+        """Test LuenbergerObserver init() with _initial_state set."""
+        from src.osk.blocks.observers import LuenbergerObserver
+        import numpy as np
+
+        obs = LuenbergerObserver()
+        obs._initial_state = [5.0]
+        obs.init()
+        assert obs.x_hat[0] == 5.0
+
+    def test_luenberger_propagate_states(self):
+        """Test LuenbergerObserver propagateStates method."""
+        from src.osk.blocks.observers import LuenbergerObserver
+        import numpy as np
+
+        State.dt = 0.01
+        obs = LuenbergerObserver()
+        obs.x_hat = np.array([1.0])
+        obs.x_hat_dot = np.array([10.0])
+        obs.propagateStates()
+        assert obs.x_hat[0] == pytest.approx(1.1, rel=0.01)
+
+    def test_luenberger_get_state_estimate(self):
+        """Test LuenbergerObserver getStateEstimate method."""
+        from src.osk.blocks.observers import LuenbergerObserver
+        import numpy as np
+
+        obs = LuenbergerObserver()
+        obs.x_hat = np.array([3.14])
+        estimate = obs.getStateEstimate()
+        assert estimate[0] == 3.14
+        # Verify it's a copy
+        estimate[0] = 0.0
+        assert obs.x_hat[0] == 3.14
+
+    def test_luenberger_get_output_invalid_port(self):
+        """Test LuenbergerObserver getOutput with invalid port."""
+        from src.osk.blocks.observers import LuenbergerObserver
+
+        obs = LuenbergerObserver()
+        obs.output = 99.0
+        # Port beyond state vector returns self.output
+        result = obs.getOutput(port=100)
+        assert result == 99.0
+
+    def test_kalman_filter_init(self):
+        """Test KalmanFilter init() method."""
+        from src.osk.blocks.observers import KalmanFilter
+        import numpy as np
+
+        kf = KalmanFilter()
+        kf.x_hat = np.array([5.0])
+        kf.P = np.array([[10.0]])
+        kf.init()
+        assert kf.x_hat[0] == 0.0
+        assert kf.P[0, 0] == 1.0
+
+    def test_kalman_filter_get_covariance(self):
+        """Test KalmanFilter getCovariance method."""
+        from src.osk.blocks.observers import KalmanFilter
+        import numpy as np
+
+        kf = KalmanFilter()
+        kf.P = np.array([[2.5]])
+        cov = kf.getCovariance()
+        assert cov[0, 0] == 2.5
+        # Verify it's a copy
+        cov[0, 0] = 0.0
+        assert kf.P[0, 0] == 2.5
+
+    def test_kalman_filter_get_output_invalid_port(self):
+        """Test KalmanFilter getOutput with invalid port."""
+        from src.osk.blocks.observers import KalmanFilter
+
+        kf = KalmanFilter()
+        kf.output = 42.0
+        result = kf.getOutput(port=50)
+        assert result == 42.0
+
+    def test_extended_kalman_filter_init(self):
+        """Test ExtendedKalmanFilter init() method."""
+        from src.osk.blocks.observers import ExtendedKalmanFilter
+        import numpy as np
+
+        ekf = ExtendedKalmanFilter(n_states=2)
+        ekf.x_hat = np.array([1.0, 2.0])
+        ekf.init()
+        assert ekf.x_hat[0] == 0.0
+        assert ekf.x_hat[1] == 0.0
+
+    def test_extended_kalman_filter_get_output_port1(self):
+        """Test ExtendedKalmanFilter getOutput with port 1."""
+        from src.osk.blocks.observers import ExtendedKalmanFilter
+        import numpy as np
+
+        ekf = ExtendedKalmanFilter(n_states=2)
+        ekf.x_hat = np.array([1.0, 2.0])
+        assert ekf.getOutput(0) == 1.0
+        assert ekf.getOutput(1) == 2.0
+
+    def test_extended_kalman_filter_get_output_invalid_port(self):
+        """Test ExtendedKalmanFilter getOutput with invalid port."""
+        from src.osk.blocks.observers import ExtendedKalmanFilter
+
+        ekf = ExtendedKalmanFilter(n_states=1)
+        ekf.output = 99.0
+        result = ekf.getOutput(port=10)
+        assert result == 99.0
+
+    def test_luenberger_with_2d_matrices(self):
+        """Test LuenbergerObserver with proper 2D matrices."""
+        from src.osk.blocks.observers import LuenbergerObserver
+        import numpy as np
+
+        A = [[0, 1], [-1, -1]]
+        B = [[0], [1]]
+        C = [[1, 0]]
+        L = [[1], [1]]
+        obs = LuenbergerObserver(A=A, B=B, C=C, L=L)
+        assert obs.n == 2
+        assert obs.m == 1
+        assert obs.p == 1
+
+    def test_kalman_filter_with_singular_S(self):
+        """Test KalmanFilter handles near-singular innovation covariance."""
+        from src.osk.blocks.observers import KalmanFilter
+        import numpy as np
+
+        # Create filter with very small R (may cause numerical issues)
+        kf = KalmanFilter(R=[[1e-15]])
+        kf.inputs = [0.0, 1.0]
+        # Should not raise error
+        kf.update()
+
+    def test_extended_kalman_filter_update(self):
+        """Test ExtendedKalmanFilter update with inputs."""
+        from src.osk.blocks.observers import ExtendedKalmanFilter
+
+        State.dt = 0.01
+        ekf = ExtendedKalmanFilter(n_states=1)
+        ekf.inputs = [1.0, 0.5]  # u, y
+        ekf.update()
+        assert isinstance(ekf.output, float)
