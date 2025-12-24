@@ -3440,3 +3440,150 @@ class TestObserverBlocksExtended:
         ekf.inputs = [1.0, 0.5]  # u, y
         ekf.update()
         assert isinstance(ekf.output, float)
+
+
+class TestDiscreteBlocksExtended:
+    """Extended tests for discrete blocks."""
+
+    def test_discrete_transfer_function_higher_order(self):
+        """Test DiscreteTransferFunction with second order system."""
+        from src.osk.blocks.discrete import DiscreteTransferFunction
+
+        # Second order: (1 + z^-1) / (1 + 0.5*z^-1 + 0.25*z^-2)
+        State.t = 0.0
+        State.dt = 0.01
+
+        dtf = DiscreteTransferFunction(
+            numerator=[1.0, 1.0],
+            denominator=[1.0, 0.5, 0.25],
+            sample_time=0.01
+        )
+        dtf.init()
+        dtf.input = 1.0
+
+        # Run multiple iterations to exercise buffer operations
+        outputs = []
+        for i in range(5):
+            State.t = i * 0.01
+            dtf.update()
+            outputs.append(dtf.getOutput())
+
+        assert len(outputs) == 5
+        assert all(isinstance(o, float) for o in outputs)
+
+
+class TestNonlinearBlocksExtended:
+    """Extended tests for nonlinear blocks."""
+
+    def test_lookup_table_1d_with_different_methods(self):
+        """Test LookupTable1D with different interpolation."""
+        from src.osk.blocks.nonlinear import LookupTable1D
+
+        # Test with default method (linear)
+        lut = LookupTable1D(
+            x_data=[0, 1, 2],
+            y_data=[0, 10, 20]
+        )
+        lut.input = 0.5
+        lut.update()
+        assert lut.getOutput() == 5.0
+
+    def test_quantizer_connect_input(self):
+        """Test Quantizer with connected input."""
+        from src.osk.blocks.nonlinear import Quantizer
+        from src.osk.blocks.sources import Constant
+
+        const = Constant(value=3.7)
+        const.init()
+
+        q = Quantizer(interval=1.0)
+        q.connectInput(const)
+        q.update()
+
+        assert q.getOutput() == 4.0
+
+    def test_variable_transport_delay_with_delay(self):
+        """Test VariableTransportDelay over time."""
+        from src.osk.blocks.nonlinear import VariableTransportDelay
+
+        State.t = 0.0
+        State.dt = 0.01
+
+        vtd = VariableTransportDelay(max_delay=0.1)
+        vtd.init()
+
+        # Simulate several steps
+        for i in range(20):
+            State.t = i * 0.01
+            vtd.setInput(float(i), 0)  # Signal
+            vtd.setInput(0.05, 1)  # Delay time
+            vtd.update()
+
+        assert isinstance(vtd.getOutput(), float)
+
+
+class TestSignalProcessingExtended:
+    """Extended tests for signal processing blocks."""
+
+    def test_moving_average_with_time(self):
+        """Test MovingAverage over multiple time steps."""
+        from src.osk.blocks.signal_processing import MovingAverage
+
+        State.t = 0.0
+        State.dt = 0.01
+
+        ma = MovingAverage(window_size=5)
+        ma.init()
+
+        # Feed in values
+        for i in range(10):
+            State.t = i * 0.01
+            ma.input = float(i)
+            ma.update()
+
+        assert isinstance(ma.getOutput(), float)
+
+    def test_rate_limiter_connect_input(self):
+        """Test RateLimiter with connected input."""
+        from src.osk.blocks.signal_processing import RateLimiter
+        from src.osk.blocks.sources import Constant
+
+        State.dt = 0.01
+
+        const = Constant(value=100.0)
+        const.init()
+
+        rl = RateLimiter(rising_rate=10.0, falling_rate=-10.0)
+        rl.init()
+        rl.connectInput(const)
+        rl.update()
+
+        # Output should be limited by rising rate
+        assert rl.getOutput() <= 10.0 * State.dt
+
+
+class TestObserverMatrixEdgeCases:
+    """Test observer blocks with matrix edge cases."""
+
+    def test_kalman_filter_reshape_q_r(self):
+        """Test KalmanFilter handles improper Q/R shapes."""
+        from src.osk.blocks.observers import KalmanFilter
+        import numpy as np
+
+        # Pass scalar Q and R which need reshaping
+        kf = KalmanFilter(Q=0.01, R=0.1)
+        assert kf.Q.shape == (1, 1)
+        assert kf.R.shape == (1, 1)
+
+    def test_extended_kalman_filter_reshape_q_r(self):
+        """Test ExtendedKalmanFilter handles improper Q/R shapes."""
+        from src.osk.blocks.observers import ExtendedKalmanFilter
+        import numpy as np
+
+        # Pass improper Q which needs reshaping
+        ekf = ExtendedKalmanFilter(n_states=2, Q=[[1]])  # Wrong size
+        assert ekf.Q.shape == (2, 2)
+
+        # Pass 1D R
+        ekf2 = ExtendedKalmanFilter(n_states=1, R=[0.5])
+        assert ekf2.R.shape == (1, 1)
