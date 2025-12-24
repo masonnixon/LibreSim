@@ -2377,3 +2377,170 @@ class TestInportExtended:
 
         assert inport.getOutput() == 7.0
         assert inport.getOutputVector() is None
+
+
+class TestIntegratorExtended:
+    """Extended tests for the Integrator block."""
+
+    def test_integrator_init(self):
+        """Test Integrator init method."""
+        integrator = Integrator(initial_condition=5.0)
+        integrator.x[0] = 10.0  # Change value
+        integrator.init()
+        assert integrator.x[0] == 5.0
+        assert integrator.x[1] == 0.0
+
+    def test_integrator_limit_upper(self):
+        """Test Integrator with upper limit."""
+        integrator = Integrator(initial_condition=9.0, limit_output=True, upper_limit=10.0)
+        integrator.setInput(1.0)  # Positive input
+        integrator.x[0] = 10.0  # At upper limit
+        integrator.update()
+        # Derivative should be zeroed when at limit and trying to increase
+        assert integrator.x[1] == 0.0
+
+    def test_integrator_limit_lower(self):
+        """Test Integrator with lower limit."""
+        integrator = Integrator(initial_condition=1.0, limit_output=True, lower_limit=0.0)
+        integrator.setInput(-1.0)  # Negative input
+        integrator.x[0] = 0.0  # At lower limit
+        integrator.update()
+        # Derivative should be zeroed when at limit and trying to decrease
+        assert integrator.x[1] == 0.0
+
+    def test_integrator_output_clamping(self):
+        """Test Integrator output clamping."""
+        integrator = Integrator(initial_condition=5.0, limit_output=True, upper_limit=3.0, lower_limit=-3.0)
+        assert integrator.getOutput() == 3.0  # Clamped to upper
+
+        integrator.x[0] = -5.0
+        assert integrator.getOutput() == -3.0  # Clamped to lower
+
+
+class TestDerivativeExtended:
+    """Extended tests for the Derivative block."""
+
+    def test_derivative_init(self):
+        """Test Derivative init method."""
+        deriv = Derivative(coefficient=50.0)
+        deriv.x[0] = 10.0
+        deriv.output = 5.0
+        deriv.init()
+        assert deriv.x[0] == 0.0
+        assert deriv.x[1] == 0.0
+        assert deriv.output == 0.0
+
+    def test_derivative_with_connected_block(self):
+        """Test Derivative with connected input block."""
+        const = Constant(value=2.0)
+        const.init()
+
+        deriv = Derivative(coefficient=100.0)
+        deriv.connectInput(const)
+        assert deriv.input_block is const
+
+        deriv.update()
+        # With const input of 2.0 and x[0] = 0, output = 100 * (2 - 0) = 200
+        assert deriv.getOutput() == 200.0
+
+
+class TestTransferFunctionExtended:
+    """Extended tests for the TransferFunction block."""
+
+    def test_tf_static_gain(self):
+        """Test TransferFunction as static gain (order 0)."""
+        tf = TransferFunction(numerator=[2.0], denominator=[1.0])
+        tf.setInput(3.0)
+        tf.update()
+        # Output should be 2.0/1.0 * 3.0 = 6.0
+        assert tf.getOutput() == pytest.approx(6.0)
+
+    def test_tf_init(self):
+        """Test TransferFunction init method."""
+        tf = TransferFunction(numerator=[1.0], denominator=[1.0, 1.0])
+        tf.states[0][0] = 5.0
+        tf.output = 10.0
+        tf.init()
+        assert tf.states[0][0] == 0.0
+        assert tf.output == 0.0
+
+    def test_tf_connect_input(self):
+        """Test TransferFunction with connected input block."""
+        const = Constant(value=1.0)
+        const.init()
+
+        tf = TransferFunction(numerator=[1.0], denominator=[1.0, 1.0])
+        tf.connectInput(const)
+        assert tf.input_block is const
+
+        tf.update()
+        # Should use input from connected block
+        assert tf.input == 1.0
+
+    def test_tf_higher_order(self):
+        """Test TransferFunction with higher order."""
+        # Second order: 1 / (s^2 + 2s + 1)
+        tf = TransferFunction(numerator=[1.0], denominator=[1.0, 2.0, 1.0])
+        assert tf.order == 2
+        assert len(tf.states) == 2
+
+        tf.setInput(1.0)
+        tf.update()
+        # Should execute without error
+        assert isinstance(tf.getOutput(), float)
+
+
+class TestStateSpaceExtended:
+    """Extended tests for the StateSpace block."""
+
+    def test_state_space_init_custom(self):
+        """Test StateSpace with custom initial state."""
+        A = [[0, 1], [-1, -1]]
+        B = [[0], [1]]
+        C = [[1, 0]]
+        D = [[0]]
+        initial = [1.0, 0.5]
+
+        ss = StateSpace(A=A, B=B, C=C, D=D, initial_state=initial)
+        assert len(ss.states) == 2
+        assert ss.states[0][0] == 1.0
+        assert ss.states[1][0] == 0.5
+
+    def test_state_space_connect_input(self):
+        """Test StateSpace with connected input block."""
+        const = Constant(value=2.0)
+        const.init()
+
+        ss = StateSpace()
+        ss.connectInput(const)
+        assert ss.input_block is const
+
+        ss.update()
+        assert ss.input == 2.0
+
+
+class TestPIDControllerExtended:
+    """Extended tests for the PIDController block."""
+
+    def test_pid_init(self):
+        """Test PIDController init method."""
+        pid = PIDController(Kp=1.0, Ki=0.5, Kd=0.1, initial_integrator=2.0)
+        pid.integral[0] = 10.0
+        pid.deriv_state[0] = 5.0
+        pid.output = 20.0
+        pid.init()
+        assert pid.integral[0] == 2.0
+        assert pid.deriv_state[0] == 0.0
+        assert pid.output == 0.0
+
+    def test_pid_connect_input(self):
+        """Test PIDController with connected input block."""
+        const = Constant(value=1.0)
+        const.init()
+
+        pid = PIDController(Kp=1.0)
+        pid.connectInput(const)
+        assert pid.input_block is const
+
+        pid.update()
+        assert pid.input == 1.0
