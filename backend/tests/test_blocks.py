@@ -2544,3 +2544,751 @@ class TestPIDControllerExtended:
 
         pid.update()
         assert pid.input == 1.0
+
+
+# =============================================================================
+# Extended Math Ops Tests for Full Coverage
+# =============================================================================
+
+
+class TestProductExtended:
+    """Extended tests for Product block to cover connectInput and division."""
+
+    def test_product_connect_input(self):
+        """Test Product connectInput method."""
+        const1 = Constant(value=3.0)
+        const2 = Constant(value=4.0)
+        const1.init()
+        const2.init()
+
+        prod = Product(operations='**')
+        prod.connectInput(const1, 0)
+        prod.connectInput(const2, 1)
+
+        assert prod.input_blocks[0] is const1
+        assert prod.input_blocks[1] is const2
+
+        prod.update()
+        assert prod.getOutput() == pytest.approx(12.0)
+
+    def test_product_division_by_zero(self):
+        """Test Product handles division by near-zero."""
+        prod = Product(operations='*/')
+        prod.setInput(10.0, 0)
+        prod.setInput(0.0, 1)  # Near zero
+        prod.update()
+        # Should handle gracefully without crashing
+        assert prod.getOutput() != float('inf')
+
+
+class TestSignExtended:
+    """Extended tests for Sign block."""
+
+    def test_sign_connect_input(self):
+        """Test Sign connectInput method."""
+        const = Constant(value=-5.0)
+        const.init()
+
+        sign = Sign()
+        sign.connectInput(const)
+        assert sign.input_block is const
+
+        sign.update()
+        assert sign.getOutput() == -1.0
+
+
+class TestSaturationExtended:
+    """Extended tests for Saturation block."""
+
+    def test_saturation_connect_input(self):
+        """Test Saturation connectInput method."""
+        const = Constant(value=100.0)
+        const.init()
+
+        sat = Saturation(upper_limit=10.0, lower_limit=-10.0)
+        sat.connectInput(const)
+        assert sat.input_block is const
+
+        sat.update()
+        assert sat.getOutput() == 10.0
+
+
+class TestMathFunctionExtended:
+    """Extended tests for MathFunction block."""
+
+    def test_math_function_connect_input(self):
+        """Test MathFunction connectInput method."""
+        const = Constant(value=1.0)
+        const.init()
+
+        mf = MathFunction(function='exp')
+        mf.connectInput(const)
+        assert mf.input_block is const
+
+        mf.update()
+        assert mf.getOutput() == pytest.approx(math.e)
+
+    def test_math_function_log(self):
+        """Test MathFunction log function."""
+        mf = MathFunction(function='log')
+        mf.setInput(math.e)
+        mf.update()
+        assert mf.getOutput() == pytest.approx(1.0)
+
+    def test_math_function_log_negative(self):
+        """Test MathFunction log with near-zero input."""
+        mf = MathFunction(function='log')
+        mf.setInput(0.0)
+        mf.update()
+        # Should not crash, uses EPS
+        assert isinstance(mf.getOutput(), float)
+
+    def test_math_function_log10(self):
+        """Test MathFunction log10 function."""
+        mf = MathFunction(function='log10')
+        mf.setInput(100.0)
+        mf.update()
+        assert mf.getOutput() == pytest.approx(2.0)
+
+    def test_math_function_sqrt(self):
+        """Test MathFunction sqrt function."""
+        mf = MathFunction(function='sqrt')
+        mf.setInput(16.0)
+        mf.update()
+        assert mf.getOutput() == pytest.approx(4.0)
+
+    def test_math_function_sqrt_negative(self):
+        """Test MathFunction sqrt with negative input."""
+        mf = MathFunction(function='sqrt')
+        mf.setInput(-5.0)
+        mf.update()
+        assert mf.getOutput() == 0.0
+
+    def test_math_function_square(self):
+        """Test MathFunction square function."""
+        mf = MathFunction(function='square')
+        mf.setInput(5.0)
+        mf.update()
+        assert mf.getOutput() == pytest.approx(25.0)
+
+    def test_math_function_pow(self):
+        """Test MathFunction pow function."""
+        mf = MathFunction(function='pow', exponent=3.0)
+        mf.setInput(2.0)
+        mf.update()
+        assert mf.getOutput() == pytest.approx(8.0)
+
+    def test_math_function_reciprocal(self):
+        """Test MathFunction reciprocal function."""
+        mf = MathFunction(function='reciprocal')
+        mf.setInput(5.0)
+        mf.update()
+        assert mf.getOutput() == pytest.approx(0.2)
+
+    def test_math_function_reciprocal_zero(self):
+        """Test MathFunction reciprocal with zero."""
+        mf = MathFunction(function='reciprocal')
+        mf.setInput(0.0)
+        mf.update()
+        # Should handle gracefully
+        assert mf.getOutput() != float('inf')
+
+    def test_math_function_unknown(self):
+        """Test MathFunction with unknown function (pass-through)."""
+        mf = MathFunction(function='unknown_func')
+        mf.setInput(42.0)
+        mf.update()
+        assert mf.getOutput() == 42.0
+
+
+class TestTrigonometryExtended:
+    """Extended tests for Trigonometry block."""
+
+    def test_trig_connect_input(self):
+        """Test Trigonometry connectInput method."""
+        const = Constant(value=0.0)
+        const.init()
+
+        trig = Trigonometry(function='sin')
+        trig.connectInput(const)
+        assert trig.input_block is const
+
+        trig.update()
+        assert trig.getOutput() == pytest.approx(0.0)
+
+    def test_trig_tan(self):
+        """Test Trigonometry tan function."""
+        trig = Trigonometry(function='tan')
+        trig.setInput(0.0)
+        trig.update()
+        assert trig.getOutput() == pytest.approx(0.0)
+
+    def test_trig_asin(self):
+        """Test Trigonometry asin function."""
+        trig = Trigonometry(function='asin')
+        trig.setInput(0.5)
+        trig.update()
+        assert trig.getOutput() == pytest.approx(math.asin(0.5))
+
+    def test_trig_acos(self):
+        """Test Trigonometry acos function."""
+        trig = Trigonometry(function='acos')
+        trig.setInput(0.5)
+        trig.update()
+        assert trig.getOutput() == pytest.approx(math.acos(0.5))
+
+    def test_trig_atan(self):
+        """Test Trigonometry atan function."""
+        trig = Trigonometry(function='atan')
+        trig.setInput(1.0)
+        trig.update()
+        assert trig.getOutput() == pytest.approx(math.atan(1.0))
+
+    def test_trig_sinh(self):
+        """Test Trigonometry sinh function."""
+        trig = Trigonometry(function='sinh')
+        trig.setInput(1.0)
+        trig.update()
+        assert trig.getOutput() == pytest.approx(math.sinh(1.0))
+
+    def test_trig_cosh(self):
+        """Test Trigonometry cosh function."""
+        trig = Trigonometry(function='cosh')
+        trig.setInput(1.0)
+        trig.update()
+        assert trig.getOutput() == pytest.approx(math.cosh(1.0))
+
+    def test_trig_tanh(self):
+        """Test Trigonometry tanh function."""
+        trig = Trigonometry(function='tanh')
+        trig.setInput(1.0)
+        trig.update()
+        assert trig.getOutput() == pytest.approx(math.tanh(1.0))
+
+    def test_trig_overflow_handling(self):
+        """Test Trigonometry handles overflow."""
+        trig = Trigonometry(function='sinh')
+        trig.setInput(1000.0)  # Large value that may overflow
+        trig.update()
+        # Should handle gracefully
+        assert isinstance(trig.getOutput(), float)
+
+
+class TestDeadZoneExtended:
+    """Extended tests for DeadZone block."""
+
+    def test_dead_zone_connect_input(self):
+        """Test DeadZone connectInput method."""
+        const = Constant(value=0.0)
+        const.init()
+
+        dz = DeadZone(start=-0.5, end=0.5)
+        dz.connectInput(const)
+        assert dz.input_block is const
+
+        dz.update()
+        assert dz.getOutput() == 0.0
+
+
+class TestSwitchExtended:
+    """Extended tests for Switch block."""
+
+    def test_switch_connect_input(self):
+        """Test Switch connectInput method."""
+        const1 = Constant(value=10.0)
+        control = Constant(value=1.0)
+        const2 = Constant(value=20.0)
+        const1.init()
+        control.init()
+        const2.init()
+
+        sw = Switch(threshold=0.5, criteria='gte')
+        sw.connectInput(const1, 0)
+        sw.connectInput(control, 1)
+        sw.connectInput(const2, 2)
+
+        sw.update()
+        # Control (1.0) >= threshold (0.5), so use first input (10.0)
+        assert sw.getOutput() == 10.0
+
+    def test_switch_gt_criteria(self):
+        """Test Switch with 'gt' criteria."""
+        sw = Switch(threshold=0.5, criteria='gt')
+        sw.setInput(10.0, 0)  # First input
+        sw.setInput(0.5, 1)   # Control - exactly at threshold
+        sw.setInput(20.0, 2)  # Second input
+        sw.update()
+        # Control (0.5) is NOT > threshold (0.5), so use second input
+        assert sw.getOutput() == 20.0
+
+    def test_switch_neq_criteria(self):
+        """Test Switch with 'neq' criteria."""
+        sw = Switch(threshold=0.5, criteria='neq')
+        sw.setInput(10.0, 0)  # First input
+        sw.setInput(0.5, 1)   # Control - exactly at threshold
+        sw.setInput(20.0, 2)  # Second input
+        sw.update()
+        # Control == threshold, so use second input
+        assert sw.getOutput() == 20.0
+
+        # Now try with different control value
+        sw.setInput(1.0, 1)  # Control != threshold
+        sw.update()
+        # Control != threshold, so use first input
+        assert sw.getOutput() == 10.0
+
+
+class TestMuxExtended:
+    """Extended tests for Mux block."""
+
+    def test_mux_init(self):
+        """Test Mux init method."""
+        mux = Mux(num_inputs=3)
+        mux.inputs = [1.0, 2.0, 3.0]
+        mux.outputs = [1.0, 2.0, 3.0]
+        mux.init()
+        assert mux.inputs == [0.0, 0.0, 0.0]
+        assert mux.outputs == [0.0, 0.0, 0.0]
+
+    def test_mux_connect_input(self):
+        """Test Mux connectInput method."""
+        const1 = Constant(value=1.0)
+        const2 = Constant(value=2.0)
+        const1.init()
+        const2.init()
+
+        mux = Mux(num_inputs=2)
+        mux.connectInput(const1, 0)
+        mux.connectInput(const2, 1)
+
+        assert mux.input_blocks[0] is const1
+        assert mux.input_blocks[1] is const2
+
+        mux.update()
+        assert mux.getOutput(0) == 1.0
+        assert mux.getOutput(1) == 2.0
+
+    def test_mux_get_output_out_of_range(self):
+        """Test Mux getOutput with out of range port."""
+        mux = Mux(num_inputs=2)
+        mux.setInput(1.0, 0)
+        mux.setInput(2.0, 1)
+        mux.update()
+        assert mux.getOutput(10) == 0.0  # Out of range
+
+
+class TestDemuxExtended:
+    """Extended tests for Demux block."""
+
+    def test_demux_init(self):
+        """Test Demux init method."""
+        demux = Demux(num_outputs=3)
+        demux.input_vector = [1.0, 2.0, 3.0]
+        demux.outputs = [1.0, 2.0, 3.0]
+        demux.init()
+        assert demux.input_vector == [0.0, 0.0, 0.0]
+        assert demux.outputs == [0.0, 0.0, 0.0]
+
+    def test_demux_set_input_vector(self):
+        """Test Demux setInput with vector."""
+        demux = Demux(num_outputs=3)
+        demux.setInput([1.0, 2.0, 3.0])
+        demux.update()
+        assert demux.getOutput(0) == 1.0
+        assert demux.getOutput(1) == 2.0
+        assert demux.getOutput(2) == 3.0
+
+    def test_demux_from_mux(self):
+        """Test Demux connected to Mux (vector transfer)."""
+        mux = Mux(num_inputs=2)
+        mux.setInput(5.0, 0)
+        mux.setInput(10.0, 1)
+        mux.update()
+
+        demux = Demux(num_outputs=2)
+        demux.connectInput(mux)
+        demux.update()
+
+        assert demux.getOutput(0) == 5.0
+        assert demux.getOutput(1) == 10.0
+
+    def test_demux_from_scalar(self):
+        """Test Demux connected to scalar block."""
+        const = Constant(value=42.0)
+        const.init()
+
+        demux = Demux(num_outputs=2)
+        demux.connectInput(const)
+        demux.update()
+
+        assert demux.getOutput(0) == 42.0
+        assert demux.getOutput(1) == 0.0
+
+    def test_demux_get_output_out_of_range(self):
+        """Test Demux getOutput with out of range port."""
+        demux = Demux(num_outputs=2)
+        demux.setInput([1.0, 2.0])
+        demux.update()
+        assert demux.getOutput(10) == 0.0  # Out of range
+
+
+class TestReshapeExtended:
+    """Extended tests for Reshape block."""
+
+    def test_reshape_init(self):
+        """Test Reshape init method."""
+        rs = Reshape()
+        rs.input = 5.0
+        rs._input_vector = [1.0, 2.0]
+        rs._output_vector = [1.0, 2.0]
+        rs.init()
+        assert rs.input == 0.0
+        assert rs._input_vector is None
+        assert rs._output_vector is None
+
+    def test_reshape_set_input_vector(self):
+        """Test Reshape setInput with vector."""
+        rs = Reshape()
+        rs.setInput([1.0, 2.0, 3.0])
+        assert rs._input_vector == [1.0, 2.0, 3.0]
+        assert rs.input == 1.0
+
+    def test_reshape_set_input_scalar(self):
+        """Test Reshape setInput with scalar."""
+        rs = Reshape()
+        rs.setInput(5.0)
+        assert rs.input == 5.0
+        assert rs._input_vector is None
+
+    def test_reshape_from_mux(self):
+        """Test Reshape connected to Mux."""
+        mux = Mux(num_inputs=2)
+        mux.setInput(5.0, 0)
+        mux.setInput(10.0, 1)
+        mux.update()
+
+        rs = Reshape()
+        rs.connectInput(mux)
+        rs.update()
+
+        assert rs.getOutput() == 5.0
+        vec = rs.getOutputVector()
+        assert vec == [5.0, 10.0]
+
+    def test_reshape_from_scalar(self):
+        """Test Reshape connected to scalar block."""
+        const = Constant(value=42.0)
+        const.init()
+
+        rs = Reshape()
+        rs.connectInput(const)
+        rs.update()
+
+        assert rs.getOutput() == 42.0
+        assert rs.getOutputVector() is None
+
+
+# =============================================================================
+# Nonlinear Block Extended Tests
+# =============================================================================
+
+
+class TestNonlinearBlocks:
+    """Extended tests for nonlinear blocks."""
+
+    def test_lookup_table_1d_connect_input(self):
+        """Test LookupTable1D with connected input."""
+        from src.osk.blocks.nonlinear import LookupTable1D
+
+        const = Constant(value=1.5)
+        const.init()
+
+        lut = LookupTable1D(x_data=[0, 1, 2], y_data=[0, 10, 20])
+        lut.connectInput(const)
+        lut.update()
+
+        assert lut.getOutput() == pytest.approx(15.0)  # Linear interpolation
+
+    def test_lookup_table_1d_extrapolation_low(self):
+        """Test LookupTable1D extrapolation below range."""
+        from src.osk.blocks.nonlinear import LookupTable1D
+
+        lut = LookupTable1D(x_data=[0, 1, 2], y_data=[0, 10, 20])
+        lut.setInput(-1.0)
+        lut.update()
+        # Linear extrapolation continues below range
+        assert isinstance(lut.getOutput(), float)
+
+    def test_lookup_table_1d_extrapolation_high(self):
+        """Test LookupTable1D extrapolation above range."""
+        from src.osk.blocks.nonlinear import LookupTable1D
+
+        lut = LookupTable1D(x_data=[0, 1, 2], y_data=[0, 10, 20])
+        lut.setInput(5.0)
+        lut.update()
+        # Linear extrapolation continues above range
+        assert isinstance(lut.getOutput(), float)
+
+    def test_lookup_table_2d_connect_input(self):
+        """Test LookupTable2D with connected inputs."""
+        from src.osk.blocks.nonlinear import LookupTable2D
+
+        const_x = Constant(value=0.5)
+        const_y = Constant(value=0.5)
+        const_x.init()
+        const_y.init()
+
+        z_data = [[0, 1], [2, 3]]  # 2x2 table
+        lut = LookupTable2D(x_data=[0, 1], y_data=[0, 1], z_data=z_data)
+        lut.connectInput(const_x, 0)
+        lut.connectInput(const_y, 1)
+        lut.update()
+
+        # Bilinear interpolation at center
+        assert isinstance(lut.getOutput(), float)
+
+    def test_quantizer_connect_input(self):
+        """Test Quantizer with connected input."""
+        from src.osk.blocks.nonlinear import Quantizer
+
+        const = Constant(value=2.3)
+        const.init()
+
+        quant = Quantizer(interval=0.5)
+        quant.connectInput(const)
+        quant.update()
+
+        # 2.3 rounds to 2.5
+        assert quant.getOutput() == pytest.approx(2.5)
+
+    def test_relay_connect_input(self):
+        """Test Relay with connected input."""
+        from src.osk.blocks.nonlinear import Relay
+
+        const = Constant(value=1.0)
+        const.init()
+
+        relay = Relay(switch_on=0.5, switch_off=-0.5, output_on=1.0, output_off=-1.0)
+        relay.connectInput(const)
+        relay.update()
+
+        # 1.0 > switch_on (0.5), so output_on
+        assert relay.getOutput() == 1.0
+
+    def test_relay_hysteresis(self):
+        """Test Relay hysteresis behavior."""
+        from src.osk.blocks.nonlinear import Relay
+
+        relay = Relay(switch_on=0.5, switch_off=-0.5, output_on=1.0, output_off=-1.0)
+
+        # Start below switch_off
+        relay.setInput(-1.0)
+        relay.update()
+        assert relay.getOutput() == -1.0
+
+        # Go above switch_on
+        relay.setInput(1.0)
+        relay.update()
+        assert relay.getOutput() == 1.0
+
+        # Drop between switch_off and switch_on (stays on)
+        relay.setInput(0.0)
+        relay.update()
+        assert relay.getOutput() == 1.0
+
+        # Drop below switch_off
+        relay.setInput(-1.0)
+        relay.update()
+        assert relay.getOutput() == -1.0
+
+    def test_coulomb_friction_connect_input(self):
+        """Test Coulomb friction with connected input."""
+        from src.osk.blocks.nonlinear import Coulomb
+
+        const = Constant(value=5.0)
+        const.init()
+
+        coulomb = Coulomb(static_gain=2.0, dynamic_gain=1.0, velocity_threshold=0.1)
+        coulomb.connectInput(const)
+        coulomb.update()
+
+        # velocity > threshold, produces sign(velocity) * dynamic_gain
+        assert isinstance(coulomb.getOutput(), float)
+
+    def test_coulomb_friction_static(self):
+        """Test Coulomb friction static region."""
+        from src.osk.blocks.nonlinear import Coulomb
+
+        coulomb = Coulomb(static_gain=2.0, dynamic_gain=1.0, velocity_threshold=0.1)
+        coulomb.setInput(0.05)  # Below threshold
+        coulomb.update()
+
+        # Within threshold, uses static interpolation
+        assert isinstance(coulomb.getOutput(), float)
+
+    def test_variable_transport_delay(self):
+        """Test VariableTransportDelay block."""
+        from src.osk.blocks.nonlinear import VariableTransportDelay
+
+        const = Constant(value=5.0)
+        const.init()
+
+        vtd = VariableTransportDelay(max_delay=1.0, initial_delay=0.1)
+        vtd.connectInput(const)
+
+        State.t = 0.0
+        vtd.update()
+        vtd.rpt()
+
+        State.t = 0.5
+        vtd.update()
+        vtd.rpt()
+
+        # Output should reflect delayed input
+        assert isinstance(vtd.getOutput(), float)
+
+
+# =============================================================================
+# Observer Block Extended Tests
+# =============================================================================
+
+
+class TestObserverBlocks:
+    """Extended tests for observer blocks."""
+
+    def test_luenberger_observer_connect(self):
+        """Test LuenbergerObserver with connected inputs."""
+        from src.osk.blocks.observers import LuenbergerObserver
+
+        u_block = Constant(value=1.0)
+        y_block = Constant(value=0.5)
+        u_block.init()
+        y_block.init()
+
+        A = [[0, 1], [-1, -1]]
+        B = [[0], [1]]
+        C = [[1, 0]]
+        L = [[1], [1]]
+
+        obs = LuenbergerObserver(A=A, B=B, C=C, L=L)
+        obs.connectInput(u_block, 0)
+        obs.connectInput(y_block, 1)
+        obs.update()
+
+        assert isinstance(obs.getOutput(), float)
+
+    def test_kalman_filter_connect(self):
+        """Test KalmanFilter with connected inputs."""
+        from src.osk.blocks.observers import KalmanFilter
+
+        u_block = Constant(value=1.0)
+        y_block = Constant(value=0.5)
+        u_block.init()
+        y_block.init()
+
+        A = [[1]]
+        B = [[1]]
+        C = [[1]]
+        Q = [[0.1]]
+        R = [[0.1]]
+
+        kf = KalmanFilter(A=A, B=B, C=C, Q=Q, R=R)
+        kf.connectInput(u_block, 0)
+        kf.connectInput(y_block, 1)
+        kf.update()
+
+        assert isinstance(kf.getOutput(), float)
+
+    def test_kalman_filter_rpt(self):
+        """Test KalmanFilter rpt method."""
+        from src.osk.blocks.observers import KalmanFilter
+
+        kf = KalmanFilter()
+        State.ready = 1
+        kf.rpt()  # Should not crash
+
+    def test_extended_kalman_filter_connect(self):
+        """Test ExtendedKalmanFilter with connected inputs."""
+        from src.osk.blocks.observers import ExtendedKalmanFilter
+
+        u_block = Constant(value=1.0)
+        y_block = Constant(value=0.5)
+        u_block.init()
+        y_block.init()
+
+        ekf = ExtendedKalmanFilter(n_states=1, Q=[[0.1]], R=[[0.1]])
+        ekf.connectInput(u_block, 0)
+        ekf.connectInput(y_block, 1)
+        ekf.update()
+
+        assert isinstance(ekf.getOutput(), float)
+
+    def test_extended_kalman_filter_rpt(self):
+        """Test ExtendedKalmanFilter rpt method."""
+        from src.osk.blocks.observers import ExtendedKalmanFilter
+
+        ekf = ExtendedKalmanFilter()
+        State.ready = 1
+        ekf.rpt()  # Should not crash
+
+
+# =============================================================================
+# Sink Block Extended Tests
+# =============================================================================
+
+
+class TestSinkBlocksExtended:
+    """Extended tests for sink blocks."""
+
+    def test_scope_set_input_name(self):
+        """Test Scope setInputName method."""
+        scope = Scope(num_inputs=2)
+        scope.setInputName("Signal1", 0)
+        scope.setInputName("Signal2", 1)
+
+        assert scope.input_names[0] == "Signal1"
+        assert scope.input_names[1] == "Signal2"
+
+    def test_scope_vector_input(self):
+        """Test Scope with vector input (from Mux)."""
+        mux = Mux(num_inputs=2)
+        mux.setInput(1.0, 0)
+        mux.setInput(2.0, 1)
+        mux.update()
+
+        scope = Scope(num_inputs=1)
+        scope.connectInput(mux, 0)
+        scope.update()
+        scope.rpt()
+
+        # Should record vector elements separately
+        data = scope.getData()
+        assert "numInputs" in data
+
+    def test_display_connect_input(self):
+        """Test Display with connected input."""
+        const = Constant(value=42.0)
+        const.init()
+
+        display = Display()
+        display.connectInput(const)
+        display.update()
+        State.ready = 1
+        display.rpt()  # rpt() sets current_value
+
+        assert display.getOutput() == 42.0
+
+    def test_to_workspace_connect_input(self):
+        """Test ToWorkspace with connected input."""
+        const = Constant(value=10.0)
+        const.init()
+
+        ws = ToWorkspace(variable_name="test_var")
+        ws.connectInput(const)
+        ws.update()
+        State.ready = 1
+        ws.rpt()
+
+        assert ws.getOutput() == 10.0
+        data = ws.getData()
+        assert data["name"] == "test_var"  # ToWorkspace uses 'name', not 'variableName'

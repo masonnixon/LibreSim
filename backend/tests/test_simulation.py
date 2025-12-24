@@ -1068,3 +1068,836 @@ class TestMDLParserComplete:
         assert block is not None
         assert block.type == "integrator"
         assert block.parameters.get("initialCondition") == 0.5
+
+
+class TestOSKAdapterExtended:
+    """Extended tests for OSKAdapter to achieve full coverage."""
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.adapter = OSKAdapter()
+
+    def test_create_osk_block_unknown_type(self):
+        """Test creating OSK block with unknown type falls back to Gain."""
+        compiled_block = CompiledBlock(
+            id="unknown-1",
+            type="unknown_type_xyz",
+            name="Unknown1",
+            parameters={},
+        )
+
+        compiled_model = CompiledModel(
+            success=True,
+            message="OK",
+            blocks=[compiled_block],
+            execution_order=["unknown-1"],
+        )
+
+        config = SimulationConfig()
+        self.adapter.initialize(compiled_model, config)
+
+        # Should create a pass-through Gain block
+        osk_block = self.adapter.get_block("unknown-1")
+        assert osk_block is not None
+
+    def test_create_osk_block_with_error(self):
+        """Test creating OSK block with invalid parameters falls back to Gain."""
+        # Create a block with invalid parameters that will cause construction error
+        compiled_block = CompiledBlock(
+            id="bad-1",
+            type="state_space",
+            name="Bad1",
+            # Invalid parameters - A, B, C, D matrices are misshapen
+            parameters={"A": "invalid", "B": "invalid"},
+        )
+
+        compiled_model = CompiledModel(
+            success=True,
+            message="OK",
+            blocks=[compiled_block],
+            execution_order=["bad-1"],
+        )
+
+        config = SimulationConfig()
+        self.adapter.initialize(compiled_model, config)
+
+        # Should create a fallback Gain block
+        osk_block = self.adapter.get_block("bad-1")
+        assert osk_block is not None
+
+    def test_setup_connections_no_model(self):
+        """Test _setup_connections with no model does nothing."""
+        self.adapter._compiled_model = None
+        self.adapter._setup_connections()  # Should not raise
+
+    def test_setup_connections_no_osk_block(self):
+        """Test _setup_connections when OSK block not found."""
+        compiled_block = CompiledBlock(
+            id="missing-1",
+            type="constant",
+            name="Missing1",
+            parameters={"value": 1.0},
+            input_connections=["source-1:port-1@missing-1-in-0"],
+        )
+
+        compiled_model = CompiledModel(
+            success=True,
+            message="OK",
+            blocks=[compiled_block],
+            execution_order=["missing-1"],
+        )
+
+        self.adapter._compiled_model = compiled_model
+        # Don't add to _osk_blocks - simulate block not found
+        self.adapter._osk_blocks = {}
+        self.adapter._block_map = {"missing-1": compiled_block}
+
+        self.adapter._setup_connections()  # Should not raise
+
+    def test_setup_connections_with_input_block_attr(self):
+        """Test _setup_connections using input_block attribute."""
+        const_block = CompiledBlock(
+            id="const-1",
+            type="constant",
+            name="Constant1",
+            parameters={"value": 5.0},
+        )
+        gain_block = CompiledBlock(
+            id="gain-1",
+            type="gain",
+            name="Gain1",
+            parameters={"gain": 2.0},
+            input_connections=["const-1:const-1-out-0@gain-1-in-0"],
+        )
+
+        compiled_model = CompiledModel(
+            success=True,
+            message="OK",
+            blocks=[const_block, gain_block],
+            execution_order=["const-1", "gain-1"],
+        )
+
+        config = SimulationConfig()
+        self.adapter.initialize(compiled_model, config)
+
+        # Verify connection was made
+        gain_osk = self.adapter.get_block("gain-1")
+        assert gain_osk.input_block is not None
+
+    def test_setup_connections_with_input_blocks_attr(self):
+        """Test _setup_connections using input_blocks attribute."""
+        const1 = CompiledBlock(
+            id="const-1",
+            type="constant",
+            name="Constant1",
+            parameters={"value": 1.0},
+        )
+        const2 = CompiledBlock(
+            id="const-2",
+            type="constant",
+            name="Constant2",
+            parameters={"value": 2.0},
+        )
+        sum_block = CompiledBlock(
+            id="sum-1",
+            type="sum",
+            name="Sum1",
+            parameters={"signs": "++"},
+            input_connections=[
+                "const-1:const-1-out-0@sum-1-in-0",
+                "const-2:const-2-out-0@sum-1-in-1"
+            ],
+        )
+
+        compiled_model = CompiledModel(
+            success=True,
+            message="OK",
+            blocks=[const1, const2, sum_block],
+            execution_order=["const-1", "const-2", "sum-1"],
+        )
+
+        config = SimulationConfig()
+        self.adapter.initialize(compiled_model, config)
+
+        # Verify connections were made to input_blocks
+        sum_osk = self.adapter.get_block("sum-1")
+        assert sum_osk.input_blocks[0] is not None
+        assert sum_osk.input_blocks[1] is not None
+
+    def test_setup_connections_scope_input_names(self):
+        """Test _setup_connections sets scope input names."""
+        const_block = CompiledBlock(
+            id="const-1",
+            type="constant",
+            name="MyConstant",
+            parameters={"value": 5.0},
+        )
+        scope_block = CompiledBlock(
+            id="scope-1",
+            type="scope",
+            name="Scope1",
+            parameters={"numInputs": 1},
+            input_connections=["const-1:const-1-out-0@scope-1-in-0"],
+        )
+
+        compiled_model = CompiledModel(
+            success=True,
+            message="OK",
+            blocks=[const_block, scope_block],
+            execution_order=["const-1", "scope-1"],
+        )
+
+        config = SimulationConfig()
+        self.adapter.initialize(compiled_model, config)
+
+        # Check scope input names were tracked
+        assert "scope-1" in self.adapter._scope_input_names
+        assert self.adapter._scope_input_names["scope-1"][0] == "MyConstant"
+
+    def test_setup_connections_old_format_without_target_port(self):
+        """Test _setup_connections with old connection format (no @target_port)."""
+        # Manually create the adapter state to test the old format parsing
+        const_block = CompiledBlock(
+            id="const-1",
+            type="constant",
+            name="Constant1",
+            parameters={"value": 5.0},
+        )
+        gain_block = CompiledBlock(
+            id="gain-1",
+            type="gain",
+            name="Gain1",
+            parameters={"gain": 2.0},
+            # Old format without @ separator
+            input_connections=["const-1:const-1-out-0"],
+        )
+
+        compiled_model = CompiledModel(
+            success=True,
+            message="OK",
+            blocks=[const_block, gain_block],
+            execution_order=["const-1", "gain-1"],
+        )
+
+        config = SimulationConfig()
+        self.adapter.initialize(compiled_model, config)
+
+        # Should still work
+        gain_osk = self.adapter.get_block("gain-1")
+        assert gain_osk is not None
+
+    def test_step_with_manual_input_setting(self):
+        """Test step() sets inputs manually for blocks without input_block."""
+        const_block = CompiledBlock(
+            id="const-1",
+            type="constant",
+            name="Constant1",
+            parameters={"value": 5.0},
+        )
+        # Create a gain block but don't connect via connectInput
+        gain_block = CompiledBlock(
+            id="gain-1",
+            type="gain",
+            name="Gain1",
+            parameters={"gain": 2.0},
+            input_connections=["const-1:const-1-out-0@gain-1-in-0"],
+        )
+
+        compiled_model = CompiledModel(
+            success=True,
+            message="OK",
+            blocks=[const_block, gain_block],
+            execution_order=["const-1", "gain-1"],
+        )
+
+        config = SimulationConfig()
+        self.adapter.initialize(compiled_model, config)
+
+        # Clear input_block to force manual input setting
+        gain_osk = self.adapter.get_block("gain-1")
+        gain_osk.input_block = None
+
+        outputs = self.adapter.step(0.0, 0.01)
+        # Should complete without error
+        assert isinstance(outputs, dict)
+
+    def test_step_block_not_in_map(self):
+        """Test step() handles blocks not in block_map."""
+        const_block = CompiledBlock(
+            id="const-1",
+            type="constant",
+            name="Constant1",
+            parameters={"value": 5.0},
+        )
+
+        compiled_model = CompiledModel(
+            success=True,
+            message="OK",
+            blocks=[const_block],
+            execution_order=["const-1", "missing-block"],  # Include missing block
+        )
+
+        config = SimulationConfig()
+        self.adapter.initialize(compiled_model, config)
+
+        # Should skip missing block and continue
+        outputs = self.adapter.step(0.0, 0.01)
+        assert isinstance(outputs, dict)
+
+    def test_step_scope_single_input_output(self):
+        """Test step() records single-input scope output."""
+        const_block = CompiledBlock(
+            id="const-1",
+            type="constant",
+            name="Constant1",
+            parameters={"value": 5.0},
+        )
+        scope_block = CompiledBlock(
+            id="scope-1",
+            type="scope",
+            name="Scope1",
+            parameters={"numInputs": 1},
+            input_connections=["const-1:const-1-out-0@scope-1-in-0"],
+        )
+
+        compiled_model = CompiledModel(
+            success=True,
+            message="OK",
+            blocks=[const_block, scope_block],
+            execution_order=["const-1", "scope-1"],
+        )
+
+        config = SimulationConfig()
+        self.adapter.initialize(compiled_model, config)
+
+        outputs = self.adapter.step(0.0, 0.01)
+
+        # Should have recorded scope output
+        assert len(outputs) > 0
+
+    def test_step_scope_multi_input_output(self):
+        """Test step() records multi-input scope output."""
+        const1 = CompiledBlock(
+            id="const-1",
+            type="constant",
+            name="Signal1",
+            parameters={"value": 1.0},
+        )
+        const2 = CompiledBlock(
+            id="const-2",
+            type="constant",
+            name="Signal2",
+            parameters={"value": 2.0},
+        )
+        scope_block = CompiledBlock(
+            id="scope-1",
+            type="scope",
+            name="Scope1",
+            parameters={"numInputs": 2},
+            input_connections=[
+                "const-1:const-1-out-0@scope-1-in-0",
+                "const-2:const-2-out-0@scope-1-in-1"
+            ],
+        )
+
+        compiled_model = CompiledModel(
+            success=True,
+            message="OK",
+            blocks=[const1, const2, scope_block],
+            execution_order=["const-1", "const-2", "scope-1"],
+        )
+
+        config = SimulationConfig()
+        self.adapter.initialize(compiled_model, config)
+
+        outputs = self.adapter.step(0.0, 0.01)
+
+        # Should have recorded both scope inputs
+        assert len(outputs) >= 2
+
+    def test_step_display_sink_output(self):
+        """Test step() records display sink output."""
+        const_block = CompiledBlock(
+            id="const-1",
+            type="constant",
+            name="Constant1",
+            parameters={"value": 5.0},
+        )
+        display_block = CompiledBlock(
+            id="display-1",
+            type="display",
+            name="Display1",
+            parameters={},
+            input_connections=["const-1:const-1-out-0@display-1-in-0"],
+        )
+
+        compiled_model = CompiledModel(
+            success=True,
+            message="OK",
+            blocks=[const_block, display_block],
+            execution_order=["const-1", "display-1"],
+        )
+
+        config = SimulationConfig()
+        self.adapter.initialize(compiled_model, config)
+
+        outputs = self.adapter.step(0.0, 0.01)
+
+        # Should have recorded display output
+        assert len(outputs) > 0
+
+    def test_step_to_workspace_sink_output(self):
+        """Test step() records to_workspace sink output."""
+        const_block = CompiledBlock(
+            id="const-1",
+            type="constant",
+            name="Constant1",
+            parameters={"value": 5.0},
+        )
+        ws_block = CompiledBlock(
+            id="ws-1",
+            type="to_workspace",
+            name="ToWorkspace1",
+            parameters={"variableName": "myVar"},
+            input_connections=["const-1:const-1-out-0@ws-1-in-0"],
+        )
+
+        compiled_model = CompiledModel(
+            success=True,
+            message="OK",
+            blocks=[const_block, ws_block],
+            execution_order=["const-1", "ws-1"],
+        )
+
+        config = SimulationConfig()
+        self.adapter.initialize(compiled_model, config)
+
+        outputs = self.adapter.step(0.0, 0.01)
+
+        # Should have recorded to_workspace output
+        assert len(outputs) > 0
+
+    def test_run_simulation_complete(self):
+        """Test run_simulation with a complete model."""
+        const_block = CompiledBlock(
+            id="const-1",
+            type="constant",
+            name="Constant1",
+            parameters={"value": 5.0},
+        )
+        scope_block = CompiledBlock(
+            id="scope-1",
+            type="scope",
+            name="Scope1",
+            parameters={"numInputs": 1},
+            input_connections=["const-1:const-1-out-0@scope-1-in-0"],
+        )
+
+        compiled_model = CompiledModel(
+            success=True,
+            message="OK",
+            blocks=[const_block, scope_block],
+            execution_order=["const-1", "scope-1"],
+        )
+
+        config = SimulationConfig(stopTime=0.05, stepSize=0.01)
+        self.adapter.initialize(compiled_model, config)
+
+        results = self.adapter.run_simulation()
+
+        assert "signals" in results
+        assert "statistics" in results
+        assert results["statistics"]["totalSteps"] >= 1
+
+    def test_run_simulation_multi_input_scope(self):
+        """Test run_simulation with multi-input scope."""
+        const1 = CompiledBlock(
+            id="const-1",
+            type="constant",
+            name="Signal1",
+            parameters={"value": 1.0},
+        )
+        const2 = CompiledBlock(
+            id="const-2",
+            type="constant",
+            name="Signal2",
+            parameters={"value": 2.0},
+        )
+        scope_block = CompiledBlock(
+            id="scope-1",
+            type="scope",
+            name="Scope1",
+            parameters={"numInputs": 2},
+            input_connections=[
+                "const-1:const-1-out-0@scope-1-in-0",
+                "const-2:const-2-out-0@scope-1-in-1"
+            ],
+        )
+
+        compiled_model = CompiledModel(
+            success=True,
+            message="OK",
+            blocks=[const1, const2, scope_block],
+            execution_order=["const-1", "const-2", "scope-1"],
+        )
+
+        config = SimulationConfig(stopTime=0.05, stepSize=0.01)
+        self.adapter.initialize(compiled_model, config)
+
+        results = self.adapter.run_simulation()
+
+        assert "signals" in results
+        assert len(results["signals"]) >= 1
+
+    def test_param_map_all_block_types(self):
+        """Test that PARAM_MAP has entries for all major block types."""
+        from src.simulation.osk_adapter import PARAM_MAP
+
+        block_types = [
+            "constant", "step", "ramp", "sine_wave", "pulse_generator",
+            "scope", "to_workspace",
+            "integrator", "derivative", "transfer_function", "state_space", "pid_controller",
+            "unit_delay", "zero_order_hold", "discrete_integrator", "discrete_derivative",
+            "discrete_transfer_function",
+            "sum", "gain", "product", "saturation", "dead_zone", "math_function",
+            "trigonometry", "switch", "mux", "demux", "reshape",
+            "inport", "outport", "subsystem",
+            "rate_limiter", "moving_average", "low_pass_filter", "high_pass_filter",
+            "band_pass_filter", "backlash",
+            "lookup_table_1d", "lookup_table_2d", "quantizer", "relay",
+            "coulomb_friction", "variable_transport_delay",
+            "luenberger_observer", "kalman_filter", "extended_kalman_filter",
+        ]
+
+        for bt in block_types:
+            assert bt in PARAM_MAP, f"Missing PARAM_MAP entry for {bt}"
+
+    def test_create_all_osk_block_types(self):
+        """Test creating OSK blocks for various types."""
+        from src.simulation.osk_adapter import BLOCK_TYPE_MAP
+
+        # Test creating a sample of different block types
+        test_blocks = [
+            ("constant", {"value": 1.0}),
+            ("step", {"stepTime": 1.0, "initialValue": 0.0, "finalValue": 1.0}),
+            ("ramp", {"slope": 1.0}),
+            ("sine_wave", {"amplitude": 1.0, "frequency": 1.0}),
+            ("integrator", {"initialCondition": 0.0}),
+            ("derivative", {"coefficient": 100.0}),
+            ("gain", {"gain": 2.0}),
+            ("sum", {"signs": "++"}),
+            ("product", {"operations": "**"}),
+            ("saturation", {"upperLimit": 1.0, "lowerLimit": -1.0}),
+            ("scope", {"numInputs": 1}),
+            ("display", {}),
+            ("to_workspace", {"variableName": "out"}),
+            ("terminator", {}),
+        ]
+
+        for block_type, params in test_blocks:
+            compiled_block = CompiledBlock(
+                id=f"{block_type}-1",
+                type=block_type,
+                name=f"{block_type.title()}1",
+                parameters=params,
+            )
+
+            compiled_model = CompiledModel(
+                success=True,
+                message="OK",
+                blocks=[compiled_block],
+                execution_order=[f"{block_type}-1"],
+            )
+
+            adapter = OSKAdapter()
+            adapter.initialize(compiled_model, SimulationConfig())
+
+            osk_block = adapter.get_block(f"{block_type}-1")
+            assert osk_block is not None, f"Failed to create {block_type} block"
+
+
+class TestSimulationRunnerExtended:
+    """Extended tests for SimulationRunner."""
+
+    def _create_simple_model(self):
+        """Create a simple model for testing."""
+        const_block = Block(
+            id="const-1",
+            type="constant",
+            name="Constant1",
+            position=Position(x=100, y=100),
+            parameters={"value": 5.0},
+            inputPorts=[],
+            outputPorts=[Port(id="const-1-out-0", name="out", dataType="double", dimensions=[1])],
+        )
+        scope_block = Block(
+            id="scope-1",
+            type="scope",
+            name="Scope1",
+            position=Position(x=200, y=100),
+            parameters={"numInputs": 1},
+            inputPorts=[Port(id="scope-1-in-0", name="in", dataType="double", dimensions=[1])],
+            outputPorts=[],
+        )
+        conn = Connection(
+            id="conn-1",
+            sourceBlockId="const-1",
+            sourcePortId="const-1-out-0",
+            targetBlockId="scope-1",
+            targetPortId="scope-1-in-0",
+        )
+        return Model(
+            id="model-1",
+            metadata=ModelMetadata(name="Test Model"),
+            blocks=[const_block, scope_block],
+            connections=[conn],
+            simulationConfig=SimulationConfig(stopTime=0.1, stepSize=0.01),
+        )
+
+    @pytest.mark.asyncio
+    async def test_runner_stop_during_run(self):
+        """Test stopping simulation during run."""
+        from src.simulation.runner import SimulationRunner
+        from src.models.simulation import SimulationStatus
+        import asyncio
+
+        model = self._create_simple_model()
+        config = SimulationConfig(stopTime=10.0, stepSize=0.001)  # Long simulation
+        runner = SimulationRunner(model, config)
+
+        # Start running and stop after short delay
+        async def stop_after_delay():
+            await asyncio.sleep(0.05)
+            runner.stop()
+
+        stop_task = asyncio.create_task(stop_after_delay())
+        await runner.run()
+        await stop_task
+
+        # When stopped, runner sets status to IDLE
+        assert runner.status == SimulationStatus.IDLE
+        assert runner.current_time < 10.0
+
+    @pytest.mark.asyncio
+    async def test_runner_pause_resume(self):
+        """Test pausing and resuming - verify pause state without running full sim."""
+        from src.simulation.runner import SimulationRunner
+        from src.models.simulation import SimulationStatus
+
+        model = self._create_simple_model()
+        config = SimulationConfig(stopTime=1.0, stepSize=0.01)
+        runner = SimulationRunner(model, config)
+
+        # Test pause sets status to PAUSED
+        runner.pause()
+        assert runner.status == SimulationStatus.PAUSED
+        assert runner._is_paused is True
+
+        # Test resume sets status to RUNNING
+        runner.resume()
+        assert runner.status == SimulationStatus.RUNNING
+        assert runner._is_paused is False
+
+    @pytest.mark.asyncio
+    async def test_runner_compilation_error(self):
+        """Test runner handles compilation errors."""
+        from src.simulation.runner import SimulationRunner
+        from src.models.simulation import SimulationStatus
+
+        # Create invalid model (loop without state-holding block)
+        gain1 = Block(
+            id="gain-1",
+            type="gain",
+            name="Gain1",
+            position=Position(x=100, y=100),
+            parameters={"gain": 2.0},
+            inputPorts=[Port(id="gain-1-in-0", name="in", dataType="double", dimensions=[1])],
+            outputPorts=[Port(id="gain-1-out-0", name="out", dataType="double", dimensions=[1])],
+        )
+        gain2 = Block(
+            id="gain-2",
+            type="gain",
+            name="Gain2",
+            position=Position(x=200, y=100),
+            parameters={"gain": 2.0},
+            inputPorts=[Port(id="gain-2-in-0", name="in", dataType="double", dimensions=[1])],
+            outputPorts=[Port(id="gain-2-out-0", name="out", dataType="double", dimensions=[1])],
+        )
+        conn1 = Connection(
+            id="conn-1",
+            sourceBlockId="gain-1",
+            sourcePortId="gain-1-out-0",
+            targetBlockId="gain-2",
+            targetPortId="gain-2-in-0",
+        )
+        conn2 = Connection(
+            id="conn-2",
+            sourceBlockId="gain-2",
+            sourcePortId="gain-2-out-0",
+            targetBlockId="gain-1",
+            targetPortId="gain-1-in-0",
+        )
+
+        model = Model(
+            id="model-1",
+            metadata=ModelMetadata(name="Loop Model"),
+            blocks=[gain1, gain2],
+            connections=[conn1, conn2],
+            simulationConfig=SimulationConfig(),
+        )
+
+        config = SimulationConfig(stopTime=0.1, stepSize=0.01)
+        runner = SimulationRunner(model, config)
+
+        await runner.run()
+
+        # Should have errored due to algebraic loop
+        assert runner.status == SimulationStatus.ERROR
+        assert runner.error_message is not None
+
+
+class TestModelCompilerExtended:
+    """Extended tests for ModelCompiler to cover edge cases."""
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.compiler = ModelCompiler()
+
+    def _create_block(self, block_id, block_type, name, params=None, inputs=None, outputs=None):
+        """Helper to create a Block."""
+        if params is None:
+            params = {}
+        if inputs is None:
+            inputs = []
+        if outputs is None:
+            outputs = []
+        return Block(
+            id=block_id,
+            type=block_type,
+            name=name,
+            position=Position(x=100, y=100),
+            parameters=params,
+            inputPorts=inputs,
+            outputPorts=outputs,
+        )
+
+    def _create_connection(self, conn_id, src_block, src_port, tgt_block, tgt_port):
+        """Helper to create a Connection."""
+        return Connection(
+            id=conn_id,
+            sourceBlockId=src_block,
+            sourcePortId=src_port,
+            targetBlockId=tgt_block,
+            targetPortId=tgt_port,
+        )
+
+    def test_topological_sort_disconnected_blocks(self):
+        """Test topological sort with disconnected blocks."""
+        # Create two blocks that aren't connected
+        const1 = self._create_block(
+            "const-1", "constant", "Constant1", {"value": 1.0},
+            outputs=[Port(id="const-1-out-0", name="out", dataType="double", dimensions=[1])]
+        )
+        const2 = self._create_block(
+            "const-2", "constant", "Constant2", {"value": 2.0},
+            outputs=[Port(id="const-2-out-0", name="out", dataType="double", dimensions=[1])]
+        )
+
+        model = Model(
+            id="model-1",
+            metadata=ModelMetadata(name="Disconnected Model"),
+            blocks=[const1, const2],
+            connections=[],
+            simulationConfig=SimulationConfig(),
+        )
+
+        result = self.compiler.compile(model)
+        assert result.success is True
+        assert len(result.execution_order) == 2
+
+    def test_compile_with_subsystem_children(self):
+        """Test compiling model with subsystem containing children."""
+        # Create a simple model with a subsystem
+        const_block = self._create_block(
+            "const-1", "constant", "Constant1", {"value": 1.0},
+            outputs=[Port(id="const-1-out-0", name="out", dataType="double", dimensions=[1])]
+        )
+
+        # Create child blocks for subsystem
+        inport = self._create_block(
+            "in-1", "inport", "In1", {"portNumber": 1},
+            inputs=[Port(id="in-1-in-0", name="in", dataType="double", dimensions=[1])],
+            outputs=[Port(id="in-1-out-0", name="out", dataType="double", dimensions=[1])]
+        )
+        gain = self._create_block(
+            "gain-1", "gain", "Gain1", {"gain": 2.0},
+            inputs=[Port(id="gain-1-in-0", name="in", dataType="double", dimensions=[1])],
+            outputs=[Port(id="gain-1-out-0", name="out", dataType="double", dimensions=[1])]
+        )
+        outport = self._create_block(
+            "out-1", "outport", "Out1", {"portNumber": 1},
+            inputs=[Port(id="out-1-in-0", name="in", dataType="double", dimensions=[1])],
+            outputs=[Port(id="out-1-out-0", name="out", dataType="double", dimensions=[1])]
+        )
+
+        child_conn1 = self._create_connection(
+            "cc-1", "in-1", "in-1-out-0", "gain-1", "gain-1-in-0"
+        )
+        child_conn2 = self._create_connection(
+            "cc-2", "gain-1", "gain-1-out-0", "out-1", "out-1-in-0"
+        )
+
+        subsystem = Block(
+            id="sub-1",
+            type="subsystem",
+            name="Subsystem1",
+            position=Position(x=200, y=100),
+            parameters={},
+            inputPorts=[Port(id="sub-1-in-0", name="in", dataType="double", dimensions=[1])],
+            outputPorts=[Port(id="sub-1-out-0", name="out", dataType="double", dimensions=[1])],
+            children=[inport, gain, outport],
+            childConnections=[child_conn1, child_conn2],
+        )
+
+        scope_block = self._create_block(
+            "scope-1", "scope", "Scope1", {},
+            inputs=[Port(id="scope-1-in-0", name="in", dataType="double", dimensions=[1])]
+        )
+
+        conn1 = self._create_connection(
+            "conn-1", "const-1", "const-1-out-0", "sub-1", "sub-1-in-0"
+        )
+        conn2 = self._create_connection(
+            "conn-2", "sub-1", "sub-1-out-0", "scope-1", "scope-1-in-0"
+        )
+
+        model = Model(
+            id="model-1",
+            metadata=ModelMetadata(name="Subsystem Model"),
+            blocks=[const_block, subsystem, scope_block],
+            connections=[conn1, conn2],
+            simulationConfig=SimulationConfig(),
+        )
+
+        result = self.compiler.compile(model)
+        # Subsystem should be flattened
+        assert result.success is True
+
+    def test_compile_preserves_parameters(self):
+        """Test that compilation preserves block parameters."""
+        const_block = self._create_block(
+            "const-1", "constant", "Constant1", {"value": 42.0},
+            outputs=[Port(id="const-1-out-0", name="out", dataType="double", dimensions=[1])]
+        )
+
+        model = Model(
+            id="model-1",
+            metadata=ModelMetadata(name="Test Model"),
+            blocks=[const_block],
+            connections=[],
+            simulationConfig=SimulationConfig(),
+        )
+
+        result = self.compiler.compile(model)
+        assert result.success is True
+        assert result.blocks[0].parameters["value"] == 42.0
