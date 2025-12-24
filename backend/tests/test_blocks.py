@@ -2107,3 +2107,273 @@ class TestSubsystemBlock:
         assert sub.num_outputs == 3
         assert isinstance(sub.num_inputs, int)
         assert isinstance(sub.num_outputs, int)
+
+    def test_subsystem_output_vectors(self):
+        """Test Subsystem output vector functionality."""
+        sub = Subsystem(num_inputs=1, num_outputs=2)
+        # Test getOutputVector returns None initially
+        assert sub.getOutputVector(0) is None
+
+    def test_subsystem_set_outport_block(self):
+        """Test Subsystem setOutportBlock."""
+        outport = Outport(port_number=1)
+        outport.setInput([1.0, 2.0, 3.0])
+        outport.update()
+
+        sub = Subsystem(num_inputs=1, num_outputs=1)
+        sub.setOutportBlock(1, outport)
+        sub.update()
+
+        # Output vector should be available after update
+        vec = sub.getOutputVector(0)
+        assert vec is not None
+        assert vec == [1.0, 2.0, 3.0]
+
+
+class TestScopeSinkExtended:
+    """Extended tests for the Scope sink block."""
+
+    def test_scope_vector_input_from_mux(self):
+        """Test Scope with vector input from Mux-like source."""
+        mux = Mux(num_inputs=2)
+        c1 = Constant(value=3.0)
+        c2 = Constant(value=7.0)
+        c1.init()
+        c2.init()
+        mux.connectInput(c1, 0)
+        mux.connectInput(c2, 1)
+        mux.update()
+
+        scope = Scope(num_inputs=1)
+        scope.connectInput(mux, 0)
+        scope.setInputName("MuxSignal", 0)
+
+        State.t = 0.0
+        State.ready = 1
+        scope.update()
+        scope.rpt()
+
+        # Check that vector is expanded into traces
+        data = scope.getData()
+        assert data["numInputs"] >= 2
+
+    def test_scope_unconnected_inputs(self):
+        """Test Scope only records connected inputs."""
+        scope = Scope(num_inputs=3)
+        const = Constant(value=5.0)
+        const.init()
+
+        # Only connect port 1
+        scope.connectInput(const, 1)
+        scope.setInputName("Signal1", 1)
+
+        State.t = 0.0
+        State.ready = 1
+        scope.update()
+        scope.rpt()
+
+        data = scope.getData()
+        # Only 1 trace should be recorded
+        assert data["numInputs"] == 1
+
+    def test_scope_set_input_with_vector(self):
+        """Test Scope setInput with vector value."""
+        scope = Scope(num_inputs=2)
+
+        # Set port 0 with vector
+        scope.setInput([1.0, 2.0, 3.0], 0)
+        assert 0 in scope._vector_inputs
+        assert scope.inputs[0] == 1.0
+
+        # Set port 0 with scalar (should clear vector)
+        scope.setInput(5.0, 0)
+        assert 0 not in scope._vector_inputs
+        assert scope.inputs[0] == 5.0
+
+    def test_scope_input_name_beyond_range(self):
+        """Test Scope setInputName with port beyond range."""
+        scope = Scope(num_inputs=2)
+        # Should not raise error
+        scope.setInputName("OutOfRange", 10)
+
+
+class TestToWorkspaceSink:
+    """Tests for the ToWorkspace sink block."""
+
+    def test_to_workspace_basic(self):
+        """Test ToWorkspace basic recording."""
+        tw = ToWorkspace(variable_name="my_signal")
+        assert tw.variable_name == "my_signal"
+
+    def test_to_workspace_recording(self):
+        """Test ToWorkspace records data."""
+        tw = ToWorkspace()
+        const = Constant(value=5.0)
+        const.init()
+        tw.connectInput(const)
+
+        State.t = 0.0
+        State.ready = 1
+        tw.update()
+        tw.rpt()
+
+        State.t = 0.1
+        tw.update()
+        tw.rpt()
+
+        data = tw.getData()
+        assert data["name"] == "simout"
+        assert len(data["times"]) == 2
+        assert len(data["values"]) == 2
+        assert all(v == 5.0 for v in data["values"])
+
+    def test_to_workspace_init_clears_data(self):
+        """Test ToWorkspace init clears recorded data."""
+        tw = ToWorkspace()
+        tw.times = [1.0, 2.0]
+        tw.values = [10.0, 20.0]
+        tw.init()
+        assert tw.times == []
+        assert tw.values == []
+
+    def test_to_workspace_get_output(self):
+        """Test ToWorkspace getOutput returns current input."""
+        tw = ToWorkspace()
+        tw.setInput(7.5)
+        assert tw.getOutput() == 7.5
+
+
+class TestDisplaySinkExtended:
+    """Extended tests for the Display sink block."""
+
+    def test_display_connect_input(self):
+        """Test Display connectInput method."""
+        display = Display()
+        const = Constant(value=3.0)
+        const.init()
+        display.connectInput(const)
+        assert display.input_block is const
+
+    def test_display_update_without_connection(self):
+        """Test Display update without connected block."""
+        display = Display()
+        display.setInput(5.0)
+        display.update()
+        # Should still have the manually set value
+        assert display.input == 5.0
+
+
+class TestTerminatorSink:
+    """Tests for the Terminator sink block."""
+
+    def test_terminator_basic(self):
+        """Test Terminator absorbs signal."""
+        term = Terminator()
+        term.setInput(100.0)
+        assert term.input == 100.0
+
+    def test_terminator_update(self):
+        """Test Terminator update does nothing."""
+        term = Terminator()
+        term.setInput(100.0)
+        term.update()
+        # Input should remain
+        assert term.input == 100.0
+
+    def test_terminator_output(self):
+        """Test Terminator always outputs 0."""
+        term = Terminator()
+        term.setInput(100.0)
+        assert term.getOutput() == 0.0
+
+
+class TestOutportExtended:
+    """Extended tests for Outport block."""
+
+    def test_outport_init_clears_state(self):
+        """Test Outport init clears state."""
+        outport = Outport(port_number=1)
+        outport.output = 5.0
+        outport._output_vector = [1.0, 2.0]
+        outport.init()
+        assert outport.output == 0.0
+        assert outport._output_vector is None
+
+    def test_outport_vector_from_connected_block(self):
+        """Test Outport receives vector from connected block."""
+        mux = Mux(num_inputs=2)
+        c1 = Constant(value=1.0)
+        c2 = Constant(value=2.0)
+        c1.init()
+        c2.init()
+        mux.connectInput(c1, 0)
+        mux.connectInput(c2, 1)
+        mux.update()
+
+        outport = Outport(port_number=1)
+        outport.connectInput(mux)
+        outport.update()
+
+        vec = outport.getOutputVector()
+        assert vec is not None
+        assert vec == [1.0, 2.0]
+
+    def test_outport_scalar_clears_vector(self):
+        """Test Outport receiving scalar clears vector."""
+        outport = Outport(port_number=1)
+        outport._output_vector = [1.0, 2.0]
+        outport.setInput(5.0)
+        assert outport._output_vector is None
+        assert outport.input == 5.0
+
+
+class TestInportExtended:
+    """Extended tests for Inport block."""
+
+    def test_inport_init_clears_state(self):
+        """Test Inport init clears state."""
+        inport = Inport(port_number=1)
+        inport.output = 5.0
+        inport._output_vector = [1.0, 2.0]
+        inport.init()
+        assert inport.output == 0.0
+        assert inport._output_vector is None
+
+    def test_inport_vector_from_connected_block(self):
+        """Test Inport receives vector from connected block."""
+        mux = Mux(num_inputs=2)
+        c1 = Constant(value=1.0)
+        c2 = Constant(value=2.0)
+        c1.init()
+        c2.init()
+        mux.connectInput(c1, 0)
+        mux.connectInput(c2, 1)
+        mux.update()
+
+        inport = Inport(port_number=1)
+        inport.connectInput(mux)
+        inport.update()
+
+        vec = inport.getOutputVector()
+        assert vec is not None
+        assert vec == [1.0, 2.0]
+
+    def test_inport_scalar_clears_vector(self):
+        """Test Inport receiving scalar clears vector."""
+        inport = Inport(port_number=1)
+        inport._output_vector = [1.0, 2.0]
+        inport.setInput(5.0)
+        assert inport._output_vector is None
+        assert inport.input == 5.0
+
+    def test_inport_connected_scalar(self):
+        """Test Inport with connected block outputting scalar."""
+        const = Constant(value=7.0)
+        const.init()
+
+        inport = Inport(port_number=1)
+        inport.connectInput(const)
+        inport.update()
+
+        assert inport.getOutput() == 7.0
+        assert inport.getOutputVector() is None
