@@ -70,7 +70,7 @@ from ..osk.blocks.math_ops import (
     Trigonometry,
 )
 from ..osk.blocks.sinks import Display, Terminator
-from ..osk.blocks.sources import PulseGenerator
+from ..osk.blocks.sources import PulseGenerator, UniformNoise, WhiteNoise
 from .compiler import CompiledBlock, CompiledModel
 
 # Mapping from LibreSim block types to OSK block classes
@@ -82,6 +82,8 @@ BLOCK_TYPE_MAP: dict[str, type[Block]] = {
     "sine_wave": SineWave,
     "pulse_generator": PulseGenerator,
     "clock": Clock,
+    "white_noise": WhiteNoise,
+    "uniform_noise": UniformNoise,
     # Sinks
     "scope": Scope,
     "display": Display,
@@ -144,6 +146,8 @@ PARAM_MAP: dict[str, dict[str, str]] = {
     "ramp": {"slope": "slope", "startTime": "start_time", "initialOutput": "initial_output"},
     "sine_wave": {"amplitude": "amplitude", "frequency": "frequency", "phase": "phase", "bias": "bias"},
     "pulse_generator": {"amplitude": "amplitude", "period": "period", "dutyCycle": "duty_cycle", "phaseDelay": "phase_delay"},
+    "white_noise": {"mean": "mean", "variance": "variance", "seed": "seed", "sampleTime": "sample_time"},
+    "uniform_noise": {"minimum": "minimum", "maximum": "maximum", "seed": "seed", "sampleTime": "sample_time"},
     "scope": {"numInputs": "num_inputs"},
     "to_workspace": {"variableName": "variable_name"},
     "integrator": {"initialCondition": "initial_condition", "limitOutput": "limit_output", "upperLimit": "upper_limit", "lowerLimit": "lower_limit"},

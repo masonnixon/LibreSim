@@ -641,6 +641,21 @@ export function Toolbar() {
                       <div className="text-xs text-gray-500">{ex.description}</div>
                     </div>
                   ))}
+                <div className="px-3 py-2 text-xs text-gray-400 font-medium border-b border-t border-editor-border">
+                  Advanced
+                </div>
+                {exampleList
+                  .filter((ex) => ex.category === 'advanced')
+                  .map((ex) => (
+                    <div
+                      key={ex.id}
+                      className="dropdown-item"
+                      onClick={() => handleLoadExample(ex.id)}
+                    >
+                      <div className="text-sm">{ex.name}</div>
+                      <div className="text-xs text-gray-500">{ex.description}</div>
+                    </div>
+                  ))}
               </div>
             )}
           </div>

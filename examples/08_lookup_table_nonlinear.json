@@ -1,8 +1,8 @@
 {
   "id": "example-lookup-table",
   "metadata": {
-    "name": "Lookup Table Nonlinearity",
-    "description": "Demonstrates 1D lookup table for modeling nonlinear characteristics. Models a saturation-like curve defined by data points. Common in engine control, sensor calibration, and actuator modeling. Uses Nonlinear blocks.",
+    "name": "Lookup Table - Motor Torque Curve",
+    "description": "Demonstrates 1D lookup table modeling a DC motor torque-speed characteristic. Shows how lookup tables implement empirical data relationships. Common in motor control, engine calibration, and sensor linearization. Reference: https://www.mathworks.com/help/simulink/slref/1dlookuptable.html",
     "author": "LibreSim Examples",
     "createdAt": "2024-01-01T00:00:00Z",
     "modifiedAt": "2024-01-01T00:00:00Z",
@@ -10,65 +10,117 @@
   },
   "blocks": [
     {
-      "id": "sine1",
-      "type": "sine_wave",
-      "name": "Input Signal",
-      "position": { "x": 50, "y": 150 },
+      "id": "ramp1",
+      "type": "ramp",
+      "name": "Speed Command",
+      "position": { "x": 50, "y": 180 },
       "parameters": {
-        "amplitude": 2.0,
-        "frequency": 0.5,
-        "phase": 0,
-        "bias": 0
+        "slope": 100,
+        "startTime": 0,
+        "initialOutput": 0
       },
       "inputPorts": [],
       "outputPorts": [
-        { "id": "sine1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        { "id": "ramp1-out", "name": "out", "dataType": "double", "dimensions": [1] }
       ]
     },
     {
-      "id": "lut1",
+      "id": "lut_torque",
       "type": "lookup_table_1d",
-      "name": "Soft Saturation",
-      "position": { "x": 250, "y": 150 },
+      "name": "Torque vs Speed",
+      "position": { "x": 250, "y": 100 },
       "parameters": {
-        "xData": [-3, -2, -1, -0.5, 0, 0.5, 1, 2, 3],
-        "yData": [-1.0, -0.95, -0.8, -0.45, 0, 0.45, 0.8, 0.95, 1.0]
+        "xData": [0, 200, 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000],
+        "yData": [10.0, 9.8, 9.5, 9.0, 8.3, 7.5, 6.5, 5.3, 4.0, 2.5, 1.0]
       },
       "inputPorts": [
-        { "id": "lut1-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        { "id": "lut_torque-in", "name": "in", "dataType": "double", "dimensions": [1] }
       ],
       "outputPorts": [
-        { "id": "lut1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        { "id": "lut_torque-out", "name": "out", "dataType": "double", "dimensions": [1] }
       ]
     },
     {
-      "id": "sat1",
-      "type": "saturation",
-      "name": "Hard Saturation",
-      "position": { "x": 250, "y": 280 },
+      "id": "lut_efficiency",
+      "type": "lookup_table_1d",
+      "name": "Efficiency vs Speed",
+      "position": { "x": 250, "y": 260 },
       "parameters": {
-        "upperLimit": 1,
-        "lowerLimit": -1
+        "xData": [0, 200, 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000],
+        "yData": [0.0, 0.45, 0.70, 0.82, 0.88, 0.92, 0.90, 0.85, 0.78, 0.68, 0.55]
       },
       "inputPorts": [
-        { "id": "sat1-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        { "id": "lut_efficiency-in", "name": "in", "dataType": "double", "dimensions": [1] }
       ],
       "outputPorts": [
-        { "id": "sat1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        { "id": "lut_efficiency-out", "name": "out", "dataType": "double", "dimensions": [1] }
       ]
     },
     {
-      "id": "scope1",
+      "id": "product1",
+      "type": "product",
+      "name": "Power",
+      "position": { "x": 450, "y": 180 },
+      "parameters": {
+        "inputs": "**"
+      },
+      "inputPorts": [
+        { "id": "product1-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
+        { "id": "product1-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [
+        { "id": "product1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "scope_speed",
       "type": "scope",
-      "name": "Comparison",
-      "position": { "x": 480, "y": 200 },
+      "name": "Speed (RPM)",
+      "position": { "x": 620, "y": 50 },
       "parameters": {
-        "numInputs": 3
+        "numInputs": 1
       },
       "inputPorts": [
-        { "id": "scope1-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
-        { "id": "scope1-in2", "name": "in2", "dataType": "double", "dimensions": [1] },
-        { "id": "scope1-in3", "name": "in3", "dataType": "double", "dimensions": [1] }
+        { "id": "scope_speed-in1", "name": "Speed", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": []
+    },
+    {
+      "id": "scope_torque",
+      "type": "scope",
+      "name": "Torque (N·m)",
+      "position": { "x": 620, "y": 130 },
+      "parameters": {
+        "numInputs": 1
+      },
+      "inputPorts": [
+        { "id": "scope_torque-in1", "name": "Torque", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": []
+    },
+    {
+      "id": "scope_efficiency",
+      "type": "scope",
+      "name": "Efficiency (0-1)",
+      "position": { "x": 620, "y": 210 },
+      "parameters": {
+        "numInputs": 1
+      },
+      "inputPorts": [
+        { "id": "scope_efficiency-in1", "name": "Efficiency", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": []
+    },
+    {
+      "id": "scope_power",
+      "type": "scope",
+      "name": "Power (T×η)",
+      "position": { "x": 620, "y": 290 },
+      "parameters": {
+        "numInputs": 1
+      },
+      "inputPorts": [
+        { "id": "scope_power-in1", "name": "Power", "dataType": "double", "dimensions": [1] }
       ],
       "outputPorts": []
     }
@@ -76,44 +128,65 @@
   "connections": [
     {
       "id": "conn1",
-      "sourceBlockId": "sine1",
-      "sourcePortId": "sine1-out",
-      "targetBlockId": "lut1",
-      "targetPortId": "lut1-in"
+      "sourceBlockId": "ramp1",
+      "sourcePortId": "ramp1-out",
+      "targetBlockId": "lut_torque",
+      "targetPortId": "lut_torque-in"
     },
     {
       "id": "conn2",
-      "sourceBlockId": "sine1",
-      "sourcePortId": "sine1-out",
-      "targetBlockId": "sat1",
-      "targetPortId": "sat1-in"
+      "sourceBlockId": "ramp1",
+      "sourcePortId": "ramp1-out",
+      "targetBlockId": "lut_efficiency",
+      "targetPortId": "lut_efficiency-in"
     },
     {
       "id": "conn3",
-      "sourceBlockId": "sine1",
-      "sourcePortId": "sine1-out",
-      "targetBlockId": "scope1",
-      "targetPortId": "scope1-in1"
+      "sourceBlockId": "lut_torque",
+      "sourcePortId": "lut_torque-out",
+      "targetBlockId": "product1",
+      "targetPortId": "product1-in1"
     },
     {
       "id": "conn4",
-      "sourceBlockId": "lut1",
-      "sourcePortId": "lut1-out",
-      "targetBlockId": "scope1",
-      "targetPortId": "scope1-in2"
+      "sourceBlockId": "lut_efficiency",
+      "sourcePortId": "lut_efficiency-out",
+      "targetBlockId": "product1",
+      "targetPortId": "product1-in2"
     },
     {
       "id": "conn5",
-      "sourceBlockId": "sat1",
-      "sourcePortId": "sat1-out",
-      "targetBlockId": "scope1",
-      "targetPortId": "scope1-in3"
+      "sourceBlockId": "ramp1",
+      "sourcePortId": "ramp1-out",
+      "targetBlockId": "scope_speed",
+      "targetPortId": "scope_speed-in1"
+    },
+    {
+      "id": "conn6",
+      "sourceBlockId": "lut_torque",
+      "sourcePortId": "lut_torque-out",
+      "targetBlockId": "scope_torque",
+      "targetPortId": "scope_torque-in1"
+    },
+    {
+      "id": "conn7",
+      "sourceBlockId": "lut_efficiency",
+      "sourcePortId": "lut_efficiency-out",
+      "targetBlockId": "scope_efficiency",
+      "targetPortId": "scope_efficiency-in1"
+    },
+    {
+      "id": "conn8",
+      "sourceBlockId": "product1",
+      "sourcePortId": "product1-out",
+      "targetBlockId": "scope_power",
+      "targetPortId": "scope_power-in1"
     }
   ],
   "simulationConfig": {
     "solver": "rk4",
     "startTime": 0,
-    "stopTime": 10,
+    "stopTime": 20,
     "stepSize": 0.01
   }
 }

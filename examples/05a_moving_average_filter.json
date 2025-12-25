@@ -1,0 +1,138 @@
+{
+  "id": "example-moving-average-filter",
+  "metadata": {
+    "name": "Moving Average Filter - Noisy Step Smoothing",
+    "description": "Demonstrates Moving Average filter smoothing a noisy step signal using AWGN (Additive White Gaussian Noise). Compares different window sizes (5, 10, 20 samples) to show the tradeoff between smoothing and response time. Reference: https://www.mathworks.com/help/dsp/ref/movingaverage.html",
+    "author": "LibreSim Examples",
+    "createdAt": "2024-01-01T00:00:00Z",
+    "modifiedAt": "2024-01-01T00:00:00Z",
+    "version": "1.0.0"
+  },
+  "blocks": [
+    {
+      "id": "step1",
+      "type": "step",
+      "name": "Step Input",
+      "position": { "x": 50, "y": 100 },
+      "parameters": {
+        "stepTime": 1.0,
+        "initialValue": 0,
+        "finalValue": 1
+      },
+      "inputPorts": [],
+      "outputPorts": [
+        { "id": "step1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "noise1",
+      "type": "white_noise",
+      "name": "AWGN",
+      "position": { "x": 50, "y": 200 },
+      "parameters": {
+        "mean": 0,
+        "variance": 0.01,
+        "seed": 42,
+        "sampleTime": 0
+      },
+      "inputPorts": [],
+      "outputPorts": [
+        { "id": "noise1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "sum_noise",
+      "type": "sum",
+      "name": "Add Noise",
+      "position": { "x": 200, "y": 140 },
+      "parameters": {
+        "signs": "++"
+      },
+      "inputPorts": [
+        { "id": "sum_noise-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
+        { "id": "sum_noise-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [
+        { "id": "sum_noise-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "mavg_small",
+      "type": "moving_average",
+      "name": "MAF (5 samples)",
+      "position": { "x": 380, "y": 60 },
+      "parameters": {
+        "windowSize": 5
+      },
+      "inputPorts": [
+        { "id": "mavg_small-in", "name": "in", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [
+        { "id": "mavg_small-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "mavg_medium",
+      "type": "moving_average",
+      "name": "MAF (10 samples)",
+      "position": { "x": 380, "y": 140 },
+      "parameters": {
+        "windowSize": 10
+      },
+      "inputPorts": [
+        { "id": "mavg_medium-in", "name": "in", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [
+        { "id": "mavg_medium-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "mavg_large",
+      "type": "moving_average",
+      "name": "MAF (20 samples)",
+      "position": { "x": 380, "y": 220 },
+      "parameters": {
+        "windowSize": 20
+      },
+      "inputPorts": [
+        { "id": "mavg_large-in", "name": "in", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [
+        { "id": "mavg_large-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "scope1",
+      "type": "scope",
+      "name": "MAF Comparison",
+      "position": { "x": 580, "y": 140 },
+      "parameters": {
+        "numInputs": 4
+      },
+      "inputPorts": [
+        { "id": "scope1-in1", "name": "Noisy", "dataType": "double", "dimensions": [1] },
+        { "id": "scope1-in2", "name": "MAF-5", "dataType": "double", "dimensions": [1] },
+        { "id": "scope1-in3", "name": "MAF-10", "dataType": "double", "dimensions": [1] },
+        { "id": "scope1-in4", "name": "MAF-20", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": []
+    }
+  ],
+  "connections": [
+    { "id": "conn1", "sourceBlockId": "step1", "sourcePortId": "step1-out", "targetBlockId": "sum_noise", "targetPortId": "sum_noise-in1" },
+    { "id": "conn2", "sourceBlockId": "noise1", "sourcePortId": "noise1-out", "targetBlockId": "sum_noise", "targetPortId": "sum_noise-in2" },
+    { "id": "conn3", "sourceBlockId": "sum_noise", "sourcePortId": "sum_noise-out", "targetBlockId": "mavg_small", "targetPortId": "mavg_small-in" },
+    { "id": "conn4", "sourceBlockId": "sum_noise", "sourcePortId": "sum_noise-out", "targetBlockId": "mavg_medium", "targetPortId": "mavg_medium-in" },
+    { "id": "conn5", "sourceBlockId": "sum_noise", "sourcePortId": "sum_noise-out", "targetBlockId": "mavg_large", "targetPortId": "mavg_large-in" },
+    { "id": "conn6", "sourceBlockId": "sum_noise", "sourcePortId": "sum_noise-out", "targetBlockId": "scope1", "targetPortId": "scope1-in1" },
+    { "id": "conn7", "sourceBlockId": "mavg_small", "sourcePortId": "mavg_small-out", "targetBlockId": "scope1", "targetPortId": "scope1-in2" },
+    { "id": "conn8", "sourceBlockId": "mavg_medium", "sourcePortId": "mavg_medium-out", "targetBlockId": "scope1", "targetPortId": "scope1-in3" },
+    { "id": "conn9", "sourceBlockId": "mavg_large", "sourcePortId": "mavg_large-out", "targetBlockId": "scope1", "targetPortId": "scope1-in4" }
+  ],
+  "simulationConfig": {
+    "solver": "rk4",
+    "startTime": 0,
+    "stopTime": 5,
+    "stepSize": 0.001
+  }
+}

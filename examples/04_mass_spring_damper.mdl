@@ -3,10 +3,10 @@ Model {
   Version		  8.0
   SavedCharacterEncoding  "UTF-8"
   StartTime		  "0.0"
-  StopTime		  "20.0"
+  StopTime		  "2.0"
   SolverType		  "Fixed-step"
   Solver		  "ode4"
-  FixedStep		  "0.01"
+  FixedStep		  "0.001"
 
   System {
     Name		    "mass_spring_damper"
@@ -14,16 +14,16 @@ Model {
     Open		    on
 
     Annotation {
-      Name		      "Mass-Spring-Damper System\nm*x'' + c*x' + k*x = F\nm=1, c=0.5, k=2"
+      Name		      "Mass-Spring-Damper System (Simscape Defaults)\nm*x'' + c*x' + k*x = F\nm=1 kg, c=100 N*s/m, k=1000 N/m"
       Position		      [400, 30]
     }
     Block {
       BlockType		      Step
       Name		      "Force F"
       Position		      [50, 140, 110, 180]
-      Time		      "1"
+      Time		      "0"
       Before		      "0"
-      After		      "1"
+      After		      "1000"
     }
     Block {
       BlockType		      Sum
@@ -54,13 +54,13 @@ Model {
       BlockType		      Gain
       Name		      "Damper c"
       Position		      [420, 270, 470, 300]
-      Gain		      "0.5"
+      Gain		      "100"
     }
     Block {
       BlockType		      Gain
       Name		      "Spring k"
       Position		      [540, 270, 590, 300]
-      Gain		      "2"
+      Gain		      "1000"
     }
     Block {
       BlockType		      Scope
