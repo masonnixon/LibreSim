@@ -361,11 +361,35 @@ class OSKAdapter:
                             # Output format: "block-out1" -> index 0
                             target_port_index = int(suffix[3:]) - 1
 
+                # Extract the source port index from source_port
+                # Handles formats like:
+                #   "demux1-out2" (block-out# format, 1-indexed)
+                #   "block-out-0" (block-out-# format, 0-indexed)
+                #   "out1", "out2" (simple format, 1-indexed)
+                source_port_index = 0
+                if source_port:
+                    # Parse the port suffix from the source_port ID
+                    parts = source_port.rsplit("-", 1)
+                    if len(parts) == 2:
+                        suffix = parts[1]
+                        if suffix.isdigit():
+                            # Format: "block-out-0" -> index 0
+                            source_port_index = int(suffix)
+                        elif suffix.startswith("out") and suffix[3:].isdigit():
+                            # Format: "demux1-out2" -> index 1
+                            source_port_index = int(suffix[3:]) - 1
+                    elif source_port.startswith("out") and source_port[3:].isdigit():
+                        # Format: "out1", "out2" (1-indexed)
+                        source_port_index = int(source_port[3:]) - 1
 
                 if source_osk_block:
                     # Use connectInput if available, otherwise we'll handle in step()
                     if hasattr(osk_block, 'connectInput'):
-                        osk_block.connectInput(source_osk_block, target_port_index)
+                        # For Scope blocks, pass the source port index
+                        if block.type == "scope":
+                            osk_block.connectInput(source_osk_block, target_port_index, source_port_index)
+                        else:
+                            osk_block.connectInput(source_osk_block, target_port_index)
                     elif hasattr(osk_block, 'input_block'):
                         osk_block.input_block = source_osk_block
                     elif hasattr(osk_block, 'input_blocks'):

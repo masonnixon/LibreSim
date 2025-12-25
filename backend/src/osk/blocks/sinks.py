@@ -21,6 +21,7 @@ class Scope(Block):
         self.num_inputs = int(num_inputs)
         self.inputs = [0.0] * self.num_inputs
         self.input_blocks = [None] * self.num_inputs
+        self.input_source_ports = [0] * self.num_inputs  # Track which output port to read from source
         self.input_names = [f"Input {i+1}" for i in range(self.num_inputs)]
         self.times = []
         self.values = []  # Will be built dynamically based on connected inputs
@@ -46,10 +47,17 @@ class Scope(Block):
                 if port in self._vector_inputs:
                     del self._vector_inputs[port]
 
-    def connectInput(self, block, port=0):
-        """Connect an input block."""
+    def connectInput(self, block, port=0, source_port=0):
+        """Connect an input block.
+
+        Args:
+            block: The source block to connect
+            port: Which input port on this Scope to connect to
+            source_port: Which output port on the source block to read from
+        """
         if port < self.num_inputs:
             self.input_blocks[port] = block
+            self.input_source_ports[port] = source_port
 
     def setInputName(self, name, port=0):
         """Set a display name for an input (used for legend)."""
@@ -60,6 +68,9 @@ class Scope(Block):
         # Get inputs from connected blocks
         for i, block in enumerate(self.input_blocks):
             if block is not None:
+                # Get the source port index for this input
+                source_port = self.input_source_ports[i] if i < len(self.input_source_ports) else 0
+
                 # Check if source has vector output (Mux, Outport with vector, etc.)
                 vec = None
                 if hasattr(block, 'getOutputVector'):
@@ -74,8 +85,8 @@ class Scope(Block):
                         base_name = self.input_names[i] if i < len(self.input_names) else f"Input {i+1}"
                         self._vector_names[i] = [f"{base_name}[{j+1}]" for j in range(len(vec))]
                 else:
-                    # Scalar signal
-                    self.inputs[i] = block.getOutput()
+                    # Scalar signal - use source_port to get correct output from multi-output blocks
+                    self.inputs[i] = block.getOutput(source_port)
                     if i in self._vector_inputs:
                         del self._vector_inputs[i]
                         del self._vector_names[i]
