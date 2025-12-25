@@ -410,6 +410,9 @@ class OSKAdapter:
         This method manually steps through the simulation, updating
         the OSK State class timing and calling block methods.
 
+        For multi-pass integration methods (RK4, RK2, Merson), this runs
+        all required passes to complete one time step.
+
         Args:
             t: Current simulation time
             dt: Time step size
@@ -424,78 +427,93 @@ class OSKAdapter:
         State.t = t
         State.dt = dt
         State.dtp = dt
+        State.kpass = 0
         State.ready = 1
+
+        # Number of passes for each integration method
+        passes = {'Euler': 1, 'RK2': 2, 'RK4': 4, 'Merson': 5}
+        num_passes = passes.get(State.method, 1)
 
         recorded_outputs: dict[str, float] = {}
 
-        # Execute blocks in topological order
-        for block_id in self._compiled_model.execution_order:
-            osk_block = self._osk_blocks.get(block_id)
-            compiled_block = self._block_map.get(block_id)
+        # Execute all integration passes for this time step
+        for kpass in range(num_passes):
+            State.kpass = kpass
+            # ready is 1 only on the final pass
+            State.ready = 1 if kpass == num_passes - 1 else 0
 
-            if not osk_block or not compiled_block:
-                continue
+            # Execute blocks in topological order
+            for block_id in self._compiled_model.execution_order:
+                osk_block = self._osk_blocks.get(block_id)
+                compiled_block = self._block_map.get(block_id)
 
-            # For blocks without automatic input connection, set inputs manually
-            # Skip blocks that have input_blocks (like Scope) - they get inputs via connectInput
-            has_input_block = hasattr(osk_block, 'input_block') and osk_block.input_block is not None
-            has_input_blocks = hasattr(osk_block, 'input_blocks') and any(b is not None for b in osk_block.input_blocks)
-            if not has_input_block and not has_input_blocks:
-                for i, conn in enumerate(compiled_block.input_connections):
-                    source_block_id, _ = conn.split(":")
-                    source_block = self._osk_blocks.get(source_block_id)
-                    if source_block:
-                        value = source_block.getOutput()
-                        osk_block.setInput(value, i)
+                if not osk_block or not compiled_block:
+                    continue
 
-            # Update block (computes derivatives)
-            osk_block.update()
+                # For blocks without automatic input connection, set inputs manually
+                # Skip blocks that have input_blocks (like Scope) - they get inputs via connectInput
+                has_input_block = hasattr(osk_block, 'input_block') and osk_block.input_block is not None
+                has_input_blocks = hasattr(osk_block, 'input_blocks') and any(b is not None for b in osk_block.input_blocks)
+                if not has_input_block and not has_input_blocks:
+                    for i, conn in enumerate(compiled_block.input_connections):
+                        source_block_id, _ = conn.split(":")
+                        source_block = self._osk_blocks.get(source_block_id)
+                        if source_block:
+                            value = source_block.getOutput()
+                            osk_block.setInput(value, i)
 
-            # Record sink block outputs
-            if block_id in self._sink_blocks:
-                # For scopes with multiple inputs or vector inputs, record each trace separately
-                # Only record CONNECTED inputs (where input_blocks[i] is not None)
-                if block_id in self._scope_input_names and hasattr(osk_block, 'inputs'):
-                    input_names = self._scope_input_names[block_id]
-                    input_blocks = getattr(osk_block, 'input_blocks', [])
-                    trace_idx = 0
-                    for i in range(len(osk_block.inputs)):
-                        # Skip unconnected inputs
-                        if i < len(input_blocks) and input_blocks[i] is None:
-                            continue
+                # Update block (computes derivatives)
+                osk_block.update()
 
-                        base_name = input_names[i] if i < len(input_names) else f"Input {i+1}"
-                        # Check if this input is a vector (from Mux)
-                        if hasattr(osk_block, '_vector_inputs') and i in osk_block._vector_inputs:
-                            vec = osk_block._vector_inputs[i]
-                            for j, val in enumerate(vec):
-                                signal_name = f"{base_name}[{j+1}]"
-                                key = f"{block_id}:{trace_idx}:{signal_name}"
-                                if isinstance(val, (int, float)):
-                                    recorded_outputs[key] = float(val)
-                                trace_idx += 1
+                # Only record outputs and report on final pass
+                if State.ready:
+                    # Record sink block outputs
+                    if block_id in self._sink_blocks:
+                        # For scopes with multiple inputs or vector inputs, record each trace separately
+                        # Only record CONNECTED inputs (where input_blocks[i] is not None)
+                        if block_id in self._scope_input_names and hasattr(osk_block, 'inputs'):
+                            input_names = self._scope_input_names[block_id]
+                            input_blocks = getattr(osk_block, 'input_blocks', [])
+                            trace_idx = 0
+                            for i in range(len(osk_block.inputs)):
+                                # Skip unconnected inputs
+                                if i < len(input_blocks) and input_blocks[i] is None:
+                                    continue
+
+                                base_name = input_names[i] if i < len(input_names) else f"Input {i+1}"
+                                # Check if this input is a vector (from Mux)
+                                if hasattr(osk_block, '_vector_inputs') and i in osk_block._vector_inputs:
+                                    vec = osk_block._vector_inputs[i]
+                                    for j, val in enumerate(vec):
+                                        signal_name = f"{base_name}[{j+1}]"
+                                        key = f"{block_id}:{trace_idx}:{signal_name}"
+                                        if isinstance(val, (int, float)):
+                                            recorded_outputs[key] = float(val)
+                                        trace_idx += 1
+                                else:
+                                    # Scalar input
+                                    value = osk_block.inputs[i] if i < len(osk_block.inputs) else 0.0
+                                    key = f"{block_id}:{trace_idx}:{base_name}"
+                                    if isinstance(value, (int, float)):
+                                        recorded_outputs[key] = float(value)
+                                    trace_idx += 1
                         else:
-                            # Scalar input
-                            value = osk_block.inputs[i] if i < len(osk_block.inputs) else 0.0
-                            key = f"{block_id}:{trace_idx}:{base_name}"
-                            if isinstance(value, (int, float)):
-                                recorded_outputs[key] = float(value)
-                            trace_idx += 1
-                else:
-                    # Single-input sink block
-                    output = osk_block.getOutput()
-                    compiled_block = self._block_map.get(block_id)
-                    key = f"{block_id}:out:{compiled_block.name if compiled_block else block_id}"
-                    if isinstance(output, (int, float)):
-                        recorded_outputs[key] = float(output)
+                            # Single-input sink block
+                            output = osk_block.getOutput()
+                            compiled_block = self._block_map.get(block_id)
+                            key = f"{block_id}:out:{compiled_block.name if compiled_block else block_id}"
+                            if isinstance(output, (int, float)):
+                                recorded_outputs[key] = float(output)
 
-            # Report (for data recording in sink blocks)
-            if State.ready:
-                osk_block.rpt()
+                    # Report (for data recording in sink blocks)
+                    osk_block.rpt()
 
-        # Propagate states for all blocks
-        for osk_block in self._osk_blocks.values():
-            osk_block.propagateStates()
+            # Propagate states for all blocks after each pass
+            for osk_block in self._osk_blocks.values():
+                osk_block.propagateStates()
+
+        # Reset kpass to 0 for next step (avoid polluting global state)
+        State.kpass = 0
 
         return recorded_outputs
 
