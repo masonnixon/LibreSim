@@ -108,15 +108,22 @@ Uses the White Noise block for realistic random noise.
 
 ---
 
-### 05b. Low-Pass Filter - AWGN Noise Reduction
+### 05b. Low-Pass Filter Comparison
 **File:** `05b_lowpass_filter.json`
 
-Demonstrates Low-Pass filter removing high-frequency AWGN from a clean 1 Hz sine wave signal. Compares different cutoff frequencies (1, 3, 10 Hz) to show:
-- How cutoff frequency affects noise attenuation
-- Trade-off between noise reduction and signal preservation
-- Lower cutoff = more noise removal but potential signal distortion
+Compares 1st-order LPF with higher-order Butterworth and Bessel filters, all at 3 Hz cutoff:
+- **1st Order LPF**: Simple RC-equivalent filter
+- **Butterworth 1st**: Same as above (should match LPF output)
+- **Butterworth 2nd**: Sharper rolloff, more phase lag
+- **Butterworth 4th**: Even sharper rolloff, significant phase lag
+- **Bessel 2nd**: Maximally flat group delay (less phase distortion)
 
-Uses the White Noise block for realistic random noise.
+Key observations:
+- Higher order = better noise rejection but more phase lag
+- Bessel preserves waveform shape better than Butterworth at same order
+- 1st-order LPF and Butterworth 1st should produce identical results
+
+Uses White Noise block for realistic AWGN.
 
 **Reference:** https://www.mathworks.com/help/dsp/ref/lowpassfilter.html
 
@@ -241,7 +248,7 @@ Uniform random noise between configurable min/max bounds.
 | 04 | Mass-Spring-Damper (Simscape) | Control | Overdamped mechanical system |
 | 04b | Mass-Spring-Damper (Underdamped) | Control | Oscillatory mechanical system |
 | 05a | Moving Average Filter | Signal | AWGN smoothing |
-| 05b | Low-Pass Filter | Signal | AWGN noise reduction |
+| 05b | Low-Pass Filter Comparison | Signal | Filter order/design comparison |
 | 06 | Kalman Filter | Advanced | State estimation |
 | 06b | Kalman Position/Velocity | Advanced | Hidden state estimation |
 | 07 | Thermostat Relay | Control | Bang-bang control |

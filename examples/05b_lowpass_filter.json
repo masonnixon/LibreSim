@@ -1,8 +1,8 @@
 {
   "id": "example-lowpass-filter",
   "metadata": {
-    "name": "Low-Pass Filter - Noise Reduction",
-    "description": "Demonstrates Low-Pass filter removing high-frequency AWGN (Additive White Gaussian Noise) from a clean signal. Shows how cutoff frequency affects noise attenuation vs signal preservation. Reference: https://www.mathworks.com/help/dsp/ref/lowpassfilter.html",
+    "name": "Low-Pass Filter Comparison",
+    "description": "Compares 1st-order LPF with higher-order Butterworth and Bessel filters. Shows how filter order affects noise rejection and phase lag. All filters set to 3 Hz cutoff to enable direct comparison. Reference: https://www.mathworks.com/help/dsp/ref/lowpassfilter.html",
     "author": "LibreSim Examples",
     "createdAt": "2024-01-01T00:00:00Z",
     "modifiedAt": "2024-01-01T00:00:00Z",
@@ -58,64 +58,108 @@
       ]
     },
     {
-      "id": "lpf_low",
+      "id": "lpf_1st",
       "type": "low_pass_filter",
-      "name": "LPF (1 Hz cutoff)",
-      "position": { "x": 380, "y": 80 },
-      "parameters": {
-        "cutoffFrequency": 1.0
-      },
-      "inputPorts": [
-        { "id": "lpf_low-in", "name": "in", "dataType": "double", "dimensions": [1] }
-      ],
-      "outputPorts": [
-        { "id": "lpf_low-out", "name": "out", "dataType": "double", "dimensions": [1] }
-      ]
-    },
-    {
-      "id": "lpf_mid",
-      "type": "low_pass_filter",
-      "name": "LPF (3 Hz cutoff)",
-      "position": { "x": 380, "y": 170 },
+      "name": "1st Order (3 Hz)",
+      "position": { "x": 380, "y": 60 },
       "parameters": {
         "cutoffFrequency": 3.0
       },
       "inputPorts": [
-        { "id": "lpf_mid-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        { "id": "lpf_1st-in", "name": "in", "dataType": "double", "dimensions": [1] }
       ],
       "outputPorts": [
-        { "id": "lpf_mid-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        { "id": "lpf_1st-out", "name": "out", "dataType": "double", "dimensions": [1] }
       ]
     },
     {
-      "id": "lpf_high",
-      "type": "low_pass_filter",
-      "name": "LPF (10 Hz cutoff)",
-      "position": { "x": 380, "y": 260 },
+      "id": "butter_1st",
+      "type": "analog_filter",
+      "name": "Butter 1st (3 Hz)",
+      "position": { "x": 380, "y": 130 },
       "parameters": {
-        "cutoffFrequency": 10.0
+        "design": "butterworth",
+        "response": "lowpass",
+        "order": 1,
+        "cutoffFrequency": 3.0
       },
       "inputPorts": [
-        { "id": "lpf_high-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        { "id": "butter_1st-in", "name": "in", "dataType": "double", "dimensions": [1] }
       ],
       "outputPorts": [
-        { "id": "lpf_high-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        { "id": "butter_1st-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "butter_2nd",
+      "type": "analog_filter",
+      "name": "Butter 2nd (3 Hz)",
+      "position": { "x": 380, "y": 200 },
+      "parameters": {
+        "design": "butterworth",
+        "response": "lowpass",
+        "order": 2,
+        "cutoffFrequency": 3.0
+      },
+      "inputPorts": [
+        { "id": "butter_2nd-in", "name": "in", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [
+        { "id": "butter_2nd-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "butter_4th",
+      "type": "analog_filter",
+      "name": "Butter 4th (3 Hz)",
+      "position": { "x": 380, "y": 270 },
+      "parameters": {
+        "design": "butterworth",
+        "response": "lowpass",
+        "order": 4,
+        "cutoffFrequency": 3.0
+      },
+      "inputPorts": [
+        { "id": "butter_4th-in", "name": "in", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [
+        { "id": "butter_4th-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "bessel_2nd",
+      "type": "analog_filter",
+      "name": "Bessel 2nd (3 Hz)",
+      "position": { "x": 380, "y": 340 },
+      "parameters": {
+        "design": "bessel",
+        "response": "lowpass",
+        "order": 2,
+        "cutoffFrequency": 3.0
+      },
+      "inputPorts": [
+        { "id": "bessel_2nd-in", "name": "in", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [
+        { "id": "bessel_2nd-out", "name": "out", "dataType": "double", "dimensions": [1] }
       ]
     },
     {
       "id": "scope1",
       "type": "scope",
-      "name": "LPF Comparison",
-      "position": { "x": 580, "y": 150 },
+      "name": "Filter Comparison",
+      "position": { "x": 580, "y": 180 },
       "parameters": {
-        "numInputs": 5
+        "numInputs": 7
       },
       "inputPorts": [
         { "id": "scope1-in1", "name": "Clean", "dataType": "double", "dimensions": [1] },
         { "id": "scope1-in2", "name": "Noisy", "dataType": "double", "dimensions": [1] },
-        { "id": "scope1-in3", "name": "LPF 1Hz", "dataType": "double", "dimensions": [1] },
-        { "id": "scope1-in4", "name": "LPF 3Hz", "dataType": "double", "dimensions": [1] },
-        { "id": "scope1-in5", "name": "LPF 10Hz", "dataType": "double", "dimensions": [1] }
+        { "id": "scope1-in3", "name": "LPF 1st", "dataType": "double", "dimensions": [1] },
+        { "id": "scope1-in4", "name": "Butter 1st", "dataType": "double", "dimensions": [1] },
+        { "id": "scope1-in5", "name": "Butter 2nd", "dataType": "double", "dimensions": [1] },
+        { "id": "scope1-in6", "name": "Butter 4th", "dataType": "double", "dimensions": [1] },
+        { "id": "scope1-in7", "name": "Bessel 2nd", "dataType": "double", "dimensions": [1] }
       ],
       "outputPorts": []
     }
@@ -123,14 +167,18 @@
   "connections": [
     { "id": "conn1", "sourceBlockId": "sine_signal", "sourcePortId": "sine_signal-out", "targetBlockId": "sum1", "targetPortId": "sum1-in1" },
     { "id": "conn2", "sourceBlockId": "noise1", "sourcePortId": "noise1-out", "targetBlockId": "sum1", "targetPortId": "sum1-in2" },
-    { "id": "conn3", "sourceBlockId": "sum1", "sourcePortId": "sum1-out", "targetBlockId": "lpf_low", "targetPortId": "lpf_low-in" },
-    { "id": "conn4", "sourceBlockId": "sum1", "sourcePortId": "sum1-out", "targetBlockId": "lpf_mid", "targetPortId": "lpf_mid-in" },
-    { "id": "conn5", "sourceBlockId": "sum1", "sourcePortId": "sum1-out", "targetBlockId": "lpf_high", "targetPortId": "lpf_high-in" },
-    { "id": "conn6", "sourceBlockId": "sine_signal", "sourcePortId": "sine_signal-out", "targetBlockId": "scope1", "targetPortId": "scope1-in1" },
-    { "id": "conn7", "sourceBlockId": "sum1", "sourcePortId": "sum1-out", "targetBlockId": "scope1", "targetPortId": "scope1-in2" },
-    { "id": "conn8", "sourceBlockId": "lpf_low", "sourcePortId": "lpf_low-out", "targetBlockId": "scope1", "targetPortId": "scope1-in3" },
-    { "id": "conn9", "sourceBlockId": "lpf_mid", "sourcePortId": "lpf_mid-out", "targetBlockId": "scope1", "targetPortId": "scope1-in4" },
-    { "id": "conn10", "sourceBlockId": "lpf_high", "sourcePortId": "lpf_high-out", "targetBlockId": "scope1", "targetPortId": "scope1-in5" }
+    { "id": "conn3", "sourceBlockId": "sum1", "sourcePortId": "sum1-out", "targetBlockId": "lpf_1st", "targetPortId": "lpf_1st-in" },
+    { "id": "conn4", "sourceBlockId": "sum1", "sourcePortId": "sum1-out", "targetBlockId": "butter_1st", "targetPortId": "butter_1st-in" },
+    { "id": "conn5", "sourceBlockId": "sum1", "sourcePortId": "sum1-out", "targetBlockId": "butter_2nd", "targetPortId": "butter_2nd-in" },
+    { "id": "conn6", "sourceBlockId": "sum1", "sourcePortId": "sum1-out", "targetBlockId": "butter_4th", "targetPortId": "butter_4th-in" },
+    { "id": "conn7", "sourceBlockId": "sum1", "sourcePortId": "sum1-out", "targetBlockId": "bessel_2nd", "targetPortId": "bessel_2nd-in" },
+    { "id": "conn8", "sourceBlockId": "sine_signal", "sourcePortId": "sine_signal-out", "targetBlockId": "scope1", "targetPortId": "scope1-in1" },
+    { "id": "conn9", "sourceBlockId": "sum1", "sourcePortId": "sum1-out", "targetBlockId": "scope1", "targetPortId": "scope1-in2" },
+    { "id": "conn10", "sourceBlockId": "lpf_1st", "sourcePortId": "lpf_1st-out", "targetBlockId": "scope1", "targetPortId": "scope1-in3" },
+    { "id": "conn11", "sourceBlockId": "butter_1st", "sourcePortId": "butter_1st-out", "targetBlockId": "scope1", "targetPortId": "scope1-in4" },
+    { "id": "conn12", "sourceBlockId": "butter_2nd", "sourcePortId": "butter_2nd-out", "targetBlockId": "scope1", "targetPortId": "scope1-in5" },
+    { "id": "conn13", "sourceBlockId": "butter_4th", "sourcePortId": "butter_4th-out", "targetBlockId": "scope1", "targetPortId": "scope1-in6" },
+    { "id": "conn14", "sourceBlockId": "bessel_2nd", "sourcePortId": "bessel_2nd-out", "targetBlockId": "scope1", "targetPortId": "scope1-in7" }
   ],
   "simulationConfig": {
     "solver": "rk4",
