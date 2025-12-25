@@ -448,6 +448,11 @@ class Demux(Block):
                 for i, v in enumerate(self.input_block.outputs):
                     if i < len(self.input_vector):
                         self.input_vector[i] = v
+            elif hasattr(self.input_block, 'x_hat'):
+                # Handle observer blocks with state estimate (KalmanFilter, etc.)
+                x_hat = self.input_block.x_hat
+                for i in range(min(len(x_hat), len(self.input_vector))):
+                    self.input_vector[i] = float(x_hat[i])
             else:
                 # Scalar input - put in first slot
                 self.input = self.input_block.getOutput()
