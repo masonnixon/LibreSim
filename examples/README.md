@@ -166,6 +166,28 @@ Shows optimal state estimation principles from control theory.
 
 ---
 
+### 06b. Kalman Filter - Position/Velocity Tracking
+**File:** `06b_kalman_position_velocity.json`
+
+Classic 2-state Kalman filter demonstrating estimation of hidden states:
+- **State vector:** [position, velocity]
+- **Measurement:** Position only (corrupted by AWGN sensor noise)
+- **Key insight:** Estimates velocity without directly measuring it
+
+System model (constant velocity):
+```
+x[k+1] = [1  dt] x[k]     (dt = 0.01)
+         [0   1]
+
+y[k] = [1  0] x[k] + noise
+```
+
+The filter optimally fuses noisy position measurements to estimate both position and velocity, demonstrating the power of model-based estimation.
+
+**Reference:** https://www.mathworks.com/help/control/ug/kalman-filtering.html
+
+---
+
 ## Noise Source Blocks
 
 LibreSim includes noise source blocks for realistic signal modeling:
@@ -221,6 +243,7 @@ Uniform random noise between configurable min/max bounds.
 | 05a | Moving Average Filter | Signal | AWGN smoothing |
 | 05b | Low-Pass Filter | Signal | AWGN noise reduction |
 | 06 | Kalman Filter | Advanced | State estimation |
+| 06b | Kalman Position/Velocity | Advanced | Hidden state estimation |
 | 07 | Thermostat Relay | Control | Bang-bang control |
 | 08 | Lookup Table - Motor Curve | Signal | Empirical data modeling |
 | 09 | Second-Order Damping | Basic | Damping ratio comparison |

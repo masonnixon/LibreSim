@@ -1355,6 +1355,184 @@ class TestBandPassFilterBlock:
         assert isinstance(bpf.getOutput(), float)
 
 
+class TestAnalogFilterBlock:
+    """Tests for the AnalogFilter block with multiple design methods."""
+
+    def test_analog_filter_butterworth_lowpass(self):
+        """Test Butterworth lowpass filter."""
+        from src.osk.blocks.signal_processing import AnalogFilter
+
+        filt = AnalogFilter(design="butterworth", response="lowpass", order=2, cutoff_freq=10.0)
+        State.dt = 0.001
+        filt.init()
+
+        # Apply step input
+        filt.setInput(1.0)
+        for _ in range(100):
+            filt.update()
+
+        # Should approach 1.0 for lowpass with DC input
+        assert filt.getOutput() > 0.5
+
+    def test_analog_filter_butterworth_highpass(self):
+        """Test Butterworth highpass filter."""
+        from src.osk.blocks.signal_processing import AnalogFilter
+
+        filt = AnalogFilter(design="butterworth", response="highpass", order=2, cutoff_freq=10.0)
+        State.dt = 0.001
+        filt.init()
+
+        # Apply step input (DC)
+        filt.setInput(1.0)
+        for _ in range(200):
+            filt.update()
+
+        # Highpass should reject DC - output near zero
+        assert abs(filt.getOutput()) < 0.2
+
+    def test_analog_filter_chebyshev1(self):
+        """Test Chebyshev Type I filter."""
+        from src.osk.blocks.signal_processing import AnalogFilter
+
+        filt = AnalogFilter(design="chebyshev1", response="lowpass", order=2, cutoff_freq=10.0, passband_ripple=1.0)
+        State.dt = 0.001
+        filt.init()
+
+        filt.setInput(1.0)
+        for _ in range(100):
+            filt.update()
+
+        assert filt.getOutput() > 0.5
+
+    def test_analog_filter_chebyshev2(self):
+        """Test Chebyshev Type II filter."""
+        from src.osk.blocks.signal_processing import AnalogFilter
+
+        filt = AnalogFilter(design="chebyshev2", response="lowpass", order=2, cutoff_freq=10.0, stopband_atten=40.0)
+        State.dt = 0.001
+        filt.init()
+
+        filt.setInput(1.0)
+        for _ in range(500):  # Chebyshev II may need more time to settle
+            filt.update()
+
+        # Chebyshev II has different gain characteristics; check it responds
+        assert filt.getOutput() > 0.2
+
+    def test_analog_filter_bessel(self):
+        """Test Bessel filter (maximally flat group delay)."""
+        from src.osk.blocks.signal_processing import AnalogFilter
+
+        filt = AnalogFilter(design="bessel", response="lowpass", order=2, cutoff_freq=10.0)
+        State.dt = 0.001
+        filt.init()
+
+        filt.setInput(1.0)
+        for _ in range(100):
+            filt.update()
+
+        assert filt.getOutput() > 0.5
+
+    def test_analog_filter_higher_order(self):
+        """Test higher order filter."""
+        from src.osk.blocks.signal_processing import AnalogFilter
+
+        filt = AnalogFilter(design="butterworth", response="lowpass", order=5, cutoff_freq=10.0)
+        State.dt = 0.001
+        filt.init()
+
+        filt.setInput(1.0)
+        for _ in range(200):
+            filt.update()
+
+        assert filt.getOutput() > 0.5
+
+    def test_analog_filter_connected(self):
+        """Test AnalogFilter with connected block."""
+        from src.osk.blocks.signal_processing import AnalogFilter
+
+        const = Constant(value=1.0)
+        const.init()
+        filt = AnalogFilter(design="butterworth", response="lowpass", order=2, cutoff_freq=10.0)
+        State.dt = 0.001
+        filt.init()
+        filt.connectInput(const)
+
+        for _ in range(100):
+            filt.update()
+
+        assert filt.getOutput() > 0.5
+
+
+class TestNotchFilterBlock:
+    """Tests for the NotchFilter block."""
+
+    def test_notch_filter_init(self):
+        """Test NotchFilter initialization."""
+        from src.osk.blocks.signal_processing import NotchFilter
+
+        nf = NotchFilter(notch_freq=60.0, bandwidth=2.0)
+        State.dt = 0.001
+        nf.init()
+        assert nf.getOutput() == 0.0
+
+    def test_notch_filter_dc_passthrough(self):
+        """Test NotchFilter passes DC unchanged."""
+        from src.osk.blocks.signal_processing import NotchFilter
+
+        nf = NotchFilter(notch_freq=60.0, bandwidth=2.0)
+        State.dt = 0.001
+        nf.init()
+
+        # Apply DC input
+        for _ in range(200):
+            nf.setInput(1.0)
+            nf.update()
+
+        # DC should pass through notch filter
+        assert nf.getOutput() > 0.9
+
+    def test_notch_filter_rejects_notch_frequency(self):
+        """Test NotchFilter attenuates the notch frequency."""
+        import math
+        from src.osk.blocks.signal_processing import NotchFilter
+
+        notch_freq = 50.0
+        nf = NotchFilter(notch_freq=notch_freq, bandwidth=5.0)  # Wider bandwidth for cleaner test
+        dt = 0.0001  # Small step for accurate sine at 50 Hz
+        State.dt = dt
+        nf.init()
+
+        # Apply sine wave at notch frequency
+        max_output = 0.0
+        for i in range(2000):  # More iterations to settle
+            t = i * dt
+            sine_input = math.sin(2 * math.pi * notch_freq * t)
+            nf.setInput(sine_input)
+            nf.update()
+            if i > 1000:  # Allow filter to settle
+                max_output = max(max_output, abs(nf.getOutput()))
+
+        # Output at notch frequency should be attenuated (< 50% of input)
+        assert max_output < 0.5  # Input amplitude is 1.0
+
+    def test_notch_filter_connected(self):
+        """Test NotchFilter with connected block."""
+        from src.osk.blocks.signal_processing import NotchFilter
+
+        const = Constant(value=1.0)
+        const.init()
+        nf = NotchFilter(notch_freq=60.0, bandwidth=2.0)
+        State.dt = 0.001
+        nf.init()
+        nf.connectInput(const)
+
+        for _ in range(200):
+            nf.update()
+
+        assert nf.getOutput() > 0.9
+
+
 class TestBacklashBlock:
     """Tests for the Backlash block."""
 

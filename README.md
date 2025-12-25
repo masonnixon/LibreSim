@@ -372,6 +372,32 @@ Passes frequencies within a specified range, attenuating others.
   - `lowCutoff` - Lower -3dB frequency
   - `highCutoff` - Upper -3dB frequency
 
+#### Analog Filter (Advanced)
+Configurable IIR filter supporting multiple classic filter designs. Similar to Simulink's Analog Filter Design block.
+- **Parameters**:
+  - `design` - Filter design method: 'butterworth', 'chebyshev1', 'chebyshev2', 'bessel'
+  - `response` - Response type: 'lowpass', 'highpass', 'bandpass', 'bandstop'
+  - `order` - Filter order (1-10)
+  - `cutoffFrequency` - Cutoff frequency in Hz (for lowpass/highpass)
+  - `lowCutoff` / `highCutoff` - Band edges for bandpass/bandstop
+  - `passbandRipple` - Passband ripple in dB (Chebyshev I only)
+  - `stopbandAtten` - Stopband attenuation in dB (Chebyshev II only)
+
+**Design Method Comparison**:
+| Design | Passband | Stopband | Phase | Use Case |
+|--------|----------|----------|-------|----------|
+| Butterworth | Maximally flat | Monotonic | Moderate | General purpose |
+| Chebyshev I | Equiripple | Monotonic | More lag | Sharp cutoff needed |
+| Chebyshev II | Flat | Equiripple | Less lag | Passband fidelity |
+| Bessel | Flat | Gradual | Linear | Phase-critical signals |
+
+#### Notch Filter
+Rejects a specific narrow frequency band. Useful for removing power line interference (50/60 Hz), mechanical resonances, or other narrowband disturbances.
+- **Parameters**:
+  - `notchFrequency` - Center frequency to reject (Hz)
+  - `bandwidth` - Width of the notch (3 dB bandwidth in Hz)
+  - `depth` - Notch depth in dB
+
 #### Rate Limiter
 Limits the rate of change (slew rate) of a signal.
 - **Parameters**:

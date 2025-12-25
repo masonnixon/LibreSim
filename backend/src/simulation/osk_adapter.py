@@ -12,6 +12,7 @@ from ..models.simulation import SimulationConfig, SolverType
 from ..osk import Block, Sim, State
 from ..osk.blocks import (
     Abs,
+    AnalogFilter,
     Backlash,
     BandPassFilter,
     Clock,
@@ -34,6 +35,7 @@ from ..osk.blocks import (
     # Observers
     LuenbergerObserver,
     MovingAverage,
+    NotchFilter,
     Outport,
     PIDController,
     Product,
@@ -125,6 +127,8 @@ BLOCK_TYPE_MAP: dict[str, type[Block]] = {
     "low_pass_filter": LowPassFilter,
     "high_pass_filter": HighPassFilter,
     "band_pass_filter": BandPassFilter,
+    "analog_filter": AnalogFilter,
+    "notch_filter": NotchFilter,
     "backlash": Backlash,
     # Nonlinear
     "lookup_table_1d": LookupTable1D,
@@ -181,6 +185,12 @@ PARAM_MAP: dict[str, dict[str, str]] = {
     "low_pass_filter": {"cutoffFrequency": "cutoff_freq"},
     "high_pass_filter": {"cutoffFrequency": "cutoff_freq"},
     "band_pass_filter": {"lowCutoff": "low_cutoff", "highCutoff": "high_cutoff"},
+    "analog_filter": {
+        "design": "design", "response": "response", "order": "order",
+        "cutoffFrequency": "cutoff_freq", "lowCutoff": "low_cutoff", "highCutoff": "high_cutoff",
+        "passbandRipple": "passband_ripple", "stopbandAtten": "stopband_atten"
+    },
+    "notch_filter": {"notchFrequency": "notch_freq", "bandwidth": "bandwidth", "depth": "depth"},
     "backlash": {"deadbandWidth": "deadband_width", "initialOutput": "initial_output"},
     # Nonlinear
     "lookup_table_1d": {"xData": "x_data", "yData": "y_data"},

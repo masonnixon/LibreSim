@@ -30,11 +30,13 @@ from .nonlinear import (
 )
 from .observers import ExtendedKalmanFilter, KalmanFilter, LuenbergerObserver
 from .signal_processing import (
+    AnalogFilter,
     Backlash,
     BandPassFilter,
     HighPassFilter,
     LowPassFilter,
     MovingAverage,
+    NotchFilter,
     RateLimiter,
 )
 from .sinks import Scope, ToWorkspace
@@ -56,7 +58,8 @@ __all__ = [
     # Subsystems
     "Inport", "Outport", "Subsystem",
     # Signal Processing
-    "RateLimiter", "MovingAverage", "LowPassFilter", "HighPassFilter", "BandPassFilter", "Backlash",
+    "RateLimiter", "MovingAverage", "LowPassFilter", "HighPassFilter", "BandPassFilter",
+    "AnalogFilter", "NotchFilter", "Backlash",
     # Nonlinear
     "LookupTable1D", "LookupTable2D", "Quantizer", "Relay", "Coulomb", "VariableTransportDelay",
     # Observers

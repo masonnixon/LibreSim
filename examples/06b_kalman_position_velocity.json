@@ -1,0 +1,231 @@
+{
+  "id": "example-kalman-position-velocity",
+  "metadata": {
+    "name": "Kalman Filter - Position/Velocity Tracking",
+    "description": "Classic 2-state Kalman filter for position-velocity estimation from noisy position measurements. The true system has constant velocity motion, and the filter estimates both position and velocity from only position measurements corrupted by sensor noise. Demonstrates state estimation with hidden states. Reference: https://www.mathworks.com/help/control/ug/kalman-filtering.html",
+    "author": "LibreSim Examples",
+    "createdAt": "2024-01-01T00:00:00Z",
+    "modifiedAt": "2024-01-01T00:00:00Z",
+    "version": "1.0.0"
+  },
+  "blocks": [
+    {
+      "id": "ramp_true",
+      "type": "ramp",
+      "name": "True Position",
+      "position": { "x": 50, "y": 80 },
+      "parameters": {
+        "slope": 1.0,
+        "startTime": 0,
+        "initialOutput": 0
+      },
+      "inputPorts": [],
+      "outputPorts": [
+        { "id": "ramp_true-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "noise_sensor",
+      "type": "white_noise",
+      "name": "Sensor Noise",
+      "position": { "x": 50, "y": 180 },
+      "parameters": {
+        "mean": 0,
+        "variance": 0.25,
+        "seed": 42,
+        "sampleTime": 0
+      },
+      "inputPorts": [],
+      "outputPorts": [
+        { "id": "noise_sensor-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "sum_noisy",
+      "type": "sum",
+      "name": "Noisy Measurement",
+      "position": { "x": 180, "y": 130 },
+      "parameters": {
+        "signs": "++"
+      },
+      "inputPorts": [
+        { "id": "sum_noisy-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
+        { "id": "sum_noisy-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [
+        { "id": "sum_noisy-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "const_zero",
+      "type": "constant",
+      "name": "Control (0)",
+      "position": { "x": 180, "y": 280 },
+      "parameters": {
+        "value": 0
+      },
+      "inputPorts": [],
+      "outputPorts": [
+        { "id": "const_zero-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "kalman_pv",
+      "type": "kalman_filter",
+      "name": "Position-Velocity KF",
+      "position": { "x": 350, "y": 180 },
+      "parameters": {
+        "A": [[1, 0.01], [0, 1]],
+        "B": [[0], [0]],
+        "C": [[1, 0]],
+        "Q": [[0.0001, 0], [0, 0.0001]],
+        "R": [[0.25]],
+        "initialState": [0, 0],
+        "initialP": [[1, 0], [0, 1]]
+      },
+      "inputPorts": [
+        { "id": "kalman_pv-in1", "name": "u", "dataType": "double", "dimensions": [1] },
+        { "id": "kalman_pv-in2", "name": "y", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [
+        { "id": "kalman_pv-out", "name": "x_hat", "dataType": "double", "dimensions": [2] }
+      ]
+    },
+    {
+      "id": "demux1",
+      "type": "demux",
+      "name": "Split State",
+      "position": { "x": 490, "y": 180 },
+      "parameters": {
+        "numOutputs": 2
+      },
+      "inputPorts": [
+        { "id": "demux1-in", "name": "in", "dataType": "double", "dimensions": [2] }
+      ],
+      "outputPorts": [
+        { "id": "demux1-out1", "name": "out1", "dataType": "double", "dimensions": [1] },
+        { "id": "demux1-out2", "name": "out2", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "const_true_vel",
+      "type": "constant",
+      "name": "True Velocity",
+      "position": { "x": 490, "y": 320 },
+      "parameters": {
+        "value": 1.0
+      },
+      "inputPorts": [],
+      "outputPorts": [
+        { "id": "const_true_vel-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "scope_pos",
+      "type": "scope",
+      "name": "Position Comparison",
+      "position": { "x": 650, "y": 80 },
+      "parameters": {
+        "numInputs": 3
+      },
+      "inputPorts": [
+        { "id": "scope_pos-in1", "name": "True", "dataType": "double", "dimensions": [1] },
+        { "id": "scope_pos-in2", "name": "Noisy", "dataType": "double", "dimensions": [1] },
+        { "id": "scope_pos-in3", "name": "KF Est", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": []
+    },
+    {
+      "id": "scope_vel",
+      "type": "scope",
+      "name": "Velocity Estimation",
+      "position": { "x": 650, "y": 220 },
+      "parameters": {
+        "numInputs": 2
+      },
+      "inputPorts": [
+        { "id": "scope_vel-in1", "name": "True", "dataType": "double", "dimensions": [1] },
+        { "id": "scope_vel-in2", "name": "KF Est", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": []
+    }
+  ],
+  "connections": [
+    {
+      "id": "conn1",
+      "sourceBlockId": "ramp_true",
+      "sourcePortId": "ramp_true-out",
+      "targetBlockId": "sum_noisy",
+      "targetPortId": "sum_noisy-in1"
+    },
+    {
+      "id": "conn2",
+      "sourceBlockId": "noise_sensor",
+      "sourcePortId": "noise_sensor-out",
+      "targetBlockId": "sum_noisy",
+      "targetPortId": "sum_noisy-in2"
+    },
+    {
+      "id": "conn3",
+      "sourceBlockId": "const_zero",
+      "sourcePortId": "const_zero-out",
+      "targetBlockId": "kalman_pv",
+      "targetPortId": "kalman_pv-in1"
+    },
+    {
+      "id": "conn4",
+      "sourceBlockId": "sum_noisy",
+      "sourcePortId": "sum_noisy-out",
+      "targetBlockId": "kalman_pv",
+      "targetPortId": "kalman_pv-in2"
+    },
+    {
+      "id": "conn5",
+      "sourceBlockId": "kalman_pv",
+      "sourcePortId": "kalman_pv-out",
+      "targetBlockId": "demux1",
+      "targetPortId": "demux1-in"
+    },
+    {
+      "id": "conn6",
+      "sourceBlockId": "ramp_true",
+      "sourcePortId": "ramp_true-out",
+      "targetBlockId": "scope_pos",
+      "targetPortId": "scope_pos-in1"
+    },
+    {
+      "id": "conn7",
+      "sourceBlockId": "sum_noisy",
+      "sourcePortId": "sum_noisy-out",
+      "targetBlockId": "scope_pos",
+      "targetPortId": "scope_pos-in2"
+    },
+    {
+      "id": "conn8",
+      "sourceBlockId": "demux1",
+      "sourcePortId": "demux1-out1",
+      "targetBlockId": "scope_pos",
+      "targetPortId": "scope_pos-in3"
+    },
+    {
+      "id": "conn9",
+      "sourceBlockId": "const_true_vel",
+      "sourcePortId": "const_true_vel-out",
+      "targetBlockId": "scope_vel",
+      "targetPortId": "scope_vel-in1"
+    },
+    {
+      "id": "conn10",
+      "sourceBlockId": "demux1",
+      "sourcePortId": "demux1-out2",
+      "targetBlockId": "scope_vel",
+      "targetPortId": "scope_vel-in2"
+    }
+  ],
+  "simulationConfig": {
+    "solver": "rk4",
+    "startTime": 0,
+    "stopTime": 10,
+    "stepSize": 0.01
+  }
+}
