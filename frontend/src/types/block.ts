@@ -9,6 +9,7 @@ export type BlockCategory =
   | 'signal_processing'
   | 'nonlinear'
   | 'observers'
+  | 'control_analysis'
 
 export type DataType = 'double' | 'single' | 'int32' | 'boolean' | 'bus'
 

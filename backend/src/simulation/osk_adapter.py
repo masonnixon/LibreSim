@@ -15,6 +15,8 @@ from ..osk.blocks import (
     AnalogFilter,
     Backlash,
     BandPassFilter,
+    # Control Analysis
+    BodePlot,
     Clock,
     # Sources
     Constant,
@@ -36,8 +38,10 @@ from ..osk.blocks import (
     LuenbergerObserver,
     MovingAverage,
     NotchFilter,
+    NyquistPlot,
     Outport,
     PIDController,
+    PoleZeroMap,
     Product,
     Quantizer,
     Ramp,
@@ -50,6 +54,7 @@ from ..osk.blocks import (
     SineWave,
     StateSpace,
     Step,
+    StepInfo,
     Subsystem,
     # Math
     Sum,
@@ -141,6 +146,11 @@ BLOCK_TYPE_MAP: dict[str, type[Block]] = {
     "luenberger_observer": LuenbergerObserver,
     "kalman_filter": KalmanFilter,
     "extended_kalman_filter": ExtendedKalmanFilter,
+    # Control Analysis
+    "bode_plot": BodePlot,
+    "nyquist_plot": NyquistPlot,
+    "pole_zero_map": PoleZeroMap,
+    "step_info": StepInfo,
 }
 
 # Parameter name mapping from LibreSim to OSK constructor arguments
@@ -203,6 +213,11 @@ PARAM_MAP: dict[str, dict[str, str]] = {
     "luenberger_observer": {"A": "A", "B": "B", "C": "C", "L": "L", "initialState": "initial_state"},
     "kalman_filter": {"A": "A", "B": "B", "C": "C", "Q": "Q", "R": "R", "initialState": "initial_state", "initialP": "initial_P"},
     "extended_kalman_filter": {"nStates": "n_states", "Q": "Q", "R": "R", "initialState": "initial_state"},
+    # Control Analysis
+    "bode_plot": {"numerator": "numerator", "denominator": "denominator", "minFrequency": "minFrequency", "maxFrequency": "maxFrequency", "numPoints": "numPoints"},
+    "nyquist_plot": {"numerator": "numerator", "denominator": "denominator", "minFrequency": "minFrequency", "maxFrequency": "maxFrequency", "numPoints": "numPoints"},
+    "pole_zero_map": {"numerator": "numerator", "denominator": "denominator"},
+    "step_info": {"numerator": "numerator", "denominator": "denominator", "simulationTime": "simulationTime", "numPoints": "numPoints", "settlingPercent": "settlingPercent"},
 }
 
 

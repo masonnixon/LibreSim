@@ -6,6 +6,7 @@ the OSK (Object-oriented Simulation Kernel) framework.
 
 from .continuous import Derivative, Integrator, PIDController, StateSpace, TransferFunction
 from .discrete import UnitDelay, ZeroOrderHold
+from .control_analysis import BodePlot, NyquistPlot, PoleZeroMap, StepInfo
 from .math_ops import (
     Abs,
     DeadZone,
@@ -64,4 +65,6 @@ __all__ = [
     "LookupTable1D", "LookupTable2D", "Quantizer", "Relay", "Coulomb", "VariableTransportDelay",
     # Observers
     "LuenbergerObserver", "KalmanFilter", "ExtendedKalmanFilter",
+    # Control Analysis
+    "BodePlot", "NyquistPlot", "PoleZeroMap", "StepInfo",
 ]

@@ -10,6 +10,7 @@ import { subsystemBlocks } from './subsystems'
 import { signalProcessingBlocks } from './signal_processing'
 import { nonlinearBlocks } from './nonlinear'
 import { observerBlocks } from './observers'
+import { controlAnalysisBlocks } from './control_analysis'
 
 // All built-in block definitions
 const builtInBlocks: BlockDefinition[] = [
@@ -23,6 +24,7 @@ const builtInBlocks: BlockDefinition[] = [
   ...signalProcessingBlocks,
   ...nonlinearBlocks,
   ...observerBlocks,
+  ...controlAnalysisBlocks,
 ]
 
 // Block registry for quick lookup - supports dynamic addition of library blocks
@@ -174,6 +176,7 @@ export const blockCategories: BlockCategory[] = [
   'signal_processing',
   'nonlinear',
   'observers',
+  'control_analysis',
 ]
 
 export { sourceBlocks } from './sources'
@@ -186,3 +189,4 @@ export { subsystemBlocks } from './subsystems'
 export { signalProcessingBlocks } from './signal_processing'
 export { nonlinearBlocks } from './nonlinear'
 export { observerBlocks } from './observers'
+export { controlAnalysisBlocks } from './control_analysis'
