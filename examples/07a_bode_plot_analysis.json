@@ -1,0 +1,58 @@
+{
+  "id": "example-bode-plot-analysis",
+  "metadata": {
+    "name": "Bode Plot - Frequency Response Analysis",
+    "description": "Demonstrates Bode plot analysis for a second-order low-pass system H(s) = 1/(s^2 + 0.5s + 1). Shows magnitude and phase response, gain/phase margins, and bandwidth. The system has natural frequency wn=1 rad/s and damping ratio zeta=0.25, resulting in resonant peaking near the natural frequency. Reference: https://www.mathworks.com/help/control/ref/lti.bode.html",
+    "author": "LibreSim Examples",
+    "createdAt": "2024-01-01T00:00:00Z",
+    "modifiedAt": "2024-01-01T00:00:00Z",
+    "version": "1.0.0"
+  },
+  "blocks": [
+    {
+      "id": "bode1",
+      "type": "bode_plot",
+      "name": "Second-Order Bode",
+      "position": { "x": 200, "y": 100 },
+      "parameters": {
+        "numerator": [1],
+        "denominator": [1, 0.5, 1],
+        "minFrequency": 0.01,
+        "maxFrequency": 10,
+        "numPoints": 200
+      },
+      "inputPorts": [],
+      "outputPorts": [
+        { "id": "bode1-out", "name": "dcGain", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "scope_gain",
+      "type": "scope",
+      "name": "DC Gain Output",
+      "position": { "x": 400, "y": 100 },
+      "parameters": {
+        "numInputs": 1
+      },
+      "inputPorts": [
+        { "id": "scope_gain-in1", "name": "in", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": []
+    }
+  ],
+  "connections": [
+    {
+      "id": "conn1",
+      "sourceBlockId": "bode1",
+      "sourcePortId": "bode1-out",
+      "targetBlockId": "scope_gain",
+      "targetPortId": "scope_gain-in1"
+    }
+  ],
+  "simulationConfig": {
+    "solver": "rk4",
+    "startTime": 0,
+    "stopTime": 1,
+    "stepSize": 0.1
+  }
+}

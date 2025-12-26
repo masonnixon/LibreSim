@@ -263,6 +263,14 @@ class OSKAdapter:
         # Set up connections between blocks
         self._setup_connections()
 
+        # Initialize all blocks (must be done after connections are set up)
+        # This is important for blocks like BodePlot, NyquistPlot, PoleZeroMap, StepInfo
+        # that compute their outputs during init()
+        State.dt = config.step_size
+        State.dtp = config.step_size
+        for osk_block in self._osk_blocks.values():
+            osk_block.init()
+
     def _get_solver_method(self, solver: SolverType) -> str:
         """Convert SolverType to OSK method name."""
         return {

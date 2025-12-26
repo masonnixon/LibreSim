@@ -1,0 +1,108 @@
+{
+  "id": "example-step-response-info",
+  "metadata": {
+    "name": "Step Response - Time Domain Analysis",
+    "description": "Compares step response characteristics of three second-order systems with different damping ratios: overdamped (zeta=2), critically damped (zeta=1), and underdamped (zeta=0.3). The step response shows rise time, settling time, overshoot, and steady-state behavior. Underdamped systems oscillate; overdamped systems respond slowly without oscillation. Reference: https://www.mathworks.com/help/control/ref/lti.stepinfo.html",
+    "author": "LibreSim Examples",
+    "createdAt": "2024-01-01T00:00:00Z",
+    "modifiedAt": "2024-01-01T00:00:00Z",
+    "version": "1.0.0"
+  },
+  "blocks": [
+    {
+      "id": "step_overdamped",
+      "type": "step_info",
+      "name": "Overdamped (zeta=2)",
+      "position": { "x": 100, "y": 80 },
+      "parameters": {
+        "numerator": [1],
+        "denominator": [1, 4, 1],
+        "simulationTime": 20,
+        "numPoints": 1000,
+        "settlingPercent": 2
+      },
+      "inputPorts": [],
+      "outputPorts": [
+        { "id": "step_overdamped-out", "name": "settlingTime", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "step_critical",
+      "type": "step_info",
+      "name": "Critical (zeta=1)",
+      "position": { "x": 100, "y": 180 },
+      "parameters": {
+        "numerator": [1],
+        "denominator": [1, 2, 1],
+        "simulationTime": 15,
+        "numPoints": 1000,
+        "settlingPercent": 2
+      },
+      "inputPorts": [],
+      "outputPorts": [
+        { "id": "step_critical-out", "name": "settlingTime", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "step_underdamped",
+      "type": "step_info",
+      "name": "Underdamped (zeta=0.3)",
+      "position": { "x": 100, "y": 280 },
+      "parameters": {
+        "numerator": [1],
+        "denominator": [1, 0.6, 1],
+        "simulationTime": 20,
+        "numPoints": 1000,
+        "settlingPercent": 2
+      },
+      "inputPorts": [],
+      "outputPorts": [
+        { "id": "step_underdamped-out", "name": "settlingTime", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "scope_settling",
+      "type": "scope",
+      "name": "Settling Times",
+      "position": { "x": 350, "y": 180 },
+      "parameters": {
+        "numInputs": 3
+      },
+      "inputPorts": [
+        { "id": "scope_settling-in1", "name": "Overdamped", "dataType": "double", "dimensions": [1] },
+        { "id": "scope_settling-in2", "name": "Critical", "dataType": "double", "dimensions": [1] },
+        { "id": "scope_settling-in3", "name": "Underdamped", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": []
+    }
+  ],
+  "connections": [
+    {
+      "id": "conn1",
+      "sourceBlockId": "step_overdamped",
+      "sourcePortId": "step_overdamped-out",
+      "targetBlockId": "scope_settling",
+      "targetPortId": "scope_settling-in1"
+    },
+    {
+      "id": "conn2",
+      "sourceBlockId": "step_critical",
+      "sourcePortId": "step_critical-out",
+      "targetBlockId": "scope_settling",
+      "targetPortId": "scope_settling-in2"
+    },
+    {
+      "id": "conn3",
+      "sourceBlockId": "step_underdamped",
+      "sourcePortId": "step_underdamped-out",
+      "targetBlockId": "scope_settling",
+      "targetPortId": "scope_settling-in3"
+    }
+  ],
+  "simulationConfig": {
+    "solver": "rk4",
+    "startTime": 0,
+    "stopTime": 1,
+    "stepSize": 0.1
+  }
+}

@@ -1,0 +1,99 @@
+{
+  "id": "example-pole-zero-map",
+  "metadata": {
+    "name": "Pole-Zero Map - System Stability",
+    "description": "Demonstrates pole-zero mapping for stability analysis. Shows three systems: (1) Stable underdamped with complex poles at -1+/-2j, (2) Marginally stable with poles on imaginary axis, (3) Unstable with a pole in the right-half plane. Poles in the left-half plane indicate stability; right-half plane indicates instability. Reference: https://www.mathworks.com/help/control/ref/lti.pzmap.html",
+    "author": "LibreSim Examples",
+    "createdAt": "2024-01-01T00:00:00Z",
+    "modifiedAt": "2024-01-01T00:00:00Z",
+    "version": "1.0.0"
+  },
+  "blocks": [
+    {
+      "id": "pz_stable",
+      "type": "pole_zero_map",
+      "name": "Stable System",
+      "position": { "x": 100, "y": 80 },
+      "parameters": {
+        "numerator": [1],
+        "denominator": [1, 2, 5]
+      },
+      "inputPorts": [],
+      "outputPorts": [
+        { "id": "pz_stable-out", "name": "isStable", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "pz_marginal",
+      "type": "pole_zero_map",
+      "name": "Marginally Stable",
+      "position": { "x": 100, "y": 180 },
+      "parameters": {
+        "numerator": [1],
+        "denominator": [1, 0, 1]
+      },
+      "inputPorts": [],
+      "outputPorts": [
+        { "id": "pz_marginal-out", "name": "isStable", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "pz_unstable",
+      "type": "pole_zero_map",
+      "name": "Unstable System",
+      "position": { "x": 100, "y": 280 },
+      "parameters": {
+        "numerator": [1],
+        "denominator": [1, -1, -2]
+      },
+      "inputPorts": [],
+      "outputPorts": [
+        { "id": "pz_unstable-out", "name": "isStable", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "scope_stability",
+      "type": "scope",
+      "name": "Stability Indicators",
+      "position": { "x": 350, "y": 180 },
+      "parameters": {
+        "numInputs": 3
+      },
+      "inputPorts": [
+        { "id": "scope_stability-in1", "name": "Stable", "dataType": "double", "dimensions": [1] },
+        { "id": "scope_stability-in2", "name": "Marginal", "dataType": "double", "dimensions": [1] },
+        { "id": "scope_stability-in3", "name": "Unstable", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": []
+    }
+  ],
+  "connections": [
+    {
+      "id": "conn1",
+      "sourceBlockId": "pz_stable",
+      "sourcePortId": "pz_stable-out",
+      "targetBlockId": "scope_stability",
+      "targetPortId": "scope_stability-in1"
+    },
+    {
+      "id": "conn2",
+      "sourceBlockId": "pz_marginal",
+      "sourcePortId": "pz_marginal-out",
+      "targetBlockId": "scope_stability",
+      "targetPortId": "scope_stability-in2"
+    },
+    {
+      "id": "conn3",
+      "sourceBlockId": "pz_unstable",
+      "sourcePortId": "pz_unstable-out",
+      "targetBlockId": "scope_stability",
+      "targetPortId": "scope_stability-in3"
+    }
+  ],
+  "simulationConfig": {
+    "solver": "rk4",
+    "startTime": 0,
+    "stopTime": 1,
+    "stepSize": 0.1
+  }
+}
