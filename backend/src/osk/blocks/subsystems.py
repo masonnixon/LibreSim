@@ -46,12 +46,17 @@ class Inport(Block):
 
     def update(self):
         if self.input_block is not None:
-            # Check if source has vector output
+            # Check if source has vector output method and it returns a vector
+            vec = None
             if hasattr(self.input_block, 'getOutputVector'):
-                self._output_vector = self.input_block.getOutputVector()
-                self.input = self._output_vector[0] if self._output_vector else 0.0
+                vec = self.input_block.getOutputVector()
+
+            if vec is not None:
+                # Source provides a vector
+                self._output_vector = vec
+                self.input = vec[0] if vec else 0.0
             else:
-                # Use source port to read from multi-output blocks like Demux
+                # Scalar source - use source port to read from multi-output blocks like Demux
                 self.input = self.input_block.getOutput(self.input_source_port)
                 self._output_vector = None
         self.output = self.input
@@ -101,12 +106,17 @@ class Outport(Block):
 
     def update(self):
         if self.input_block is not None:
-            # Check if source has vector output
+            # Check if source has vector output method and it returns a vector
+            vec = None
             if hasattr(self.input_block, 'getOutputVector'):
-                self._output_vector = self.input_block.getOutputVector()
-                self.input = self._output_vector[0] if self._output_vector else 0.0
+                vec = self.input_block.getOutputVector()
+
+            if vec is not None:
+                # Source provides a vector
+                self._output_vector = vec
+                self.input = vec[0] if vec else 0.0
             else:
-                # Use source port to read from multi-output blocks like Demux
+                # Scalar source - use source port to read from multi-output blocks like Demux
                 self.input = self.input_block.getOutput(self.input_source_port)
                 self._output_vector = None
         self.output = self.input

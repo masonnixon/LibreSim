@@ -71,6 +71,92 @@ class TestConstantBlock:
         const.update()
         assert const.getOutput() == 42.0
 
+    def test_constant_list_value(self):
+        """Test that Constant block handles list values."""
+        const = Constant(value=[1.0, 2.0, 3.0])
+        const.init()
+        assert const.getOutput(0) == 1.0
+        assert const.getOutput(1) == 2.0
+        assert const.getOutput(2) == 3.0
+        vec = const.getOutputVector()
+        assert vec == [1.0, 2.0, 3.0]
+
+    def test_constant_tuple_value(self):
+        """Test that Constant block handles tuple values."""
+        const = Constant(value=(4.0, 5.0))
+        const.init()
+        assert const.getOutput(0) == 4.0
+        assert const.getOutput(1) == 5.0
+        assert const.getOutputVector() == [4.0, 5.0]
+
+    def test_constant_string_array_comma(self):
+        """Test that Constant block parses comma-separated array strings."""
+        const = Constant(value="[1, 2, 3, 4]")
+        const.init()
+        assert const.getOutput(0) == 1.0
+        assert const.getOutput(1) == 2.0
+        assert const.getOutput(2) == 3.0
+        assert const.getOutput(3) == 4.0
+        assert const.getOutputVector() == [1.0, 2.0, 3.0, 4.0]
+
+    def test_constant_string_array_space(self):
+        """Test that Constant block parses space-separated array strings."""
+        const = Constant(value="[10 20 30]")
+        const.init()
+        assert const.getOutputVector() == [10.0, 20.0, 30.0]
+
+    def test_constant_string_array_semicolon(self):
+        """Test that Constant block parses semicolon-separated array strings."""
+        const = Constant(value="[1; 2; 3]")
+        const.init()
+        assert const.getOutputVector() == [1.0, 2.0, 3.0]
+
+    def test_constant_comma_separated_no_brackets(self):
+        """Test that Constant block parses comma-separated values without brackets."""
+        const = Constant(value="0.1,0.2,0.3,0.4")
+        const.init()
+        assert const.getOutputVector() == [0.1, 0.2, 0.3, 0.4]
+        assert const.getNumOutputs() == 4
+
+    def test_constant_comma_separated_no_brackets_quaternion(self):
+        """Test Constant block with quaternion-like values."""
+        const = Constant(value="0.999,0,0.0436,0")
+        const.init()
+        vec = const.getOutputVector()
+        assert len(vec) == 4
+        assert vec[0] == pytest.approx(0.999)
+        assert vec[1] == 0.0
+        assert vec[2] == pytest.approx(0.0436)
+        assert vec[3] == 0.0
+
+    def test_constant_scalar_no_vector(self):
+        """Test that scalar Constant returns None for getOutputVector."""
+        const = Constant(value=5.0)
+        const.init()
+        assert const.getOutputVector() is None
+        assert const.getOutput() == 5.0
+
+    def test_constant_vector_port_out_of_range(self):
+        """Test that out-of-range port returns 0."""
+        const = Constant(value=[1.0, 2.0])
+        const.init()
+        assert const.getOutput(5) == 0.0
+
+    def test_constant_num_outputs(self):
+        """Test getNumOutputs for scalar and vector."""
+        scalar = Constant(value=5.0)
+        assert scalar.getNumOutputs() == 1
+
+        vector = Constant(value=[1.0, 2.0, 3.0])
+        assert vector.getNumOutputs() == 3
+
+    def test_constant_value_property_setter(self):
+        """Test the value property setter with array."""
+        const = Constant(value=1.0)
+        const.value = [10.0, 20.0]
+        assert const.getOutputVector() == [10.0, 20.0]
+        assert const.value == 10.0  # First element
+
 
 class TestStepBlock:
     """Tests for the Step block."""

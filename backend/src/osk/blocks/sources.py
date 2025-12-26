@@ -8,29 +8,130 @@ from ..state import State
 
 
 class Constant(Block):
-    """Constant value source block."""
+    """Constant value source block.
+
+    Supports both scalar and vector/array values. When a list or array
+    is provided, the block outputs a vector signal accessible via
+    getOutputVector() or individual elements via getOutput(port).
+    """
 
     def __init__(self, value=1.0):
         super().__init__()
-        # Parse value - it might be a string from the frontend
-        if isinstance(value, str):
-            try:
-                self.value = float(value)
-            except ValueError:
-                # Could be an expression - for now default to 1.0
-                self.value = 1.0
-        else:
-            self.value = float(value) if value is not None else 1.0
+        self._is_vector = False
+        self._values = []
         self.output = 0.0
 
+        # Parse value - it might be a string, number, list, or array
+        parsed = self._parse_value(value)
+        if isinstance(parsed, list):
+            self._is_vector = True
+            self._values = parsed
+            self.output = parsed[0] if parsed else 0.0
+        else:
+            self._is_vector = False
+            self._values = [parsed]
+            self.output = parsed
+
+    def _parse_value(self, value):
+        """Parse the input value into a number or list of numbers."""
+        if value is None:
+            return 1.0
+
+        # Already a list or tuple
+        if isinstance(value, (list, tuple)):
+            return [float(v) for v in value]
+
+        # String value - could be number, array literal, or expression
+        if isinstance(value, str):
+            value = value.strip()
+
+            # Try parsing as a simple number first
+            try:
+                return float(value)
+            except ValueError:
+                pass
+
+            # Try parsing as array literal: [1, 2, 3] or [1 2 3]
+            if value.startswith('[') and value.endswith(']'):
+                inner = value[1:-1].strip()
+                if inner:
+                    # Handle comma-separated or space-separated values
+                    if ',' in inner:
+                        parts = [p.strip() for p in inner.split(',')]
+                    elif ';' in inner:
+                        # Handle semicolon-separated (MATLAB row separator)
+                        parts = [p.strip() for p in inner.split(';')]
+                    else:
+                        parts = inner.split()
+
+                    try:
+                        return [float(p) for p in parts if p]
+                    except ValueError:
+                        pass
+
+            # Try parsing as comma-separated values without brackets: 1,2,3,4
+            if ',' in value:
+                parts = [p.strip() for p in value.split(',')]
+                try:
+                    parsed = [float(p) for p in parts if p]
+                    if len(parsed) > 1:
+                        return parsed
+                except ValueError:
+                    pass
+
+            # Default for unparseable strings
+            return 1.0
+
+        # Numeric value
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return 1.0
+
     def init(self):
-        self.output = self.value
+        if self._is_vector:
+            self.output = self._values[0] if self._values else 0.0
+        else:
+            self.output = self._values[0] if self._values else 0.0
 
     def update(self):
-        self.output = self.value
+        # Constants don't change, but update output for consistency
+        if self._is_vector:
+            self.output = self._values[0] if self._values else 0.0
+        else:
+            self.output = self._values[0] if self._values else 0.0
 
     def getOutput(self, port=0):
-        return self.output
+        """Get output value. For vectors, port indexes into the array."""
+        if port < len(self._values):
+            return self._values[port]
+        return 0.0
+
+    def getOutputVector(self):
+        """Get the full output vector. Returns None for scalar values."""
+        if self._is_vector:
+            return self._values.copy()
+        return None
+
+    @property
+    def value(self):
+        """Get the scalar value (for backward compatibility)."""
+        return self._values[0] if self._values else 0.0
+
+    @value.setter
+    def value(self, v):
+        """Set the value (for backward compatibility)."""
+        parsed = self._parse_value(v)
+        if isinstance(parsed, list):
+            self._is_vector = True
+            self._values = parsed
+        else:
+            self._is_vector = False
+            self._values = [parsed]
+
+    def getNumOutputs(self):
+        """Get the number of output signals."""
+        return len(self._values)
 
 
 class Step(Block):

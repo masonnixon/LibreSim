@@ -453,9 +453,13 @@ class Demux(Block):
 
     def update(self):
         if self.input_block is not None:
-            # Check if the input block has a vector output (like Mux)
+            # Check if the input block has a vector output (like Mux or vector Constant)
+            vec = None
             if hasattr(self.input_block, 'getOutputVector'):
                 vec = self.input_block.getOutputVector()
+
+            if vec is not None:
+                # Vector input - distribute to outputs
                 for i, v in enumerate(vec):
                     if i < len(self.input_vector):
                         self.input_vector[i] = v

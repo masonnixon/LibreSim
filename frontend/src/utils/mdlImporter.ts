@@ -1209,6 +1209,60 @@ function getBlockOutputDimensions(
 }
 
 /**
+ * Parse a Constant block value to determine its dimensions.
+ * Supports: numbers, arrays like [1,2,3], comma-separated values like 1,2,3
+ */
+function parseConstantValueDimensions(value: unknown): number[] {
+  if (value === null || value === undefined) {
+    return [1]
+  }
+
+  // Already an array
+  if (Array.isArray(value)) {
+    return [value.length]
+  }
+
+  // String value - parse to determine dimensions
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+
+    // Try as simple number first
+    if (!isNaN(Number(trimmed)) && trimmed !== '') {
+      return [1]
+    }
+
+    // Array literal: [1, 2, 3] or [1 2 3]
+    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+      const inner = trimmed.slice(1, -1).trim()
+      if (inner) {
+        let parts: string[]
+        if (inner.includes(',')) {
+          parts = inner.split(',').map(p => p.trim()).filter(p => p !== '')
+        } else if (inner.includes(';')) {
+          parts = inner.split(';').map(p => p.trim()).filter(p => p !== '')
+        } else {
+          parts = inner.split(/\s+/).filter(p => p !== '')
+        }
+        if (parts.length > 0 && parts.every(p => !isNaN(Number(p)))) {
+          return [parts.length]
+        }
+      }
+    }
+
+    // Comma-separated values without brackets: 1,2,3
+    if (trimmed.includes(',')) {
+      const parts = trimmed.split(',').map(p => p.trim()).filter(p => p !== '')
+      if (parts.length > 1 && parts.every(p => !isNaN(Number(p)))) {
+        return [parts.length]
+      }
+    }
+  }
+
+  // Default to scalar
+  return [1]
+}
+
+/**
  * Propagate signal dimensions through a system.
  * This traces connections to determine output dimensions for blocks like Outports.
  * Exported for use in modelStore when subsystems are created dynamically.
@@ -1218,6 +1272,14 @@ export function propagateDimensions(blocks: BlockInstance[], connections: Connec
   blocks.forEach(block => {
     if (block.type === 'subsystem' && block.children && block.childConnections) {
       propagateDimensions(block.children, block.childConnections)
+    }
+  })
+
+  // Set dimensions for Constant blocks based on their value parameter
+  blocks.forEach(block => {
+    if (block.type === 'constant' && block.outputPorts.length > 0) {
+      const dims = parseConstantValueDimensions(block.parameters.value)
+      block.outputPorts[0].dimensions = dims
     }
   })
 
