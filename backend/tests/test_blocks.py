@@ -3851,3 +3851,145 @@ class TestObserverMatrixEdgeCases:
         # Pass 1D R
         ekf2 = ExtendedKalmanFilter(n_states=1, R=[0.5])
         assert ekf2.R.shape == (1, 1)
+
+
+class TestObserverVectorOutput:
+    """Test that observer blocks properly support getOutputVector for subsystem scenarios.
+
+    This is critical for ensuring simulation results don't change when blocks are
+    grouped into subsystems. Without getOutputVector(), Inport blocks can't properly
+    pass through multi-element state estimates from observers.
+    """
+
+    def test_kalman_filter_get_output_vector(self):
+        """Test KalmanFilter getOutputVector returns all state estimates."""
+        from src.osk.blocks.observers import KalmanFilter
+
+        # 2-state Kalman filter (position-velocity)
+        kf = KalmanFilter(
+            A=[[1, 0.01], [0, 1]],
+            B=[[0], [0]],
+            C=[[1, 0]],
+            initial_state=[1.0, 2.0]
+        )
+        kf.init()
+
+        vec = kf.getOutputVector()
+        assert vec is not None
+        assert len(vec) == 2
+        assert vec[0] == pytest.approx(0.0)  # After init, states are reset to zeros
+        assert vec[1] == pytest.approx(0.0)
+
+        # Set specific values and verify
+        kf.x_hat = [5.0, 10.0]
+        vec = kf.getOutputVector()
+        assert vec[0] == pytest.approx(5.0)
+        assert vec[1] == pytest.approx(10.0)
+
+    def test_luenberger_observer_get_output_vector(self):
+        """Test LuenbergerObserver getOutputVector returns all state estimates."""
+        from src.osk.blocks.observers import LuenbergerObserver
+
+        # 2-state observer
+        obs = LuenbergerObserver(
+            A=[[0, 1], [0, 0]],
+            B=[[0], [1]],
+            C=[[1, 0]],
+            L=[[1], [1]],
+            initial_state=[3.0, 4.0]
+        )
+        obs.init()
+
+        vec = obs.getOutputVector()
+        assert vec is not None
+        assert len(vec) == 2
+
+    def test_extended_kalman_filter_get_output_vector(self):
+        """Test ExtendedKalmanFilter getOutputVector returns all state estimates."""
+        from src.osk.blocks.observers import ExtendedKalmanFilter
+
+        # 3-state EKF
+        ekf = ExtendedKalmanFilter(n_states=3)
+        ekf.init()
+
+        vec = ekf.getOutputVector()
+        assert vec is not None
+        assert len(vec) == 3
+
+    def test_kalman_via_inport_passthrough(self):
+        """Test that KalmanFilter state vector passes through Inport correctly.
+
+        This simulates the subsystem scenario where:
+        KalmanFilter -> Inport -> Demux
+
+        Without getOutputVector(), the Inport would only read the first state.
+        """
+        from src.osk.blocks.observers import KalmanFilter
+        from src.osk.blocks.subsystems import Inport
+        from src.osk.blocks.math_ops import Demux
+
+        # Create 2-state Kalman filter
+        kf = KalmanFilter(
+            A=[[1, 0.01], [0, 1]],
+            B=[[0], [0]],
+            C=[[1, 0]],
+        )
+        kf.init()
+        kf.x_hat = [1.5, 2.5]  # Set known state values
+
+        # Create Inport and connect to KalmanFilter
+        inport = Inport(port_number=1)
+        inport.connectInput(kf, port=0, source_port=0)
+        inport.update()
+
+        # Verify Inport passes through the vector
+        vec = inport.getOutputVector()
+        assert vec is not None
+        assert len(vec) == 2
+        assert vec[0] == pytest.approx(1.5)
+        assert vec[1] == pytest.approx(2.5)
+
+        # Create Demux and connect to Inport
+        demux = Demux(num_outputs=2)
+        demux.connectInput(inport, port=0, source_port=0)
+        demux.update()
+
+        # Verify Demux correctly receives both values
+        assert demux.getOutput(0) == pytest.approx(1.5)
+        assert demux.getOutput(1) == pytest.approx(2.5)
+
+    def test_kalman_via_inport_outport_passthrough(self):
+        """Test full subsystem scenario: KalmanFilter -> Inport -> Outport -> Demux.
+
+        This is the exact scenario that was broken before the fix.
+        """
+        from src.osk.blocks.observers import KalmanFilter
+        from src.osk.blocks.subsystems import Inport, Outport
+        from src.osk.blocks.math_ops import Demux
+
+        # Create 2-state Kalman filter
+        kf = KalmanFilter(
+            A=[[1, 0.01], [0, 1]],
+            B=[[0], [0]],
+            C=[[1, 0]],
+        )
+        kf.init()
+        kf.x_hat = [10.0, 20.0]  # Position=10, Velocity=20
+
+        # Simulate subsystem: KalmanFilter -> Inport -> Outport
+        inport = Inport(port_number=1)
+        inport.connectInput(kf, port=0, source_port=0)
+        inport.update()
+
+        outport = Outport(port_number=1)
+        outport.connectInput(inport, port=0, source_port=0)
+        outport.update()
+
+        # Demux connected to Outport (outside subsystem)
+        demux = Demux(num_outputs=2)
+        demux.connectInput(outport, port=0, source_port=0)
+        demux.update()
+
+        # CRITICAL: Both values should be correctly passed through
+        assert demux.getOutput(0) == pytest.approx(10.0), "Position should be 10.0"
+        assert demux.getOutput(1) == pytest.approx(20.0), "Velocity should be 20.0"

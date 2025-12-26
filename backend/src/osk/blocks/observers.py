@@ -105,6 +105,14 @@ class LuenbergerObserver(Block):
         """Get full state estimate vector."""
         return self.x_hat.copy()
 
+    def getOutputVector(self):
+        """Get state estimate as a vector for multi-output support.
+
+        This enables proper vector signal flow through Inport/Outport blocks
+        when the observer is inside a subsystem.
+        """
+        return [float(x) for x in self.x_hat]
+
 
 class KalmanFilter(Block):
     """Discrete-time Kalman Filter for linear systems.
@@ -209,6 +217,14 @@ class KalmanFilter(Block):
     def getCovariance(self):
         return self.P.copy()
 
+    def getOutputVector(self):
+        """Get state estimate as a vector for multi-output support.
+
+        This enables proper vector signal flow through Inport/Outport blocks
+        when the observer is inside a subsystem.
+        """
+        return [float(x) for x in self.x_hat]
+
 
 class ExtendedKalmanFilter(Block):
     """Extended Kalman Filter for nonlinear systems.
@@ -299,3 +315,11 @@ class ExtendedKalmanFilter(Block):
         if port < len(self.x_hat):
             return float(self.x_hat[port])
         return self.output
+
+    def getOutputVector(self):
+        """Get state estimate as a vector for multi-output support.
+
+        This enables proper vector signal flow through Inport/Outport blocks
+        when the observer is inside a subsystem.
+        """
+        return [float(x) for x in self.x_hat]
