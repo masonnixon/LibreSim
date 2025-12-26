@@ -24,6 +24,7 @@ class Inport(Block):
         self.output = 0.0
         self.input = 0.0
         self.input_block = None
+        self.input_source_port = 0  # Track which port to read from source
         self._output_vector = None  # For vector pass-through
 
     def init(self):
@@ -39,8 +40,9 @@ class Inport(Block):
             self.input = value
             self._output_vector = None
 
-    def connectInput(self, block, port=0):
+    def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
+        self.input_source_port = source_port
 
     def update(self):
         if self.input_block is not None:
@@ -49,7 +51,8 @@ class Inport(Block):
                 self._output_vector = self.input_block.getOutputVector()
                 self.input = self._output_vector[0] if self._output_vector else 0.0
             else:
-                self.input = self.input_block.getOutput()
+                # Use source port to read from multi-output blocks like Demux
+                self.input = self.input_block.getOutput(self.input_source_port)
                 self._output_vector = None
         self.output = self.input
 
@@ -76,6 +79,7 @@ class Outport(Block):
         self.output = 0.0
         self.input = 0.0
         self.input_block = None
+        self.input_source_port = 0  # Track which port to read from source
         self._output_vector = None  # For vector pass-through
 
     def init(self):
@@ -91,8 +95,9 @@ class Outport(Block):
             self.input = value
             self._output_vector = None
 
-    def connectInput(self, block, port=0):
+    def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
+        self.input_source_port = source_port
 
     def update(self):
         if self.input_block is not None:
@@ -101,7 +106,8 @@ class Outport(Block):
                 self._output_vector = self.input_block.getOutputVector()
                 self.input = self._output_vector[0] if self._output_vector else 0.0
             else:
-                self.input = self.input_block.getOutput()
+                # Use source port to read from multi-output blocks like Demux
+                self.input = self.input_block.getOutput(self.input_source_port)
                 self._output_vector = None
         self.output = self.input
 

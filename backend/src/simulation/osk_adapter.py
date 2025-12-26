@@ -4,6 +4,7 @@ This module provides the bridge between LibreSim's compiled model and OSK's
 simulation engine. It creates OSK block instances and manages simulation execution.
 """
 
+import inspect
 from typing import Any
 
 from ..models.simulation import SimulationConfig, SolverType
@@ -393,16 +394,26 @@ class OSKAdapter:
                 if source_osk_block:
                     # Use connectInput if available, otherwise we'll handle in step()
                     if hasattr(osk_block, 'connectInput'):
-                        # For Scope blocks, pass the source port index
-                        if block.type == "scope":
+                        # Pass source_port_index to all blocks that accept it
+                        # This allows blocks connected to multi-output sources
+                        # (like Demux) to read from the correct port
+                        sig = inspect.signature(osk_block.connectInput)
+                        if 'source_port' in sig.parameters:
                             osk_block.connectInput(source_osk_block, target_port_index, source_port_index)
                         else:
                             osk_block.connectInput(source_osk_block, target_port_index)
                     elif hasattr(osk_block, 'input_block'):
                         osk_block.input_block = source_osk_block
+                        # Also store source port for single-input blocks
+                        if hasattr(osk_block, 'input_source_port'):
+                            osk_block.input_source_port = source_port_index
                     elif hasattr(osk_block, 'input_blocks'):
                         if target_port_index < len(osk_block.input_blocks):
                             osk_block.input_blocks[target_port_index] = source_osk_block
+                            # Also store source port for multi-input blocks
+                            if hasattr(osk_block, 'input_source_ports'):
+                                if target_port_index < len(osk_block.input_source_ports):
+                                    osk_block.input_source_ports[target_port_index] = source_port_index
 
                 # Track source name for scope inputs and set on the scope block
                 if block.type == "scope" and source_compiled_block:

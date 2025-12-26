@@ -15,6 +15,7 @@ class Integrator(Block):
         self.lower_limit = lower_limit
         self.input = 0.0
         self.input_block = None
+        self.input_source_port = 0
         self.x = self.addIntegrator([initial_condition, 0.0])
 
     def init(self):
@@ -24,12 +25,13 @@ class Integrator(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block, port=0):
+    def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
+        self.input_source_port = source_port
 
     def update(self):
         if self.input_block is not None:
-            self.input = self.input_block.getOutput()
+            self.input = self.input_block.getOutput(self.input_source_port)
 
         # Set derivative
         self.x[1] = self.input
@@ -57,6 +59,7 @@ class Derivative(Block):
         self.coefficient = coefficient  # N in Ns/(s+N)
         self.input = 0.0
         self.input_block = None
+        self.input_source_port = 0
         self.x = self.addIntegrator([0.0, 0.0])
         self.output = 0.0
 
@@ -68,12 +71,13 @@ class Derivative(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block, port=0):
+    def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
+        self.input_source_port = source_port
 
     def update(self):
         if self.input_block is not None:
-            self.input = self.input_block.getOutput()
+            self.input = self.input_block.getOutput(self.input_source_port)
 
         # Filtered derivative: y = N*(u - x), x' = y
         # This implements transfer function Ns/(s+N)
@@ -96,6 +100,7 @@ class TransferFunction(Block):
         self.denominator = denominator if denominator else [1.0, 1.0]
         self.input = 0.0
         self.input_block = None
+        self.input_source_port = 0
         self.output = 0.0
 
         # Create state variables for controllable canonical form
@@ -113,12 +118,13 @@ class TransferFunction(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block, port=0):
+    def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
+        self.input_source_port = source_port
 
     def update(self):
         if self.input_block is not None:
-            self.input = self.input_block.getOutput()
+            self.input = self.input_block.getOutput(self.input_source_port)
 
         if self.order == 0:
             # Static gain
@@ -178,6 +184,7 @@ class StateSpace(Block):
 
         self.input = 0.0
         self.input_block = None
+        self.input_source_port = 0
         self.output = 0.0
 
         # Create state variables
@@ -194,12 +201,13 @@ class StateSpace(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block, port=0):
+    def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
+        self.input_source_port = source_port
 
     def update(self):
         if self.input_block is not None:
-            self.input = self.input_block.getOutput()
+            self.input = self.input_block.getOutput(self.input_source_port)
 
         # State derivatives: x' = Ax + Bu
         for i in range(self.n):
@@ -236,6 +244,7 @@ class PIDController(Block):
 
         self.input = 0.0
         self.input_block = None
+        self.input_source_port = 0
         self.output = 0.0
 
         # Integrator state
@@ -254,12 +263,13 @@ class PIDController(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block, port=0):
+    def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
+        self.input_source_port = source_port
 
     def update(self):
         if self.input_block is not None:
-            self.input = self.input_block.getOutput()
+            self.input = self.input_block.getOutput(self.input_source_port)
 
         error = self.input
 

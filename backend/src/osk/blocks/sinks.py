@@ -159,6 +159,7 @@ class ToWorkspace(Block):
         self.variable_name = variable_name
         self.input = 0.0
         self.input_block = None
+        self.input_source_port = 0
         self.times = []
         self.values = []
 
@@ -169,13 +170,14 @@ class ToWorkspace(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block, port=0):
+    def connectInput(self, block, port=0, source_port=0):
         """Connect an input block."""
         self.input_block = block
+        self.input_source_port = source_port
 
     def update(self):
         if self.input_block is not None:
-            self.input = self.input_block.getOutput()
+            self.input = self.input_block.getOutput(self.input_source_port)
 
     def rpt(self):
         if State.ready:
@@ -201,17 +203,19 @@ class Display(Block):
         super().__init__()
         self.input = 0.0
         self.input_block = None
+        self.input_source_port = 0
         self.current_value = 0.0
 
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block, port=0):
+    def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
+        self.input_source_port = source_port
 
     def update(self):
         if self.input_block is not None:
-            self.input = self.input_block.getOutput()
+            self.input = self.input_block.getOutput(self.input_source_port)
 
     def rpt(self):
         if State.ready:
@@ -227,12 +231,20 @@ class Terminator(Block):
     def __init__(self):
         super().__init__()
         self.input = 0.0
+        self.input_block = None
+        self.input_source_port = 0
 
     def setInput(self, value, port=0):
         self.input = value
 
+    def connectInput(self, block, port=0, source_port=0):
+        self.input_block = block
+        self.input_source_port = source_port
+
     def update(self):
-        pass  # Do nothing - just absorb the signal
+        # Absorb the signal - optionally read from input block
+        if self.input_block is not None:
+            self.input = self.input_block.getOutput(self.input_source_port)
 
     def getOutput(self, port=0):
         return 0.0

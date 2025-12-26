@@ -52,17 +52,19 @@ class Gain(Block):
         self.gain = gain
         self.input = 0.0
         self.input_block = None
+        self.input_source_port = 0
         self.output = 0.0
 
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block, port=0):
+    def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
+        self.input_source_port = source_port
 
     def update(self):
         if self.input_block is not None:
-            self.input = self.input_block.getOutput()
+            self.input = self.input_block.getOutput(self.input_source_port)
         self.output = self.gain * self.input
 
     def getOutput(self, port=0):
@@ -117,17 +119,19 @@ class Abs(Block):
         super().__init__()
         self.input = 0.0
         self.input_block = None
+        self.input_source_port = 0
         self.output = 0.0
 
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block, port=0):
+    def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
+        self.input_source_port = source_port
 
     def update(self):
         if self.input_block is not None:
-            self.input = self.input_block.getOutput()
+            self.input = self.input_block.getOutput(self.input_source_port)
         self.output = abs(self.input)
 
     def getOutput(self, port=0):
@@ -141,17 +145,19 @@ class Sign(Block):
         super().__init__()
         self.input = 0.0
         self.input_block = None
+        self.input_source_port = 0
         self.output = 0.0
 
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block, port=0):
+    def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
+        self.input_source_port = source_port
 
     def update(self):
         if self.input_block is not None:
-            self.input = self.input_block.getOutput()
+            self.input = self.input_block.getOutput(self.input_source_port)
 
         if self.input > State.EPS:
             self.output = 1.0
@@ -173,17 +179,19 @@ class Saturation(Block):
         self.lower_limit = lower_limit
         self.input = 0.0
         self.input_block = None
+        self.input_source_port = 0
         self.output = 0.0
 
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block, port=0):
+    def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
+        self.input_source_port = source_port
 
     def update(self):
         if self.input_block is not None:
-            self.input = self.input_block.getOutput()
+            self.input = self.input_block.getOutput(self.input_source_port)
         self.output = max(self.lower_limit, min(self.upper_limit, self.input))
 
     def getOutput(self, port=0):
@@ -199,17 +207,19 @@ class MathFunction(Block):
         self.exponent = exponent
         self.input = 0.0
         self.input_block = None
+        self.input_source_port = 0
         self.output = 0.0
 
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block, port=0):
+    def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
+        self.input_source_port = source_port
 
     def update(self):
         if self.input_block is not None:
-            self.input = self.input_block.getOutput()
+            self.input = self.input_block.getOutput(self.input_source_port)
 
         if self.function == 'exp':
             self.output = math.exp(self.input)
@@ -243,17 +253,19 @@ class Trigonometry(Block):
         self.function = function
         self.input = 0.0
         self.input_block = None
+        self.input_source_port = 0
         self.output = 0.0
 
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block, port=0):
+    def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
+        self.input_source_port = source_port
 
     def update(self):
         if self.input_block is not None:
-            self.input = self.input_block.getOutput()
+            self.input = self.input_block.getOutput(self.input_source_port)
 
         funcs = {
             'sin': math.sin,
@@ -286,17 +298,19 @@ class DeadZone(Block):
         self.end = end
         self.input = 0.0
         self.input_block = None
+        self.input_source_port = 0
         self.output = 0.0
 
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block, port=0):
+    def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
+        self.input_source_port = source_port
 
     def update(self):
         if self.input_block is not None:
-            self.input = self.input_block.getOutput()
+            self.input = self.input_block.getOutput(self.input_source_port)
 
         if self.input > self.end:
             self.output = self.input - self.end
@@ -414,6 +428,7 @@ class Demux(Block):
         self.input = 0.0
         self.input_vector = [0.0] * self.num_outputs
         self.input_block = None
+        self.input_source_port = 0
         self.outputs = [0.0] * self.num_outputs
 
     def init(self):
@@ -432,8 +447,9 @@ class Demux(Block):
             if len(self.input_vector) > 0:
                 self.input_vector[0] = value
 
-    def connectInput(self, block, port=0):
+    def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
+        self.input_source_port = source_port
 
     def update(self):
         if self.input_block is not None:
@@ -454,8 +470,8 @@ class Demux(Block):
                 for i in range(min(len(x_hat), len(self.input_vector))):
                     self.input_vector[i] = float(x_hat[i])
             else:
-                # Scalar input - put in first slot
-                self.input = self.input_block.getOutput()
+                # Scalar input - put in first slot, use source_port for multi-output sources
+                self.input = self.input_block.getOutput(self.input_source_port)
                 if len(self.input_vector) > 0:
                     self.input_vector[0] = self.input
 
@@ -486,6 +502,7 @@ class Reshape(Block):
         self.output_dimensions = output_dimensions
         self.input = 0.0
         self.input_block = None
+        self.input_source_port = 0
         self._input_vector = None
         self._output_vector = None
 
@@ -502,8 +519,9 @@ class Reshape(Block):
             self.input = value
             self._input_vector = None
 
-    def connectInput(self, block, port=0):
+    def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
+        self.input_source_port = source_port
 
     def update(self):
         if self.input_block is not None:
@@ -515,11 +533,11 @@ class Reshape(Block):
                     self._output_vector = vec.copy()
                     self.input = vec[0] if vec else 0.0
                 else:
-                    self.input = self.input_block.getOutput()
+                    self.input = self.input_block.getOutput(self.input_source_port)
                     self._input_vector = None
                     self._output_vector = None
             else:
-                self.input = self.input_block.getOutput()
+                self.input = self.input_block.getOutput(self.input_source_port)
                 self._input_vector = None
                 self._output_vector = None
 

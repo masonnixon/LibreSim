@@ -10,6 +10,25 @@ import { exportModelAsMDL } from '../../utils/mdlExporter'
 import { importMDL, isMDLFile, importMDLAsLibrary } from '../../utils/mdlImporter'
 import { blockRegistry } from '../../blocks'
 import type { Model } from '../../types/model'
+import type { BlockInstance } from '../../types/block'
+
+/**
+ * Recursively find all scope block IDs in the model, including inside subsystems.
+ * Returns flattened IDs that match backend naming convention.
+ */
+function findAllScopeBlockIds(blocks: BlockInstance[], parentPath: string = ''): string[] {
+  const result: string[] = []
+  for (const block of blocks) {
+    const flattenedId = parentPath ? `${parentPath}__${block.id}` : block.id
+    if (block.type === 'scope' || block.type === 'xy_graph') {
+      result.push(flattenedId)
+    }
+    if (block.type === 'subsystem' && block.children) {
+      result.push(...findAllScopeBlockIds(block.children, flattenedId))
+    }
+  }
+  return result
+}
 
 const STORAGE_KEY = 'libresim_last_model'
 
@@ -52,6 +71,8 @@ export function Toolbar() {
       try {
         const modelData = JSON.parse(savedModel) as Model
         if (modelData.blocks && modelData.connections) {
+          closeAllPlotWindows()
+          clearResults()
           loadModel(modelData)
           toast.info('Model Restored', 'Your last session model has been loaded.')
         }
@@ -93,6 +114,8 @@ export function Toolbar() {
   const handleNew = () => {
     const name = prompt('Enter model name:', 'Untitled')
     if (name) {
+      closeAllPlotWindows()
+      clearResults()
       createNewModel(name)
       toast.success('New Model', `Created new model "${name}"`)
     }
@@ -138,6 +161,8 @@ export function Toolbar() {
         }
       }
 
+      closeAllPlotWindows()
+      clearResults()
       loadModel(modelData)
       toast.success('Model Opened', `Loaded "${modelData.metadata.name}"`)
     } catch (error) {
@@ -172,6 +197,8 @@ export function Toolbar() {
         if (!modelData.id) {
           modelData.id = crypto.randomUUID?.() || Date.now().toString()
         }
+        closeAllPlotWindows()
+        clearResults()
         loadModel(modelData)
         toast.success('Import Complete', `Imported "${file.name}"`)
       } else if (file.name.endsWith('.mdl') || isMDLFile(text)) {
@@ -181,6 +208,8 @@ export function Toolbar() {
         if (!modelData.metadata.name || modelData.metadata.name === 'Imported Model') {
           modelData.metadata.name = file.name.replace(/\.mdl$/i, '')
         }
+        closeAllPlotWindows()
+        clearResults()
         loadModel(modelData)
         toast.success('MDL Import Complete', `Imported "${modelData.metadata.name}" from Simulink format (${modelData.blocks.length} blocks, ${modelData.connections.length} connections)`)
       } else {
@@ -335,6 +364,8 @@ export function Toolbar() {
   const handleLoadExample = (exampleId: string) => {
     const example = getExample(exampleId)
     if (example) {
+      closeAllPlotWindows()
+      clearResults()
       loadModel(example)
       toast.success('Example Loaded', `Loaded "${example.metadata.name}"`)
     } else {
@@ -344,10 +375,8 @@ export function Toolbar() {
     setShowMobileMenu(false)
   }
 
-  // Track scope blocks for reopening windows
-  const scopeBlockIds = model?.blocks
-    .filter((b) => b.type === 'scope' || b.type === 'xy_graph')
-    .map((b) => b.id) || []
+  // Track scope blocks for reopening windows (including inside subsystems)
+  const scopeBlockIds = model?.blocks ? findAllScopeBlockIds(model.blocks) : []
 
   const hasOpenPlotWindows = Object.keys(plotWindows).length > 0
 

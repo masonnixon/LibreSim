@@ -49,6 +49,7 @@ class LuenbergerObserver(Block):
         # Inputs: [u, y] - control input and measured output
         self.inputs = [0.0, 0.0]
         self.input_blocks = [None, None]
+        self.input_source_ports = [0, 0]
         self.output = 0.0
 
     def init(self):
@@ -62,14 +63,16 @@ class LuenbergerObserver(Block):
         if port < 2:
             self.inputs[port] = value
 
-    def connectInput(self, block, port=0):
+    def connectInput(self, block, port=0, source_port=0):
         if port < 2:
             self.input_blocks[port] = block
+            self.input_source_ports[port] = source_port
 
     def update(self):
         for i, block in enumerate(self.input_blocks):
             if block is not None:
-                self.inputs[i] = block.getOutput()
+                source_port = self.input_source_ports[i] if i < len(self.input_source_ports) else 0
+                self.inputs[i] = block.getOutput(source_port)
 
         u = np.array([self.inputs[0]]).reshape(-1, 1)  # Control input
         y = np.array([self.inputs[1]]).reshape(-1, 1)  # Measured output
@@ -149,6 +152,7 @@ class KalmanFilter(Block):
         # Inputs: [u, y]
         self.inputs = [0.0, 0.0]
         self.input_blocks = [None, None]
+        self.input_source_ports = [0, 0]
         self.output = 0.0
 
     def init(self):
@@ -159,14 +163,16 @@ class KalmanFilter(Block):
         if port < 2:
             self.inputs[port] = value
 
-    def connectInput(self, block, port=0):
+    def connectInput(self, block, port=0, source_port=0):
         if port < 2:
             self.input_blocks[port] = block
+            self.input_source_ports[port] = source_port
 
     def update(self):
         for i, block in enumerate(self.input_blocks):
             if block is not None:
-                self.inputs[i] = block.getOutput()
+                source_port = self.input_source_ports[i] if i < len(self.input_source_ports) else 0
+                self.inputs[i] = block.getOutput(source_port)
 
         u = np.array([self.inputs[0]]).reshape(-1, 1)
         y = np.array([self.inputs[1]]).reshape(-1, 1)
@@ -240,6 +246,7 @@ class ExtendedKalmanFilter(Block):
 
         self.inputs = [0.0, 0.0]  # [u, y]
         self.input_blocks = [None, None]
+        self.input_source_ports = [0, 0]
         self.output = 0.0
 
     def init(self):
@@ -250,14 +257,16 @@ class ExtendedKalmanFilter(Block):
         if port < 2:
             self.inputs[port] = value
 
-    def connectInput(self, block, port=0):
+    def connectInput(self, block, port=0, source_port=0):
         if port < 2:
             self.input_blocks[port] = block
+            self.input_source_ports[port] = source_port
 
     def update(self):
         for i, block in enumerate(self.input_blocks):
             if block is not None:
-                self.inputs[i] = block.getOutput()
+                source_port = self.input_source_ports[i] if i < len(self.input_source_ports) else 0
+                self.inputs[i] = block.getOutput(source_port)
 
         u = self.inputs[0]
         y = np.array([self.inputs[1]]).reshape(-1, 1)

@@ -26,6 +26,7 @@ class LookupTable1D(Block):
         self.input = 0.0
         self.output = 0.0
         self.input_block = None
+        self.input_source_port = 0
 
     def init(self):
         self.output = self._interpolate(0.0)
@@ -33,8 +34,9 @@ class LookupTable1D(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block, port=0):
+    def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
+        self.input_source_port = source_port
 
     def _interpolate(self, x):
         """Linear interpolation with extrapolation at boundaries."""
@@ -74,7 +76,7 @@ class LookupTable1D(Block):
 
     def update(self):
         if self.input_block is not None:
-            self.input = self.input_block.getOutput()
+            self.input = self.input_block.getOutput(self.input_source_port)
 
         self.output = self._interpolate(self.input)
 
@@ -179,6 +181,7 @@ class Quantizer(Block):
         self.input = 0.0
         self.output = 0.0
         self.input_block = None
+        self.input_source_port = 0
 
     def init(self):
         self.output = 0.0
@@ -186,12 +189,13 @@ class Quantizer(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block, port=0):
+    def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
+        self.input_source_port = source_port
 
     def update(self):
         if self.input_block is not None:
-            self.input = self.input_block.getOutput()
+            self.input = self.input_block.getOutput(self.input_source_port)
 
         # Round to nearest quantization level
         self.output = round(self.input / self.interval) * self.interval
@@ -217,6 +221,7 @@ class Relay(Block):
         self.input = 0.0
         self.output = output_off
         self.input_block = None
+        self.input_source_port = 0
         self.is_on = False
 
     def init(self):
@@ -226,12 +231,13 @@ class Relay(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block, port=0):
+    def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
+        self.input_source_port = source_port
 
     def update(self):
         if self.input_block is not None:
-            self.input = self.input_block.getOutput()
+            self.input = self.input_block.getOutput(self.input_source_port)
 
         # Hysteresis logic
         if self.is_on:
@@ -262,6 +268,7 @@ class Coulomb(Block):
         self.input = 0.0  # Velocity input
         self.output = 0.0
         self.input_block = None
+        self.input_source_port = 0
 
     def init(self):
         self.output = 0.0
@@ -269,12 +276,13 @@ class Coulomb(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block, port=0):
+    def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
+        self.input_source_port = source_port
 
     def update(self):
         if self.input_block is not None:
-            self.input = self.input_block.getOutput()
+            self.input = self.input_block.getOutput(self.input_source_port)
 
         velocity = self.input
         if abs(velocity) < self.velocity_threshold:

@@ -4,11 +4,47 @@ import { useSimulationStore } from '../../store/simulationStore'
 import { useModelStore } from '../../store/modelStore'
 import { useUIStore } from '../../store/uiStore'
 import type { SignalData } from '../../types/simulation'
+import type { BlockInstance } from '../../types/block'
 
 interface ScopeWindowInfo {
   blockId: string
   blockName: string
   signals: SignalData[]
+}
+
+/**
+ * Recursively find all scope blocks in the model, including inside subsystems.
+ * Returns blocks with their flattened IDs (matching backend naming convention).
+ *
+ * @param blocks - The blocks to search
+ * @param parentIdPath - The flattened ID path for backend matching (uses block IDs)
+ * @param parentNamePath - The display name path for UI (uses block names)
+ */
+function findAllScopeBlocks(
+  blocks: BlockInstance[],
+  parentIdPath: string = '',
+  parentNamePath: string = ''
+): Array<{ block: BlockInstance; flattenedId: string; displayName: string }> {
+  const result: Array<{ block: BlockInstance; flattenedId: string; displayName: string }> = []
+
+  for (const block of blocks) {
+    const flattenedId = parentIdPath ? `${parentIdPath}__${block.id}` : block.id
+    const displayName = parentNamePath
+      ? `${parentNamePath}/${block.name}`
+      : block.name
+
+    if (block.type === 'scope' || block.type === 'xy_graph') {
+      result.push({ block, flattenedId, displayName })
+    }
+
+    // Recursively search in subsystem children
+    if (block.type === 'subsystem' && block.children) {
+      const childScopes = findAllScopeBlocks(block.children, flattenedId, block.name)
+      result.push(...childScopes)
+    }
+  }
+
+  return result
 }
 
 export function PlotWindowManager() {
@@ -23,21 +59,19 @@ export function PlotWindowManager() {
   const scopeWindows: ScopeWindowInfo[] = []
 
   if (model && results) {
-    // Find all scope blocks
-    const scopeBlocks = model.blocks.filter(
-      (block) => block.type === 'scope' || block.type === 'xy_graph'
-    )
+    // Find all scope blocks recursively (including in subsystems)
+    const allScopes = findAllScopeBlocks(model.blocks)
 
-    for (const block of scopeBlocks) {
-      // Find signals that belong to this scope block
+    for (const { block, flattenedId, displayName } of allScopes) {
+      // Find signals that belong to this scope block (using flattened ID from backend)
       const blockSignals = results.signals.filter(
-        (signal) => signal.blockId === block.id
+        (signal) => signal.blockId === flattenedId
       )
 
       if (blockSignals.length > 0) {
         scopeWindows.push({
-          blockId: block.id,
-          blockName: block.name || block.type,
+          blockId: flattenedId,
+          blockName: displayName || block.name || block.type,
           signals: blockSignals,
         })
       }
@@ -93,9 +127,7 @@ export function PlotWindowManager() {
 
         // Find the scope info for this block
         const scopeInfo = scopeWindows.find((s) => s.blockId === blockId)
-        const blockName = scopeInfo?.blockName ||
-          model?.blocks.find((b) => b.id === blockId)?.name ||
-          'Plot'
+        const blockName = scopeInfo?.blockName || 'Plot'
         const signals = scopeInfo?.signals || []
 
         // Calculate z-index based on window order

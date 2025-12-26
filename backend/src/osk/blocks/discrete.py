@@ -13,6 +13,7 @@ class UnitDelay(Block):
         self.sample_time = sample_time
         self.input = 0.0
         self.input_block = None
+        self.input_source_port = 0
         self.prev_value = initial_condition
         self.output = initial_condition
         self.last_sample_time = -sample_time
@@ -25,12 +26,13 @@ class UnitDelay(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block, port=0):
+    def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
+        self.input_source_port = source_port
 
     def update(self):
         if self.input_block is not None:
-            self.input = self.input_block.getOutput()
+            self.input = self.input_block.getOutput(self.input_source_port)
 
         # Check if it's time to sample
         if State.t - self.last_sample_time >= self.sample_time - State.EPS:
@@ -50,6 +52,7 @@ class ZeroOrderHold(Block):
         self.sample_time = sample_time
         self.input = 0.0
         self.input_block = None
+        self.input_source_port = 0
         self.held_value = 0.0
         self.last_sample_time = -sample_time
 
@@ -60,12 +63,13 @@ class ZeroOrderHold(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block, port=0):
+    def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
+        self.input_source_port = source_port
 
     def update(self):
         if self.input_block is not None:
-            self.input = self.input_block.getOutput()
+            self.input = self.input_block.getOutput(self.input_source_port)
 
         # Check if it's time to sample
         if State.t - self.last_sample_time >= self.sample_time - State.EPS:
@@ -86,6 +90,7 @@ class DiscreteIntegrator(Block):
         self.initial_condition = initial_condition
         self.input = 0.0
         self.input_block = None
+        self.input_source_port = 0
         self.prev_input = 0.0
         self.output = initial_condition
         self.last_sample_time = -sample_time
@@ -98,12 +103,13 @@ class DiscreteIntegrator(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block, port=0):
+    def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
+        self.input_source_port = source_port
 
     def update(self):
         if self.input_block is not None:
-            self.input = self.input_block.getOutput()
+            self.input = self.input_block.getOutput(self.input_source_port)
 
         # Check if it's time to update
         if State.t - self.last_sample_time >= self.sample_time - State.EPS:
@@ -133,6 +139,7 @@ class DiscreteDerivative(Block):
         self.initial_condition = initial_condition
         self.input = 0.0
         self.input_block = None
+        self.input_source_port = 0
         self.prev_input = initial_condition
         self.output = 0.0
         self.last_sample_time = -sample_time
@@ -145,12 +152,13 @@ class DiscreteDerivative(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block, port=0):
+    def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
+        self.input_source_port = source_port
 
     def update(self):
         if self.input_block is not None:
-            self.input = self.input_block.getOutput()
+            self.input = self.input_block.getOutput(self.input_source_port)
 
         # Check if it's time to update
         if State.t - self.last_sample_time >= self.sample_time - State.EPS:
@@ -176,6 +184,7 @@ class DiscreteTransferFunction(Block):
         self.sample_time = sample_time
         self.input = 0.0
         self.input_block = None
+        self.input_source_port = 0
         self.output = 0.0
         self.last_sample_time = -sample_time
 
@@ -193,12 +202,13 @@ class DiscreteTransferFunction(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block, port=0):
+    def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
+        self.input_source_port = source_port
 
     def update(self):
         if self.input_block is not None:
-            self.input = self.input_block.getOutput()
+            self.input = self.input_block.getOutput(self.input_source_port)
 
         # Check if it's time to update
         if State.t - self.last_sample_time >= self.sample_time - State.EPS:

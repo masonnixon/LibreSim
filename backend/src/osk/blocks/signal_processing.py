@@ -31,6 +31,7 @@ class RateLimiter(Block):
         self.input = 0.0
         self.output = 0.0
         self.input_block = None
+        self.input_source_port = 0
         self.prev_output = 0.0
 
     def init(self):
@@ -40,12 +41,13 @@ class RateLimiter(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block, port=0):
+    def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
+        self.input_source_port = source_port
 
     def update(self):
         if self.input_block is not None:
-            self.input = self.input_block.getOutput()
+            self.input = self.input_block.getOutput(self.input_source_port)
 
         # Calculate desired change
         desired_change = self.input - self.prev_output
@@ -79,6 +81,7 @@ class MovingAverage(Block):
         self.input = 0.0
         self.output = 0.0
         self.input_block = None
+        self.input_source_port = 0
         self.buffer = deque(maxlen=self.window_size)
 
     def init(self):
@@ -88,12 +91,13 @@ class MovingAverage(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block, port=0):
+    def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
+        self.input_source_port = source_port
 
     def update(self):
         if self.input_block is not None:
-            self.input = self.input_block.getOutput()
+            self.input = self.input_block.getOutput(self.input_source_port)
 
         self.buffer.append(self.input)
         self.output = sum(self.buffer) / len(self.buffer)
@@ -115,6 +119,7 @@ class LowPassFilter(Block):
         self.input = 0.0
         self.output = 0.0
         self.input_block = None
+        self.input_source_port = 0
         self.alpha = 0.0
 
     def init(self):
@@ -130,12 +135,13 @@ class LowPassFilter(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block, port=0):
+    def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
+        self.input_source_port = source_port
 
     def update(self):
         if self.input_block is not None:
-            self.input = self.input_block.getOutput()
+            self.input = self.input_block.getOutput(self.input_source_port)
 
         # Recalculate alpha in case dt changed
         if State.dt > 0 and self.cutoff_freq > 0:
@@ -162,6 +168,7 @@ class HighPassFilter(Block):
         self.input = 0.0
         self.output = 0.0
         self.input_block = None
+        self.input_source_port = 0
         self.prev_input = 0.0
         self.prev_output = 0.0
         self.alpha = 0.0
@@ -179,12 +186,13 @@ class HighPassFilter(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block, port=0):
+    def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
+        self.input_source_port = source_port
 
     def update(self):
         if self.input_block is not None:
-            self.input = self.input_block.getOutput()
+            self.input = self.input_block.getOutput(self.input_source_port)
 
         if State.dt > 0 and self.cutoff_freq > 0:
             rc = 1.0 / (2.0 * math.pi * self.cutoff_freq)
@@ -214,6 +222,7 @@ class BandPassFilter(Block):
         self.input = 0.0
         self.output = 0.0
         self.input_block = None
+        self.input_source_port = 0
         # Internal filter states
         self.hp_prev_input = 0.0
         self.hp_prev_output = 0.0
@@ -228,12 +237,13 @@ class BandPassFilter(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block, port=0):
+    def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
+        self.input_source_port = source_port
 
     def update(self):
         if self.input_block is not None:
-            self.input = self.input_block.getOutput()
+            self.input = self.input_block.getOutput(self.input_source_port)
 
         # High pass filter first
         if State.dt > 0 and self.low_cutoff > 0:
@@ -275,6 +285,7 @@ class Backlash(Block):
         self.input = 0.0
         self.output = initial_output
         self.input_block = None
+        self.input_source_port = 0
 
     def init(self):
         pass  # Keep output from initialization
@@ -282,12 +293,13 @@ class Backlash(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block, port=0):
+    def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
+        self.input_source_port = source_port
 
     def update(self):
         if self.input_block is not None:
-            self.input = self.input_block.getOutput()
+            self.input = self.input_block.getOutput(self.input_source_port)
 
         # Output only changes when input moves beyond deadband
         if self.input > self.output + self.half_width:
@@ -431,6 +443,7 @@ class AnalogFilter(Block):
         self.input = 0.0
         self.output = 0.0
         self.input_block = None
+        self.input_source_port = 0
 
         # State arrays for cascaded biquad sections
         self._biquads: list[dict] = []
@@ -554,12 +567,13 @@ class AnalogFilter(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block, port=0):
+    def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
+        self.input_source_port = source_port
 
     def update(self):
         if self.input_block is not None:
-            self.input = self.input_block.getOutput()
+            self.input = self.input_block.getOutput(self.input_source_port)
 
         # Design filter on first update (when dt is available)
         if not self._initialized and State.dt > 0:
@@ -607,6 +621,7 @@ class NotchFilter(Block):
         self.input = 0.0
         self.output = 0.0
         self.input_block = None
+        self.input_source_port = 0
 
         # Biquad filter coefficients
         self.b0 = 1.0
@@ -659,12 +674,13 @@ class NotchFilter(Block):
     def setInput(self, value, port=0):
         self.input = value
 
-    def connectInput(self, block, port=0):
+    def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
+        self.input_source_port = source_port
 
     def update(self):
         if self.input_block is not None:
-            self.input = self.input_block.getOutput()
+            self.input = self.input_block.getOutput(self.input_source_port)
 
         if not self._initialized and State.dt > 0:
             self._design_notch(State.dt)
