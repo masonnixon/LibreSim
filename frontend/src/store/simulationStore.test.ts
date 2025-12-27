@@ -89,9 +89,8 @@ describe('useSimulationStore', () => {
         signals: [
           {
             blockId: 'block-1',
-            blockName: 'Scope1',
+            name: 'Scope1',
             portId: 'in-0',
-            portIndex: 0,
             times: [0, 1, 2],
             values: [0, 1, 2],
           },
@@ -122,9 +121,8 @@ describe('useSimulationStore', () => {
     it('adds signal data to empty results', () => {
       const signal: SignalData = {
         blockId: 'block-1',
-        blockName: 'Scope1',
+        name: 'Scope1',
         portId: 'in-0',
-        portIndex: 0,
         times: [0, 1],
         values: [0, 1],
       }
@@ -140,17 +138,15 @@ describe('useSimulationStore', () => {
     it('adds signal data to existing results', () => {
       const signal1: SignalData = {
         blockId: 'block-1',
-        blockName: 'Scope1',
+        name: 'Scope1',
         portId: 'in-0',
-        portIndex: 0,
         times: [0, 1],
         values: [0, 1],
       }
       const signal2: SignalData = {
         blockId: 'block-2',
-        blockName: 'Scope2',
+        name: 'Scope2',
         portId: 'in-0',
-        portIndex: 0,
         times: [0, 1],
         values: [2, 3],
       }
@@ -165,9 +161,8 @@ describe('useSimulationStore', () => {
     it('appends data to existing signal', () => {
       const signal: SignalData = {
         blockId: 'block-1',
-        blockName: 'Scope1',
+        name: 'Scope1',
         portId: 'in-0',
-        portIndex: 0,
         times: [0, 1],
         values: [0, 1],
       }
@@ -190,9 +185,8 @@ describe('useSimulationStore', () => {
     it('does not append data when signal is not found', () => {
       const signal: SignalData = {
         blockId: 'block-1',
-        blockName: 'Scope1',
+        name: 'Scope1',
         portId: 'in-0',
-        portIndex: 0,
         times: [0],
         values: [0],
       }

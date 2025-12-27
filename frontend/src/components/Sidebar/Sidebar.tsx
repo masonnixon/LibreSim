@@ -18,6 +18,7 @@ const categoryLabels: Record<BlockCategory, string> = {
   signal_processing: 'Signal Processing',
   nonlinear: 'Nonlinear',
   observers: 'State Observers',
+  control_analysis: 'Control Analysis',
 }
 
 const categoryColors: Record<BlockCategory, string> = {
@@ -31,6 +32,7 @@ const categoryColors: Record<BlockCategory, string> = {
   signal_processing: 'bg-teal-600',
   nonlinear: 'bg-orange-600',
   observers: 'bg-indigo-600',
+  control_analysis: 'bg-rose-600',
 }
 
 export function Sidebar() {
@@ -46,7 +48,9 @@ export function Sidebar() {
   const [isMobile, setIsMobile] = useState(false)
 
   // Subscribe to block registry changes for library blocks
-  const libraryBlocks = useSyncExternalStore(
+  // Note: We don't use libraryBlocks directly, but we need this subscription
+  // to trigger re-renders when library blocks are added/removed
+  useSyncExternalStore(
     (callback) => blockRegistry.subscribe(callback),
     () => blockRegistry.getLibraryBlocks()
   )

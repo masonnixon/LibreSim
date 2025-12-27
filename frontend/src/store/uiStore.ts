@@ -53,9 +53,6 @@ interface UIState {
   closeImportModal: () => void
 }
 
-// Track z-index order for plot windows
-let plotWindowZCounter = 100
-
 export const useUIStore = create<UIState>((set) => ({
   showProperties: true,
   showSimulation: false,
@@ -95,7 +92,8 @@ export const useUIStore = create<UIState>((set) => ({
   }),
 
   closePlotWindow: (blockId) => set((state) => {
-    const { [blockId]: _, ...rest } = state.plotWindows
+    const { [blockId]: _removed, ...rest } = state.plotWindows
+    void _removed // Intentionally unused - destructuring to remove blockId from plotWindows
     return { plotWindows: rest }
   }),
 
@@ -141,8 +139,8 @@ export const useUIStore = create<UIState>((set) => ({
   }),
 
   bringPlotWindowToFront: (_blockId) => {
-    plotWindowZCounter++
     // z-index ordering is handled in PlotWindowManager component state
+    // This function exists for API consistency but doesn't need to do anything here
   },
 
   openNewModelModal: () => set({ showNewModelModal: true }),

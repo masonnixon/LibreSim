@@ -83,6 +83,7 @@ export function Toolbar() {
       // Create a new blank model if none was saved
       createNewModel('Untitled')
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Intentionally run only on mount; store functions are stable
   }, [])
 
   // Save model to localStorage whenever it changes

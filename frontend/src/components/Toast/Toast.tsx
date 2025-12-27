@@ -42,6 +42,7 @@ let toastListeners: ((toasts: ToastMessage[]) => void)[] = []
 let currentToasts: ToastMessage[] = []
 let toastCounter = 0
 
+// eslint-disable-next-line react-refresh/only-export-components -- Global toast utility object used throughout the app
 export const toast = {
   show: (type: ToastMessage['type'], title: string, message: string, duration?: number) => {
     const newToast: ToastMessage = {

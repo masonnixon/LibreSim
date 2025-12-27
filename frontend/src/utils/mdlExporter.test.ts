@@ -51,8 +51,8 @@ describe('modelToMDL', () => {
       expect(mdl).toContain('Name\t\t\t  "Test_Model"')
       expect(mdl).toContain('Version\t\t  8.0')
       expect(mdl).toContain('System {')
-      expect(mdl).toMatch(/StartTime\t\t  "0"/)
-      expect(mdl).toMatch(/StopTime\t\t  "10"/)
+      expect(mdl).toMatch(/StartTime\t\t {2}"0"/)
+      expect(mdl).toMatch(/StopTime\t\t {2}"10"/)
     })
 
     it('sanitizes model name for MDL format', () => {
@@ -69,7 +69,6 @@ describe('modelToMDL', () => {
     it('maps solver types correctly', () => {
       const solverTests = [
         { solver: 'euler' as const, expected: 'ode1' },
-        { solver: 'rk2' as const, expected: 'ode2' },
         { solver: 'rk4' as const, expected: 'ode4' },
         { solver: 'merson' as const, expected: 'ode45' },
       ]

@@ -27,6 +27,7 @@ function App() {
     checkMobile()
     window.addEventListener('resize', checkMobile)
     return () => window.removeEventListener('resize', checkMobile)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Intentionally run only on mount; we use initial values of sidebarCollapsed/toggleSidebar
   }, [])
 
   return (

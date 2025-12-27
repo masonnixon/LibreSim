@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { useLibraryStore, useLibraryBlockDefinitions, useLibraries } from './libraryStore'
+import { describe, it, expect, beforeEach } from 'vitest'
+import { useLibraryStore } from './libraryStore'
 import { blockRegistry } from '../blocks'
 import type { Library, LibraryBlockDefinition, LibraryBlockImplementation } from '../types/library'
 

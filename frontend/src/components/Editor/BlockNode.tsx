@@ -1,13 +1,15 @@
 import { memo } from 'react'
-import { Handle, Position, NodeProps } from '@xyflow/react'
+import { Handle, Position, NodeProps, Node } from '@xyflow/react'
 import type { BlockInstance, BlockDefinition } from '../../types/block'
 
-interface BlockNodeData {
+interface BlockNodeData extends Record<string, unknown> {
   block: BlockInstance
   definition: BlockDefinition | undefined
 }
 
-function BlockNodeComponent({ data, selected }: NodeProps<BlockNodeData>) {
+type BlockNode = Node<BlockNodeData, 'blockNode'>
+
+function BlockNodeComponent({ data, selected }: NodeProps<BlockNode>) {
   const { block, definition } = data
 
   if (!block || !definition) {
@@ -106,8 +108,8 @@ function BlockNodeComponent({ data, selected }: NodeProps<BlockNodeData>) {
 
 // Custom comparison to ensure re-render when block data changes
 function arePropsEqual(
-  prevProps: NodeProps<BlockNodeData>,
-  nextProps: NodeProps<BlockNodeData>
+  prevProps: NodeProps<BlockNode>,
+  nextProps: NodeProps<BlockNode>
 ): boolean {
   // Always re-render if selected state changes
   if (prevProps.selected !== nextProps.selected) return false

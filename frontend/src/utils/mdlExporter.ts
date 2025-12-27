@@ -108,11 +108,12 @@ function getBlockParameters(block: BlockInstance): string[] {
       if (p.dutyCycle !== undefined) params.push(`PulseWidth\t      "${p.dutyCycle}"`)
       break
 
-    case 'scope':
+    case 'scope': {
       const numInputs = block.inputPorts?.length || p.numInputs || 1
       params.push(`Ports\t\t      [${numInputs}]`)
       params.push(`NumInputPorts\t      "${numInputs}"`)
       break
+    }
 
     case 'integrator':
       if (p.initialCondition !== undefined) params.push(`InitialCondition      "${p.initialCondition}"`)

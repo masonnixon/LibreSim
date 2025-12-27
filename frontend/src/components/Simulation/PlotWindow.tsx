@@ -251,6 +251,7 @@ export function PlotWindow({
     })
 
     return traces
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- traceColors is a constant array defined above, never changes
   }, [signals])
 
   // Determine if we should show the legend (multiple traces)

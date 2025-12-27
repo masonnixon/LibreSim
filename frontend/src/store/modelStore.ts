@@ -746,10 +746,10 @@ export const useModelStore = create<ModelState>((set, get) => ({
             const [first, ...rest] = remainingPath
             return blocks.map(b => {
               if (b.id === first.id && b.type === 'subsystem') {
-                if (rest.length === 0 && b.internalConnections) {
+                if (rest.length === 0 && b.childConnections) {
                   // This is the target subsystem
-                  const filteredConnections = filterConnections(b.internalConnections)
-                  return { ...b, internalConnections: filteredConnections }
+                  const filteredConnections = filterConnections(b.childConnections)
+                  return { ...b, childConnections: filteredConnections }
                 }
                 if (b.children) {
                   return { ...b, children: updateSubsystemConnections(b.children, rest) }

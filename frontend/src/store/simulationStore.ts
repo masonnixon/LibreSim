@@ -97,12 +97,17 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => ({
 
     if (signalIndex >= 0) {
       const updatedSignals = [...results.signals]
-      updatedSignals[signalIndex] = {
-        ...updatedSignals[signalIndex],
-        times: [...updatedSignals[signalIndex].times, time],
-        values: [...updatedSignals[signalIndex].values, value],
+      const signal = updatedSignals[signalIndex]
+      // Only append to single-input signals (number[] type)
+      const currentValues = signal.values
+      if (Array.isArray(currentValues) && (currentValues.length === 0 || typeof currentValues[0] === 'number')) {
+        updatedSignals[signalIndex] = {
+          ...signal,
+          times: [...signal.times, time],
+          values: [...(currentValues as number[]), value],
+        }
+        set({ results: { ...results, signals: updatedSignals } })
       }
-      set({ results: { ...results, signals: updatedSignals } })
     }
   },
 

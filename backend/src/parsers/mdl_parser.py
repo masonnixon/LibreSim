@@ -98,6 +98,9 @@ class MDLParser:
         # Parse the MDL structure
         model_data = self._parse_block()
 
+        # Unwrap the Model key if present
+        model_data = model_data.get("Model", model_data)
+
         # Extract model name
         model_name = self._get_value(model_data, "Name", filename.replace(".mdl", ""))
 
@@ -448,6 +451,12 @@ class MDLParser:
                 [{"name": "in1"}, {"name": "control"}, {"name": "in2"}],
                 [{"name": "out"}],
             ),
+            "trigonometry": ([{"name": "in"}], [{"name": "out"}]),
+            "math_function": ([{"name": "in"}], [{"name": "out"}]),
+            "sign": ([{"name": "in"}], [{"name": "out"}]),
+            "dead_zone": ([{"name": "in"}], [{"name": "out"}]),
+            "sqrt": ([{"name": "in"}], [{"name": "out"}]),
+            "minmax": ([{"name": "in1"}, {"name": "in2"}], [{"name": "out"}]),
         }
 
         in_config, out_config = port_configs.get(block_type, ([], []))
@@ -541,9 +550,21 @@ class MDLParser:
         mdl_solver = model_data.get("Solver", "ode45")
         solver = solver_map.get(mdl_solver, "rk4")
 
+        # Handle FixedStep parameter
+        fixed_step = model_data.get("FixedStep", "0.01")
+        if fixed_step == "auto":
+            # Fall back to MaxStep if available, otherwise use default
+            fixed_step = model_data.get("MaxStep", "0.01")
+
+        try:
+            step_size = float(fixed_step)
+        except ValueError:
+            # If conversion fails, use default
+            step_size = 0.01
+
         return SimulationConfig(
             solver=solver,
             startTime=start_time,
             stopTime=stop_time,
-            stepSize=float(model_data.get("FixedStep", 0.01)),
+            stepSize=step_size,
         )

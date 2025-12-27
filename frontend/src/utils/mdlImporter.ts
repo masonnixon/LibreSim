@@ -433,7 +433,7 @@ function parseMDL(content: string): ParsedModel {
           } else if (depth <= 2) {
             console.log(`${debugPrefix}[MDL Parse] Adding ${key} to ${arrayKey} array`)
           }
-          ;(obj[arrayKey] as unknown[]).push(parsed)
+          (obj[arrayKey] as unknown[]).push(parsed)
         } else if (key.startsWith('$')) {
           // Skip special properties (e.g., $ObjectID, $BackupClass)
           if (depth <= 2) console.log(`${debugPrefix}[MDL Parse] SKIPPING $ property: "${key}"`)
@@ -525,7 +525,7 @@ function parseMDL(content: string): ParsedModel {
     // For libraries, collect all top-level subsystem blocks as the main content
     // Check both mainSystem and modelObj for blocks (different MDL versions structure differently)
     let blocks = (mainSystem.blocks as ParsedBlock[]) || []
-    let lines = (mainSystem.lines as ParsedLine[]) || []
+    const lines = (mainSystem.lines as ParsedLine[]) || []
 
     // Also check if blocks are directly in the model object (some formats)
     if (blocks.length === 0 && modelObj.blocks) {
@@ -1403,17 +1403,17 @@ function convertSystem(
   const blockMap = new Map<string, BlockInstance>()
   const blocks: BlockInstance[] = []
   const connections: Connection[] = []
-  let blockCounter = 0
 
   // Convert blocks
-  for (const parsedBlock of parsedBlocks) {
+  for (let i = 0; i < parsedBlocks.length; i++) {
+    const parsedBlock = parsedBlocks[i]
     const simulinkType = parsedBlock.BlockType
     const libreSimType = SIMULINK_TO_LIBRESIM[simulinkType]
     if (!libreSimType) {
       console.warn(`[MDL Import] Unknown Simulink block type: "${simulinkType}" - defaulting to subsystem`)
     }
     const finalType = libreSimType || 'subsystem'
-    const blockName = parsedBlock.Name || `Block_${blockCounter}`
+    const blockName = parsedBlock.Name || `Block_${i}`
 
     const position = parsePosition(parsedBlock.Position)
     const parameters = convertBlockParameters(parsedBlock, finalType)
@@ -2007,51 +2007,51 @@ export function analyzeLibraryDependencies(content: string): LibraryDependencies
   const externalReferences: LibraryDependencies['externalReferences'] = []
   const seenPaths = new Set<string>()
 
-  try {
-    const parsed = parseMDL(content)
-    const libraryName = parsed.Name
+  // Scan all blocks for Reference blocks with SourceBlock property
+  const scanBlocks = (blocks: ParsedBlock[], libraryName: string) => {
+    for (const block of blocks) {
+      if (block.BlockType === 'Reference' && block.SourceBlock) {
+        const sourcePath = String(block.SourceBlock).replace(/\n/g, '')
+        const parts = sourcePath.split('/')
+        const sourceLibraryName = parts.length > 1 ? parts[0] : libraryName
 
-    // Scan all blocks for Reference blocks with SourceBlock property
-    function scanBlocks(blocks: ParsedBlock[]) {
-      for (const block of blocks) {
-        if (block.BlockType === 'Reference' && block.SourceBlock) {
-          const sourcePath = String(block.SourceBlock).replace(/\n/g, '')
-          const parts = sourcePath.split('/')
-          const sourceLibraryName = parts.length > 1 ? parts[0] : libraryName
+        // Only track external references (different library)
+        if (sourceLibraryName !== libraryName && !seenPaths.has(sourcePath)) {
+          seenPaths.add(sourcePath)
+          const blockName = parts[parts.length - 1]
+          const isResolvable = globalLibraryRegistry.has(sourcePath) ||
+            globalLibraryRegistry.has(`${sourceLibraryName.replace(/_\d+[a-z]*$/i, '')}/${blockName}`)
 
-          // Only track external references (different library)
-          if (sourceLibraryName !== libraryName && !seenPaths.has(sourcePath)) {
-            seenPaths.add(sourcePath)
-            const blockName = parts[parts.length - 1]
-            const isResolvable = globalLibraryRegistry.has(sourcePath) ||
-              globalLibraryRegistry.has(`${sourceLibraryName.replace(/_\d+[a-z]*$/i, '')}/${blockName}`)
-
-            externalReferences.push({
-              path: sourcePath,
-              libraryName: sourceLibraryName,
-              blockName,
-              isResolvable,
-            })
-          }
+          externalReferences.push({
+            path: sourcePath,
+            libraryName: sourceLibraryName,
+            blockName,
+            isResolvable,
+          })
         }
+      }
 
-        // Check nested systems
-        if (block.systems) {
-          for (const sys of block.systems as Record<string, unknown>[]) {
-            if (sys.blocks) {
-              scanBlocks(sys.blocks as ParsedBlock[])
-            }
+      // Check nested systems
+      if (block.systems) {
+        for (const sys of block.systems as Record<string, unknown>[]) {
+          if (sys.blocks) {
+            scanBlocks(sys.blocks as ParsedBlock[], libraryName)
           }
         }
       }
     }
+  }
 
-    scanBlocks(parsed.system.blocks)
+  try {
+    const parsed = parseMDL(content)
+    const libraryName = parsed.Name
+
+    scanBlocks(parsed.system.blocks, libraryName)
 
     // Also scan systems in the systemMap
     if (parsed.systemMap) {
       parsed.systemMap.forEach(system => {
-        scanBlocks(system.blocks)
+        scanBlocks(system.blocks, libraryName)
       })
     }
   } catch (error) {

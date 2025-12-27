@@ -14,7 +14,10 @@ describe('SimulationWebSocket', () => {
     close: ReturnType<typeof vi.fn>
     readyState: number
   }
-  let MockWebSocketClass: ReturnType<typeof vi.fn>
+  let MockWebSocketClass: ReturnType<typeof vi.fn> & {
+    OPEN: number
+    CLOSED: number
+  }
 
   beforeEach(() => {
     mockWebSocket = {
@@ -27,10 +30,12 @@ describe('SimulationWebSocket', () => {
       readyState: 1, // OPEN
     }
 
-    MockWebSocketClass = vi.fn(() => mockWebSocket)
-    // Add the static OPEN constant to the mock class
-    MockWebSocketClass.OPEN = 1
-    MockWebSocketClass.CLOSED = 3
+    const mockFn = vi.fn(() => mockWebSocket)
+    // Create the mock class with static constants
+    MockWebSocketClass = Object.assign(mockFn, {
+      OPEN: 1,
+      CLOSED: 3,
+    }) as ReturnType<typeof vi.fn> & { OPEN: number; CLOSED: number }
     vi.stubGlobal('WebSocket', MockWebSocketClass)
     vi.stubGlobal('window', { location: { protocol: 'http:', host: 'localhost:4200' } })
   })

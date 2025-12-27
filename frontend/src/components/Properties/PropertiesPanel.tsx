@@ -1,9 +1,10 @@
-import { useEffect } from 'react'
 import { useModelStore } from '../../store/modelStore'
 import { blockRegistry } from '../../blocks'
+import type { ParameterDefinition } from '../../types/block'
 
 // Track when Properties panel inputs are focused to prevent ReactFlow from stealing keyboard events
 let isPropertiesFocused = false
+// eslint-disable-next-line react-refresh/only-export-components -- Utility function needed by Editor component
 export const getIsPropertiesFocused = () => isPropertiesFocused
 
 export function PropertiesPanel() {
@@ -50,7 +51,8 @@ export function PropertiesPanel() {
       label: key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1'),
       type: typeof block.parameters[key] === 'number' ? 'number' : typeof block.parameters[key] === 'boolean' ? 'boolean' : 'string',
       default: block.parameters[key],
-    })),
+      description: undefined,
+    } as ParameterDefinition)),
   }
 
   const handleParameterChange = (paramName: string, value: unknown) => {
@@ -138,7 +140,7 @@ const handleBlur = () => {
 }
 
 function renderParameterInput(
-  param: { type: string; options?: { value: string; label: string }[]; min?: number; max?: number; step?: number },
+  param: ParameterDefinition,
   value: unknown,
   onChange: (value: unknown) => void
 ) {

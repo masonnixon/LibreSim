@@ -1,13 +1,15 @@
 import { memo, useCallback, useMemo } from 'react'
-import { Handle, Position, NodeProps } from '@xyflow/react'
+import { Handle, Position, NodeProps, Node } from '@xyflow/react'
 import type { BlockInstance, BlockDefinition, Connection } from '../../types/block'
 import { useModelStore } from '../../store/modelStore'
 import { blockRegistry } from '../../blocks'
 
-interface SubsystemNodeData {
+interface SubsystemNodeData extends Record<string, unknown> {
   block: BlockInstance
   definition: BlockDefinition | undefined
 }
+
+type SubsystemNode = Node<SubsystemNodeData, 'subsystemNode'>
 
 // Get color for block category
 function getCategoryColor(category: string): string {
@@ -196,7 +198,7 @@ function SubsystemPreview({
   )
 }
 
-function SubsystemNodeComponent({ data, selected }: NodeProps<SubsystemNodeData>) {
+function SubsystemNodeComponent({ data, selected }: NodeProps<SubsystemNode>) {
   const { block, definition } = data
   const toggleSubsystemExpanded = useModelStore((state) => state.toggleSubsystemExpanded)
 
@@ -297,8 +299,8 @@ function SubsystemNodeComponent({ data, selected }: NodeProps<SubsystemNodeData>
 
 // Custom comparison to ensure re-render when block data changes
 function arePropsEqual(
-  prevProps: NodeProps<SubsystemNodeData>,
-  nextProps: NodeProps<SubsystemNodeData>
+  prevProps: NodeProps<SubsystemNode>,
+  nextProps: NodeProps<SubsystemNode>
 ): boolean {
   // Always re-render if selected state changes
   if (prevProps.selected !== nextProps.selected) return false
@@ -327,4 +329,5 @@ function arePropsEqual(
   return true
 }
 
-export const SubsystemNode = memo(SubsystemNodeComponent, arePropsEqual)
+export const SubsystemNodeExport = memo(SubsystemNodeComponent, arePropsEqual)
+export { SubsystemNodeExport as SubsystemNode }

@@ -12,6 +12,7 @@ import {
   NodeTypes,
   useReactFlow,
   OnConnect,
+  OnConnectEnd,
   Panel,
 } from '@xyflow/react'
 import { nanoid } from 'nanoid'
@@ -116,7 +117,7 @@ function getDefinitionOrFallback(block: BlockInstance): BlockDefinition {
 
 export function Editor() {
   const reactFlowWrapper = useRef<HTMLDivElement>(null)
-  const { screenToFlowPosition, getNodes, fitView } = useReactFlow()
+  const { screenToFlowPosition, fitView } = useReactFlow()
 
   // Mobile detection for responsive MiniMap
   const [isMobile, setIsMobile] = useState(false)
@@ -196,8 +197,8 @@ export function Editor() {
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
 
-  // Selection toolbar position
-  const [selectionBounds, setSelectionBounds] = useState<{ x: number; y: number; width: number; height: number } | null>(null)
+  // Selection toolbar position (used for future toolbar positioning, currently tracked but not displayed)
+  const [, setSelectionBounds] = useState<{ x: number; y: number; width: number; height: number } | null>(null)
 
   // Selected edge ID for showing signal dimensions
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
@@ -381,14 +382,8 @@ export function Editor() {
   // This handles two cases:
   // 1. Dropping on Scope body (invalid connection) - auto-expand and connect
   // 2. Dropping on already-connected Scope port - auto-expand and connect to new port
-  const onConnectEnd = useCallback(
-    (event: MouseEvent | TouchEvent, connectionState: {
-      fromNode?: { id: string } | null
-      fromHandle?: { id: string } | null
-      toNode?: { id: string } | null
-      toHandle?: { id: string } | null
-      isValid?: boolean
-    }) => {
+  const onConnectEnd: OnConnectEnd = useCallback(
+    (event, connectionState) => {
       const fromNodeId = connectionState.fromNode?.id
       const fromHandleId = connectionState.fromHandle?.id
       if (!fromNodeId || !fromHandleId) return
@@ -435,23 +430,8 @@ export function Editor() {
       // Use setTimeout to run after onConnect has completed
       setTimeout(() => {
         const freshConnections = getCurrentConnections()
-        // Count connections to the target handle
-        const connectionsToHandle = freshConnections.filter(
-          c => c.targetBlockId === toNodeId && c.targetPortId === toHandleId
-        )
 
-        // If there are 2+ connections to the same handle, the last one was a duplicate attempt
-        // This means the port was already connected - we should expand
-        if (connectionsToHandle.length >= 2) {
-          // Remove the duplicate connection we just added
-          const duplicateConnection = connectionsToHandle.find(
-            c => c.sourceBlockId === fromNodeId && c.sourcePortId === fromHandleId
-          )
-          // Note: addConnection already prevents duplicates, so this won't happen
-          // But if the store allowed it, we'd remove it here
-        }
-
-        // Actually, since addConnection prevents duplicate target ports,
+        // Since addConnection prevents duplicate target ports,
         // if the port was already connected, our connection was rejected.
         // So we need to check if our connection exists - if not, auto-expand
         const ourConnection = freshConnections.find(
@@ -505,21 +485,6 @@ export function Editor() {
   const onPaneClick = useCallback(() => {
     setSelectedEdgeId(null)
   }, [])
-
-  // Get signal dimensions for a connection
-  const getSignalDimensions = useCallback((sourceBlockId: string, sourcePortId: string): string => {
-    const sourceBlock = currentBlocks.find(b => b.id === sourceBlockId)
-    if (!sourceBlock) return '?'
-
-    const sourcePort = sourceBlock.outputPorts.find(p => p.id === sourcePortId)
-    if (!sourcePort) return '?'
-
-    const dims = sourcePort.dimensions || [1]
-    if (dims.length === 1 && dims[0] === 1) {
-      return '1'  // Scalar
-    }
-    return dims.join('×')
-  }, [currentBlocks])
 
   const onSelectionChange = useCallback(
     ({ nodes: selectedNodes }: { nodes: Node[] }) => {
@@ -880,8 +845,8 @@ export function Editor() {
           className="bg-editor-surface border-editor-border"
           style={isMobile ? { width: 100, height: 60 } : undefined}
           nodeColor={(node) => {
-            const def = node.data?.definition
-            if (!def) return '#6c7086'
+            const def = node.data?.definition as { category?: string } | undefined
+            if (!def || !def.category) return '#6c7086'
             switch (def.category) {
               case 'sources':
                 return '#a6e3a1'

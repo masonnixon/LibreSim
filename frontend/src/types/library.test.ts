@@ -41,7 +41,7 @@ describe('isLibraryBlockDefinition', () => {
       description: 'A constant value',
       inputs: [],
       outputs: [{ name: 'out', dataType: 'double', dimensions: [1] }],
-      parameters: [{ name: 'value', type: 'number', default: 0 }],
+      parameters: [{ name: 'value', label: 'Value', type: 'number', default: 0 }],
     }
 
     expect(isLibraryBlockDefinition(regularBlock)).toBe(false)

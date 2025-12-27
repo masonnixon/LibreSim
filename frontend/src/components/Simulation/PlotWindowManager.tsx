@@ -94,6 +94,7 @@ export function PlotWindowManager() {
       // Initialize window order
       setWindowOrder(scopeWindows.map((s) => s.blockId))
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- We intentionally use scopeWindows.length to trigger, but reference scopeWindows/openPlotWindow/plotWindows for current values
   }, [state.status, scopeWindows.length])
 
   // Clear windows when simulation resets

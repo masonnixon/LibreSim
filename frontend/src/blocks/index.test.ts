@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, afterEach } from 'vitest'
 import { blockRegistry, blockCategories } from './index'
 import type { LibraryBlockDefinition } from '../types/library'
 import type { BlockCategory } from '../types/block'

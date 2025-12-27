@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { useModelStore } from './modelStore'
 import type { Model } from '../types/model'
-import type { BlockInstance, Connection, BlockDefinition } from '../types/block'
+import type { BlockDefinition, BlockInstance } from '../types/block'
 
 // Helper to create a test model
 function createTestModel(): Model {
@@ -35,7 +35,7 @@ function createBlockDef(type: string, name: string): BlockDefinition {
     description: `A ${name} block`,
     inputs: [{ name: 'in', dataType: 'double', dimensions: [1] }],
     outputs: [{ name: 'out', dataType: 'double', dimensions: [1] }],
-    parameters: [{ name: 'value', type: 'number', default: 0 }],
+    parameters: [{ name: 'value', label: 'Value', type: 'number', default: 0 }],
   }
 }
 
@@ -194,7 +194,7 @@ describe('useModelStore', () => {
         description: 'A gain block',
         inputs: [{ name: 'in', dataType: 'double', dimensions: [1] }],
         outputs: [{ name: 'out', dataType: 'double', dimensions: [1] }],
-        parameters: [{ name: 'gain', type: 'number', default: 2 }],
+        parameters: [{ name: 'gain', label: 'Gain', type: 'number', default: 2 }],
       }
 
       useModelStore.getState().addBlock(blockDef, { x: 100, y: 100 })
@@ -296,7 +296,7 @@ describe('useModelStore', () => {
         description: 'A gain block',
         inputs: [{ name: 'in', dataType: 'double', dimensions: [1] }],
         outputs: [{ name: 'out', dataType: 'double', dimensions: [1] }],
-        parameters: [{ name: 'gain', type: 'number', default: 1 }],
+        parameters: [{ name: 'gain', label: 'Gain', type: 'number', default: 1 }],
       }
 
       const id = useModelStore.getState().addBlock(blockDef, { x: 100, y: 100 })
@@ -317,7 +317,7 @@ describe('useModelStore', () => {
           { name: 'in2', dataType: 'double', dimensions: [1] },
         ],
         outputs: [{ name: 'out', dataType: 'double', dimensions: [2] }],
-        parameters: [{ name: 'numInputs', type: 'number', default: 2 }],
+        parameters: [{ name: 'numInputs', label: 'Number of Inputs', type: 'number', default: 2 }],
       }
 
       const id = useModelStore.getState().addBlock(muxDef, { x: 100, y: 100 })
@@ -339,7 +339,7 @@ describe('useModelStore', () => {
           { name: 'out1', dataType: 'double', dimensions: [1] },
           { name: 'out2', dataType: 'double', dimensions: [1] },
         ],
-        parameters: [{ name: 'numOutputs', type: 'number', default: 2 }],
+        parameters: [{ name: 'numOutputs', label: 'Number of Outputs', type: 'number', default: 2 }],
       }
 
       const id = useModelStore.getState().addBlock(demuxDef, { x: 100, y: 100 })
@@ -361,7 +361,7 @@ describe('useModelStore', () => {
           { name: 'in2', dataType: 'double', dimensions: [1] },
         ],
         outputs: [{ name: 'out', dataType: 'double', dimensions: [1] }],
-        parameters: [{ name: 'signs', type: 'string', default: '++' }],
+        parameters: [{ name: 'signs', label: 'Signs', type: 'string', default: '++' }],
       }
 
       const id = useModelStore.getState().addBlock(sumDef, { x: 100, y: 100 })
@@ -379,7 +379,7 @@ describe('useModelStore', () => {
         description: 'A scope block',
         inputs: [{ name: 'in1', dataType: 'double', dimensions: [1] }],
         outputs: [],
-        parameters: [{ name: 'numInputs', type: 'number', default: 1 }],
+        parameters: [{ name: 'numInputs', label: 'Number of Inputs', type: 'number', default: 1 }],
       }
 
       const id = useModelStore.getState().addBlock(scopeDef, { x: 100, y: 100 })
@@ -397,7 +397,7 @@ describe('useModelStore', () => {
         description: 'A constant block',
         inputs: [],
         outputs: [{ name: 'out', dataType: 'double', dimensions: [1] }],
-        parameters: [{ name: 'value', type: 'string', default: '1' }],
+        parameters: [{ name: 'value', label: 'Value', type: 'string', default: '1' }],
       }
 
       const id = useModelStore.getState().addBlock(constantDef, { x: 100, y: 100 })
@@ -434,7 +434,7 @@ describe('useModelStore', () => {
         description: 'A scope block',
         inputs: [{ name: 'in1', dataType: 'double', dimensions: [1] }],
         outputs: [],
-        parameters: [{ name: 'numInputs', type: 'number', default: 1 }],
+        parameters: [{ name: 'numInputs', label: 'Number of Inputs', type: 'number', default: 1 }],
       }
 
       const id = useModelStore.getState().addBlock(scopeDef, { x: 100, y: 100 })
@@ -685,7 +685,7 @@ describe('useModelStore', () => {
         description: 'A gain block',
         inputs: [{ name: 'in', dataType: 'double', dimensions: [1] }],
         outputs: [{ name: 'out', dataType: 'double', dimensions: [1] }],
-        parameters: [{ name: 'gain', type: 'number', default: 2 }],
+        parameters: [{ name: 'gain', label: 'Gain', type: 'number', default: 2 }],
       }
 
       const id1 = useModelStore.getState().addBlock(constDef, { x: 100, y: 100 })
