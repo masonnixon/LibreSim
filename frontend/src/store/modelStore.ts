@@ -5,6 +5,7 @@ import type { Model, ModelMetadata } from '../types/model'
 import type { SimulationConfig } from '../types/simulation'
 import { isLibraryBlockDefinition } from '../types/library'
 import { propagateDimensions } from '../utils/mdlImporter'
+import { useUIStore } from './uiStore'
 
 /**
  * Parse a Constant block value to determine its dimensions.
@@ -102,6 +103,7 @@ interface ModelState {
 
   // Subsystem operations
   createSubsystem: (blockIds: string[], name?: string) => string | null
+  expandSubsystem: (subsystemId: string) => void
   toggleSubsystemExpanded: (subsystemId: string) => void
 
   // Subsystem navigation
@@ -1147,6 +1149,11 @@ export const useModelStore = create<ModelState>((set, get) => ({
     // Find the subsystem to expand
     const subsystem = currentBlocks.find(b => b.id === subsystemId && b.type === 'subsystem')
     if (!subsystem || !subsystem.children) return
+
+    // Close any plot windows that were opened for blocks inside this subsystem
+    // These windows use flattened IDs like "subsystemId__blockId", so they won't
+    // match the blocks after expansion (which will just use "blockId")
+    useUIStore.getState().closePlotWindowsWithPrefix(subsystemId)
 
     // Get the children (excluding Inport/Outport blocks)
     const childBlocks = subsystem.children.filter(b => b.type !== 'inport' && b.type !== 'outport')

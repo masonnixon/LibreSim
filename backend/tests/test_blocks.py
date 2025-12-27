@@ -3877,8 +3877,9 @@ class TestObserverVectorOutput:
         vec = kf.getOutputVector()
         assert vec is not None
         assert len(vec) == 2
-        assert vec[0] == pytest.approx(0.0)  # After init, states are reset to zeros
-        assert vec[1] == pytest.approx(0.0)
+        # After init, states should be restored to initial_state values
+        assert vec[0] == pytest.approx(1.0)
+        assert vec[1] == pytest.approx(2.0)
 
         # Set specific values and verify
         kf.x_hat = [5.0, 10.0]

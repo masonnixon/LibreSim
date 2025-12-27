@@ -40,6 +40,7 @@ interface UIState {
   updatePlotWindowPosition: (blockId: string, position: { x: number; y: number }) => void
   updatePlotWindowSize: (blockId: string, size: { width: number; height: number }) => void
   closeAllPlotWindows: () => void
+  closePlotWindowsWithPrefix: (prefix: string) => void
   bringPlotWindowToFront: (blockId: string) => void
 
   openNewModelModal: () => void
@@ -129,6 +130,15 @@ export const useUIStore = create<UIState>((set) => ({
   })),
 
   closeAllPlotWindows: () => set({ plotWindows: {} }),
+
+  closePlotWindowsWithPrefix: (prefix) => set((state) => {
+    // Close all plot windows whose blockId starts with the given prefix
+    // This is used when expanding a subsystem to remove windows for blocks that were inside it
+    const filtered = Object.fromEntries(
+      Object.entries(state.plotWindows).filter(([blockId]) => !blockId.startsWith(prefix))
+    )
+    return { plotWindows: filtered }
+  }),
 
   bringPlotWindowToFront: (_blockId) => {
     plotWindowZCounter++

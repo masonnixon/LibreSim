@@ -43,7 +43,8 @@ class LuenbergerObserver(Block):
             self.L = self.L.reshape(-1, 1)
 
         # State estimate
-        self.x_hat = np.array(initial_state) if initial_state is not None else np.zeros(self.n)
+        self._initial_state = np.array(initial_state) if initial_state is not None else np.zeros(self.n)
+        self.x_hat = self._initial_state.copy()
         self.x_hat_dot = np.zeros(self.n)
 
         # Inputs: [u, y] - control input and measured output
@@ -53,10 +54,7 @@ class LuenbergerObserver(Block):
         self.output = 0.0
 
     def init(self):
-        if hasattr(self, '_initial_state') and self._initial_state is not None:
-            self.x_hat = np.array(self._initial_state)
-        else:
-            self.x_hat = np.zeros(self.n)
+        self.x_hat = self._initial_state.copy()
         self.x_hat_dot = np.zeros(self.n)
 
     def setInput(self, value, port=0):
@@ -123,6 +121,10 @@ class KalmanFilter(Block):
         y[k] = C*x[k] + v[k]              (measurement model)
 
     where w ~ N(0, Q) and v ~ N(0, R).
+
+    Note: As a discrete-time filter, updates only occur on the final
+    integration pass (State.ready=1) to prevent multi-pass corruption
+    when using RK4 or other multi-step integrators.
     """
 
     def __init__(self, A=None, B=None, C=None, Q=None, R=None, initial_state=None, initial_P=None):
@@ -154,8 +156,10 @@ class KalmanFilter(Block):
             self.R = np.eye(self.p) * (self.R.flatten()[0] if self.R.size > 0 else 0.1)
 
         # State estimate and covariance
-        self.x_hat = np.array(initial_state) if initial_state is not None else np.zeros(self.n)
-        self.P = np.array(initial_P) if initial_P is not None else np.eye(self.n)
+        self._initial_state = np.array(initial_state) if initial_state is not None else np.zeros(self.n)
+        self._initial_P = np.array(initial_P) if initial_P is not None else np.eye(self.n)
+        self.x_hat = self._initial_state.copy()
+        self.P = self._initial_P.copy()
 
         # Inputs: [u, y]
         self.inputs = [0.0, 0.0]
@@ -164,8 +168,8 @@ class KalmanFilter(Block):
         self.output = 0.0
 
     def init(self):
-        self.x_hat = np.zeros(self.n)
-        self.P = np.eye(self.n)
+        self.x_hat = self._initial_state.copy()
+        self.P = self._initial_P.copy()
 
     def setInput(self, value, port=0):
         if port < 2:
@@ -177,10 +181,16 @@ class KalmanFilter(Block):
             self.input_source_ports[port] = source_port
 
     def update(self):
+        # Read inputs on every pass for proper signal propagation
         for i, block in enumerate(self.input_blocks):
             if block is not None:
                 source_port = self.input_source_ports[i] if i < len(self.input_source_ports) else 0
                 self.inputs[i] = block.getOutput(source_port)
+
+        # Only update state on final integration pass to prevent multi-pass corruption
+        # For RK4, update() is called 4 times per timestep - we only want to update once
+        if not State.ready:
+            return
 
         u = np.array([self.inputs[0]]).reshape(-1, 1)
         y = np.array([self.inputs[1]]).reshape(-1, 1)
@@ -235,6 +245,9 @@ class ExtendedKalmanFilter(Block):
     Note: This is a simplified implementation that assumes the user
     provides linearized A and C matrices that are updated externally,
     or uses a simple integrator model internally.
+
+    As a discrete-time filter, updates only occur on the final
+    integration pass (State.ready=1) to prevent multi-pass corruption.
     """
 
     def __init__(self, n_states=1, Q=None, R=None, initial_state=None):
@@ -252,7 +265,8 @@ class ExtendedKalmanFilter(Block):
             self.R = np.array([[self.R[0]]])
 
         # State estimate
-        self.x_hat = np.array(initial_state) if initial_state is not None else np.zeros(self.n)
+        self._initial_state = np.array(initial_state) if initial_state is not None else np.zeros(self.n)
+        self.x_hat = self._initial_state.copy()
         self.P = np.eye(self.n)
 
         # For simple integrator model: x_dot = u
@@ -266,7 +280,7 @@ class ExtendedKalmanFilter(Block):
         self.output = 0.0
 
     def init(self):
-        self.x_hat = np.zeros(self.n)
+        self.x_hat = self._initial_state.copy()
         self.P = np.eye(self.n)
 
     def setInput(self, value, port=0):
@@ -279,10 +293,15 @@ class ExtendedKalmanFilter(Block):
             self.input_source_ports[port] = source_port
 
     def update(self):
+        # Read inputs on every pass for proper signal propagation
         for i, block in enumerate(self.input_blocks):
             if block is not None:
                 source_port = self.input_source_ports[i] if i < len(self.input_source_ports) else 0
                 self.inputs[i] = block.getOutput(source_port)
+
+        # Only update state on final integration pass to prevent multi-pass corruption
+        if not State.ready:
+            return
 
         u = self.inputs[0]
         y = np.array([self.inputs[1]]).reshape(-1, 1)
