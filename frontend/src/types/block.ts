@@ -43,11 +43,14 @@ export interface BlockDefinition {
   icon?: string
 }
 
+export type BlockRotation = 0 | 90 | 180 | 270
+
 export interface BlockInstance {
   id: string
   type: string
   name: string
   position: { x: number; y: number }
+  rotation?: BlockRotation
   parameters: Record<string, unknown>
   inputPorts: Port[]
   outputPorts: Port[]

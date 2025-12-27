@@ -6,6 +6,7 @@ import { PropertiesPanel } from './components/Properties/PropertiesPanel'
 import { Toolbar } from './components/Toolbar/Toolbar'
 import { PlotWindowManager } from './components/Simulation/PlotWindowManager'
 import { ToastContainer } from './components/Toast/Toast'
+import { SettingsModal } from './components/Settings/SettingsModal'
 import { useUIStore } from './store/uiStore'
 
 import '@xyflow/react/dist/style.css'
@@ -55,6 +56,9 @@ function App() {
 
         {/* Toast Notifications */}
         <ToastContainer />
+
+        {/* Settings Modal */}
+        <SettingsModal />
       </div>
     </ReactFlowProvider>
   )

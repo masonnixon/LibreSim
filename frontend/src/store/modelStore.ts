@@ -67,10 +67,17 @@ interface SubsystemPathItem {
   name: string
 }
 
+// Maximum number of undo states to keep
+const MAX_HISTORY_SIZE = 50
+
 interface ModelState {
   // Current model
   model: Model | null
   isDirty: boolean
+
+  // Undo/Redo history
+  history: Model[]
+  future: Model[]
 
   // Subsystem navigation - path of subsystem IDs from root to current view
   currentPath: SubsystemPathItem[]
@@ -116,6 +123,17 @@ interface ModelState {
   // Config
   updateSimulationConfig: (config: Partial<SimulationConfig>) => void
   updateMetadata: (metadata: Partial<ModelMetadata>) => void
+
+  // Layout operations
+  spreadBlocks: (factor: number) => void
+  rotateSelectedBlocks: () => void
+
+  // Undo/Redo operations
+  pushHistory: () => void
+  undo: () => void
+  redo: () => void
+  canUndo: () => boolean
+  canRedo: () => boolean
 }
 
 const defaultSimulationConfig: SimulationConfig = {
@@ -271,6 +289,8 @@ function removeConnectionInHierarchy(
 export const useModelStore = create<ModelState>((set, get) => ({
   model: null,
   isDirty: false,
+  history: [],
+  future: [],
   currentPath: [],
   selectedBlockIds: [],
   selectedConnectionIds: [],
@@ -912,6 +932,175 @@ export const useModelStore = create<ModelState>((set, get) => ({
       isDirty: true,
     })
   },
+
+  spreadBlocks: (factor: number) => {
+    const { model, currentPath, selectedBlockIds } = get()
+    if (!model) return
+
+    // Get current level blocks
+    const currentBlocks = get().getCurrentBlocks()
+    if (currentBlocks.length === 0) return
+
+    // Determine which blocks to spread: selected blocks or all blocks
+    const blocksToSpread = selectedBlockIds.length > 0
+      ? currentBlocks.filter(b => selectedBlockIds.includes(b.id))
+      : currentBlocks
+
+    if (blocksToSpread.length < 2) return // Need at least 2 blocks to spread
+
+    // Calculate centroid of the blocks to spread
+    const cx = blocksToSpread.reduce((sum, b) => sum + b.position.x, 0) / blocksToSpread.length
+    const cy = blocksToSpread.reduce((sum, b) => sum + b.position.y, 0) / blocksToSpread.length
+
+    // Scale positions relative to centroid
+    const blockIdsToSpread = new Set(blocksToSpread.map(b => b.id))
+
+    const updatePositions = (blocks: BlockInstance[]): BlockInstance[] => {
+      return blocks.map(b => {
+        if (blockIdsToSpread.has(b.id)) {
+          const newX = cx + (b.position.x - cx) * factor
+          const newY = cy + (b.position.y - cy) * factor
+          return { ...b, position: { x: newX, y: newY } }
+        }
+        return b
+      })
+    }
+
+    if (currentPath.length === 0) {
+      // At root level
+      set({
+        model: { ...model, blocks: updatePositions(model.blocks) },
+        isDirty: true,
+      })
+    } else {
+      // Inside a subsystem - need to update blocks within the subsystem
+      const updateSubsystemBlocks = (blocks: BlockInstance[], path: SubsystemPathItem[]): BlockInstance[] => {
+        if (path.length === 0) return blocks
+
+        const [first, ...rest] = path
+        return blocks.map(b => {
+          if (b.id === first.id && b.type === 'subsystem' && b.children) {
+            if (rest.length === 0) {
+              // This is the target subsystem
+              return { ...b, children: updatePositions(b.children) }
+            } else {
+              // Go deeper
+              return { ...b, children: updateSubsystemBlocks(b.children, rest) }
+            }
+          }
+          return b
+        })
+      }
+
+      set({
+        model: { ...model, blocks: updateSubsystemBlocks(model.blocks, currentPath) },
+        isDirty: true,
+      })
+    }
+  },
+
+  rotateSelectedBlocks: () => {
+    const { model, currentPath, selectedBlockIds } = get()
+    if (!model || selectedBlockIds.length === 0) return
+
+    // Rotate selected blocks 90 degrees clockwise
+    const rotateBlock = (block: BlockInstance): BlockInstance => {
+      if (!selectedBlockIds.includes(block.id)) return block
+      const currentRotation = block.rotation || 0
+      const newRotation = ((currentRotation + 90) % 360) as 0 | 90 | 180 | 270
+      return { ...block, rotation: newRotation }
+    }
+
+    if (currentPath.length === 0) {
+      // At root level
+      set({
+        model: { ...model, blocks: model.blocks.map(rotateBlock) },
+        isDirty: true,
+      })
+    } else {
+      // Inside a subsystem - need to update blocks within the subsystem
+      const updateSubsystemBlocks = (blocks: BlockInstance[], path: SubsystemPathItem[]): BlockInstance[] => {
+        if (path.length === 0) return blocks
+
+        const [first, ...rest] = path
+        return blocks.map(b => {
+          if (b.id === first.id && b.type === 'subsystem' && b.children) {
+            if (rest.length === 0) {
+              // This is the target subsystem
+              return { ...b, children: b.children.map(rotateBlock) }
+            } else {
+              // Go deeper
+              return { ...b, children: updateSubsystemBlocks(b.children, rest) }
+            }
+          }
+          return b
+        })
+      }
+
+      set({
+        model: { ...model, blocks: updateSubsystemBlocks(model.blocks, currentPath) },
+        isDirty: true,
+      })
+    }
+  },
+
+  // Undo/Redo implementation
+  pushHistory: () => {
+    const { model, history } = get()
+    if (!model) return
+
+    // Deep copy current model state
+    const snapshot = JSON.parse(JSON.stringify(model)) as Model
+
+    // Add to history, trim if exceeds max size
+    const newHistory = [...history, snapshot].slice(-MAX_HISTORY_SIZE)
+
+    // Clear future when new action is taken (standard undo/redo behavior)
+    set({ history: newHistory, future: [] })
+  },
+
+  undo: () => {
+    const { model, history, future } = get()
+    if (history.length === 0 || !model) return
+
+    // Pop the last state from history
+    const newHistory = [...history]
+    const previousState = newHistory.pop()!
+
+    // Push current state to future for redo
+    const currentSnapshot = JSON.parse(JSON.stringify(model)) as Model
+    const newFuture = [...future, currentSnapshot]
+
+    set({
+      model: previousState,
+      history: newHistory,
+      future: newFuture,
+      isDirty: true,
+    })
+  },
+
+  redo: () => {
+    const { model, history, future } = get()
+    if (future.length === 0 || !model) return
+
+    // Pop the last state from future
+    const newFuture = [...future]
+    const nextState = newFuture.pop()!
+
+    // Push current state to history
+    const currentSnapshot = JSON.parse(JSON.stringify(model)) as Model
+    const newHistory = [...history, currentSnapshot]
+
+    set({
+      model: nextState,
+      history: newHistory,
+      future: newFuture,
+      isDirty: true,
+    })
+  },
+
+  canUndo: () => get().history.length > 0,
+  canRedo: () => get().future.length > 0,
 
   createSubsystem: (blockIds: string[], name?: string) => {
     const { model } = get()

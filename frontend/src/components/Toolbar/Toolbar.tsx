@@ -33,7 +33,7 @@ function findAllScopeBlockIds(blocks: BlockInstance[], parentPath: string = ''):
 const STORAGE_KEY = 'libresim_last_model'
 
 export function Toolbar() {
-  const { model, isDirty, createNewModel, saveModel, loadModel } = useModelStore()
+  const { model, isDirty, createNewModel, saveModel, loadModel, undo, redo, canUndo, canRedo } = useModelStore()
   const { state: simState, setStatus, setProgress, setResults, setError, clearResults } = useSimulationStore()
   const {
     toggleProperties,
@@ -43,6 +43,7 @@ export function Toolbar() {
     plotWindows,
     closeAllPlotWindows,
     openPlotWindow,
+    openSettingsModal,
   } = useUIStore()
   const importLibrary = useLibraryStore((state) => state.importLibrary)
 
@@ -480,14 +481,22 @@ export function Toolbar() {
       <div className="dropdown-item" onClick={() => { handleTogglePlotWindows(); setShowMobileMenu(false) }}>
         {hasOpenPlotWindows ? 'Hide Scopes' : 'Show Scopes'}
       </div>
+      <div className="dropdown-item" onClick={() => { openSettingsModal(); setShowMobileMenu(false) }}>
+        Settings
+      </div>
     </div>
   )
 
   return (
     <div className="h-12 bg-editor-surface border-b border-editor-border flex items-center px-2 md:px-4 gap-1 md:gap-2">
-      {/* Logo/Title */}
+      {/* Logo/Title and Model Name */}
       <div className="flex items-center gap-2 pr-2 md:pr-4 border-r border-editor-border">
         <span className="font-bold text-lg text-blue-400">LibreSim</span>
+        <span className="text-gray-500 hidden sm:inline">|</span>
+        <span className="text-gray-300 text-sm hidden sm:inline truncate max-w-[200px]" title={model?.metadata?.name || 'Untitled'}>
+          {model?.metadata?.name || 'Untitled'}
+          {isDirty && <span className="text-yellow-400 ml-1">*</span>}
+        </span>
       </div>
 
       {/* Hidden file inputs */}
@@ -539,6 +548,27 @@ export function Toolbar() {
               title="Save Model"
             >
               Save{isDirty ? '*' : ''}
+            </button>
+            <div className="w-px h-5 bg-editor-border mx-1" />
+            <button
+              onClick={undo}
+              disabled={!canUndo()}
+              className="p-1.5 hover:bg-editor-border rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Undo (Ctrl+Z)"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+              </svg>
+            </button>
+            <button
+              onClick={redo}
+              disabled={!canRedo()}
+              className="p-1.5 hover:bg-editor-border rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Redo (Ctrl+Y)"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6" />
+              </svg>
             </button>
             <div className="relative">
               <button
@@ -764,6 +794,16 @@ export function Toolbar() {
               title={hasOpenPlotWindows ? 'Close All Plot Windows' : 'Open Plot Windows'}
             >
               Scopes {hasOpenPlotWindows ? `(${Object.keys(plotWindows).length})` : ''}
+            </button>
+            <button
+              onClick={openSettingsModal}
+              className="px-3 py-1.5 text-sm rounded transition-colors hover:bg-editor-border flex items-center gap-1"
+              title="Settings"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
             </button>
           </div>
         </>

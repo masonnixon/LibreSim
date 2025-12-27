@@ -191,6 +191,11 @@ export function Editor() {
     navigateToPath,
     getCurrentBlocks,
     getCurrentConnections,
+    spreadBlocks,
+    rotateSelectedBlocks,
+    undo,
+    redo,
+    pushHistory,
   } = useModelStore()
   const { draggingBlockType, setDraggingBlockType } = useUIStore()
 
@@ -356,6 +361,14 @@ export function Editor() {
   }, [model, currentBlocks, currentConnections, selectedEdgeId, selectedBlockIds, setNodes, setEdges])
 
   // Sync React Flow state back to model store
+  const onNodeDragStart = useCallback(
+    () => {
+      // Push history when drag starts so we can undo the move
+      pushHistory()
+    },
+    [pushHistory]
+  )
+
   const onNodeDragStop = useCallback(
     (_: React.MouseEvent, node: Node) => {
       updateBlockPosition(node.id, node.position)
@@ -366,6 +379,8 @@ export function Editor() {
   const onConnect: OnConnect = useCallback(
     (params: Connection) => {
       if (params.source && params.target && params.sourceHandle && params.targetHandle) {
+        // Push history before adding connection
+        pushHistory()
         // Add connection to model - the useEffect will sync edges automatically
         addConnection({
           sourceBlockId: params.source,
@@ -375,7 +390,7 @@ export function Editor() {
         })
       }
     },
-    [addConnection]
+    [addConnection, pushHistory]
   )
 
   // Handle connection end for auto-expanding Scope inputs
@@ -530,11 +545,13 @@ export function Editor() {
         y: event.clientY,
       })
 
+      // Push history before adding block
+      pushHistory()
       // Add block to model - the useEffect will sync nodes automatically
       addBlock(definition, position)
       setDraggingBlockType(null)
     },
-    [draggingBlockType, screenToFlowPosition, addBlock, setDraggingBlockType]
+    [draggingBlockType, screenToFlowPosition, addBlock, setDraggingBlockType, pushHistory]
   )
 
   const nodeTypes: NodeTypes = useMemo(
@@ -633,6 +650,11 @@ export function Editor() {
       if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault()
 
+        // Push history before deletion
+        if (selectedBlockIds.length > 0 || selectedEdgeId) {
+          pushHistory()
+        }
+
         // Delete selected blocks
         if (selectedBlockIds.length > 0) {
           selectedBlockIds.forEach(blockId => removeBlock(blockId))
@@ -650,6 +672,45 @@ export function Editor() {
         e.preventDefault()
         const allBlockIds = currentBlocks.map(b => b.id)
         selectBlocks(allBlockIds)
+      }
+
+      // Ctrl+S - Save model
+      if (isCtrlOrCmd && e.key === 's') {
+        e.preventDefault()
+        useModelStore.getState().saveModel()
+      }
+
+      // Ctrl+] - Spread blocks apart by 5%
+      if (isCtrlOrCmd && e.key === ']') {
+        e.preventDefault()
+        pushHistory()
+        spreadBlocks(1.05)
+      }
+
+      // Ctrl+[ - Retract blocks closer by 5%
+      if (isCtrlOrCmd && e.key === '[') {
+        e.preventDefault()
+        pushHistory()
+        spreadBlocks(0.95)
+      }
+
+      // Ctrl+R - Rotate selected blocks 90 degrees clockwise
+      if (isCtrlOrCmd && e.key === 'r') {
+        e.preventDefault()
+        pushHistory()
+        rotateSelectedBlocks()
+      }
+
+      // Ctrl+Z - Undo
+      if (isCtrlOrCmd && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault()
+        undo()
+      }
+
+      // Ctrl+Y or Ctrl+Shift+Z - Redo
+      if (isCtrlOrCmd && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault()
+        redo()
       }
 
       // Ctrl+C - Copy selected blocks and their internal connections
@@ -683,6 +744,7 @@ export function Editor() {
       if (isCtrlOrCmd && e.key === 'v') {
         e.preventDefault()
         if (clipboard.blocks.length > 0) {
+          pushHistory()
           // Calculate offset for pasted blocks (paste slightly offset from original)
           const pasteOffset = { x: 50, y: 50 }
 
@@ -799,6 +861,11 @@ export function Editor() {
     selectBlocks,
     addBlock,
     addConnection,
+    spreadBlocks,
+    rotateSelectedBlocks,
+    undo,
+    redo,
+    pushHistory,
   ])
 
   if (!model) {
@@ -821,6 +888,7 @@ export function Editor() {
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onConnectEnd={onConnectEnd}
+        onNodeDragStart={onNodeDragStart}
         onNodeDragStop={onNodeDragStop}
         onNodesDelete={onNodesDelete}
         onEdgesDelete={onEdgesDelete}

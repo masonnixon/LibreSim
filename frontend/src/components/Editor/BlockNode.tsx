@@ -1,6 +1,6 @@
 import { memo } from 'react'
 import { Handle, Position, NodeProps, Node } from '@xyflow/react'
-import type { BlockInstance, BlockDefinition } from '../../types/block'
+import type { BlockInstance, BlockDefinition, BlockRotation } from '../../types/block'
 
 interface BlockNodeData extends Record<string, unknown> {
   block: BlockInstance
@@ -9,12 +9,27 @@ interface BlockNodeData extends Record<string, unknown> {
 
 type BlockNode = Node<BlockNodeData, 'blockNode'>
 
+// Get handle position based on rotation
+function getRotatedPosition(basePosition: Position, rotation: BlockRotation): Position {
+  const rotationMap: Record<BlockRotation, Record<Position, Position>> = {
+    0: { [Position.Left]: Position.Left, [Position.Right]: Position.Right, [Position.Top]: Position.Top, [Position.Bottom]: Position.Bottom },
+    90: { [Position.Left]: Position.Top, [Position.Right]: Position.Bottom, [Position.Top]: Position.Right, [Position.Bottom]: Position.Left },
+    180: { [Position.Left]: Position.Right, [Position.Right]: Position.Left, [Position.Top]: Position.Bottom, [Position.Bottom]: Position.Top },
+    270: { [Position.Left]: Position.Bottom, [Position.Right]: Position.Top, [Position.Top]: Position.Left, [Position.Bottom]: Position.Right },
+  }
+  return rotationMap[rotation][basePosition]
+}
+
 function BlockNodeComponent({ data, selected }: NodeProps<BlockNode>) {
   const { block, definition } = data
 
   if (!block || !definition) {
     return <div className="p-2 bg-red-500 text-white rounded">Invalid Block</div>
   }
+
+  const rotation = block.rotation || 0
+  const inputPosition = getRotatedPosition(Position.Left, rotation)
+  const outputPosition = getRotatedPosition(Position.Right, rotation)
 
   // Get dynamic icon based on block type and parameters
   const getDynamicIcon = () => {
@@ -57,6 +72,21 @@ function BlockNodeComponent({ data, selected }: NodeProps<BlockNode>) {
     }
   }
 
+  // Calculate handle position style based on orientation (horizontal vs vertical)
+  const getHandleStyle = (index: number, total: number, position: Position) => {
+    const percentage = ((index + 1) / (total + 1)) * 100
+    const baseStyle = {
+      background: '#1e1e2e',
+      border: '2px solid #cdd6f4',
+    }
+
+    if (position === Position.Left || position === Position.Right) {
+      return { ...baseStyle, top: `${percentage}%` }
+    } else {
+      return { ...baseStyle, left: `${percentage}%` }
+    }
+  }
+
   return (
     <div
       className={`
@@ -64,25 +94,22 @@ function BlockNodeComponent({ data, selected }: NodeProps<BlockNode>) {
         ${getCategoryClass()}
         ${selected ? 'ring-2 ring-white ring-opacity-50' : ''}
       `}
+      style={{ transform: `rotate(${rotation}deg)` }}
     >
       {/* Input Handles */}
       {block.inputPorts.map((port, index) => (
         <Handle
           key={port.id}
           type="target"
-          position={Position.Left}
+          position={inputPosition}
           id={port.id}
-          style={{
-            top: `${((index + 1) / (block.inputPorts.length + 1)) * 100}%`,
-            background: '#1e1e2e',
-            border: '2px solid #cdd6f4',
-          }}
+          style={getHandleStyle(index, block.inputPorts.length, inputPosition)}
           title={port.name}
         />
       ))}
 
-      {/* Block Content */}
-      <div className="text-center text-gray-900">
+      {/* Block Content - counter-rotate to keep text upright */}
+      <div className="text-center text-gray-900" style={{ transform: `rotate(${-rotation}deg)` }}>
         <div className="font-semibold text-sm truncate max-w-[120px]">{block.name}</div>
         {displayIcon && <div className="text-lg mt-1">{displayIcon}</div>}
       </div>
@@ -92,13 +119,9 @@ function BlockNodeComponent({ data, selected }: NodeProps<BlockNode>) {
         <Handle
           key={port.id}
           type="source"
-          position={Position.Right}
+          position={outputPosition}
           id={port.id}
-          style={{
-            top: `${((index + 1) / (block.outputPorts.length + 1)) * 100}%`,
-            background: '#1e1e2e',
-            border: '2px solid #cdd6f4',
-          }}
+          style={getHandleStyle(index, block.outputPorts.length, outputPosition)}
           title={port.name}
         />
       ))}
@@ -124,6 +147,7 @@ function arePropsEqual(
   if (prevBlock.id !== nextBlock.id) return false
   if (prevBlock.name !== nextBlock.name) return false
   if (prevBlock.type !== nextBlock.type) return false
+  if (prevBlock.rotation !== nextBlock.rotation) return false
 
   // Check if parameters changed (simple JSON comparison for now)
   if (JSON.stringify(prevBlock.parameters) !== JSON.stringify(nextBlock.parameters)) return false

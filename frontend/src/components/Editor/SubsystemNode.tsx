@@ -1,8 +1,19 @@
 import { memo, useCallback, useMemo } from 'react'
 import { Handle, Position, NodeProps, Node } from '@xyflow/react'
-import type { BlockInstance, BlockDefinition, Connection } from '../../types/block'
+import type { BlockInstance, BlockDefinition, Connection, BlockRotation } from '../../types/block'
 import { useModelStore } from '../../store/modelStore'
 import { blockRegistry } from '../../blocks'
+
+// Get handle position based on rotation
+function getRotatedPosition(basePosition: Position, rotation: BlockRotation): Position {
+  const rotationMap: Record<BlockRotation, Record<Position, Position>> = {
+    0: { [Position.Left]: Position.Left, [Position.Right]: Position.Right, [Position.Top]: Position.Top, [Position.Bottom]: Position.Bottom },
+    90: { [Position.Left]: Position.Top, [Position.Right]: Position.Bottom, [Position.Top]: Position.Right, [Position.Bottom]: Position.Left },
+    180: { [Position.Left]: Position.Right, [Position.Right]: Position.Left, [Position.Top]: Position.Bottom, [Position.Bottom]: Position.Top },
+    270: { [Position.Left]: Position.Bottom, [Position.Right]: Position.Top, [Position.Top]: Position.Left, [Position.Bottom]: Position.Right },
+  }
+  return rotationMap[rotation][basePosition]
+}
 
 interface SubsystemNodeData extends Record<string, unknown> {
   block: BlockInstance
@@ -211,6 +222,26 @@ function SubsystemNodeComponent({ data, selected }: NodeProps<SubsystemNode>) {
   }
 
   const isExpanded = block.isExpanded
+  const rotation = block.rotation || 0
+  const inputPosition = getRotatedPosition(Position.Left, rotation)
+  const outputPosition = getRotatedPosition(Position.Right, rotation)
+
+  // Calculate handle position style based on orientation (horizontal vs vertical)
+  const getHandleStyle = (index: number, total: number, position: Position) => {
+    const percentage = ((index + 1) / (total + 1)) * 100
+    const baseStyle = {
+      background: '#0891b2',
+      border: '2px solid #22d3ee',
+      width: 10,
+      height: 10,
+    }
+
+    if (position === Position.Left || position === Position.Right) {
+      return { ...baseStyle, top: `${percentage}%` }
+    } else {
+      return { ...baseStyle, left: `${percentage}%` }
+    }
+  }
 
   return (
     <div
@@ -220,6 +251,7 @@ function SubsystemNodeComponent({ data, selected }: NodeProps<SubsystemNode>) {
         border-2 border-slate-500
         ${selected ? 'ring-2 ring-cyan-400 ring-opacity-70' : ''}
       `}
+      style={{ transform: `rotate(${rotation}deg)` }}
       onDoubleClick={handleDoubleClick}
     >
       {/* Input Handles */}
@@ -227,21 +259,15 @@ function SubsystemNodeComponent({ data, selected }: NodeProps<SubsystemNode>) {
         <Handle
           key={port.id}
           type="target"
-          position={Position.Left}
+          position={inputPosition}
           id={port.id}
-          style={{
-            top: `${((index + 1) / (block.inputPorts.length + 1)) * 100}%`,
-            background: '#0891b2',
-            border: '2px solid #22d3ee',
-            width: 10,
-            height: 10,
-          }}
+          style={getHandleStyle(index, block.inputPorts.length, inputPosition)}
           title={port.name}
         />
       ))}
 
-      {/* Block Content */}
-      <div className="px-3 py-2">
+      {/* Block Content - counter-rotate to keep text upright */}
+      <div className="px-3 py-2" style={{ transform: `rotate(${-rotation}deg)` }}>
         {/* Header */}
         <div className="flex items-center justify-between mb-1">
           <div className="text-[10px] text-slate-400 uppercase tracking-wide">Subsystem</div>
@@ -281,15 +307,9 @@ function SubsystemNodeComponent({ data, selected }: NodeProps<SubsystemNode>) {
         <Handle
           key={port.id}
           type="source"
-          position={Position.Right}
+          position={outputPosition}
           id={port.id}
-          style={{
-            top: `${((index + 1) / (block.outputPorts.length + 1)) * 100}%`,
-            background: '#0891b2',
-            border: '2px solid #22d3ee',
-            width: 10,
-            height: 10,
-          }}
+          style={getHandleStyle(index, block.outputPorts.length, outputPosition)}
           title={port.name}
         />
       ))}
@@ -315,6 +335,7 @@ function arePropsEqual(
   if (prevBlock.id !== nextBlock.id) return false
   if (prevBlock.name !== nextBlock.name) return false
   if (prevBlock.isExpanded !== nextBlock.isExpanded) return false
+  if (prevBlock.rotation !== nextBlock.rotation) return false
 
   // Check if parameters changed
   if (JSON.stringify(prevBlock.parameters) !== JSON.stringify(nextBlock.parameters)) return false
