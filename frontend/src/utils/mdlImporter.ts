@@ -788,6 +788,17 @@ function convertBlockParameters(block: ParsedBlock, libreSimType: string): Recor
       }
       break
 
+    case 'trigonometry':
+      // MDL Trigonometry block uses 'Operator' property, LibreSim uses 'function' parameter
+      if (block.Operator !== undefined) params.function = String(block.Operator).toLowerCase()
+      else if (block.Function !== undefined) params.function = String(block.Function).toLowerCase()
+      // Default to sin function if not specified
+      if (params.function === undefined) {
+        console.log('[MDL Import] trigonometry block properties (no function found):', Object.keys(block))
+        params.function = 'sin' // Default function
+      }
+      break
+
     case 'reshape':
       // Handle various property names for reshape parameters
       if (block.OutputDimensionality !== undefined) params.outputDimensionality = String(block.OutputDimensionality)

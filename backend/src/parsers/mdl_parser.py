@@ -65,6 +65,13 @@ class MDLParser:
         "Switch": "switch",
         "Goto": "goto",
         "From": "from",
+        "Trigonometry": "trigonometry",
+        "Math": "math_function",
+        "Fcn": "math_function",
+        "Sign": "sign",
+        "DeadZone": "dead_zone",
+        "Sqrt": "sqrt",
+        "MinMax": "minmax",
     }
 
     def __init__(self):
@@ -364,6 +371,13 @@ class MDLParser:
                 "UpperLimit": "upperLimit",
                 "LowerLimit": "lowerLimit",
             },
+            "trigonometry": {"Operator": "function", "Function": "function"},
+            "math_function": {"Operator": "function", "Function": "function"},
+            "dead_zone": {
+                "LowerValue": "lowerLimit",
+                "UpperValue": "upperLimit",
+            },
+            "minmax": {"Function": "function"},
         }
 
         type_params = param_map.get(block_type, {})

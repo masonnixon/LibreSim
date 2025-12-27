@@ -195,6 +195,12 @@ class TestMDLParser:
         assert MDLParser.BLOCK_TYPE_MAP["Sum"] == "sum"
         assert MDLParser.BLOCK_TYPE_MAP["Integrator"] == "integrator"
         assert MDLParser.BLOCK_TYPE_MAP["Scope"] == "scope"
+        # Math blocks
+        assert MDLParser.BLOCK_TYPE_MAP["Trigonometry"] == "trigonometry"
+        assert MDLParser.BLOCK_TYPE_MAP["Math"] == "math_function"
+        assert MDLParser.BLOCK_TYPE_MAP["Sign"] == "sign"
+        assert MDLParser.BLOCK_TYPE_MAP["DeadZone"] == "dead_zone"
+        assert MDLParser.BLOCK_TYPE_MAP["MinMax"] == "minmax"
 
     def test_create_ports_constant(self):
         """Test creating ports for constant block."""
@@ -263,6 +269,39 @@ class TestMDLParser:
         assert params.get("stepTime") == 1.0
         assert params.get("initialValue") == 0.0
         assert params.get("finalValue") == 1.0
+
+    def test_extract_parameters_trigonometry_operator(self):
+        """Test extracting parameters for trigonometry block with Operator."""
+        parser = MDLParser()
+        block_data = {"Operator": "cos"}
+
+        params = parser._extract_parameters(block_data, "trigonometry")
+        assert params.get("function") == "cos"
+
+    def test_extract_parameters_trigonometry_function(self):
+        """Test extracting parameters for trigonometry block with Function."""
+        parser = MDLParser()
+        block_data = {"Function": "sin"}
+
+        params = parser._extract_parameters(block_data, "trigonometry")
+        assert params.get("function") == "sin"
+
+    def test_extract_parameters_math_function(self):
+        """Test extracting parameters for math_function block."""
+        parser = MDLParser()
+        block_data = {"Operator": "exp"}
+
+        params = parser._extract_parameters(block_data, "math_function")
+        assert params.get("function") == "exp"
+
+    def test_extract_parameters_dead_zone(self):
+        """Test extracting parameters for dead_zone block."""
+        parser = MDLParser()
+        block_data = {"LowerValue": "-0.5", "UpperValue": "0.5"}
+
+        params = parser._extract_parameters(block_data, "dead_zone")
+        assert params.get("lowerLimit") == -0.5
+        assert params.get("upperLimit") == 0.5
 
     def test_extract_parameters_unknown_type(self):
         """Test extracting parameters for unknown type."""
