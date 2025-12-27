@@ -4,26 +4,70 @@ from ..block import Block
 
 
 class Integrator(Block):
-    """Integrator block - integrates input signal."""
+    """Integrator block - integrates input signal.
+
+    Supports both scalar and vector inputs. For vector inputs, each element
+    is integrated independently with its own state.
+    """
 
     def __init__(self, initial_condition=0.0, limit_output=False,
                  upper_limit=float('inf'), lower_limit=float('-inf')):
         super().__init__()
-        self.initial_condition = initial_condition
         self.limit_output = limit_output
         self.upper_limit = upper_limit
         self.lower_limit = lower_limit
         self.input = 0.0
         self.input_block = None
         self.input_source_port = 0
-        self.x = self.addIntegrator([initial_condition, 0.0])
+
+        # Handle vector or scalar initial condition
+        if isinstance(initial_condition, (list, tuple)):
+            self._is_vector = True
+            self._n = len(initial_condition)
+            self.initial_condition = list(initial_condition)
+            # Create integrator states for each element
+            self._states = [self.addIntegrator([ic, 0.0]) for ic in initial_condition]
+            self._input_vector = [0.0] * self._n
+        else:
+            self._is_vector = False
+            self._n = 1
+            self.initial_condition = initial_condition
+            self.x = self.addIntegrator([initial_condition, 0.0])
+            self._states = None
+            self._input_vector = None
 
     def init(self):
-        self.x[0] = self.initial_condition
-        self.x[1] = 0.0
+        if self._is_vector and self._states:
+            for i, state in enumerate(self._states):
+                ic = self.initial_condition[i] if isinstance(self.initial_condition, list) and i < len(self.initial_condition) else 0.0
+                state[0] = ic
+                state[1] = 0.0
+            self._input_vector = [0.0] * self._n
+        elif hasattr(self, 'x'):
+            ic = self.initial_condition if not isinstance(self.initial_condition, list) else self.initial_condition[0]
+            self.x[0] = ic
+            self.x[1] = 0.0
 
     def setInput(self, value, port=0):
-        self.input = value
+        if isinstance(value, (list, tuple)):
+            self._setup_vector_mode(len(value))
+            for i, v in enumerate(value):
+                if i < len(self._input_vector):
+                    self._input_vector[i] = v
+        else:
+            self.input = value
+
+    def _setup_vector_mode(self, n):
+        """Set up vector mode with n elements if not already configured."""
+        if not self._is_vector or self._n != n:
+            self._is_vector = True
+            self._n = n
+            self._input_vector = [0.0] * n
+            # Create integrator states
+            if isinstance(self.initial_condition, list):
+                self._states = [self.addIntegrator([self.initial_condition[i] if i < len(self.initial_condition) else 0.0, 0.0]) for i in range(n)]
+            else:
+                self._states = [self.addIntegrator([self.initial_condition if i == 0 else 0.0, 0.0]) for i in range(n)]
 
     def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
@@ -31,27 +75,71 @@ class Integrator(Block):
 
     def update(self):
         if self.input_block is not None:
-            self.input = self.input_block.getOutput(self.input_source_port)
+            # Check for vector output from connected block
+            if hasattr(self.input_block, 'getOutputVector'):
+                vec = self.input_block.getOutputVector()
+                if vec is not None:
+                    self._setup_vector_mode(len(vec))
+                    self._input_vector = list(vec)
+                else:
+                    self.input = self.input_block.getOutput(self.input_source_port)
+            else:
+                self.input = self.input_block.getOutput(self.input_source_port)
 
-        # Set derivative
-        self.x[1] = self.input
+        if self._is_vector and self._states:
+            # Vector integration
+            for i in range(self._n):
+                inp = self._input_vector[i] if self._input_vector and i < len(self._input_vector) else 0.0
+                self._states[i][1] = inp
 
-        # Apply limits if enabled
-        if self.limit_output:
-            if self.x[0] >= self.upper_limit and self.x[1] > 0 or self.x[0] <= self.lower_limit and self.x[1] < 0:
-                self.x[1] = 0.0
+                # Apply limits if enabled
+                if self.limit_output:
+                    if (self._states[i][0] >= self.upper_limit and self._states[i][1] > 0) or \
+                       (self._states[i][0] <= self.lower_limit and self._states[i][1] < 0):
+                        self._states[i][1] = 0.0
+        elif hasattr(self, 'x'):
+            # Scalar integration
+            self.x[1] = self.input
+
+            # Apply limits if enabled
+            if self.limit_output:
+                if (self.x[0] >= self.upper_limit and self.x[1] > 0) or \
+                   (self.x[0] <= self.lower_limit and self.x[1] < 0):
+                    self.x[1] = 0.0
 
     def getOutput(self, port=0):
-        output = self.x[0]
-        if self.limit_output:
-            output = max(self.lower_limit, min(self.upper_limit, output))
-        return output
+        if self._is_vector and self._states:
+            if port < len(self._states):
+                output = self._states[port][0]
+                if self.limit_output:
+                    output = max(self.lower_limit, min(self.upper_limit, output))
+                return output
+            return 0.0
+        elif hasattr(self, 'x'):
+            output = self.x[0]
+            if self.limit_output:
+                output = max(self.lower_limit, min(self.upper_limit, output))
+            return output
+        return 0.0
+
+    def getOutputVector(self):
+        """Get the full output vector. Returns None for scalar operation."""
+        if self._is_vector and self._states:
+            outputs = []
+            for state in self._states:
+                output = state[0]
+                if self.limit_output:
+                    output = max(self.lower_limit, min(self.upper_limit, output))
+                outputs.append(output)
+            return outputs
+        return None
 
 
 class Derivative(Block):
     """Derivative block - differentiates input signal.
 
     Uses filtered derivative: Ns/(s+N) to avoid noise amplification.
+    Supports both scalar and vector inputs.
     """
 
     def __init__(self, coefficient=100.0):
@@ -63,13 +151,41 @@ class Derivative(Block):
         self.x = self.addIntegrator([0.0, 0.0])
         self.output = 0.0
 
+        # Vector mode support
+        self._is_vector = False
+        self._n = 1
+        self._states = None
+        self._input_vector = None
+        self._output_vector = None
+
+    def _setup_vector_mode(self, n):
+        """Set up vector mode with n elements if not already configured."""
+        if not self._is_vector or self._n != n:
+            self._is_vector = True
+            self._n = n
+            self._input_vector = [0.0] * n
+            self._output_vector = [0.0] * n
+            # Create filter states for each element
+            self._states = [self.addIntegrator([0.0, 0.0]) for _ in range(n)]
+
     def init(self):
         self.x[0] = 0.0
         self.x[1] = 0.0
         self.output = 0.0
+        if self._is_vector and self._states:
+            for state in self._states:
+                state[0] = 0.0
+                state[1] = 0.0
+            self._output_vector = [0.0] * self._n
 
     def setInput(self, value, port=0):
-        self.input = value
+        if isinstance(value, (list, tuple)):
+            self._setup_vector_mode(len(value))
+            for i, v in enumerate(value):
+                if i < len(self._input_vector):
+                    self._input_vector[i] = v
+        else:
+            self.input = value
 
     def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
@@ -77,15 +193,44 @@ class Derivative(Block):
 
     def update(self):
         if self.input_block is not None:
-            self.input = self.input_block.getOutput(self.input_source_port)
+            # Check for vector output from connected block
+            if hasattr(self.input_block, 'getOutputVector'):
+                vec = self.input_block.getOutputVector()
+                if vec is not None:
+                    self._setup_vector_mode(len(vec))
+                    self._input_vector = list(vec)
+                else:
+                    self.input = self.input_block.getOutput(self.input_source_port)
+            else:
+                self.input = self.input_block.getOutput(self.input_source_port)
 
-        # Filtered derivative: y = N*(u - x), x' = y
-        # This implements transfer function Ns/(s+N)
-        self.output = self.coefficient * (self.input - self.x[0])
-        self.x[1] = self.output
+        if self._is_vector and self._states:
+            # Vector derivative
+            for i in range(self._n):
+                inp = self._input_vector[i] if self._input_vector and i < len(self._input_vector) else 0.0
+                # Filtered derivative: y = N*(u - x), x' = y
+                output = self.coefficient * (inp - self._states[i][0])
+                self._states[i][1] = output
+                self._output_vector[i] = output
+        else:
+            # Scalar derivative
+            # Filtered derivative: y = N*(u - x), x' = y
+            # This implements transfer function Ns/(s+N)
+            self.output = self.coefficient * (self.input - self.x[0])
+            self.x[1] = self.output
 
     def getOutput(self, port=0):
+        if self._is_vector and self._output_vector:
+            if port < len(self._output_vector):
+                return self._output_vector[port]
+            return 0.0
         return self.output
+
+    def getOutputVector(self):
+        """Get the full output vector. Returns None for scalar operation."""
+        if self._is_vector and self._output_vector:
+            return self._output_vector.copy()
+        return None
 
 
 class TransferFunction(Block):

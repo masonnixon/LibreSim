@@ -7,7 +7,11 @@ from ..state import State
 
 
 class Sum(Block):
-    """Sum block - add or subtract inputs."""
+    """Sum block - add or subtract inputs.
+
+    Supports both scalar and vector inputs. When vector inputs are detected,
+    performs element-wise addition/subtraction.
+    """
 
     def __init__(self, signs='++'):
         super().__init__()
@@ -16,10 +20,25 @@ class Sum(Block):
         self.inputs = [0.0] * self.num_inputs
         self.input_blocks = [None] * self.num_inputs
         self.output = 0.0
+        self._is_vector = False
+        self._output_vector = None
+        self._input_vectors = [None] * self.num_inputs
+
+    def init(self):
+        self.inputs = [0.0] * self.num_inputs
+        self.output = 0.0
+        self._is_vector = False
+        self._output_vector = None
+        self._input_vectors = [None] * self.num_inputs
 
     def setInput(self, value, port=0):
         if port < self.num_inputs:
-            self.inputs[port] = value
+            if isinstance(value, (list, tuple)):
+                self._input_vectors[port] = list(value)
+                self.inputs[port] = value[0] if value else 0.0
+            else:
+                self._input_vectors[port] = None
+                self.inputs[port] = value
 
     def connectInput(self, block, port=0):
         if port < self.num_inputs:
@@ -27,25 +46,72 @@ class Sum(Block):
 
     def update(self):
         # Get inputs from connected blocks
+        self._is_vector = False
+        max_len = 1
+
         for i, block in enumerate(self.input_blocks):
             if block is not None:
+                # Check for vector output
+                if hasattr(block, 'getOutputVector'):
+                    vec = block.getOutputVector()
+                    if vec is not None:
+                        self._input_vectors[i] = vec
+                        self.inputs[i] = vec[0] if vec else 0.0
+                        self._is_vector = True
+                        max_len = max(max_len, len(vec))
+                        continue
+                # Scalar output
+                self._input_vectors[i] = None
                 self.inputs[i] = block.getOutput()
+            elif self._input_vectors[i] is not None:
+                self._is_vector = True
+                max_len = max(max_len, len(self._input_vectors[i]))
 
-        # Compute sum
-        self.output = 0.0
-        for i, sign in enumerate(self.signs):
-            if i < len(self.inputs):
-                if sign == '+':
-                    self.output += self.inputs[i]
-                else:
-                    self.output -= self.inputs[i]
+        if self._is_vector:
+            # Vector sum
+            self._output_vector = [0.0] * max_len
+            for i, sign in enumerate(self.signs):
+                if i < self.num_inputs:
+                    sign_mult = 1.0 if sign == '+' else -1.0
+                    if self._input_vectors[i] is not None:
+                        for j in range(len(self._input_vectors[i])):
+                            if j < max_len:
+                                self._output_vector[j] += sign_mult * self._input_vectors[i][j]
+                    else:
+                        # Scalar input - add to first element only (or broadcast)
+                        self._output_vector[0] += sign_mult * self.inputs[i]
+            self.output = self._output_vector[0] if self._output_vector else 0.0
+        else:
+            # Scalar sum
+            self._output_vector = None
+            self.output = 0.0
+            for i, sign in enumerate(self.signs):
+                if i < len(self.inputs):
+                    if sign == '+':
+                        self.output += self.inputs[i]
+                    else:
+                        self.output -= self.inputs[i]
 
     def getOutput(self, port=0):
+        if self._is_vector and self._output_vector:
+            if port < len(self._output_vector):
+                return self._output_vector[port]
+            return 0.0
         return self.output
+
+    def getOutputVector(self):
+        """Get the full output vector. Returns None for scalar operation."""
+        if self._is_vector and self._output_vector:
+            return self._output_vector.copy()
+        return None
 
 
 class Gain(Block):
-    """Gain block - multiply input by constant."""
+    """Gain block - multiply input by constant.
+
+    Supports both scalar and vector inputs. For vector inputs,
+    multiplies each element by the gain value.
+    """
 
     def __init__(self, gain=1.0):
         super().__init__()
@@ -54,9 +120,26 @@ class Gain(Block):
         self.input_block = None
         self.input_source_port = 0
         self.output = 0.0
+        self._is_vector = False
+        self._input_vector = None
+        self._output_vector = None
+
+    def init(self):
+        self.input = 0.0
+        self.output = 0.0
+        self._is_vector = False
+        self._input_vector = None
+        self._output_vector = None
 
     def setInput(self, value, port=0):
-        self.input = value
+        if isinstance(value, (list, tuple)):
+            self._is_vector = True
+            self._input_vector = list(value)
+            self.input = value[0] if value else 0.0
+        else:
+            self._is_vector = False
+            self._input_vector = None
+            self.input = value
 
     def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
@@ -64,15 +147,49 @@ class Gain(Block):
 
     def update(self):
         if self.input_block is not None:
-            self.input = self.input_block.getOutput(self.input_source_port)
-        self.output = self.gain * self.input
+            # Check for vector output
+            if hasattr(self.input_block, 'getOutputVector'):
+                vec = self.input_block.getOutputVector()
+                if vec is not None:
+                    self._is_vector = True
+                    self._input_vector = vec
+                    self.input = vec[0] if vec else 0.0
+                else:
+                    self._is_vector = False
+                    self._input_vector = None
+                    self.input = self.input_block.getOutput(self.input_source_port)
+            else:
+                self._is_vector = False
+                self._input_vector = None
+                self.input = self.input_block.getOutput(self.input_source_port)
+
+        if self._is_vector and self._input_vector:
+            self._output_vector = [self.gain * v for v in self._input_vector]
+            self.output = self._output_vector[0] if self._output_vector else 0.0
+        else:
+            self._output_vector = None
+            self.output = self.gain * self.input
 
     def getOutput(self, port=0):
+        if self._is_vector and self._output_vector:
+            if port < len(self._output_vector):
+                return self._output_vector[port]
+            return 0.0
         return self.output
+
+    def getOutputVector(self):
+        """Get the full output vector. Returns None for scalar operation."""
+        if self._is_vector and self._output_vector:
+            return self._output_vector.copy()
+        return None
 
 
 class Product(Block):
-    """Product block - multiply or divide inputs."""
+    """Product block - multiply or divide inputs.
+
+    Supports both scalar and vector inputs. For vector inputs,
+    performs element-wise multiplication/division.
+    """
 
     def __init__(self, operations='**'):
         super().__init__()
@@ -81,10 +198,25 @@ class Product(Block):
         self.inputs = [1.0] * self.num_inputs
         self.input_blocks = [None] * self.num_inputs
         self.output = 0.0
+        self._is_vector = False
+        self._output_vector = None
+        self._input_vectors = [None] * self.num_inputs
+
+    def init(self):
+        self.inputs = [1.0] * self.num_inputs
+        self.output = 0.0
+        self._is_vector = False
+        self._output_vector = None
+        self._input_vectors = [None] * self.num_inputs
 
     def setInput(self, value, port=0):
         if port < self.num_inputs:
-            self.inputs[port] = value
+            if isinstance(value, (list, tuple)):
+                self._input_vectors[port] = list(value)
+                self.inputs[port] = value[0] if value else 1.0
+            else:
+                self._input_vectors[port] = None
+                self.inputs[port] = value
 
     def connectInput(self, block, port=0):
         if port < self.num_inputs:
@@ -92,28 +224,86 @@ class Product(Block):
 
     def update(self):
         # Get inputs from connected blocks
+        self._is_vector = False
+        max_len = 1
+
         for i, block in enumerate(self.input_blocks):
             if block is not None:
+                if hasattr(block, 'getOutputVector'):
+                    vec = block.getOutputVector()
+                    if vec is not None:
+                        self._input_vectors[i] = vec
+                        self.inputs[i] = vec[0] if vec else 1.0
+                        self._is_vector = True
+                        max_len = max(max_len, len(vec))
+                        continue
+                self._input_vectors[i] = None
                 self.inputs[i] = block.getOutput()
+            elif self._input_vectors[i] is not None:
+                self._is_vector = True
+                max_len = max(max_len, len(self._input_vectors[i]))
 
-        # Compute product
-        self.output = 1.0
-        for i, op in enumerate(self.operations):
-            if i < len(self.inputs):
-                if op == '*':
-                    self.output *= self.inputs[i]
-                else:  # Division
-                    if abs(self.inputs[i]) > State.EPS:
-                        self.output /= self.inputs[i]
+        if self._is_vector:
+            # Vector product
+            self._output_vector = [1.0] * max_len
+            for i, op in enumerate(self.operations):
+                if i < self.num_inputs:
+                    if self._input_vectors[i] is not None:
+                        for j in range(len(self._input_vectors[i])):
+                            if j < max_len:
+                                val = self._input_vectors[i][j]
+                                if op == '*':
+                                    self._output_vector[j] *= val
+                                else:
+                                    if abs(val) > State.EPS:
+                                        self._output_vector[j] /= val
+                                    else:
+                                        self._output_vector[j] /= State.EPS
                     else:
-                        self.output /= State.EPS  # Avoid division by zero
+                        # Apply scalar to all elements
+                        val = self.inputs[i]
+                        for j in range(max_len):
+                            if op == '*':
+                                self._output_vector[j] *= val
+                            else:
+                                if abs(val) > State.EPS:
+                                    self._output_vector[j] /= val
+                                else:
+                                    self._output_vector[j] /= State.EPS
+            self.output = self._output_vector[0] if self._output_vector else 0.0
+        else:
+            # Scalar product
+            self._output_vector = None
+            self.output = 1.0
+            for i, op in enumerate(self.operations):
+                if i < len(self.inputs):
+                    if op == '*':
+                        self.output *= self.inputs[i]
+                    else:
+                        if abs(self.inputs[i]) > State.EPS:
+                            self.output /= self.inputs[i]
+                        else:
+                            self.output /= State.EPS
 
     def getOutput(self, port=0):
+        if self._is_vector and self._output_vector:
+            if port < len(self._output_vector):
+                return self._output_vector[port]
+            return 0.0
         return self.output
+
+    def getOutputVector(self):
+        """Get the full output vector. Returns None for scalar operation."""
+        if self._is_vector and self._output_vector:
+            return self._output_vector.copy()
+        return None
 
 
 class Abs(Block):
-    """Absolute value block."""
+    """Absolute value block.
+
+    Supports both scalar and vector inputs.
+    """
 
     def __init__(self):
         super().__init__()
@@ -121,9 +311,26 @@ class Abs(Block):
         self.input_block = None
         self.input_source_port = 0
         self.output = 0.0
+        self._is_vector = False
+        self._input_vector = None
+        self._output_vector = None
+
+    def init(self):
+        self.input = 0.0
+        self.output = 0.0
+        self._is_vector = False
+        self._input_vector = None
+        self._output_vector = None
 
     def setInput(self, value, port=0):
-        self.input = value
+        if isinstance(value, (list, tuple)):
+            self._is_vector = True
+            self._input_vector = list(value)
+            self.input = value[0] if value else 0.0
+        else:
+            self._is_vector = False
+            self._input_vector = None
+            self.input = value
 
     def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
@@ -131,15 +338,46 @@ class Abs(Block):
 
     def update(self):
         if self.input_block is not None:
-            self.input = self.input_block.getOutput(self.input_source_port)
-        self.output = abs(self.input)
+            if hasattr(self.input_block, 'getOutputVector'):
+                vec = self.input_block.getOutputVector()
+                if vec is not None:
+                    self._is_vector = True
+                    self._input_vector = vec
+                    self.input = vec[0] if vec else 0.0
+                else:
+                    self._is_vector = False
+                    self._input_vector = None
+                    self.input = self.input_block.getOutput(self.input_source_port)
+            else:
+                self._is_vector = False
+                self._input_vector = None
+                self.input = self.input_block.getOutput(self.input_source_port)
+
+        if self._is_vector and self._input_vector:
+            self._output_vector = [abs(v) for v in self._input_vector]
+            self.output = self._output_vector[0] if self._output_vector else 0.0
+        else:
+            self._output_vector = None
+            self.output = abs(self.input)
 
     def getOutput(self, port=0):
+        if self._is_vector and self._output_vector:
+            if port < len(self._output_vector):
+                return self._output_vector[port]
+            return 0.0
         return self.output
+
+    def getOutputVector(self):
+        if self._is_vector and self._output_vector:
+            return self._output_vector.copy()
+        return None
 
 
 class Sign(Block):
-    """Sign block - returns -1, 0, or 1."""
+    """Sign block - returns -1, 0, or 1.
+
+    Supports both scalar and vector inputs.
+    """
 
     def __init__(self):
         super().__init__()
@@ -147,9 +385,33 @@ class Sign(Block):
         self.input_block = None
         self.input_source_port = 0
         self.output = 0.0
+        self._is_vector = False
+        self._input_vector = None
+        self._output_vector = None
+
+    def init(self):
+        self.input = 0.0
+        self.output = 0.0
+        self._is_vector = False
+        self._input_vector = None
+        self._output_vector = None
+
+    def _compute_sign(self, val):
+        if val > State.EPS:
+            return 1.0
+        elif val < -State.EPS:
+            return -1.0
+        return 0.0
 
     def setInput(self, value, port=0):
-        self.input = value
+        if isinstance(value, (list, tuple)):
+            self._is_vector = True
+            self._input_vector = list(value)
+            self.input = value[0] if value else 0.0
+        else:
+            self._is_vector = False
+            self._input_vector = None
+            self.input = value
 
     def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
@@ -157,21 +419,46 @@ class Sign(Block):
 
     def update(self):
         if self.input_block is not None:
-            self.input = self.input_block.getOutput(self.input_source_port)
+            if hasattr(self.input_block, 'getOutputVector'):
+                vec = self.input_block.getOutputVector()
+                if vec is not None:
+                    self._is_vector = True
+                    self._input_vector = vec
+                    self.input = vec[0] if vec else 0.0
+                else:
+                    self._is_vector = False
+                    self._input_vector = None
+                    self.input = self.input_block.getOutput(self.input_source_port)
+            else:
+                self._is_vector = False
+                self._input_vector = None
+                self.input = self.input_block.getOutput(self.input_source_port)
 
-        if self.input > State.EPS:
-            self.output = 1.0
-        elif self.input < -State.EPS:
-            self.output = -1.0
+        if self._is_vector and self._input_vector:
+            self._output_vector = [self._compute_sign(v) for v in self._input_vector]
+            self.output = self._output_vector[0] if self._output_vector else 0.0
         else:
-            self.output = 0.0
+            self._output_vector = None
+            self.output = self._compute_sign(self.input)
 
     def getOutput(self, port=0):
+        if self._is_vector and self._output_vector:
+            if port < len(self._output_vector):
+                return self._output_vector[port]
+            return 0.0
         return self.output
+
+    def getOutputVector(self):
+        if self._is_vector and self._output_vector:
+            return self._output_vector.copy()
+        return None
 
 
 class Saturation(Block):
-    """Saturation block - limits signal to range."""
+    """Saturation block - limits signal to range.
+
+    Supports both scalar and vector inputs.
+    """
 
     def __init__(self, upper_limit=1.0, lower_limit=-1.0):
         super().__init__()
@@ -181,9 +468,26 @@ class Saturation(Block):
         self.input_block = None
         self.input_source_port = 0
         self.output = 0.0
+        self._is_vector = False
+        self._input_vector = None
+        self._output_vector = None
+
+    def init(self):
+        self.input = 0.0
+        self.output = 0.0
+        self._is_vector = False
+        self._input_vector = None
+        self._output_vector = None
 
     def setInput(self, value, port=0):
-        self.input = value
+        if isinstance(value, (list, tuple)):
+            self._is_vector = True
+            self._input_vector = list(value)
+            self.input = value[0] if value else 0.0
+        else:
+            self._is_vector = False
+            self._input_vector = None
+            self.input = value
 
     def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
@@ -191,15 +495,46 @@ class Saturation(Block):
 
     def update(self):
         if self.input_block is not None:
-            self.input = self.input_block.getOutput(self.input_source_port)
-        self.output = max(self.lower_limit, min(self.upper_limit, self.input))
+            if hasattr(self.input_block, 'getOutputVector'):
+                vec = self.input_block.getOutputVector()
+                if vec is not None:
+                    self._is_vector = True
+                    self._input_vector = vec
+                    self.input = vec[0] if vec else 0.0
+                else:
+                    self._is_vector = False
+                    self._input_vector = None
+                    self.input = self.input_block.getOutput(self.input_source_port)
+            else:
+                self._is_vector = False
+                self._input_vector = None
+                self.input = self.input_block.getOutput(self.input_source_port)
+
+        if self._is_vector and self._input_vector:
+            self._output_vector = [max(self.lower_limit, min(self.upper_limit, v)) for v in self._input_vector]
+            self.output = self._output_vector[0] if self._output_vector else 0.0
+        else:
+            self._output_vector = None
+            self.output = max(self.lower_limit, min(self.upper_limit, self.input))
 
     def getOutput(self, port=0):
+        if self._is_vector and self._output_vector:
+            if port < len(self._output_vector):
+                return self._output_vector[port]
+            return 0.0
         return self.output
+
+    def getOutputVector(self):
+        if self._is_vector and self._output_vector:
+            return self._output_vector.copy()
+        return None
 
 
 class MathFunction(Block):
-    """Mathematical function block."""
+    """Mathematical function block.
+
+    Supports both scalar and vector inputs.
+    """
 
     def __init__(self, function='exp', exponent=2.0):
         super().__init__()
@@ -209,9 +544,45 @@ class MathFunction(Block):
         self.input_block = None
         self.input_source_port = 0
         self.output = 0.0
+        self._is_vector = False
+        self._input_vector = None
+        self._output_vector = None
+
+    def init(self):
+        self.input = 0.0
+        self.output = 0.0
+        self._is_vector = False
+        self._input_vector = None
+        self._output_vector = None
+
+    def _compute_function(self, val):
+        if self.function == 'exp':
+            return math.exp(val)
+        elif self.function == 'log':
+            return math.log(max(val, State.EPS))
+        elif self.function == 'log10':
+            return math.log10(max(val, State.EPS))
+        elif self.function == 'sqrt':
+            return math.sqrt(max(val, 0.0))
+        elif self.function == 'square':
+            return val ** 2
+        elif self.function == 'pow':
+            return val ** self.exponent
+        elif self.function == 'reciprocal':
+            if abs(val) > State.EPS:
+                return 1.0 / val
+            return 1.0 / State.EPS
+        return val
 
     def setInput(self, value, port=0):
-        self.input = value
+        if isinstance(value, (list, tuple)):
+            self._is_vector = True
+            self._input_vector = list(value)
+            self.input = value[0] if value else 0.0
+        else:
+            self._is_vector = False
+            self._input_vector = None
+            self.input = value
 
     def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
@@ -219,34 +590,46 @@ class MathFunction(Block):
 
     def update(self):
         if self.input_block is not None:
-            self.input = self.input_block.getOutput(self.input_source_port)
-
-        if self.function == 'exp':
-            self.output = math.exp(self.input)
-        elif self.function == 'log':
-            self.output = math.log(max(self.input, State.EPS))
-        elif self.function == 'log10':
-            self.output = math.log10(max(self.input, State.EPS))
-        elif self.function == 'sqrt':
-            self.output = math.sqrt(max(self.input, 0.0))
-        elif self.function == 'square':
-            self.output = self.input ** 2
-        elif self.function == 'pow':
-            self.output = self.input ** self.exponent
-        elif self.function == 'reciprocal':
-            if abs(self.input) > State.EPS:
-                self.output = 1.0 / self.input
+            if hasattr(self.input_block, 'getOutputVector'):
+                vec = self.input_block.getOutputVector()
+                if vec is not None:
+                    self._is_vector = True
+                    self._input_vector = vec
+                    self.input = vec[0] if vec else 0.0
+                else:
+                    self._is_vector = False
+                    self._input_vector = None
+                    self.input = self.input_block.getOutput(self.input_source_port)
             else:
-                self.output = 1.0 / State.EPS
+                self._is_vector = False
+                self._input_vector = None
+                self.input = self.input_block.getOutput(self.input_source_port)
+
+        if self._is_vector and self._input_vector:
+            self._output_vector = [self._compute_function(v) for v in self._input_vector]
+            self.output = self._output_vector[0] if self._output_vector else 0.0
         else:
-            self.output = self.input
+            self._output_vector = None
+            self.output = self._compute_function(self.input)
 
     def getOutput(self, port=0):
+        if self._is_vector and self._output_vector:
+            if port < len(self._output_vector):
+                return self._output_vector[port]
+            return 0.0
         return self.output
+
+    def getOutputVector(self):
+        if self._is_vector and self._output_vector:
+            return self._output_vector.copy()
+        return None
 
 
 class Trigonometry(Block):
-    """Trigonometric function block."""
+    """Trigonometric function block.
+
+    Supports both scalar and vector inputs.
+    """
 
     def __init__(self, function='sin'):
         super().__init__()
@@ -255,18 +638,18 @@ class Trigonometry(Block):
         self.input_block = None
         self.input_source_port = 0
         self.output = 0.0
+        self._is_vector = False
+        self._input_vector = None
+        self._output_vector = None
 
-    def setInput(self, value, port=0):
-        self.input = value
+    def init(self):
+        self.input = 0.0
+        self.output = 0.0
+        self._is_vector = False
+        self._input_vector = None
+        self._output_vector = None
 
-    def connectInput(self, block, port=0, source_port=0):
-        self.input_block = block
-        self.input_source_port = source_port
-
-    def update(self):
-        if self.input_block is not None:
-            self.input = self.input_block.getOutput(self.input_source_port)
-
+    def _compute_trig(self, val):
         funcs = {
             'sin': math.sin,
             'cos': math.cos,
@@ -278,19 +661,68 @@ class Trigonometry(Block):
             'cosh': math.cosh,
             'tanh': math.tanh,
         }
-
         func = funcs.get(self.function, math.sin)
         try:
-            self.output = func(self.input)
+            return func(val)
         except (ValueError, OverflowError):
-            self.output = 0.0
+            return 0.0
+
+    def setInput(self, value, port=0):
+        if isinstance(value, (list, tuple)):
+            self._is_vector = True
+            self._input_vector = list(value)
+            self.input = value[0] if value else 0.0
+        else:
+            self._is_vector = False
+            self._input_vector = None
+            self.input = value
+
+    def connectInput(self, block, port=0, source_port=0):
+        self.input_block = block
+        self.input_source_port = source_port
+
+    def update(self):
+        if self.input_block is not None:
+            if hasattr(self.input_block, 'getOutputVector'):
+                vec = self.input_block.getOutputVector()
+                if vec is not None:
+                    self._is_vector = True
+                    self._input_vector = vec
+                    self.input = vec[0] if vec else 0.0
+                else:
+                    self._is_vector = False
+                    self._input_vector = None
+                    self.input = self.input_block.getOutput(self.input_source_port)
+            else:
+                self._is_vector = False
+                self._input_vector = None
+                self.input = self.input_block.getOutput(self.input_source_port)
+
+        if self._is_vector and self._input_vector:
+            self._output_vector = [self._compute_trig(v) for v in self._input_vector]
+            self.output = self._output_vector[0] if self._output_vector else 0.0
+        else:
+            self._output_vector = None
+            self.output = self._compute_trig(self.input)
 
     def getOutput(self, port=0):
+        if self._is_vector and self._output_vector:
+            if port < len(self._output_vector):
+                return self._output_vector[port]
+            return 0.0
         return self.output
+
+    def getOutputVector(self):
+        if self._is_vector and self._output_vector:
+            return self._output_vector.copy()
+        return None
 
 
 class DeadZone(Block):
-    """Dead zone block - zero output within zone."""
+    """Dead zone block - zero output within zone.
+
+    Supports both scalar and vector inputs.
+    """
 
     def __init__(self, start=-0.5, end=0.5):
         super().__init__()
@@ -300,9 +732,33 @@ class DeadZone(Block):
         self.input_block = None
         self.input_source_port = 0
         self.output = 0.0
+        self._is_vector = False
+        self._input_vector = None
+        self._output_vector = None
+
+    def init(self):
+        self.input = 0.0
+        self.output = 0.0
+        self._is_vector = False
+        self._input_vector = None
+        self._output_vector = None
+
+    def _compute_deadzone(self, val):
+        if val > self.end:
+            return val - self.end
+        elif val < self.start:
+            return val - self.start
+        return 0.0
 
     def setInput(self, value, port=0):
-        self.input = value
+        if isinstance(value, (list, tuple)):
+            self._is_vector = True
+            self._input_vector = list(value)
+            self.input = value[0] if value else 0.0
+        else:
+            self._is_vector = False
+            self._input_vector = None
+            self.input = value
 
     def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
@@ -310,17 +766,39 @@ class DeadZone(Block):
 
     def update(self):
         if self.input_block is not None:
-            self.input = self.input_block.getOutput(self.input_source_port)
+            if hasattr(self.input_block, 'getOutputVector'):
+                vec = self.input_block.getOutputVector()
+                if vec is not None:
+                    self._is_vector = True
+                    self._input_vector = vec
+                    self.input = vec[0] if vec else 0.0
+                else:
+                    self._is_vector = False
+                    self._input_vector = None
+                    self.input = self.input_block.getOutput(self.input_source_port)
+            else:
+                self._is_vector = False
+                self._input_vector = None
+                self.input = self.input_block.getOutput(self.input_source_port)
 
-        if self.input > self.end:
-            self.output = self.input - self.end
-        elif self.input < self.start:
-            self.output = self.input - self.start
+        if self._is_vector and self._input_vector:
+            self._output_vector = [self._compute_deadzone(v) for v in self._input_vector]
+            self.output = self._output_vector[0] if self._output_vector else 0.0
         else:
-            self.output = 0.0
+            self._output_vector = None
+            self.output = self._compute_deadzone(self.input)
 
     def getOutput(self, port=0):
+        if self._is_vector and self._output_vector:
+            if port < len(self._output_vector):
+                return self._output_vector[port]
+            return 0.0
         return self.output
+
+    def getOutputVector(self):
+        if self._is_vector and self._output_vector:
+            return self._output_vector.copy()
+        return None
 
 
 class Switch(Block):

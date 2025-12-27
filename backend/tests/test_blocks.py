@@ -3994,3 +3994,746 @@ class TestObserverVectorOutput:
         # CRITICAL: Both values should be correctly passed through
         assert demux.getOutput(0) == pytest.approx(10.0), "Position should be 10.0"
         assert demux.getOutput(1) == pytest.approx(20.0), "Velocity should be 20.0"
+
+
+# =============================================================================
+# Comprehensive Vector Signal Processing Tests
+# =============================================================================
+
+
+class TestVectorIntegrator:
+    """Tests for vector support in the Integrator block."""
+
+    def setup_method(self):
+        """Reset state before each test."""
+        State.time = 0.0
+        State.dt = 0.001
+        State.ready = 0
+
+    def test_integrator_vector_initial_condition(self):
+        """Test Integrator with vector initial condition."""
+        integrator = Integrator(initial_condition=[1.0, 2.0, 3.0])
+        integrator.init()
+
+        # Should output initial conditions
+        assert integrator.getOutput(0) == pytest.approx(1.0)
+        assert integrator.getOutput(1) == pytest.approx(2.0)
+        assert integrator.getOutput(2) == pytest.approx(3.0)
+
+        vec = integrator.getOutputVector()
+        assert vec is not None
+        assert len(vec) == 3
+        assert vec == [1.0, 2.0, 3.0]
+
+    def test_integrator_vector_from_constant(self):
+        """Test Integrator with vector input from Constant block."""
+        const = Constant(value=[1.0, 2.0, 3.0])
+        const.init()
+        const.update()
+
+        integrator = Integrator(initial_condition=[0.0, 0.0, 0.0])
+        integrator.init()
+        integrator.connectInput(const)
+
+        # Simulate for 1 second
+        for _ in range(1000):
+            const.update()
+            integrator.update()
+            # Propagate states
+            for state in integrator._states:
+                state[0] += State.dt * state[1]
+
+        # After 1 second, integral of [1, 2, 3] should be approximately [1, 2, 3]
+        vec = integrator.getOutputVector()
+        assert vec is not None
+        assert vec[0] == pytest.approx(1.0, abs=0.01)
+        assert vec[1] == pytest.approx(2.0, abs=0.01)
+        assert vec[2] == pytest.approx(3.0, abs=0.01)
+
+    def test_integrator_vector_dynamic_setup(self):
+        """Test that Integrator dynamically sets up vector mode from input."""
+        const = Constant(value=[5.0, 10.0])
+        const.init()
+
+        # Start with scalar initial condition
+        integrator = Integrator(initial_condition=0.0)
+        integrator.init()
+        integrator.connectInput(const)
+
+        # First update should detect vector input and switch to vector mode
+        const.update()
+        integrator.update()
+
+        assert integrator._is_vector is True
+        assert integrator._n == 2
+
+
+class TestVectorSum:
+    """Tests for vector support in the Sum block."""
+
+    def setup_method(self):
+        """Reset state before each test."""
+        State.time = 0.0
+        State.dt = 0.001
+        State.ready = 0
+
+    def test_sum_vector_addition(self):
+        """Test Sum block with two vector inputs."""
+        const1 = Constant(value=[1.0, 2.0, 3.0])
+        const2 = Constant(value=[4.0, 5.0, 6.0])
+        const1.init()
+        const2.init()
+
+        sum_block = Sum(signs='++')
+        sum_block.connectInput(const1, port=0)
+        sum_block.connectInput(const2, port=1)
+
+        const1.update()
+        const2.update()
+        sum_block.update()
+
+        vec = sum_block.getOutputVector()
+        assert vec is not None
+        assert len(vec) == 3
+        assert vec[0] == pytest.approx(5.0)
+        assert vec[1] == pytest.approx(7.0)
+        assert vec[2] == pytest.approx(9.0)
+
+    def test_sum_vector_subtraction(self):
+        """Test Sum block with vector subtraction."""
+        const1 = Constant(value=[10.0, 20.0, 30.0])
+        const2 = Constant(value=[1.0, 2.0, 3.0])
+        const1.init()
+        const2.init()
+
+        sum_block = Sum(signs='+-')
+        sum_block.connectInput(const1, port=0)
+        sum_block.connectInput(const2, port=1)
+
+        const1.update()
+        const2.update()
+        sum_block.update()
+
+        vec = sum_block.getOutputVector()
+        assert vec is not None
+        assert vec[0] == pytest.approx(9.0)
+        assert vec[1] == pytest.approx(18.0)
+        assert vec[2] == pytest.approx(27.0)
+
+    def test_sum_three_vector_inputs(self):
+        """Test Sum block with three vector inputs."""
+        const1 = Constant(value=[1.0, 1.0])
+        const2 = Constant(value=[2.0, 2.0])
+        const3 = Constant(value=[3.0, 3.0])
+        const1.init()
+        const2.init()
+        const3.init()
+
+        sum_block = Sum(signs='+++')
+        sum_block.connectInput(const1, port=0)
+        sum_block.connectInput(const2, port=1)
+        sum_block.connectInput(const3, port=2)
+
+        const1.update()
+        const2.update()
+        const3.update()
+        sum_block.update()
+
+        vec = sum_block.getOutputVector()
+        assert vec is not None
+        assert vec[0] == pytest.approx(6.0)
+        assert vec[1] == pytest.approx(6.0)
+
+
+class TestVectorGain:
+    """Tests for vector support in the Gain block."""
+
+    def setup_method(self):
+        """Reset state before each test."""
+        State.time = 0.0
+        State.dt = 0.001
+        State.ready = 0
+
+    def test_gain_scalar_on_vector(self):
+        """Test Gain block with scalar gain on vector input."""
+        const = Constant(value=[1.0, 2.0, 3.0])
+        const.init()
+
+        gain = Gain(gain=2.0)
+        gain.connectInput(const)
+
+        const.update()
+        gain.update()
+
+        vec = gain.getOutputVector()
+        assert vec is not None
+        assert vec[0] == pytest.approx(2.0)
+        assert vec[1] == pytest.approx(4.0)
+        assert vec[2] == pytest.approx(6.0)
+
+    def test_gain_negative(self):
+        """Test Gain block with negative gain on vector."""
+        const = Constant(value=[1.0, -2.0, 3.0])
+        const.init()
+
+        gain = Gain(gain=-1.0)
+        gain.connectInput(const)
+
+        const.update()
+        gain.update()
+
+        vec = gain.getOutputVector()
+        assert vec is not None
+        assert vec[0] == pytest.approx(-1.0)
+        assert vec[1] == pytest.approx(2.0)
+        assert vec[2] == pytest.approx(-3.0)
+
+    def test_gain_zero(self):
+        """Test Gain block with zero gain on vector."""
+        const = Constant(value=[100.0, 200.0])
+        const.init()
+
+        gain = Gain(gain=0.0)
+        gain.connectInput(const)
+
+        const.update()
+        gain.update()
+
+        vec = gain.getOutputVector()
+        assert vec is not None
+        assert vec[0] == pytest.approx(0.0)
+        assert vec[1] == pytest.approx(0.0)
+
+
+class TestVectorProduct:
+    """Tests for vector support in the Product block."""
+
+    def setup_method(self):
+        """Reset state before each test."""
+        State.time = 0.0
+        State.dt = 0.001
+        State.ready = 0
+
+    def test_product_vector_multiply(self):
+        """Test Product block with element-wise vector multiplication."""
+        const1 = Constant(value=[2.0, 3.0, 4.0])
+        const2 = Constant(value=[5.0, 6.0, 7.0])
+        const1.init()
+        const2.init()
+
+        product = Product(operations='**')
+        product.connectInput(const1, port=0)
+        product.connectInput(const2, port=1)
+
+        const1.update()
+        const2.update()
+        product.update()
+
+        vec = product.getOutputVector()
+        assert vec is not None
+        assert vec[0] == pytest.approx(10.0)
+        assert vec[1] == pytest.approx(18.0)
+        assert vec[2] == pytest.approx(28.0)
+
+    def test_product_vector_divide(self):
+        """Test Product block with element-wise vector division."""
+        const1 = Constant(value=[10.0, 20.0, 30.0])
+        const2 = Constant(value=[2.0, 4.0, 5.0])
+        const1.init()
+        const2.init()
+
+        product = Product(operations='*/')
+        product.connectInput(const1, port=0)
+        product.connectInput(const2, port=1)
+
+        const1.update()
+        const2.update()
+        product.update()
+
+        vec = product.getOutputVector()
+        assert vec is not None
+        assert vec[0] == pytest.approx(5.0)
+        assert vec[1] == pytest.approx(5.0)
+        assert vec[2] == pytest.approx(6.0)
+
+
+class TestVectorAbs:
+    """Tests for vector support in the Abs block."""
+
+    def setup_method(self):
+        """Reset state before each test."""
+        State.time = 0.0
+        State.dt = 0.001
+
+    def test_abs_vector_mixed_signs(self):
+        """Test Abs block with vector containing mixed signs."""
+        const = Constant(value=[-1.0, 2.0, -3.0, 4.0])
+        const.init()
+
+        abs_block = Abs()
+        abs_block.connectInput(const)
+
+        const.update()
+        abs_block.update()
+
+        vec = abs_block.getOutputVector()
+        assert vec is not None
+        assert vec[0] == pytest.approx(1.0)
+        assert vec[1] == pytest.approx(2.0)
+        assert vec[2] == pytest.approx(3.0)
+        assert vec[3] == pytest.approx(4.0)
+
+    def test_abs_vector_all_negative(self):
+        """Test Abs block with all negative vector."""
+        const = Constant(value=[-5.0, -10.0])
+        const.init()
+
+        abs_block = Abs()
+        abs_block.connectInput(const)
+
+        const.update()
+        abs_block.update()
+
+        vec = abs_block.getOutputVector()
+        assert vec is not None
+        assert vec[0] == pytest.approx(5.0)
+        assert vec[1] == pytest.approx(10.0)
+
+
+class TestVectorSign:
+    """Tests for vector support in the Sign block."""
+
+    def setup_method(self):
+        """Reset state before each test."""
+        State.time = 0.0
+        State.dt = 0.001
+
+    def test_sign_vector(self):
+        """Test Sign block with vector containing positive, negative, and zero."""
+        const = Constant(value=[-5.0, 0.0, 3.0])
+        const.init()
+
+        sign_block = Sign()
+        sign_block.connectInput(const)
+
+        const.update()
+        sign_block.update()
+
+        vec = sign_block.getOutputVector()
+        assert vec is not None
+        assert vec[0] == pytest.approx(-1.0)
+        assert vec[1] == pytest.approx(0.0)
+        assert vec[2] == pytest.approx(1.0)
+
+
+class TestVectorSaturation:
+    """Tests for vector support in the Saturation block."""
+
+    def setup_method(self):
+        """Reset state before each test."""
+        State.time = 0.0
+        State.dt = 0.001
+
+    def test_saturation_vector(self):
+        """Test Saturation block with vector input."""
+        const = Constant(value=[-10.0, 0.5, 10.0])
+        const.init()
+
+        sat = Saturation(upper_limit=1.0, lower_limit=-1.0)
+        sat.connectInput(const)
+
+        const.update()
+        sat.update()
+
+        vec = sat.getOutputVector()
+        assert vec is not None
+        assert vec[0] == pytest.approx(-1.0)  # Saturated low
+        assert vec[1] == pytest.approx(0.5)   # In range
+        assert vec[2] == pytest.approx(1.0)   # Saturated high
+
+
+class TestVectorDeadZone:
+    """Tests for vector support in the DeadZone block."""
+
+    def setup_method(self):
+        """Reset state before each test."""
+        State.time = 0.0
+        State.dt = 0.001
+
+    def test_deadzone_vector(self):
+        """Test DeadZone block with vector input."""
+        const = Constant(value=[-5.0, -0.5, 0.3, 2.0])
+        const.init()
+
+        dz = DeadZone(start=-1.0, end=1.0)
+        dz.connectInput(const)
+
+        const.update()
+        dz.update()
+
+        vec = dz.getOutputVector()
+        assert vec is not None
+        assert vec[0] == pytest.approx(-4.0)  # -5 + 1 = -4
+        assert vec[1] == pytest.approx(0.0)   # In dead zone
+        assert vec[2] == pytest.approx(0.0)   # In dead zone
+        assert vec[3] == pytest.approx(1.0)   # 2 - 1 = 1
+
+
+class TestVectorMathFunction:
+    """Tests for vector support in the MathFunction block."""
+
+    def setup_method(self):
+        """Reset state before each test."""
+        State.time = 0.0
+        State.dt = 0.001
+
+    def test_math_function_square_vector(self):
+        """Test MathFunction square on vector."""
+        const = Constant(value=[2.0, 3.0, 4.0])
+        const.init()
+
+        mf = MathFunction(function='square')
+        mf.connectInput(const)
+
+        const.update()
+        mf.update()
+
+        vec = mf.getOutputVector()
+        assert vec is not None
+        assert vec[0] == pytest.approx(4.0)
+        assert vec[1] == pytest.approx(9.0)
+        assert vec[2] == pytest.approx(16.0)
+
+    def test_math_function_sqrt_vector(self):
+        """Test MathFunction sqrt on vector."""
+        const = Constant(value=[4.0, 9.0, 16.0])
+        const.init()
+
+        mf = MathFunction(function='sqrt')
+        mf.connectInput(const)
+
+        const.update()
+        mf.update()
+
+        vec = mf.getOutputVector()
+        assert vec is not None
+        assert vec[0] == pytest.approx(2.0)
+        assert vec[1] == pytest.approx(3.0)
+        assert vec[2] == pytest.approx(4.0)
+
+    def test_math_function_exp_vector(self):
+        """Test MathFunction exp on vector."""
+        const = Constant(value=[0.0, 1.0, 2.0])
+        const.init()
+
+        mf = MathFunction(function='exp')
+        mf.connectInput(const)
+
+        const.update()
+        mf.update()
+
+        vec = mf.getOutputVector()
+        assert vec is not None
+        assert vec[0] == pytest.approx(1.0)
+        assert vec[1] == pytest.approx(math.e)
+        assert vec[2] == pytest.approx(math.e**2)
+
+
+class TestVectorTrigonometry:
+    """Tests for vector support in the Trigonometry block."""
+
+    def setup_method(self):
+        """Reset state before each test."""
+        State.time = 0.0
+        State.dt = 0.001
+
+    def test_trig_sin_vector(self):
+        """Test Trigonometry sin on vector."""
+        const = Constant(value=[0.0, math.pi/2, math.pi])
+        const.init()
+
+        trig = Trigonometry(function='sin')
+        trig.connectInput(const)
+
+        const.update()
+        trig.update()
+
+        vec = trig.getOutputVector()
+        assert vec is not None
+        assert vec[0] == pytest.approx(0.0, abs=1e-10)
+        assert vec[1] == pytest.approx(1.0)
+        assert vec[2] == pytest.approx(0.0, abs=1e-10)
+
+    def test_trig_cos_vector(self):
+        """Test Trigonometry cos on vector."""
+        const = Constant(value=[0.0, math.pi/2, math.pi])
+        const.init()
+
+        trig = Trigonometry(function='cos')
+        trig.connectInput(const)
+
+        const.update()
+        trig.update()
+
+        vec = trig.getOutputVector()
+        assert vec is not None
+        assert vec[0] == pytest.approx(1.0)
+        assert vec[1] == pytest.approx(0.0, abs=1e-10)
+        assert vec[2] == pytest.approx(-1.0)
+
+
+class TestVectorDerivative:
+    """Tests for vector support in the Derivative block."""
+
+    def setup_method(self):
+        """Reset state before each test."""
+        State.time = 0.0
+        State.dt = 0.001
+        State.ready = 0
+
+    def test_derivative_vector_from_constant(self):
+        """Test Derivative block with vector input."""
+        const = Constant(value=[1.0, 2.0, 3.0])
+        const.init()
+
+        deriv = Derivative(coefficient=100.0)
+        deriv.init()
+        deriv.connectInput(const)
+
+        const.update()
+        deriv.update()
+
+        # Derivative should have vector output
+        vec = deriv.getOutputVector()
+        assert vec is not None
+        assert len(vec) == 3
+
+    def test_derivative_vector_dynamic_setup(self):
+        """Test that Derivative dynamically sets up vector mode from input."""
+        const = Constant(value=[5.0, 10.0])
+        const.init()
+
+        # Start as scalar derivative
+        deriv = Derivative(coefficient=100.0)
+        deriv.init()
+        deriv.connectInput(const)
+
+        # First update should detect vector input
+        const.update()
+        deriv.update()
+
+        assert deriv._is_vector is True
+        assert deriv._n == 2
+
+
+class TestVectorSignalFlow:
+    """End-to-end tests for vector signal flow through multiple blocks."""
+
+    def setup_method(self):
+        """Reset state before each test."""
+        State.time = 0.0
+        State.dt = 0.001
+        State.ready = 0
+
+    def test_vector_chain_constant_gain_sum(self):
+        """Test vector signal flow: Constant -> Gain -> Sum."""
+        const1 = Constant(value=[1.0, 2.0])
+        const2 = Constant(value=[3.0, 4.0])
+        const1.init()
+        const2.init()
+
+        gain = Gain(gain=2.0)
+        gain.connectInput(const1)
+
+        sum_block = Sum(signs='++')
+        sum_block.connectInput(gain, port=0)
+        sum_block.connectInput(const2, port=1)
+
+        const1.update()
+        const2.update()
+        gain.update()
+        sum_block.update()
+
+        # const1 * 2 + const2 = [2, 4] + [3, 4] = [5, 8]
+        vec = sum_block.getOutputVector()
+        assert vec is not None
+        assert vec[0] == pytest.approx(5.0)
+        assert vec[1] == pytest.approx(8.0)
+
+    def test_vector_chain_mux_gain_demux(self):
+        """Test vector signal flow: Mux -> Gain -> Demux."""
+        const1 = Constant(value=3.0)
+        const2 = Constant(value=5.0)
+        const1.init()
+        const2.init()
+
+        mux = Mux(num_inputs=2)
+        mux.connectInput(const1, port=0)
+        mux.connectInput(const2, port=1)
+
+        gain = Gain(gain=10.0)
+        gain.connectInput(mux)
+
+        demux = Demux(num_outputs=2)
+        demux.connectInput(gain)
+
+        const1.update()
+        const2.update()
+        mux.update()
+        gain.update()
+        demux.update()
+
+        # Mux creates [3, 5], Gain makes [30, 50], Demux extracts
+        assert demux.getOutput(0) == pytest.approx(30.0)
+        assert demux.getOutput(1) == pytest.approx(50.0)
+
+    def test_vector_chain_constant_abs_saturation(self):
+        """Test vector signal flow: Constant -> Abs -> Saturation."""
+        const = Constant(value=[-5.0, 3.0, -1.0])
+        const.init()
+
+        abs_block = Abs()
+        abs_block.connectInput(const)
+
+        sat = Saturation(upper_limit=4.0, lower_limit=0.0)
+        sat.connectInput(abs_block)
+
+        const.update()
+        abs_block.update()
+        sat.update()
+
+        # Abs: [5, 3, 1], Saturation(0,4): [4, 3, 1]
+        vec = sat.getOutputVector()
+        assert vec is not None
+        assert vec[0] == pytest.approx(4.0)  # 5 saturated to 4
+        assert vec[1] == pytest.approx(3.0)
+        assert vec[2] == pytest.approx(1.0)
+
+    def test_vector_feedback_loop(self):
+        """Test vector signal in a simple feedback structure."""
+        # Simulate: Sum(input, -feedback) -> Gain -> Integrator
+        # where feedback = Integrator output
+
+        const = Constant(value=[1.0, 2.0])
+        const.init()
+
+        sum_block = Sum(signs='+-')
+        gain = Gain(gain=1.0)
+        integrator = Integrator(initial_condition=[0.0, 0.0])
+        integrator.init()
+
+        sum_block.connectInput(const, port=0)
+        # Port 1 (feedback) will be set manually for this test
+        gain.connectInput(sum_block)
+        integrator.connectInput(gain)
+
+        # Run a few steps
+        for i in range(100):
+            const.update()
+
+            # Manually set feedback from integrator output
+            integrator_vec = integrator.getOutputVector()
+            if integrator_vec:
+                # Create a mock block for the feedback
+                sum_block._input_vectors[1] = integrator_vec
+                if not sum_block._is_vector:
+                    sum_block._is_vector = True
+                    sum_block._output_vector = [0.0] * len(integrator_vec)
+
+            sum_block.update()
+            gain.update()
+            integrator.update()
+
+            # Propagate states
+            if integrator._states:
+                for state in integrator._states:
+                    state[0] += State.dt * state[1]
+
+        # After integration, values should have converged somewhat
+        vec = integrator.getOutputVector()
+        assert vec is not None
+        assert len(vec) == 2
+
+    def test_complex_vector_flow(self):
+        """Test complex vector signal flow through multiple operations."""
+        # Create: [2, 4, 6] -> square -> sqrt -> gain(0.5) -> should be [1, 2, 3]
+        const = Constant(value=[2.0, 4.0, 6.0])
+        const.init()
+
+        square = MathFunction(function='square')
+        square.connectInput(const)
+
+        sqrt = MathFunction(function='sqrt')
+        sqrt.connectInput(square)
+
+        gain = Gain(gain=0.5)
+        gain.connectInput(sqrt)
+
+        const.update()
+        square.update()
+        sqrt.update()
+        gain.update()
+
+        # [2,4,6] -> [4,16,36] -> [2,4,6] -> [1,2,3]
+        vec = gain.getOutputVector()
+        assert vec is not None
+        assert vec[0] == pytest.approx(1.0)
+        assert vec[1] == pytest.approx(2.0)
+        assert vec[2] == pytest.approx(3.0)
+
+    def test_vector_mux_from_mixed_sources(self):
+        """Test Mux with scalar and demuxed vector sources."""
+        scalar = Constant(value=1.0)
+        vector = Constant(value=[2.0, 3.0])
+        scalar.init()
+        vector.init()
+
+        # Demux to get individual elements
+        demux = Demux(num_outputs=2)
+        demux.connectInput(vector)
+
+        # Mux 3 inputs: scalar, demux[0], demux[1]
+        mux = Mux(num_inputs=3)
+        mux.connectInput(scalar, port=0)
+        mux.connectInput(demux, port=1)  # Gets output from port 0 by default
+        # For port 2, we need a workaround since Mux doesn't support source_port
+        # Use setInput directly for this test
+        scalar.update()
+        vector.update()
+        demux.update()
+        mux.setInput(demux.getOutput(1), port=2)  # Manually set the second element
+        mux.update()
+
+        vec = mux.getOutputVector()
+        assert vec is not None
+        assert len(vec) == 3
+        assert vec[0] == pytest.approx(1.0)
+        assert vec[1] == pytest.approx(2.0)
+        assert vec[2] == pytest.approx(3.0)
+
+    def test_demux_to_multiple_gains(self):
+        """Test Demux feeding multiple downstream Gain blocks."""
+        const = Constant(value=[10.0, 20.0, 30.0])
+        const.init()
+
+        demux = Demux(num_outputs=3)
+        demux.connectInput(const)
+
+        gain1 = Gain(gain=1.0)
+        gain2 = Gain(gain=2.0)
+        gain3 = Gain(gain=3.0)
+
+        # Connect each gain to a different demux output port
+        gain1.connectInput(demux, source_port=0)
+        gain2.connectInput(demux, source_port=1)
+        gain3.connectInput(demux, source_port=2)
+
+        const.update()
+        demux.update()
+        gain1.update()
+        gain2.update()
+        gain3.update()
+
+        assert gain1.getOutput() == pytest.approx(10.0)
+        assert gain2.getOutput() == pytest.approx(40.0)
+        assert gain3.getOutput() == pytest.approx(90.0)
