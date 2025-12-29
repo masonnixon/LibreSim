@@ -1,6 +1,75 @@
+import { useState, useEffect } from 'react'
 import { useModelStore } from '../../store/modelStore'
 import { blockRegistry } from '../../blocks'
 import type { ParameterDefinition } from '../../types/block'
+
+// Number input component that handles intermediate typing states (like typing "-")
+function NumberInput({
+  value,
+  onChange,
+  min,
+  max,
+  step,
+  className,
+  onKeyDown,
+  onFocus,
+  onBlur,
+}: {
+  value: number
+  onChange: (value: number) => void
+  min?: number
+  max?: number
+  step?: number
+  className?: string
+  onKeyDown?: (e: React.KeyboardEvent) => void
+  onFocus?: () => void
+  onBlur?: () => void
+}) {
+  const [localValue, setLocalValue] = useState(String(value))
+
+  // Sync local value when external value changes (and input is not focused)
+  useEffect(() => {
+    setLocalValue(String(value))
+  }, [value])
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value
+    setLocalValue(val)
+
+    // Only update parent if it's a valid number
+    const parsed = parseFloat(val)
+    if (!isNaN(parsed)) {
+      onChange(parsed)
+    }
+  }
+
+  const handleBlur = () => {
+    onBlur?.()
+    // On blur, validate and reset if needed
+    const parsed = parseFloat(localValue)
+    if (isNaN(parsed)) {
+      setLocalValue(String(value))
+    } else {
+      // Ensure the display matches the actual value
+      setLocalValue(String(parsed))
+    }
+  }
+
+  return (
+    <input
+      type="number"
+      value={localValue}
+      min={min}
+      max={max}
+      step={step ?? 0.01}
+      onChange={handleChange}
+      onKeyDown={onKeyDown}
+      onFocus={onFocus}
+      onBlur={handleBlur}
+      className={className}
+    />
+  )
+}
 
 // Track when Properties panel inputs are focused to prevent ReactFlow from stealing keyboard events
 let isPropertiesFocused = false
@@ -150,13 +219,12 @@ function renderParameterInput(
   switch (param.type) {
     case 'number':
       return (
-        <input
-          type="number"
+        <NumberInput
           value={value !== undefined && value !== null ? (value as number) : 0}
+          onChange={(val) => onChange(val)}
           min={param.min}
           max={param.max}
-          step={param.step ?? 0.01}
-          onChange={(e) => onChange(parseFloat(e.target.value))}
+          step={param.step}
           onKeyDown={stopPropagation}
           onFocus={handleFocus}
           onBlur={handleBlur}

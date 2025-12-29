@@ -9,6 +9,7 @@ from .discrete import UnitDelay, ZeroOrderHold
 from .control_analysis import BodePlot, NyquistPlot, PoleZeroMap, StepInfo
 from .math_ops import (
     Abs,
+    Bias,
     DeadZone,
     Demux,
     Gain,
@@ -54,7 +55,7 @@ __all__ = [
     # Discrete
     "UnitDelay", "ZeroOrderHold",
     # Math
-    "Sum", "Gain", "Product", "Abs", "Saturation", "Switch", "Mux", "Demux",
+    "Sum", "Gain", "Product", "Abs", "Bias", "Saturation", "Switch", "Mux", "Demux",
     "MathFunction", "Trigonometry", "Sign", "DeadZone",
     # Subsystems
     "Inport", "Outport", "Subsystem",

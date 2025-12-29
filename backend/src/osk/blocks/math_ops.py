@@ -971,6 +971,81 @@ class Demux(Block):
         return 0.0
 
 
+class Bias(Block):
+    """Bias block - adds a constant bias value to the input.
+
+    Supports both scalar and vector inputs.
+    """
+
+    def __init__(self, bias=0.0):
+        super().__init__()
+        self.bias = bias
+        self.input = 0.0
+        self.input_block = None
+        self.input_source_port = 0
+        self.output = 0.0
+        self._is_vector = False
+        self._input_vector = None
+        self._output_vector = None
+
+    def init(self):
+        self.input = 0.0
+        self.output = 0.0
+        self._is_vector = False
+        self._input_vector = None
+        self._output_vector = None
+
+    def setInput(self, value, port=0):
+        if isinstance(value, (list, tuple)):
+            self._is_vector = True
+            self._input_vector = list(value)
+            self.input = value[0] if value else 0.0
+        else:
+            self._is_vector = False
+            self._input_vector = None
+            self.input = value
+
+    def connectInput(self, block, port=0, source_port=0):
+        self.input_block = block
+        self.input_source_port = source_port
+
+    def update(self):
+        if self.input_block is not None:
+            if hasattr(self.input_block, 'getOutputVector'):
+                vec = self.input_block.getOutputVector()
+                if vec is not None:
+                    self._is_vector = True
+                    self._input_vector = vec
+                    self.input = vec[0] if vec else 0.0
+                else:
+                    self._is_vector = False
+                    self._input_vector = None
+                    self.input = self.input_block.getOutput(self.input_source_port)
+            else:
+                self._is_vector = False
+                self._input_vector = None
+                self.input = self.input_block.getOutput(self.input_source_port)
+
+        if self._is_vector and self._input_vector:
+            self._output_vector = [v + self.bias for v in self._input_vector]
+            self.output = self._output_vector[0] if self._output_vector else 0.0
+        else:
+            self._output_vector = None
+            self.output = self.input + self.bias
+
+    def getOutput(self, port=0):
+        if self._is_vector and self._output_vector:
+            if port < len(self._output_vector):
+                return self._output_vector[port]
+            return 0.0
+        return self.output
+
+    def getOutputVector(self):
+        if self._is_vector and self._output_vector:
+            return self._output_vector.copy()
+        return None
+
+
 class Reshape(Block):
     """Reshape block - passes through vector signals unchanged.
 

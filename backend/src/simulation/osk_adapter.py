@@ -68,6 +68,7 @@ from ..osk.blocks import (
 )
 from ..osk.blocks.discrete import DiscreteDerivative, DiscreteIntegrator, DiscreteTransferFunction
 from ..osk.blocks.math_ops import (
+    Bias,
     DeadZone,
     Demux,
     MathFunction,
@@ -115,6 +116,7 @@ BLOCK_TYPE_MAP: dict[str, type[Block]] = {
     "product": Product,
     "abs": Abs,
     "sign": Sign,
+    "bias": Bias,
     "saturation": Saturation,
     "dead_zone": DeadZone,
     "math_function": MathFunction,
@@ -178,6 +180,7 @@ PARAM_MAP: dict[str, dict[str, str]] = {
     "sum": {"signs": "signs"},
     "gain": {"gain": "gain"},
     "product": {"operations": "operations"},
+    "bias": {"bias": "bias"},
     "saturation": {"upperLimit": "upper_limit", "lowerLimit": "lower_limit"},
     "dead_zone": {"start": "start", "end": "end"},
     "math_function": {"function": "function", "exponent": "exponent"},

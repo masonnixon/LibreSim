@@ -49,7 +49,7 @@ The core simulation engine using multi-pass numerical integration.
 **Block Categories**:
 - `sources.py` - Constant, Step, Ramp, Sine, Pulse, Clock, FromWorkspace
 - `sinks.py` - Scope, ToWorkspace, Display, Terminator
-- `math_ops.py` - Sum, Gain, Product, Abs, Sign, Saturation, MathFunction, Trigonometry, DeadZone, Switch
+- `math_ops.py` - Sum, Gain, Product, Abs, Sign, Bias, Saturation, MathFunction, Trigonometry, DeadZone, Switch, Mux, Demux
 - `continuous.py` - Integrator, Derivative, TransferFunction, StateSpace, PIDController
 - `discrete.py` - UnitDelay, ZeroOrderHold, DiscreteIntegrator, DiscreteDerivative, DiscreteTransferFunction
 - `signal_processing.py` - MovingAverage, LowPassFilter, HighPassFilter, BandPassFilter
@@ -107,7 +107,7 @@ def rpt(self):   # optional, for recording data
 - Scope (with multi-input support and automatic signal naming)
 
 ### Math Operations
-- Sum, Gain, Product, Abs, Sign, Saturation, DeadZone, Switch
+- Sum, Gain, Product, Abs, Sign, Bias, Saturation, DeadZone, Switch, MathFunction, Trigonometry
 
 ### Continuous
 - Integrator, Derivative, TransferFunction, StateSpace, PIDController
@@ -214,12 +214,45 @@ The toolbar supports:
 - `frontend/src/components/Editor/Editor.tsx` - Block diagram editor with React Flow
 - `frontend/src/components/Toolbar/Toolbar.tsx` - File operations and simulation controls
 - `frontend/src/components/Sidebar/Sidebar.tsx` - Block library with mobile tap-to-add
+- `frontend/src/components/Properties/PropertiesPanel.tsx` - Block parameter editing
 - `frontend/src/components/Simulation/PlotWindow.tsx` - Draggable/resizable plot window
 - `frontend/src/components/Simulation/PlotWindowManager.tsx` - Multi-window plot management
 - `frontend/src/utils/mdlExporter.ts` - Export to Simulink MDL format
 - `frontend/src/utils/mdlImporter.ts` - Import from Simulink MDL format
+- `backend/tests/test_block_integration.py` - Frontend-backend integration tests
 
 ## Recent Changes Log
+
+### Session 2024-12-28 (Bug Fixes and Integration Tests)
+- **Fixed Negative Number Input Bug** (`frontend/src/components/Properties/PropertiesPanel.tsx`):
+  - Created `NumberInput` component that uses local state to allow intermediate typing states like "-"
+  - Previously, `parseFloat("-")` returned NaN causing the input to reset
+  - Now properly handles typing negative numbers in the properties panel
+
+- **Fixed Bias Block (Frontend-Backend Integration)**:
+  - The Bias block was defined in frontend but completely missing from backend
+  - Added `Bias` class to `backend/src/osk/blocks/math_ops.py` with full vector support
+  - Added to exports in `backend/src/osk/blocks/__init__.py`
+  - Added to `BLOCK_TYPE_MAP` and `PARAM_MAP` in `backend/src/simulation/osk_adapter.py`
+  - Added block definition to `backend/src/blocks/registry.py`
+
+- **Added UI Enhancements** (from previous session):
+  - Settings modal for simulation configuration (solver, step size, start/stop time, model info)
+  - Model name display in toolbar with dirty indicator
+  - Undo/Redo functionality with Ctrl+Z/Ctrl+Y hotkeys
+  - Block rotation with Ctrl+R (90-degree increments)
+  - Block spread/retract with Ctrl+]/Ctrl+[ hotkeys
+  - Ctrl+S for saving
+
+- **Created Integration Test Suite** (`backend/tests/test_block_integration.py`):
+  - `TestBlockRegistration`: Verifies all frontend blocks have backend implementations
+  - `TestBiasBlock`: Specific tests for Bias block functionality
+  - `TestBlockSimulationIntegration`: Tests blocks through the OSK adapter
+  - `TestAllMathBlocks`: Comprehensive tests for all math operation blocks
+  - `TestAllSourceBlocks`: Tests for all source blocks
+  - `TestAllRoutingBlocks`: Tests for Mux/Demux routing blocks
+  - Prevents "silent failure" bugs where blocks exist in UI but don't work in simulation
+  - 629 backend tests passing with 91% coverage
 
 ### Session 2024-12-14 (Library Block System)
 - **Added Library Block Architecture**:

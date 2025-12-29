@@ -377,6 +377,18 @@ class BlockRegistry:
                 ],
                 "icon": "↕",
             },
+            {
+                "type": "bias",
+                "category": "math",
+                "name": "Bias",
+                "description": "Add bias to input",
+                "inputs": [{"name": "in", "dataType": "double", "dimensions": [1]}],
+                "outputs": [{"name": "out", "dataType": "double", "dimensions": [1]}],
+                "parameters": [
+                    {"name": "bias", "type": "number", "default": 0, "label": "Bias", "description": "Value to add to input"},
+                ],
+                "icon": "+b",
+            },
         ]
         for block in blocks:
             self._blocks[block["type"]] = block
