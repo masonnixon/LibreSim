@@ -365,6 +365,7 @@ class MDLParser:
             },
             "gain": {"Gain": "gain"},
             "sum": {"Inputs": "signs"},
+            "product": {"Inputs": "operations"},
             "integrator": {"InitialCondition": "initialCondition"},
             "transfer_function": {
                 "Numerator": "numerator",
@@ -388,10 +389,39 @@ class MDLParser:
         for mdl_name, lib_name in type_params.items():
             if mdl_name in block_data:
                 value = block_data[mdl_name]
-                # Try to convert to appropriate type
-                params[lib_name] = self._convert_value(value)
+                # Special handling for Product block operations
+                if block_type == "product" and lib_name == "operations":
+                    params[lib_name] = self._convert_product_inputs(value)
+                else:
+                    # Try to convert to appropriate type
+                    params[lib_name] = self._convert_value(value)
 
         return params
+
+    def _convert_product_inputs(self, value: str) -> str:
+        """Convert MDL Product Inputs parameter to LibreSim operations format.
+
+        MDL Product blocks can have:
+        - Numeric inputs: "3" -> "***" (3 multiply operations)
+        - Operation string: "**/" -> "**/" (2 multiply, 1 divide)
+        """
+        if not value:
+            return "**"  # Default to 2 multiply inputs
+
+        # If it's a pure number, convert to that many '*' characters
+        try:
+            num_inputs = int(value)
+            return "*" * num_inputs
+        except ValueError:
+            pass
+
+        # If it contains only * and / characters, use as-is
+        if all(c in "*/|" for c in value):
+            # Convert '|' separator used in some MDL formats to just operations
+            return value.replace("|", "")
+
+        # Default: return as-is
+        return value
 
     def _convert_value(self, value: str) -> Any:
         """Convert a string value to appropriate Python type."""
@@ -460,6 +490,16 @@ class MDLParser:
         }
 
         in_config, out_config = port_configs.get(block_type, ([], []))
+
+        # For product and sum blocks, dynamically create ports based on operations/signs
+        if block_type == "product":
+            operations = parameters.get("operations", "**")
+            num_inputs = len(operations)
+            in_config = [{"name": f"in{i+1}"} for i in range(num_inputs)]
+        elif block_type == "sum":
+            signs = parameters.get("signs", "++")
+            num_inputs = len(signs)
+            in_config = [{"name": f"in{i+1}"} for i in range(num_inputs)]
 
         for i, pc in enumerate(in_config):
             input_ports.append(
