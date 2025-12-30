@@ -62,11 +62,29 @@ export function PlotWindowManager() {
     // Find all scope blocks recursively (including in subsystems)
     const allScopes = findAllScopeBlocks(model.blocks)
 
+    // DEBUG: Log scope matching info
+    console.log('[PlotWindowManager] Matching scopes to signals:', {
+      modelScopeCount: allScopes.length,
+      resultSignalCount: results.signals?.length,
+      modelScopes: allScopes.map(s => ({ id: s.flattenedId, name: s.displayName })),
+      resultBlockIds: results.signals?.map(s => s.blockId)
+    })
+
     for (const { block, flattenedId, displayName } of allScopes) {
       // Find signals that belong to this scope block (using flattened ID from backend)
       const blockSignals = results.signals.filter(
         (signal) => signal.blockId === flattenedId
       )
+
+      // DEBUG: Log each scope's signal matching
+      console.log(`[PlotWindowManager] Scope "${displayName}" (${flattenedId}):`, {
+        matchedSignals: blockSignals.length,
+        signalDetails: blockSignals.map(s => ({
+          name: s.name,
+          numInputs: s.numInputs,
+          inputNames: s.inputNames
+        }))
+      })
 
       if (blockSignals.length > 0) {
         scopeWindows.push({

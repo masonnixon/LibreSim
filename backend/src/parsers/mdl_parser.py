@@ -366,7 +366,10 @@ class MDLParser:
             "gain": {"Gain": "gain"},
             "sum": {"Inputs": "signs"},
             "product": {"Inputs": "operations"},
-            "integrator": {"InitialCondition": "initialCondition"},
+            "integrator": {
+                "InitialCondition": "initialCondition",
+                "ExternalReset": "externalIC",
+            },
             "transfer_function": {
                 "Numerator": "numerator",
                 "Denominator": "denominator",
@@ -382,6 +385,7 @@ class MDLParser:
                 "UpperValue": "upperLimit",
             },
             "minmax": {"Function": "function"},
+            "scope": {"NumInputPorts": "num_input_ports"},
         }
 
         type_params = param_map.get(block_type, {})
@@ -392,6 +396,10 @@ class MDLParser:
                 # Special handling for Product block operations
                 if block_type == "product" and lib_name == "operations":
                     params[lib_name] = self._convert_product_inputs(value)
+                # Special handling for Integrator ExternalReset -> boolean externalIC
+                elif block_type == "integrator" and lib_name == "externalIC":
+                    # ExternalReset "none" -> False, any other value -> True
+                    params[lib_name] = value.lower() != "none" if isinstance(value, str) else bool(value)
                 else:
                     # Try to convert to appropriate type
                     params[lib_name] = self._convert_value(value)
@@ -491,7 +499,7 @@ class MDLParser:
 
         in_config, out_config = port_configs.get(block_type, ([], []))
 
-        # For product and sum blocks, dynamically create ports based on operations/signs
+        # For product, sum, scope, and integrator blocks, dynamically create ports based on parameters
         if block_type == "product":
             operations = parameters.get("operations", "**")
             num_inputs = len(operations)
@@ -500,6 +508,12 @@ class MDLParser:
             signs = parameters.get("signs", "++")
             num_inputs = len(signs)
             in_config = [{"name": f"in{i+1}"} for i in range(num_inputs)]
+        elif block_type == "scope":
+            num_inputs = int(parameters.get("num_input_ports", 1))
+            in_config = [{"name": f"in{i+1}"} for i in range(num_inputs)]
+        elif block_type == "integrator" and parameters.get("externalIC"):
+            # External IC mode: port 0 = signal to integrate, port 1 = initial condition
+            in_config = [{"name": "in"}, {"name": "x0"}]
 
         for i, pc in enumerate(in_config):
             input_ports.append(

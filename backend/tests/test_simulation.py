@@ -1254,6 +1254,56 @@ class TestOSKAdapterExtended:
         assert "scope-1" in self.adapter._scope_input_names
         assert self.adapter._scope_input_names["scope-1"][0] == "MyConstant"
 
+    def test_setup_connections_scope_num_input_ports_from_mdl(self):
+        """Test _setup_connections with num_input_ports (MDL import format)."""
+        const1_block = CompiledBlock(
+            id="const-1",
+            type="constant",
+            name="Constant1",
+            parameters={"value": 1.0},
+        )
+        const2_block = CompiledBlock(
+            id="const-2",
+            type="constant",
+            name="Constant2",
+            parameters={"value": 2.0},
+        )
+        # MDL imports use num_input_ports instead of numInputs
+        scope_block = CompiledBlock(
+            id="scope-1",
+            type="scope",
+            name="Euler_deg",
+            parameters={"num_input_ports": 2},  # MDL format
+            input_connections=[
+                "const-1:const-1-out-0@scope-1-in-0",
+                "const-2:const-2-out-0@scope-1-in-1",
+            ],
+        )
+
+        compiled_model = CompiledModel(
+            success=True,
+            message="OK",
+            blocks=[const1_block, const2_block, scope_block],
+            execution_order=["const-1", "const-2", "scope-1"],
+        )
+
+        config = SimulationConfig()
+        self.adapter.initialize(compiled_model, config)
+
+        # Check scope has 2 input names (one per input)
+        assert "scope-1" in self.adapter._scope_input_names
+        assert len(self.adapter._scope_input_names["scope-1"]) == 2
+        assert self.adapter._scope_input_names["scope-1"][0] == "Constant1"
+        assert self.adapter._scope_input_names["scope-1"][1] == "Constant2"
+
+        # Verify the OSK Scope block was created with 2 inputs
+        scope_osk = self.adapter.get_block("scope-1")
+        assert scope_osk is not None
+        assert scope_osk.num_inputs == 2
+        assert len(scope_osk.input_blocks) == 2
+        assert scope_osk.input_blocks[0] is not None  # Connected
+        assert scope_osk.input_blocks[1] is not None  # Connected
+
     def test_setup_connections_old_format_without_target_port(self):
         """Test _setup_connections with old connection format (no @target_port)."""
         # Manually create the adapter state to test the old format parsing

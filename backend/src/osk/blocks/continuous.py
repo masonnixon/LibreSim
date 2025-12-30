@@ -8,17 +8,28 @@ class Integrator(Block):
 
     Supports both scalar and vector inputs. For vector inputs, each element
     is integrated independently with its own state.
+
+    When external_ic=True, the block has two inputs:
+    - Port 0: Signal to integrate
+    - Port 1: External initial condition (read only at t=0)
     """
 
     def __init__(self, initial_condition=0.0, limit_output=False,
-                 upper_limit=float('inf'), lower_limit=float('-inf')):
+                 upper_limit=float('inf'), lower_limit=float('-inf'),
+                 external_ic=False):
         super().__init__()
         self.limit_output = limit_output
         self.upper_limit = upper_limit
         self.lower_limit = lower_limit
+        self.external_ic = external_ic
         self.input = 0.0
         self.input_block = None
         self.input_source_port = 0
+
+        # For external IC mode, we have two input blocks
+        self.input_blocks = [None, None] if external_ic else None
+        self.input_source_ports = [0, 0] if external_ic else None
+        self._ic_initialized = False  # Track if we've read the external IC
 
         # Handle vector or scalar initial condition
         if isinstance(initial_condition, (list, tuple)):
@@ -37,6 +48,8 @@ class Integrator(Block):
             self._input_vector = None
 
     def init(self):
+        self._ic_initialized = False  # Reset IC flag on init
+
         if self._is_vector and self._states:
             for i, state in enumerate(self._states):
                 ic = self.initial_condition[i] if isinstance(self.initial_condition, list) and i < len(self.initial_condition) else 0.0
@@ -70,11 +83,59 @@ class Integrator(Block):
                 self._states = [self.addIntegrator([self.initial_condition if i == 0 else 0.0, 0.0]) for i in range(n)]
 
     def connectInput(self, block, port=0, source_port=0):
-        self.input_block = block
-        self.input_source_port = source_port
+        if self.external_ic and self.input_blocks is not None:
+            # External IC mode: port 0 = signal, port 1 = initial condition
+            if port < len(self.input_blocks):
+                self.input_blocks[port] = block
+                self.input_source_ports[port] = source_port
+        else:
+            # Standard mode: single input
+            self.input_block = block
+            self.input_source_port = source_port
+
+    def _read_external_ic(self):
+        """Read the external initial condition from port 1 and set the integrator state."""
+        if not self.external_ic or self._ic_initialized:
+            return
+
+        ic_block = self.input_blocks[1] if self.input_blocks and len(self.input_blocks) > 1 else None
+        if ic_block is None:
+            self._ic_initialized = True
+            return
+
+        # Read the IC value from the connected block
+        ic_value = ic_block.getOutput(self.input_source_ports[1] if self.input_source_ports else 0)
+
+        # Set the integrator state to this value
+        if self._is_vector and self._states:
+            # For vector mode, set all states to the same IC (or handle vector IC if needed)
+            for state in self._states:
+                state[0] = ic_value
+        elif hasattr(self, 'x'):
+            self.x[0] = ic_value
+
+        self._ic_initialized = True
 
     def update(self):
-        if self.input_block is not None:
+        # On first update, read external IC if enabled
+        if self.external_ic and not self._ic_initialized:
+            self._read_external_ic()
+
+        # Get input signal (port 0 for external_ic mode, or from input_block)
+        if self.external_ic and self.input_blocks is not None:
+            signal_block = self.input_blocks[0]
+            if signal_block is not None:
+                # Check for vector output from connected block
+                if hasattr(signal_block, 'getOutputVector'):
+                    vec = signal_block.getOutputVector()
+                    if vec is not None:
+                        self._setup_vector_mode(len(vec))
+                        self._input_vector = list(vec)
+                    else:
+                        self.input = signal_block.getOutput(self.input_source_ports[0] if self.input_source_ports else 0)
+                else:
+                    self.input = signal_block.getOutput(self.input_source_ports[0] if self.input_source_ports else 0)
+        elif self.input_block is not None:
             # Check for vector output from connected block
             if hasattr(self.input_block, 'getOutputVector'):
                 vec = self.input_block.getOutputVector()

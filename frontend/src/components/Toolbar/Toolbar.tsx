@@ -411,6 +411,24 @@ export function Toolbar() {
             stopPolling()
             setStatus('completed')
             const results = await api.getSimulationResults()
+            // DEBUG: Log raw results from API
+            console.log('[Toolbar] Raw simulation results from API:', JSON.stringify({
+              signalsCount: results.signals?.length,
+              statistics: results.statistics,
+              signals: results.signals?.map(s => ({
+                blockId: s.blockId,
+                name: s.name,
+                numInputs: s.numInputs,
+                inputNames: s.inputNames,
+                timesLength: s.times?.length,
+                valuesType: Array.isArray(s.values) ? (Array.isArray(s.values[0]) ? 'number[][]' : 'number[]') : typeof s.values,
+                sampleValues: Array.isArray(s.values) ?
+                  (Array.isArray(s.values[0]) ?
+                    (s.values as number[][]).map(arr => arr?.slice(0, 3)) :
+                    (s.values as number[]).slice(0, 5)) :
+                  s.values
+              }))
+            }, null, 2))
             setResults(results)
           } else if (status.status === 'error') {
             stopPolling()

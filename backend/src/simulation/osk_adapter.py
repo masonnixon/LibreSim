@@ -165,9 +165,9 @@ PARAM_MAP: dict[str, dict[str, str]] = {
     "pulse_generator": {"amplitude": "amplitude", "period": "period", "dutyCycle": "duty_cycle", "phaseDelay": "phase_delay"},
     "white_noise": {"mean": "mean", "variance": "variance", "seed": "seed", "sampleTime": "sample_time"},
     "uniform_noise": {"minimum": "minimum", "maximum": "maximum", "seed": "seed", "sampleTime": "sample_time"},
-    "scope": {"numInputs": "num_inputs"},
+    "scope": {"numInputs": "num_inputs", "num_input_ports": "num_inputs"},
     "to_workspace": {"variableName": "variable_name"},
-    "integrator": {"initialCondition": "initial_condition", "limitOutput": "limit_output", "upperLimit": "upper_limit", "lowerLimit": "lower_limit"},
+    "integrator": {"initialCondition": "initial_condition", "limitOutput": "limit_output", "upperLimit": "upper_limit", "lowerLimit": "lower_limit", "externalIC": "external_ic"},
     "derivative": {"coefficient": "coefficient"},
     "transfer_function": {"numerator": "numerator", "denominator": "denominator"},
     "state_space": {"A": "A", "B": "B", "C": "C", "D": "D", "initialCondition": "initial_state"},
@@ -335,7 +335,9 @@ class OSKAdapter:
             # For scope blocks, track the source block names for each input
             if block.type == "scope":
                 # Get the actual number of inputs from the block parameters
-                num_inputs = int(block.parameters.get('numInputs', 1))
+                # Support both 'numInputs' (frontend) and 'num_input_ports' (MDL import)
+                num_inputs = int(block.parameters.get('numInputs',
+                                 block.parameters.get('num_input_ports', 1)))
                 self._scope_input_names[block.id] = [""] * num_inputs
 
             # Connect inputs
@@ -410,11 +412,11 @@ class OSKAdapter:
                         # Also store source port for single-input blocks
                         if hasattr(osk_block, 'input_source_port'):
                             osk_block.input_source_port = source_port_index
-                    elif hasattr(osk_block, 'input_blocks'):
+                    elif hasattr(osk_block, 'input_blocks') and osk_block.input_blocks is not None:
                         if target_port_index < len(osk_block.input_blocks):
                             osk_block.input_blocks[target_port_index] = source_osk_block
                             # Also store source port for multi-input blocks
-                            if hasattr(osk_block, 'input_source_ports'):
+                            if hasattr(osk_block, 'input_source_ports') and osk_block.input_source_ports is not None:
                                 if target_port_index < len(osk_block.input_source_ports):
                                     osk_block.input_source_ports[target_port_index] = source_port_index
 
@@ -475,7 +477,7 @@ class OSKAdapter:
                 # For blocks without automatic input connection, set inputs manually
                 # Skip blocks that have input_blocks (like Scope) - they get inputs via connectInput
                 has_input_block = hasattr(osk_block, 'input_block') and osk_block.input_block is not None
-                has_input_blocks = hasattr(osk_block, 'input_blocks') and any(b is not None for b in osk_block.input_blocks)
+                has_input_blocks = hasattr(osk_block, 'input_blocks') and osk_block.input_blocks is not None and any(b is not None for b in osk_block.input_blocks)
                 if not has_input_block and not has_input_blocks:
                     for i, conn in enumerate(compiled_block.input_connections):
                         source_block_id, _ = conn.split(":")
@@ -496,6 +498,7 @@ class OSKAdapter:
                         if block_id in self._scope_input_names and hasattr(osk_block, 'inputs'):
                             input_names = self._scope_input_names[block_id]
                             input_blocks = getattr(osk_block, 'input_blocks', [])
+
                             trace_idx = 0
                             for i in range(len(osk_block.inputs)):
                                 # Skip unconnected inputs

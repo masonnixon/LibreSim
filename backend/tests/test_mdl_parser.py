@@ -236,6 +236,32 @@ class TestMDLParser:
         assert len(inputs) == 1
         assert len(outputs) == 0
 
+    def test_create_ports_scope_multi_input(self):
+        """Test creating ports for scope block with multiple inputs."""
+        parser = MDLParser()
+
+        # Scope with 2 inputs
+        inputs, outputs = parser._create_ports("scope", "block-1", {"num_input_ports": 2})
+        assert len(inputs) == 2
+        assert len(outputs) == 0
+        assert inputs[0].name == "in1"
+        assert inputs[1].name == "in2"
+
+        # Scope with 3 inputs
+        inputs, outputs = parser._create_ports("scope", "block-2", {"num_input_ports": 3})
+        assert len(inputs) == 3
+        assert inputs[0].name == "in1"
+        assert inputs[1].name == "in2"
+        assert inputs[2].name == "in3"
+
+    def test_extract_parameters_scope(self):
+        """Test extracting parameters for scope block with NumInputPorts."""
+        parser = MDLParser()
+        block_data = {"NumInputPorts": "3"}
+
+        params = parser._extract_parameters(block_data, "scope")
+        assert params.get("num_input_ports") == 3.0
+
     def test_create_ports_unknown(self):
         """Test creating ports for unknown block type."""
         parser = MDLParser()

@@ -640,6 +640,11 @@ function convertBlockParameters(block: ParsedBlock, libreSimType: string): Recor
 
     case 'integrator':
       if (block.InitialCondition !== undefined) params.initialCondition = parseValue(String(block.InitialCondition))
+      // ExternalReset enables external initial condition input (port 2)
+      // Any value other than 'none' enables external IC mode
+      if (block.ExternalReset !== undefined && block.ExternalReset !== 'none') {
+        params.externalIC = true
+      }
       if (block.LimitOutput === 'on') {
         params.limitOutput = true
         if (block.UpperSaturationLimit !== undefined) params.upperLimit = parseValue(String(block.UpperSaturationLimit))
@@ -945,6 +950,23 @@ function createPorts(blockType: string, params: Record<string, unknown>): { inpu
         name: 'in',
         dataType: 'double',
         dimensions: [numOutputs],
+      })
+    }
+
+    // Handle integrator with external initial condition (adds second input port for x0)
+    if (blockType === 'integrator' && params.externalIC) {
+      inputPorts.length = 0
+      inputPorts.push({
+        id: 'in_0',
+        name: 'in',
+        dataType: 'double',
+        dimensions: [1],
+      })
+      inputPorts.push({
+        id: 'in_1',
+        name: 'x0',
+        dataType: 'double',
+        dimensions: [1],
       })
     }
 

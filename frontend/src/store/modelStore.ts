@@ -686,6 +686,38 @@ export const useModelStore = create<ModelState>((set, get) => ({
             updatedBlock.inputPorts = newInputPorts
           }
 
+          // Handle Integrator externalIC (adds second input port for initial condition)
+          if (b.type === 'integrator' && 'externalIC' in parameters) {
+            const externalIC = Boolean(parameters.externalIC)
+            if (externalIC) {
+              // External IC mode: two input ports (signal and IC)
+              updatedBlock.inputPorts = [
+                {
+                  id: `${b.id}-in-0`,
+                  name: 'in',
+                  dataType: 'double' as const,
+                  dimensions: [1],
+                },
+                {
+                  id: `${b.id}-in-1`,
+                  name: 'x0',
+                  dataType: 'double' as const,
+                  dimensions: [1],
+                },
+              ]
+            } else {
+              // Standard mode: single input port
+              updatedBlock.inputPorts = [
+                {
+                  id: `${b.id}-in-0`,
+                  name: 'in',
+                  dataType: 'double' as const,
+                  dimensions: [1],
+                },
+              ]
+            }
+          }
+
           // Handle Reshape outputDimensions
           if (b.type === 'reshape' && 'outputDimensions' in parameters) {
             let dims: number[] = [1]

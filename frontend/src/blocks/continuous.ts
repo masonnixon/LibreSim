@@ -10,11 +10,18 @@ export const continuousBlocks: BlockDefinition[] = [
     outputs: [{ name: 'out', dataType: 'double', dimensions: [1] }],
     parameters: [
       {
+        name: 'externalIC',
+        type: 'boolean',
+        default: false,
+        label: 'External Initial Condition',
+        description: 'Use external input for initial condition (adds second input port)',
+      },
+      {
         name: 'initialCondition',
         type: 'number',
         default: 0,
         label: 'Initial Condition',
-        description: 'Initial value of integrator state',
+        description: 'Initial value of integrator state (ignored if External IC is enabled)',
       },
       {
         name: 'limitOutput',

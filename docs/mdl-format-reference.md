@@ -231,16 +231,39 @@ Block {
 | MDL Property | Description | Default | LibreSim Parameter |
 |-------------|-------------|---------|-------------------|
 | `InitialCondition` | Initial state value | `0` | `initialCondition` |
+| `ExternalReset` | External reset/IC mode | `none` | `externalIC` (boolean) |
 | `LimitOutput` | Enable saturation | `off` | `limitOutput` |
 | `UpperSaturationLimit` | Upper saturation limit | `inf` | `upperLimit` |
 | `LowerSaturationLimit` | Lower saturation limit | `-inf` | `lowerLimit` |
 
-**Example:**
+**ExternalReset Values:**
+- `none` - No external reset (externalIC = false)
+- `level` - External initial condition via port 2 (externalIC = true)
+- `rising`, `falling`, `either`, `level hold` - Reset modes (mapped to externalIC = true)
+
+**External Initial Condition Mode:**
+When `externalIC` is enabled, the integrator block has two input ports:
+- Port 1: Signal to integrate
+- Port 2: External initial condition (x0) - read at simulation start
+
+This allows the initial condition to be provided dynamically from another block (e.g., a Constant) rather than as a fixed parameter.
+
+**Example (Standard):**
 ```
 Block {
   BlockType           Integrator
   Name                "Integrator"
   InitialCondition    "0"
+}
+```
+
+**Example (External IC):**
+```
+Block {
+  BlockType           Integrator
+  Name                "Integrator"
+  InitialCondition    "0"
+  ExternalReset       "level"
 }
 ```
 
