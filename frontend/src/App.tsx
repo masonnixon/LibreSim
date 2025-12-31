@@ -7,6 +7,7 @@ import { Toolbar } from './components/Toolbar/Toolbar'
 import { PlotWindowManager } from './components/Simulation/PlotWindowManager'
 import { ToastContainer } from './components/Toast/Toast'
 import { SettingsModal } from './components/Settings/SettingsModal'
+import { HelpModal } from './components/Help/HelpModal'
 import { useUIStore } from './store/uiStore'
 
 import '@xyflow/react/dist/style.css'
@@ -59,6 +60,9 @@ function App() {
 
         {/* Settings Modal */}
         <SettingsModal />
+
+        {/* Help Modal */}
+        <HelpModal />
       </div>
     </ReactFlowProvider>
   )

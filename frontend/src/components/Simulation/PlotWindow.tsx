@@ -220,7 +220,7 @@ export function PlotWindow({
       valuesLength: Array.isArray(s.values) ? s.values.length : 0,
       sampleValues: Array.isArray(s.values) ?
         (Array.isArray(s.values[0]) ?
-          s.values.map((arr: number[]) => arr?.slice(0, 3)) :
+          (s.values as number[][]).map((arr) => arr?.slice(0, 3)) :
           (s.values as number[]).slice(0, 5)) :
         s.values
     })), null, 2))

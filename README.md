@@ -11,8 +11,11 @@ LibreSim provides a graphical environment for modeling, simulating, and analyzin
 - **Visual Block Diagram Editor**: Drag-and-drop interface for building system models
 - **Control Systems Focus**: Comprehensive library of blocks for control system design
 - **Real-time Simulation**: Live visualization of simulation results with scopes and plots
-- **Simulink Import**: Import existing `.mdl` model files
+- **Simulink Import/Export**: Import and export `.mdl` model files for Simulink compatibility
+- **Library Import**: Import MDL libraries as reusable subsystem blocks
 - **Multiple Solvers**: RK4, Euler, and Merson's method ODE solvers
+- **Undo/Redo**: Full history support for model editing
+- **Keyboard Shortcuts**: Efficient workflow with comprehensive hotkey support
 - **Extensible Architecture**: Easy to add custom blocks and solvers
 
 ## Architecture
@@ -549,6 +552,48 @@ file: your_model.mdl
 ```
 
 Or drag-and-drop an `.mdl` file directly into the editor.
+
+---
+
+## Keyboard Shortcuts
+
+LibreSim supports the following keyboard shortcuts for efficient workflow:
+
+### General
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+S` | Save model |
+| `Ctrl+Z` | Undo |
+| `Ctrl+Y` / `Ctrl+Shift+Z` | Redo |
+| `Escape` | Exit subsystem / Deselect |
+
+### Selection & Editing
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+A` | Select all blocks |
+| `Ctrl+C` | Copy selected blocks |
+| `Ctrl+V` | Paste blocks |
+| `Delete` / `Backspace` | Delete selected blocks |
+
+### View & Layout
+
+| Shortcut | Action |
+|----------|--------|
+| `Space` | Fit view to content |
+| `Ctrl+R` | Rotate selected blocks 90° clockwise |
+| `Ctrl+]` | Spread selected blocks apart (5%) |
+| `Ctrl+[` | Retract selected blocks closer (5%) |
+
+### Navigation
+
+| Shortcut | Action |
+|----------|--------|
+| Mouse wheel | Zoom in/out |
+| Click + drag (canvas) | Pan view |
+| Double-click subsystem | Enter subsystem |
+| `Escape` | Exit current subsystem |
 
 ---
 
