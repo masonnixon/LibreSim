@@ -4,31 +4,85 @@ This package contains simulation block implementations that use
 the OSK (Object-oriented Simulation Kernel) framework.
 """
 
-from .continuous import Derivative, Integrator, PIDController, StateSpace, TransferFunction
-from .discrete import UnitDelay, ZeroOrderHold
+from .continuous import (
+    Derivative,
+    Integrator,
+    LimitedIntegrator,
+    PIDController,
+    SecondOrder,
+    StateSpace,
+    TransferFunction,
+    TransportDelay,
+    ZeroPole,
+)
+from .discrete import (
+    DiscreteDerivative,
+    DiscreteIntegrator,
+    DiscretePIDController,
+    DiscreteStateSpace,
+    DiscreteTransferFunction,
+    FirstOrderHold,
+    Memory,
+    UnitDelay,
+    ZeroOrderHold,
+)
 from .control_analysis import BodePlot, NyquistPlot, PoleZeroMap, StepInfo
+from .logic import (
+    BitOperator,
+    CompareToConstant,
+    CompareToZero,
+    LogicalOperator,
+    RelationalOperator,
+)
 from .math_ops import (
     Abs,
+    Atan2,
     Bias,
+    ComplexToMagnitudeAngle,
+    CrossProduct,
     DeadZone,
     Demux,
+    Divide,
+    DotProduct,
+    Exp,
     Gain,
+    Hypot,
+    Log,
+    Log10,
+    MagnitudeAngle,
     MathFunction,
+    MinMax,
+    Mod,
     Mux,
+    Polynomial,
+    Power,
     Product,
+    Reciprocal,
+    Reshape,
+    Rounding,
     Saturation,
     Sign,
+    SliderGain,
+    Sqrt,
+    Square,
     Sum,
     Switch,
     Trigonometry,
+    UnaryMinus,
+    WeightedSum,
 )
 from .nonlinear import (
     Coulomb,
+    HitCrossing,
+    Hysteresis,
     LookupTable1D,
     LookupTable2D,
     Quantizer,
     Relay,
+    SlewRateLimiter,
+    Stiction,
     VariableTransportDelay,
+    WrapToRange,
 )
 from .observers import ExtendedKalmanFilter, KalmanFilter, LuenbergerObserver
 from .signal_processing import (
@@ -42,21 +96,85 @@ from .signal_processing import (
     RateLimiter,
 )
 from .sinks import Scope, ToWorkspace
-from .sources import Clock, Constant, Ramp, SineWave, Step
+from .sources import (
+    BandLimitedWhiteNoise,
+    ChirpSignal,
+    Clock,
+    Constant,
+    FromWorkspace,
+    Ground,
+    PulseGenerator,
+    Ramp,
+    RepeatingSequence,
+    SignalGenerator,
+    SineWave,
+    Step,
+    UniformNoise,
+    WhiteNoise,
+)
 from .subsystems import Inport, Outport, Subsystem
+from .data_types import (
+    DataTypeConversion,
+    RealImagToComplex,
+    ComplexToRealImag,
+)
+from .matrix_ops import (
+    MatrixMultiply,
+    MatrixTranspose,
+    MatrixInverse,
+    Selector,
+    Assignment,
+    Concatenate,
+    MatrixSum,
+    VectorNorm,
+)
+from .control_design import (
+    LQRController,
+    PolePlacement,
+    LeadLagCompensator,
+    PIController,
+    PDController,
+    AntiWindupPID,
+    ModelReference,
+)
+from .aerospace import (
+    QuaternionNormalize,
+    QuaternionMultiply,
+    QuaternionConjugate,
+    QuaternionToEuler,
+    EulerToQuaternion,
+    QuaternionRotateVector,
+    DCMToQuaternion,
+    QuaternionToDCM,
+    ISAAtmosphere,
+    SixDOFEuler,
+    FlatEarthGravity,
+    WGS84Gravity,
+)
 
 __all__ = [
     # Sources
-    "Constant", "Step", "Ramp", "SineWave", "Clock",
+    "Constant", "Step", "Ramp", "SineWave", "Clock", "PulseGenerator",
+    "WhiteNoise", "UniformNoise", "RepeatingSequence", "ChirpSignal",
+    "BandLimitedWhiteNoise", "Ground", "FromWorkspace", "SignalGenerator",
     # Sinks
     "Scope", "ToWorkspace",
     # Continuous
     "Integrator", "Derivative", "TransferFunction", "StateSpace", "PIDController",
+    "TransportDelay", "SecondOrder", "LimitedIntegrator", "ZeroPole",
     # Discrete
-    "UnitDelay", "ZeroOrderHold",
+    "UnitDelay", "ZeroOrderHold", "DiscreteIntegrator", "DiscreteDerivative",
+    "DiscreteTransferFunction", "Memory", "DiscreteStateSpace", "FirstOrderHold",
+    "DiscretePIDController",
     # Math
     "Sum", "Gain", "Product", "Abs", "Bias", "Saturation", "Switch", "Mux", "Demux",
-    "MathFunction", "Trigonometry", "Sign", "DeadZone",
+    "MathFunction", "Trigonometry", "Sign", "DeadZone", "Reshape", "Divide", "Mod",
+    "Atan2", "Rounding", "MinMax", "DotProduct", "CrossProduct", "Hypot", "UnaryMinus",
+    "SliderGain", "WeightedSum", "Polynomial", "MagnitudeAngle", "ComplexToMagnitudeAngle", "Sqrt",
+    "Reciprocal", "Square", "Power", "Exp", "Log", "Log10",
+    # Logic
+    "CompareToZero", "CompareToConstant", "RelationalOperator", "LogicalOperator",
+    "BitOperator",
     # Subsystems
     "Inport", "Outport", "Subsystem",
     # Signal Processing
@@ -64,8 +182,21 @@ __all__ = [
     "AnalogFilter", "NotchFilter", "Backlash",
     # Nonlinear
     "LookupTable1D", "LookupTable2D", "Quantizer", "Relay", "Coulomb", "VariableTransportDelay",
+    "WrapToRange", "HitCrossing", "Hysteresis", "Stiction", "SlewRateLimiter",
     # Observers
     "LuenbergerObserver", "KalmanFilter", "ExtendedKalmanFilter",
     # Control Analysis
     "BodePlot", "NyquistPlot", "PoleZeroMap", "StepInfo",
+    # Data Types
+    "DataTypeConversion", "RealImagToComplex", "ComplexToRealImag",
+    # Matrix Operations
+    "MatrixMultiply", "MatrixTranspose", "MatrixInverse", "Selector", "Assignment",
+    "Concatenate", "MatrixSum", "VectorNorm",
+    # Control Design
+    "LQRController", "PolePlacement", "LeadLagCompensator", "PIController", "PDController",
+    "AntiWindupPID", "ModelReference",
+    # Aerospace
+    "QuaternionNormalize", "QuaternionMultiply", "QuaternionConjugate", "QuaternionToEuler",
+    "EulerToQuaternion", "QuaternionRotateVector", "DCMToQuaternion", "QuaternionToDCM",
+    "ISAAtmosphere", "SixDOFEuler", "FlatEarthGravity", "WGS84Gravity",
 ]

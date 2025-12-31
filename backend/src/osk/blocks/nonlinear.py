@@ -365,3 +365,247 @@ class VariableTransportDelay(Block):
 
     def getOutput(self, port=0):
         return self.output
+
+
+class WrapToRange(Block):
+    """Wrap input to specified range.
+
+    Wraps input values to a specified range, useful for angle
+    normalization (e.g., -π to π) or cyclic quantities.
+    """
+
+    def __init__(self, lower=-3.141592653589793, upper=3.141592653589793):
+        super().__init__()
+        self.lower = lower
+        self.upper = upper
+        self.input = 0.0
+        self.output = 0.0
+        self.input_block = None
+        self.input_source_port = 0
+
+    def init(self):
+        self.output = 0.0
+
+    def setInput(self, value, port=0):
+        self.input = value
+
+    def connectInput(self, block, port=0, source_port=0):
+        self.input_block = block
+        self.input_source_port = source_port
+
+    def update(self):
+        if self.input_block is not None:
+            self.input = self.input_block.getOutput(self.input_source_port)
+
+        range_size = self.upper - self.lower
+        if range_size <= 0:
+            self.output = self.lower
+        else:
+            # Wrap value to range [lower, upper)
+            self.output = self.lower + ((self.input - self.lower) % range_size)
+
+    def getOutput(self, port=0):
+        return self.output
+
+
+class HitCrossing(Block):
+    """Detect threshold crossings.
+
+    Outputs 1 when input crosses the threshold in the specified
+    direction, 0 otherwise. Useful for event detection.
+    """
+
+    def __init__(self, threshold=0.0, direction='rising'):
+        super().__init__()
+        self.threshold = threshold
+        self.direction = direction  # 'rising', 'falling', 'either'
+        self.input = 0.0
+        self.output = 0.0
+        self.prev_input = 0.0
+        self.input_block = None
+        self.input_source_port = 0
+
+    def init(self):
+        self.output = 0.0
+        self.prev_input = 0.0
+
+    def setInput(self, value, port=0):
+        self.input = value
+
+    def connectInput(self, block, port=0, source_port=0):
+        self.input_block = block
+        self.input_source_port = source_port
+
+    def update(self):
+        if self.input_block is not None:
+            self.input = self.input_block.getOutput(self.input_source_port)
+
+        crossing = False
+
+        if self.direction == 'rising':
+            crossing = self.prev_input < self.threshold <= self.input
+        elif self.direction == 'falling':
+            crossing = self.prev_input > self.threshold >= self.input
+        else:  # 'either'
+            rising = self.prev_input < self.threshold <= self.input
+            falling = self.prev_input > self.threshold >= self.input
+            crossing = rising or falling
+
+        self.output = 1.0 if crossing else 0.0
+        self.prev_input = self.input
+
+    def getOutput(self, port=0):
+        return self.output
+
+
+class Hysteresis(Block):
+    """Hysteresis block with configurable thresholds.
+
+    Output switches between two values based on input crossing
+    upper and lower thresholds. Creates a "sticky" switching behavior.
+    """
+
+    def __init__(self, upper_threshold=1.0, lower_threshold=-1.0,
+                 output_high=1.0, output_low=0.0):
+        super().__init__()
+        self.upper_threshold = upper_threshold
+        self.lower_threshold = lower_threshold
+        self.output_high = output_high
+        self.output_low = output_low
+        self.input = 0.0
+        self.output = output_low
+        self.is_high = False
+        self.input_block = None
+        self.input_source_port = 0
+
+    def init(self):
+        self.output = self.output_low
+        self.is_high = False
+
+    def setInput(self, value, port=0):
+        self.input = value
+
+    def connectInput(self, block, port=0, source_port=0):
+        self.input_block = block
+        self.input_source_port = source_port
+
+    def update(self):
+        if self.input_block is not None:
+            self.input = self.input_block.getOutput(self.input_source_port)
+
+        if self.is_high:
+            if self.input < self.lower_threshold:
+                self.is_high = False
+        else:
+            if self.input > self.upper_threshold:
+                self.is_high = True
+
+        self.output = self.output_high if self.is_high else self.output_low
+
+    def getOutput(self, port=0):
+        return self.output
+
+
+class Stiction(Block):
+    """Static friction (stiction) block.
+
+    Models stiction where the output sticks at the current value
+    until the input force exceeds the breakaway threshold.
+    """
+
+    def __init__(self, breakaway_force=1.0, velocity_threshold=0.01):
+        super().__init__()
+        self.breakaway_force = abs(breakaway_force)
+        self.velocity_threshold = abs(velocity_threshold)
+        self.inputs = [0.0, 0.0]  # [force, velocity]
+        self.output = 0.0
+        self.stuck_position = 0.0
+        self.is_stuck = True
+        self.input_blocks = [None, None]
+
+    def init(self):
+        self.output = 0.0
+        self.stuck_position = 0.0
+        self.is_stuck = True
+
+    def setInput(self, value, port=0):
+        if port < 2:
+            self.inputs[port] = value
+
+    def connectInput(self, block, port=0):
+        if port < 2:
+            self.input_blocks[port] = block
+
+    def update(self):
+        for i, block in enumerate(self.input_blocks):
+            if block is not None:
+                self.inputs[i] = block.getOutput()
+
+        force = self.inputs[0]
+        velocity = self.inputs[1]
+
+        # Check if should break free
+        if self.is_stuck:
+            if abs(force) > self.breakaway_force:
+                self.is_stuck = False
+        else:
+            # Check if should stick again (low velocity)
+            if abs(velocity) < self.velocity_threshold:
+                self.is_stuck = True
+                self.stuck_position = self.output
+
+        if self.is_stuck:
+            self.output = self.stuck_position
+        else:
+            # Pass through position/velocity when moving
+            self.output = force
+
+    def getOutput(self, port=0):
+        return self.output
+
+
+class SlewRateLimiter(Block):
+    """Slew rate limiter.
+
+    Limits the rate of change of the signal to specified
+    rising and falling rates. Useful for modeling actuator
+    rate limits or signal conditioning.
+    """
+
+    def __init__(self, rising_rate=1.0, falling_rate=-1.0, sample_time=0.01):
+        super().__init__()
+        self.rising_rate = abs(rising_rate)
+        self.falling_rate = -abs(falling_rate) if falling_rate < 0 else -abs(rising_rate)
+        self.sample_time = max(0.0001, sample_time)
+        self.input = 0.0
+        self.output = 0.0
+        self.input_block = None
+        self.input_source_port = 0
+
+    def init(self):
+        self.output = 0.0
+
+    def setInput(self, value, port=0):
+        self.input = value
+
+    def connectInput(self, block, port=0, source_port=0):
+        self.input_block = block
+        self.input_source_port = source_port
+
+    def update(self):
+        if self.input_block is not None:
+            self.input = self.input_block.getOutput(self.input_source_port)
+
+        delta = self.input - self.output
+        max_rise = self.rising_rate * self.sample_time
+        max_fall = self.falling_rate * self.sample_time
+
+        if delta > max_rise:
+            self.output += max_rise
+        elif delta < max_fall:
+            self.output += max_fall
+        else:
+            self.output = self.input
+
+    def getOutput(self, port=0):
+        return self.output

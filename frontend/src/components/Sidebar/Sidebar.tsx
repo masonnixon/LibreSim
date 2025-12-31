@@ -13,12 +13,17 @@ const categoryLabels: Record<BlockCategory, string> = {
   continuous: 'Continuous',
   discrete: 'Discrete',
   math: 'Math Operations',
+  logic: 'Logic',
   routing: 'Signal Routing',
   subsystems: 'Subsystems',
   signal_processing: 'Signal Processing',
   nonlinear: 'Nonlinear',
   observers: 'State Observers',
   control_analysis: 'Control Analysis',
+  data_types: 'Data Type Conversion',
+  matrix_ops: 'Matrix Operations',
+  control_design: 'Control Design',
+  aerospace: 'Aerospace Blockset',
 }
 
 const categoryColors: Record<BlockCategory, string> = {
@@ -27,12 +32,17 @@ const categoryColors: Record<BlockCategory, string> = {
   continuous: 'bg-block-continuous',
   discrete: 'bg-block-discrete',
   math: 'bg-block-math',
+  logic: 'bg-amber-600',
   routing: 'bg-block-routing',
   subsystems: 'bg-purple-600',
   signal_processing: 'bg-teal-600',
   nonlinear: 'bg-orange-600',
   observers: 'bg-indigo-600',
   control_analysis: 'bg-rose-600',
+  data_types: 'bg-lime-600',
+  matrix_ops: 'bg-emerald-600',
+  control_design: 'bg-violet-600',
+  aerospace: 'bg-sky-600',
 }
 
 export function Sidebar() {

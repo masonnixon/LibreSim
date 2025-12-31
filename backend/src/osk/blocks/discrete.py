@@ -239,3 +239,244 @@ class DiscreteTransferFunction(Block):
 
     def getOutput(self, port=0):
         return self.output
+
+
+class Memory(Block):
+    """Memory block - outputs previous timestep's input value.
+
+    Unlike Unit Delay which operates at a fixed sample time, Memory
+    delays the signal by exactly one simulation time step.
+    """
+
+    def __init__(self, initial_condition=0.0):
+        super().__init__()
+        self.initial_condition = initial_condition
+        self.input = 0.0
+        self.input_block = None
+        self.input_source_port = 0
+        self.output = initial_condition
+        self._prev_value = initial_condition
+
+    def init(self):
+        self.output = self.initial_condition
+        self._prev_value = self.initial_condition
+
+    def setInput(self, value, port=0):
+        self.input = value
+
+    def connectInput(self, block, port=0, source_port=0):
+        self.input_block = block
+        self.input_source_port = source_port
+
+    def update(self):
+        if self.input_block is not None:
+            self.input = self.input_block.getOutput(self.input_source_port)
+
+        # Output previous value
+        self.output = self._prev_value
+
+    def rpt(self):
+        # Update previous value at end of timestep
+        if State.ready:
+            self._prev_value = self.input
+
+    def getOutput(self, port=0):
+        return self.output
+
+
+class DiscreteStateSpace(Block):
+    """Discrete State-Space block.
+
+    Implements: x[k+1] = A*x[k] + B*u[k], y[k] = C*x[k] + D*u[k]
+    """
+
+    def __init__(self, A=None, B=None, C=None, D=None, initial_state=None, sample_time=0.1):
+        super().__init__()
+        self.A = A if A else [[1.0]]
+        self.B = B if B else [[1.0]]
+        self.C = C if C else [[1.0]]
+        self.D = D if D else [[0.0]]
+        self.sample_time = sample_time
+
+        self.n = len(self.A)  # Number of states
+        self.initial_state = initial_state if initial_state else [0.0] * self.n
+
+        self.input = 0.0
+        self.input_block = None
+        self.input_source_port = 0
+        self.output = 0.0
+        self.last_sample_time = -sample_time
+
+        # State vector
+        self.state = list(self.initial_state)
+
+    def init(self):
+        self.state = list(self.initial_state)
+        self.output = 0.0
+        self.last_sample_time = -self.sample_time
+
+    def setInput(self, value, port=0):
+        self.input = value
+
+    def connectInput(self, block, port=0, source_port=0):
+        self.input_block = block
+        self.input_source_port = source_port
+
+    def update(self):
+        if self.input_block is not None:
+            self.input = self.input_block.getOutput(self.input_source_port)
+
+        # Check if it's time to update
+        if State.t - self.last_sample_time >= self.sample_time - State.EPS:
+            # Compute output: y = C*x + D*u
+            self.output = 0.0
+            for i in range(self.n):
+                self.output += self.C[0][i] * self.state[i]
+            self.output += self.D[0][0] * self.input
+
+            # Compute next state: x[k+1] = A*x[k] + B*u[k]
+            new_state = [0.0] * self.n
+            for i in range(self.n):
+                for j in range(self.n):
+                    new_state[i] += self.A[i][j] * self.state[j]
+                new_state[i] += self.B[i][0] * self.input
+
+            self.state = new_state
+            self.last_sample_time = State.t
+
+    def getOutput(self, port=0):
+        return self.output
+
+
+class FirstOrderHold(Block):
+    """First-Order Hold block - sample and extrapolate using derivative.
+
+    Unlike Zero-Order Hold which holds the last sampled value constant,
+    First-Order Hold extrapolates using the rate of change.
+    """
+
+    def __init__(self, sample_time=0.1):
+        super().__init__()
+        self.sample_time = sample_time
+        self.input = 0.0
+        self.input_block = None
+        self.input_source_port = 0
+        self.output = 0.0
+        self.last_sample_time = -sample_time
+        self._prev_sample = 0.0
+        self._curr_sample = 0.0
+        self._slope = 0.0
+
+    def init(self):
+        self.output = 0.0
+        self.last_sample_time = -self.sample_time
+        self._prev_sample = 0.0
+        self._curr_sample = 0.0
+        self._slope = 0.0
+
+    def setInput(self, value, port=0):
+        self.input = value
+
+    def connectInput(self, block, port=0, source_port=0):
+        self.input_block = block
+        self.input_source_port = source_port
+
+    def update(self):
+        if self.input_block is not None:
+            self.input = self.input_block.getOutput(self.input_source_port)
+
+        # Check if it's time to sample
+        if State.t - self.last_sample_time >= self.sample_time - State.EPS:
+            self._prev_sample = self._curr_sample
+            self._curr_sample = self.input
+            # Calculate slope for extrapolation
+            if self.sample_time > 0:
+                self._slope = (self._curr_sample - self._prev_sample) / self.sample_time
+            self.last_sample_time = State.t
+
+        # Extrapolate from last sample
+        dt = State.t - self.last_sample_time
+        self.output = self._curr_sample + self._slope * dt
+
+    def getOutput(self, port=0):
+        return self.output
+
+
+class DiscretePIDController(Block):
+    """Discrete PID Controller block.
+
+    Implements: u[k] = Kp*e[k] + Ki*Ts*sum(e) + Kd/Ts*(e[k] - e[k-1])
+    with various discretization methods.
+    """
+
+    def __init__(self, Kp=1.0, Ki=0.0, Kd=0.0, N=100.0, sample_time=0.1, method='forward'):
+        super().__init__()
+        self.Kp = Kp
+        self.Ki = Ki
+        self.Kd = Kd
+        self.N = N  # Derivative filter coefficient
+        self.sample_time = sample_time
+        self.method = method  # 'forward', 'backward', 'trapezoidal'
+
+        self.input = 0.0
+        self.input_block = None
+        self.input_source_port = 0
+        self.output = 0.0
+        self.last_sample_time = -sample_time
+
+        # State variables
+        self._integral = 0.0
+        self._prev_error = 0.0
+        self._prev_derivative = 0.0
+
+    def init(self):
+        self.output = 0.0
+        self.last_sample_time = -self.sample_time
+        self._integral = 0.0
+        self._prev_error = 0.0
+        self._prev_derivative = 0.0
+
+    def setInput(self, value, port=0):
+        self.input = value
+
+    def connectInput(self, block, port=0, source_port=0):
+        self.input_block = block
+        self.input_source_port = source_port
+
+    def update(self):
+        if self.input_block is not None:
+            self.input = self.input_block.getOutput(self.input_source_port)
+
+        # Check if it's time to update
+        if State.t - self.last_sample_time >= self.sample_time - State.EPS:
+            error = self.input
+            Ts = self.sample_time
+
+            # Proportional term
+            p_term = self.Kp * error
+
+            # Integral term
+            if self.method == 'forward':
+                self._integral += Ts * self._prev_error
+            elif self.method == 'backward':
+                self._integral += Ts * error
+            else:  # trapezoidal
+                self._integral += Ts * (error + self._prev_error) / 2
+            i_term = self.Ki * self._integral
+
+            # Derivative term with filter
+            # Using: D[k] = (Td/N) / (Td/N + Ts) * D[k-1] + Kd*N / (Td/N + Ts) * (e[k] - e[k-1])
+            # Simplified for Kd only:
+            if self.N > 0 and Ts > 0:
+                alpha = self.N * Ts
+                d_term = (self._prev_derivative + self.Kd * self.N * (error - self._prev_error)) / (1 + alpha)
+                self._prev_derivative = d_term
+            else:
+                d_term = self.Kd * (error - self._prev_error) / Ts if Ts > 0 else 0.0
+
+            self.output = p_term + i_term + d_term
+            self._prev_error = error
+            self.last_sample_time = State.t
+
+    def getOutput(self, port=0):
+        return self.output

@@ -38,6 +38,14 @@ function BlockNodeComponent({ data, selected }: NodeProps<BlockNode>) {
         return block.parameters.value !== undefined ? String(block.parameters.value) : definition.icon
       case 'gain':
         return block.parameters.gain !== undefined ? String(block.parameters.gain) : definition.icon
+      case 'compare_to_zero':
+        return block.parameters.operator !== undefined ? `${block.parameters.operator}0` : definition.icon
+      case 'compare_to_constant':
+        return block.parameters.operator !== undefined ? `${block.parameters.operator}${block.parameters.constant ?? 'K'}` : definition.icon
+      case 'relational_operator':
+        return block.parameters.operator !== undefined ? String(block.parameters.operator) : definition.icon
+      case 'logical_operator':
+        return block.parameters.operator !== undefined ? String(block.parameters.operator) : definition.icon
       default:
         return definition.icon
     }
@@ -67,6 +75,18 @@ function BlockNodeComponent({ data, selected }: NodeProps<BlockNode>) {
         return 'bg-orange-600 border-orange-400 border-2'
       case 'observers':
         return 'bg-indigo-600 border-indigo-400 border-2'
+      case 'logic':
+        return 'bg-amber-600 border-amber-400 border-2'
+      case 'control_analysis':
+        return 'bg-rose-600 border-rose-400 border-2'
+      case 'data_types':
+        return 'bg-lime-600 border-lime-400 border-2'
+      case 'matrix_ops':
+        return 'bg-emerald-600 border-emerald-400 border-2'
+      case 'control_design':
+        return 'bg-violet-600 border-violet-400 border-2'
+      case 'aerospace':
+        return 'bg-sky-600 border-sky-400 border-2'
       default:
         return 'bg-gray-600 border-gray-500'
     }

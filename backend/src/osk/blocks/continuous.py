@@ -496,3 +496,295 @@ class PIDController(Block):
 
     def getOutput(self, port=0):
         return self.output
+
+
+class TransportDelay(Block):
+    """Transport Delay block - delays signal by fixed time.
+
+    Uses a circular buffer to store past signal values.
+    """
+
+    def __init__(self, delay_time=1.0, initial_output=0.0):
+        super().__init__()
+        self.delay_time = delay_time
+        self.initial_output = initial_output
+        self.input = 0.0
+        self.input_block = None
+        self.input_source_port = 0
+        self.output = initial_output
+
+        # Buffer for storing past values
+        # Size will be determined based on sample time at runtime
+        self.buffer = []
+        self.time_buffer = []
+        self._buffer_initialized = False
+
+    def init(self):
+        self.output = self.initial_output
+        self.buffer = []
+        self.time_buffer = []
+        self._buffer_initialized = False
+
+    def setInput(self, value, port=0):
+        self.input = value
+
+    def connectInput(self, block, port=0, source_port=0):
+        self.input_block = block
+        self.input_source_port = source_port
+
+    def update(self):
+        from ..state import State
+
+        if self.input_block is not None:
+            self.input = self.input_block.getOutput(self.input_source_port)
+
+        current_time = State.t
+
+        # Add current value to buffer
+        self.buffer.append(self.input)
+        self.time_buffer.append(current_time)
+
+        # Calculate delayed time
+        delayed_time = current_time - self.delay_time
+
+        if delayed_time < 0:
+            # During initial delay period, output initial value
+            self.output = self.initial_output
+        else:
+            # Find the value at delayed_time using linear interpolation
+            # Remove old entries that are no longer needed
+            while len(self.time_buffer) > 2 and self.time_buffer[1] < delayed_time:
+                self.time_buffer.pop(0)
+                self.buffer.pop(0)
+
+            if len(self.time_buffer) == 0:
+                self.output = self.initial_output
+            elif len(self.time_buffer) == 1:
+                self.output = self.buffer[0]
+            else:
+                # Linear interpolation
+                for i in range(len(self.time_buffer) - 1):
+                    t1, t2 = self.time_buffer[i], self.time_buffer[i + 1]
+                    if t1 <= delayed_time <= t2:
+                        if t2 > t1:
+                            alpha = (delayed_time - t1) / (t2 - t1)
+                            self.output = self.buffer[i] * (1 - alpha) + self.buffer[i + 1] * alpha
+                        else:
+                            self.output = self.buffer[i]
+                        break
+                else:
+                    # If delayed_time is beyond buffer, use last value
+                    self.output = self.buffer[-1] if self.buffer else self.initial_output
+
+    def getOutput(self, port=0):
+        return self.output
+
+
+class SecondOrder(Block):
+    """Second Order system block.
+
+    Implements: G(s) = K * wn^2 / (s^2 + 2*zeta*wn*s + wn^2)
+
+    Where:
+    - wn = natural frequency (rad/s)
+    - zeta = damping ratio
+    - K = DC gain
+    """
+
+    def __init__(self, natural_frequency=1.0, damping_ratio=0.7, gain=1.0):
+        super().__init__()
+        self.wn = natural_frequency
+        self.zeta = damping_ratio
+        self.gain = gain
+
+        self.input = 0.0
+        self.input_block = None
+        self.input_source_port = 0
+        self.output = 0.0
+
+        # Two state variables for second-order system
+        self.x1 = self.addIntegrator([0.0, 0.0])  # Position/output
+        self.x2 = self.addIntegrator([0.0, 0.0])  # Velocity
+
+    def init(self):
+        self.x1[0] = 0.0
+        self.x1[1] = 0.0
+        self.x2[0] = 0.0
+        self.x2[1] = 0.0
+        self.output = 0.0
+
+    def setInput(self, value, port=0):
+        self.input = value
+
+    def connectInput(self, block, port=0, source_port=0):
+        self.input_block = block
+        self.input_source_port = source_port
+
+    def update(self):
+        if self.input_block is not None:
+            self.input = self.input_block.getOutput(self.input_source_port)
+
+        wn = self.wn
+        zeta = self.zeta
+        wn2 = wn * wn
+
+        # State space form:
+        # x1' = x2
+        # x2' = -wn^2*x1 - 2*zeta*wn*x2 + wn^2*K*u
+        # y = x1
+
+        self.x1[1] = self.x2[0]
+        self.x2[1] = -wn2 * self.x1[0] - 2 * zeta * wn * self.x2[0] + wn2 * self.gain * self.input
+
+        self.output = self.x1[0]
+
+    def getOutput(self, port=0):
+        return self.output
+
+
+class LimitedIntegrator(Block):
+    """Limited Integrator block - integrator with saturation.
+
+    Identical to Integrator with limit_output=True, but provided
+    as a separate block for convenience.
+    """
+
+    def __init__(self, initial_condition=0.0, upper_limit=1.0, lower_limit=-1.0):
+        super().__init__()
+        self.initial_condition = initial_condition
+        self.upper_limit = upper_limit
+        self.lower_limit = lower_limit
+
+        self.input = 0.0
+        self.input_block = None
+        self.input_source_port = 0
+        self.x = self.addIntegrator([initial_condition, 0.0])
+
+    def init(self):
+        self.x[0] = self.initial_condition
+        self.x[1] = 0.0
+
+    def setInput(self, value, port=0):
+        self.input = value
+
+    def connectInput(self, block, port=0, source_port=0):
+        self.input_block = block
+        self.input_source_port = source_port
+
+    def update(self):
+        if self.input_block is not None:
+            self.input = self.input_block.getOutput(self.input_source_port)
+
+        self.x[1] = self.input
+
+        # Anti-windup: stop integrating if at limits
+        if (self.x[0] >= self.upper_limit and self.x[1] > 0) or \
+           (self.x[0] <= self.lower_limit and self.x[1] < 0):
+            self.x[1] = 0.0
+
+    def getOutput(self, port=0):
+        output = self.x[0]
+        return max(self.lower_limit, min(self.upper_limit, output))
+
+
+class ZeroPole(Block):
+    """Zero-Pole block - transfer function defined by zeros and poles.
+
+    Implements transfer function defined by:
+    H(s) = K * (s - z1)(s - z2)... / (s - p1)(s - p2)...
+
+    Currently only supports real poles and zeros.
+    """
+
+    def __init__(self, zeros=None, poles=None, gain=1.0):
+        super().__init__()
+        self.zeros = zeros if zeros else []
+        self.poles = poles if poles else [-1.0]
+        self.gain = gain
+
+        self.input = 0.0
+        self.input_block = None
+        self.input_source_port = 0
+        self.output = 0.0
+
+        # Convert to transfer function coefficients and use state-space
+        self._build_state_space()
+
+    def _poly_coeffs(self, roots):
+        """Compute polynomial coefficients from roots."""
+        coeffs = [1.0]
+        for r in roots:
+            # Multiply by (s - r)
+            new_coeffs = [0.0] * (len(coeffs) + 1)
+            for i, c in enumerate(coeffs):
+                new_coeffs[i] += c
+                new_coeffs[i + 1] -= r * c
+            coeffs = new_coeffs
+        return coeffs
+
+    def _build_state_space(self):
+        """Build state-space realization from zeros and poles."""
+        num = self._poly_coeffs(self.zeros)
+        den = self._poly_coeffs(self.poles)
+
+        # Apply gain
+        num = [c * self.gain for c in num]
+
+        # Pad numerator
+        while len(num) < len(den):
+            num.insert(0, 0.0)
+
+        self.order = len(den) - 1
+        self.num = num
+        self.den = den
+
+        # Create state variables
+        self.states = []
+        for _ in range(self.order):
+            self.states.append(self.addIntegrator([0.0, 0.0]))
+
+    def init(self):
+        for state in self.states:
+            state[0] = 0.0
+            state[1] = 0.0
+        self.output = 0.0
+
+    def setInput(self, value, port=0):
+        self.input = value
+
+    def connectInput(self, block, port=0, source_port=0):
+        self.input_block = block
+        self.input_source_port = source_port
+
+    def update(self):
+        if self.input_block is not None:
+            self.input = self.input_block.getOutput(self.input_source_port)
+
+        if self.order == 0:
+            self.output = self.num[0] / self.den[0] * self.input
+            return
+
+        # Normalize
+        a0 = self.den[0]
+        num = [n / a0 for n in self.num]
+        den = [d / a0 for d in self.den]
+
+        # State equations (controllable canonical form)
+        for i in range(self.order):
+            if i < self.order - 1:
+                self.states[i][1] = self.states[i + 1][0]
+            else:
+                deriv = self.input
+                for j in range(self.order):
+                    deriv -= den[j + 1] * self.states[self.order - 1 - j][0]
+                self.states[i][1] = deriv
+
+        # Output
+        d = num[0]
+        self.output = d * self.input
+        for i in range(self.order):
+            c_i = num[self.order - i] - d * den[self.order - i]
+            self.output += c_i * self.states[i][0]
+
+    def getOutput(self, port=0):
+        return self.output

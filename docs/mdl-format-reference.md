@@ -417,6 +417,63 @@ Line {
 | `SubSystem` | `subsystem` |
 | `Reshape` | `reshape` |
 | `Reference` | `reference` |
+| `DiscretePulseGenerator` | `pulse` |
+| `PID Controller` | `pid_controller` |
+| `PID Controller (2DOF)` | `pid_controller` |
+| `DiscreteIntegrator` | `discrete_integrator` |
+
+## Control Design Blocks
+
+### PID Controller Block
+
+| MDL Property | Description | Default | LibreSim Parameter |
+|-------------|-------------|---------|-------------------|
+| `P` | Proportional gain | `1` | `Kp` |
+| `I` | Integral gain | `0` | `Ki` |
+| `D` | Derivative gain | `0` | `Kd` |
+| `N` | Derivative filter coefficient | `100` | `N` |
+| `InitialConditionForIntegrator` | Initial integrator value | `0` | `initialConditionI` |
+
+**Example:**
+```
+Block {
+  BlockType           "PID Controller"
+  Name                "PID Controller"
+  P                   "1"
+  I                   "0.5"
+  D                   "0.1"
+  N                   "100"
+}
+```
+
+### Discrete PID Controller Block
+
+| MDL Property | Description | Default | LibreSim Parameter |
+|-------------|-------------|---------|-------------------|
+| `P` | Proportional gain | `1` | `Kp` |
+| `I` | Integral gain | `0` | `Ki` |
+| `D` | Derivative gain | `0` | `Kd` |
+| `N` | Derivative filter coefficient | `100` | `N` |
+| `SampleTime` | Sample period | `0.1` | `sampleTime` |
+| `IntegratorMethod` | Discretization method | `Forward Euler` | `method` |
+
+**Discretization Method Values:**
+- `Forward Euler` → `forward`
+- `Backward Euler` → `backward`
+- `Trapezoidal` → `trapezoidal`
+
+**Example:**
+```
+Block {
+  BlockType           "DiscretePIDController"
+  Name                "Discrete PID"
+  P                   "2"
+  I                   "1"
+  D                   "0.5"
+  SampleTime          "0.01"
+  IntegratorMethod    "Trapezoidal"
+}
+```
 
 ## Resources
 

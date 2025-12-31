@@ -351,3 +351,272 @@ class UniformNoise(Block):
 
     def getOutput(self, port=0):
         return self.output
+
+
+class RepeatingSequence(Block):
+    """Repeating Sequence block - outputs a periodic waveform.
+
+    Linearly interpolates between time-value pairs and repeats the sequence.
+    """
+
+    def __init__(self, time_values=None, output_values=None):
+        super().__init__()
+        self.time_values = time_values if time_values else [0.0, 1.0]
+        self.output_values = output_values if output_values else [0.0, 1.0]
+        self.output = 0.0
+
+        # Ensure arrays are the same length
+        min_len = min(len(self.time_values), len(self.output_values))
+        self.time_values = self.time_values[:min_len]
+        self.output_values = self.output_values[:min_len]
+
+        # Calculate period (time span of one cycle)
+        self.period = self.time_values[-1] - self.time_values[0] if len(self.time_values) > 1 else 1.0
+
+    def init(self):
+        self.output = self.output_values[0] if self.output_values else 0.0
+
+    def _interpolate(self, t_in_period):
+        """Linear interpolation within the sequence."""
+        if len(self.time_values) < 2:
+            return self.output_values[0] if self.output_values else 0.0
+
+        # Find the interval
+        for i in range(len(self.time_values) - 1):
+            t0 = self.time_values[i] - self.time_values[0]
+            t1 = self.time_values[i + 1] - self.time_values[0]
+            if t_in_period <= t1:
+                # Linear interpolation
+                if t1 - t0 > 1e-10:
+                    alpha = (t_in_period - t0) / (t1 - t0)
+                else:
+                    alpha = 0.0
+                return self.output_values[i] + alpha * (self.output_values[i + 1] - self.output_values[i])
+
+        return self.output_values[-1]
+
+    def update(self):
+        if self.period <= 0:
+            self.output = self.output_values[0] if self.output_values else 0.0
+            return
+
+        # Wrap time to period
+        t_in_period = State.t % self.period
+        self.output = self._interpolate(t_in_period)
+
+    def getOutput(self, port=0):
+        return self.output
+
+
+class ChirpSignal(Block):
+    """Chirp Signal block - frequency-swept cosine.
+
+    Generates a swept-frequency cosine (linear chirp) that goes from
+    initial frequency to target frequency over time.
+    """
+
+    def __init__(self, initial_frequency=0.1, target_time=1.0, target_frequency=1.0):
+        super().__init__()
+        self.initial_frequency = initial_frequency
+        self.target_time = target_time
+        self.target_frequency = target_frequency
+        self.output = 0.0
+
+        # Frequency sweep rate
+        if target_time > 0:
+            self.sweep_rate = (target_frequency - initial_frequency) / target_time
+        else:
+            self.sweep_rate = 0.0
+
+    def init(self):
+        self.output = math.cos(0.0)  # cos(2*pi*f0*0) = 1
+
+    def update(self):
+        # Instantaneous frequency at time t
+        if State.t <= self.target_time:
+            # During sweep: f(t) = f0 + (f1-f0)*t/T
+            inst_freq = self.initial_frequency + self.sweep_rate * State.t
+        else:
+            # After target time: constant frequency
+            inst_freq = self.target_frequency
+
+        # Phase is integral of frequency: phi(t) = 2*pi * integral(f(t))
+        # For linear chirp: phi(t) = 2*pi * (f0*t + sweep_rate*t^2/2)
+        if State.t <= self.target_time:
+            phase = 2 * math.pi * (self.initial_frequency * State.t + self.sweep_rate * State.t**2 / 2)
+        else:
+            # Continue from target point
+            phase_at_target = 2 * math.pi * (
+                self.initial_frequency * self.target_time +
+                self.sweep_rate * self.target_time**2 / 2
+            )
+            phase = phase_at_target + 2 * math.pi * self.target_frequency * (State.t - self.target_time)
+
+        self.output = math.cos(phase)
+
+    def getOutput(self, port=0):
+        return self.output
+
+
+class BandLimitedWhiteNoise(Block):
+    """Band-Limited White Noise block.
+
+    Generates Gaussian white noise with specified noise power and sample time.
+    The noise power is distributed across the bandwidth defined by sample time.
+    """
+
+    def __init__(self, noise_power=0.1, sample_time=0.1, seed=None):
+        super().__init__()
+        self.noise_power = noise_power
+        self.sample_time = max(sample_time, 1e-6)  # Ensure non-zero sample time
+        self.seed = seed
+        self.output = 0.0
+        self._rng = random.Random(seed) if seed is not None else random.Random()
+        self._last_sample_time = -float("inf")
+
+        # Standard deviation based on noise power and sample time
+        # Variance = Noise_Power / Sample_Time
+        self._std_dev = math.sqrt(self.noise_power / self.sample_time)
+
+    def init(self):
+        self.output = self._rng.gauss(0.0, self._std_dev)
+        self._last_sample_time = 0.0
+
+    def update(self):
+        if State.t >= self._last_sample_time + self.sample_time - State.EPS:
+            self.output = self._rng.gauss(0.0, self._std_dev)
+            self._last_sample_time = State.t
+
+    def getOutput(self, port=0):
+        return self.output
+
+
+class Ground(Block):
+    """Ground block - outputs zero.
+
+    Used to terminate unconnected input ports.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.output = 0.0
+
+    def init(self):
+        self.output = 0.0
+
+    def update(self):
+        self.output = 0.0
+
+    def getOutput(self, port=0):
+        return 0.0
+
+
+class FromWorkspace(Block):
+    """From Workspace block - outputs data from a predefined timeseries.
+
+    Interpolates data from time-value pairs provided during initialization.
+    """
+
+    def __init__(self, time_data=None, value_data=None, interpolation='linear'):
+        super().__init__()
+        self.time_data = time_data if time_data else [0.0, 1.0]
+        self.value_data = value_data if value_data else [0.0, 0.0]
+        self.interpolation = interpolation  # 'linear', 'zoh' (zero-order hold), 'nearest'
+        self.output = 0.0
+
+        # Ensure arrays match
+        min_len = min(len(self.time_data), len(self.value_data))
+        self.time_data = self.time_data[:min_len]
+        self.value_data = self.value_data[:min_len]
+
+    def init(self):
+        self.output = self.value_data[0] if self.value_data else 0.0
+
+    def _interpolate(self, t):
+        """Interpolate value at time t."""
+        if not self.time_data or not self.value_data:
+            return 0.0
+
+        # Before first point
+        if t <= self.time_data[0]:
+            return self.value_data[0]
+
+        # After last point
+        if t >= self.time_data[-1]:
+            return self.value_data[-1]
+
+        # Find interval
+        for i in range(len(self.time_data) - 1):
+            if self.time_data[i] <= t < self.time_data[i + 1]:
+                if self.interpolation == 'zoh':
+                    return self.value_data[i]
+                elif self.interpolation == 'nearest':
+                    if t - self.time_data[i] < self.time_data[i + 1] - t:
+                        return self.value_data[i]
+                    else:
+                        return self.value_data[i + 1]
+                else:  # linear
+                    dt = self.time_data[i + 1] - self.time_data[i]
+                    if dt > 1e-10:
+                        alpha = (t - self.time_data[i]) / dt
+                        return self.value_data[i] + alpha * (self.value_data[i + 1] - self.value_data[i])
+                    else:
+                        return self.value_data[i]
+
+        return self.value_data[-1]
+
+    def update(self):
+        self.output = self._interpolate(State.t)
+
+    def getOutput(self, port=0):
+        return self.output
+
+
+class SignalGenerator(Block):
+    """Signal Generator block - multi-waveform generator.
+
+    Can generate sine, square, sawtooth, and random waveforms.
+    """
+
+    def __init__(self, wave_type='sine', amplitude=1.0, frequency=1.0, units='Hz'):
+        super().__init__()
+        self.wave_type = wave_type.lower()  # 'sine', 'square', 'sawtooth', 'random'
+        self.amplitude = amplitude
+        self.frequency = frequency
+        self.units = units  # 'Hz' or 'rad/s'
+        self.output = 0.0
+        self._rng = random.Random()
+
+        # Convert rad/s to Hz if needed
+        if units.lower() == 'rad/s':
+            self.freq_hz = frequency / (2 * math.pi)
+        else:
+            self.freq_hz = frequency
+
+    def init(self):
+        if self.wave_type == 'random':
+            self.output = self.amplitude * (2 * self._rng.random() - 1)
+        else:
+            self.output = 0.0
+
+    def update(self):
+        if self.freq_hz <= 0:
+            self.output = 0.0
+            return
+
+        period = 1.0 / self.freq_hz
+        t_in_period = (State.t % period) / period  # Normalized time [0, 1)
+
+        if self.wave_type == 'sine':
+            self.output = self.amplitude * math.sin(2 * math.pi * t_in_period)
+        elif self.wave_type == 'square':
+            self.output = self.amplitude if t_in_period < 0.5 else -self.amplitude
+        elif self.wave_type == 'sawtooth':
+            self.output = self.amplitude * (2 * t_in_period - 1)
+        elif self.wave_type == 'random':
+            self.output = self.amplitude * (2 * self._rng.random() - 1)
+        else:
+            self.output = 0.0
+
+    def getOutput(self, port=0):
+        return self.output

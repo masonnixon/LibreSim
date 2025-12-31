@@ -1,0 +1,151 @@
+import type { BlockDefinition } from '../types/block'
+
+export const logicBlocks: BlockDefinition[] = [
+  {
+    type: 'compare_to_zero',
+    category: 'logic',
+    name: 'Compare To Zero',
+    description: 'Compare input to zero',
+    inputs: [{ name: 'in', dataType: 'double', dimensions: [1] }],
+    outputs: [{ name: 'out', dataType: 'double', dimensions: [1] }],
+    parameters: [
+      {
+        name: 'operator',
+        type: 'select',
+        default: '==',
+        label: 'Operator',
+        options: [
+          { value: '==', label: '==' },
+          { value: '~=', label: '~= (not equal)' },
+          { value: '<', label: '<' },
+          { value: '<=', label: '<=' },
+          { value: '>', label: '>' },
+          { value: '>=', label: '>=' },
+        ],
+      },
+    ],
+    icon: '=0?',
+  },
+  {
+    type: 'compare_to_constant',
+    category: 'logic',
+    name: 'Compare To Constant',
+    description: 'Compare input to a constant',
+    inputs: [{ name: 'in', dataType: 'double', dimensions: [1] }],
+    outputs: [{ name: 'out', dataType: 'double', dimensions: [1] }],
+    parameters: [
+      {
+        name: 'constant',
+        type: 'number',
+        default: 0,
+        label: 'Constant',
+        description: 'Value to compare against',
+      },
+      {
+        name: 'operator',
+        type: 'select',
+        default: '==',
+        label: 'Operator',
+        options: [
+          { value: '==', label: '==' },
+          { value: '~=', label: '~= (not equal)' },
+          { value: '<', label: '<' },
+          { value: '<=', label: '<=' },
+          { value: '>', label: '>' },
+          { value: '>=', label: '>=' },
+        ],
+      },
+    ],
+    icon: '=K?',
+  },
+  {
+    type: 'relational_operator',
+    category: 'logic',
+    name: 'Relational Operator',
+    description: 'Compare two inputs',
+    inputs: [
+      { name: 'in1', dataType: 'double', dimensions: [1] },
+      { name: 'in2', dataType: 'double', dimensions: [1] },
+    ],
+    outputs: [{ name: 'out', dataType: 'double', dimensions: [1] }],
+    parameters: [
+      {
+        name: 'operator',
+        type: 'select',
+        default: '==',
+        label: 'Operator',
+        options: [
+          { value: '==', label: '==' },
+          { value: '~=', label: '~= (not equal)' },
+          { value: '<', label: '<' },
+          { value: '<=', label: '<=' },
+          { value: '>', label: '>' },
+          { value: '>=', label: '>=' },
+        ],
+      },
+    ],
+    icon: '⟺',
+  },
+  {
+    type: 'logical_operator',
+    category: 'logic',
+    name: 'Logical Operator',
+    description: 'Perform logical operations',
+    inputs: [
+      { name: 'in1', dataType: 'double', dimensions: [1] },
+      { name: 'in2', dataType: 'double', dimensions: [1] },
+    ],
+    outputs: [{ name: 'out', dataType: 'double', dimensions: [1] }],
+    parameters: [
+      {
+        name: 'operator',
+        type: 'select',
+        default: 'AND',
+        label: 'Operator',
+        options: [
+          { value: 'AND', label: 'AND' },
+          { value: 'OR', label: 'OR' },
+          { value: 'NAND', label: 'NAND' },
+          { value: 'NOR', label: 'NOR' },
+          { value: 'XOR', label: 'XOR' },
+          { value: 'NOT', label: 'NOT' },
+        ],
+      },
+      {
+        name: 'numInputs',
+        type: 'number',
+        default: 2,
+        label: 'Number of Inputs',
+        min: 1,
+        max: 8,
+      },
+    ],
+    icon: '∧',
+  },
+  {
+    type: 'bit_operator',
+    category: 'logic',
+    name: 'Bitwise Operator',
+    description: 'Perform bitwise logical operations',
+    inputs: [
+      { name: 'in1', dataType: 'double', dimensions: [1] },
+      { name: 'in2', dataType: 'double', dimensions: [1] },
+    ],
+    outputs: [{ name: 'out', dataType: 'double', dimensions: [1] }],
+    parameters: [
+      {
+        name: 'operator',
+        type: 'select',
+        default: 'AND',
+        label: 'Operator',
+        options: [
+          { value: 'AND', label: 'AND' },
+          { value: 'OR', label: 'OR' },
+          { value: 'XOR', label: 'XOR' },
+          { value: 'NOT', label: 'NOT' },
+        ],
+      },
+    ],
+    icon: '&',
+  },
+]

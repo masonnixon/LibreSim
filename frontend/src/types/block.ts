@@ -4,12 +4,17 @@ export type BlockCategory =
   | 'continuous'
   | 'discrete'
   | 'math'
+  | 'logic'
   | 'routing'
   | 'subsystems'
   | 'signal_processing'
   | 'nonlinear'
   | 'observers'
   | 'control_analysis'
+  | 'data_types'
+  | 'matrix_ops'
+  | 'control_design'
+  | 'aerospace'
 
 export type DataType = 'double' | 'single' | 'int32' | 'boolean' | 'bus'
 

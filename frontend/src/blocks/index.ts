@@ -5,12 +5,17 @@ import { sinkBlocks } from './sinks'
 import { continuousBlocks } from './continuous'
 import { discreteBlocks } from './discrete'
 import { mathBlocks } from './math'
+import { logicBlocks } from './logic'
 import { routingBlocks } from './routing'
 import { subsystemBlocks } from './subsystems'
 import { signalProcessingBlocks } from './signal_processing'
 import { nonlinearBlocks } from './nonlinear'
 import { observerBlocks } from './observers'
 import { controlAnalysisBlocks } from './control_analysis'
+import { dataTypeBlocks } from './data_types'
+import { matrixOpsBlocks } from './matrix_ops'
+import { controlDesignBlocks } from './control_design'
+import { aerospaceBlocks } from './aerospace'
 
 // All built-in block definitions
 const builtInBlocks: BlockDefinition[] = [
@@ -19,12 +24,17 @@ const builtInBlocks: BlockDefinition[] = [
   ...continuousBlocks,
   ...discreteBlocks,
   ...mathBlocks,
+  ...logicBlocks,
   ...routingBlocks,
   ...subsystemBlocks,
   ...signalProcessingBlocks,
   ...nonlinearBlocks,
   ...observerBlocks,
   ...controlAnalysisBlocks,
+  ...dataTypeBlocks,
+  ...matrixOpsBlocks,
+  ...controlDesignBlocks,
+  ...aerospaceBlocks,
 ]
 
 // Block registry for quick lookup - supports dynamic addition of library blocks
@@ -171,12 +181,17 @@ export const blockCategories: BlockCategory[] = [
   'continuous',
   'discrete',
   'math',
+  'logic',
   'routing',
   'subsystems',
   'signal_processing',
   'nonlinear',
   'observers',
   'control_analysis',
+  'data_types',
+  'matrix_ops',
+  'control_design',
+  'aerospace',
 ]
 
 export { sourceBlocks } from './sources'
@@ -184,9 +199,14 @@ export { sinkBlocks } from './sinks'
 export { continuousBlocks } from './continuous'
 export { discreteBlocks } from './discrete'
 export { mathBlocks } from './math'
+export { logicBlocks } from './logic'
 export { routingBlocks } from './routing'
 export { subsystemBlocks } from './subsystems'
 export { signalProcessingBlocks } from './signal_processing'
 export { nonlinearBlocks } from './nonlinear'
 export { observerBlocks } from './observers'
 export { controlAnalysisBlocks } from './control_analysis'
+export { dataTypeBlocks } from './data_types'
+export { matrixOpsBlocks } from './matrix_ops'
+export { controlDesignBlocks } from './control_design'
+export { aerospaceBlocks } from './aerospace'

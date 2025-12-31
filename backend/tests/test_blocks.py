@@ -4737,3 +4737,1027 @@ class TestVectorSignalFlow:
         assert gain1.getOutput() == pytest.approx(10.0)
         assert gain2.getOutput() == pytest.approx(40.0)
         assert gain3.getOutput() == pytest.approx(90.0)
+
+
+# =============================================================================
+# New Nonlinear Block Tests
+# =============================================================================
+
+
+class TestWrapToRangeBlock:
+    """Tests for the WrapToRange block."""
+
+    def test_wrap_to_range_within_range(self):
+        """Test WrapToRange with input already in range."""
+        from src.osk.blocks.nonlinear import WrapToRange
+
+        wrap = WrapToRange(lower=-math.pi, upper=math.pi)
+        wrap.init()
+        wrap.setInput(1.0)
+        wrap.update()
+        assert wrap.getOutput() == pytest.approx(1.0)
+
+    def test_wrap_to_range_above_upper(self):
+        """Test WrapToRange with input above upper bound."""
+        from src.osk.blocks.nonlinear import WrapToRange
+
+        wrap = WrapToRange(lower=-math.pi, upper=math.pi)
+        wrap.init()
+        # 4.0 radians should wrap to 4.0 - 2*pi ≈ -2.28
+        wrap.setInput(4.0)
+        wrap.update()
+        expected = -math.pi + ((4.0 - (-math.pi)) % (2 * math.pi))
+        assert wrap.getOutput() == pytest.approx(expected)
+
+    def test_wrap_to_range_below_lower(self):
+        """Test WrapToRange with input below lower bound."""
+        from src.osk.blocks.nonlinear import WrapToRange
+
+        wrap = WrapToRange(lower=-math.pi, upper=math.pi)
+        wrap.init()
+        # -4.0 radians should wrap
+        wrap.setInput(-4.0)
+        wrap.update()
+        expected = -math.pi + ((-4.0 - (-math.pi)) % (2 * math.pi))
+        assert wrap.getOutput() == pytest.approx(expected)
+
+    def test_wrap_to_range_custom_range(self):
+        """Test WrapToRange with custom range [0, 360]."""
+        from src.osk.blocks.nonlinear import WrapToRange
+
+        wrap = WrapToRange(lower=0, upper=360)
+        wrap.init()
+        wrap.setInput(450)
+        wrap.update()
+        assert wrap.getOutput() == pytest.approx(90.0)
+
+    def test_wrap_to_range_negative_custom(self):
+        """Test WrapToRange with negative value in [0, 360]."""
+        from src.osk.blocks.nonlinear import WrapToRange
+
+        wrap = WrapToRange(lower=0, upper=360)
+        wrap.init()
+        wrap.setInput(-90)
+        wrap.update()
+        assert wrap.getOutput() == pytest.approx(270.0)
+
+
+class TestHitCrossingBlock:
+    """Tests for the HitCrossing block."""
+
+    def test_hit_crossing_rising(self):
+        """Test HitCrossing detects rising edge crossing."""
+        from src.osk.blocks.nonlinear import HitCrossing
+
+        hc = HitCrossing(threshold=0.0, direction='rising')
+        hc.init()
+
+        # First update below threshold
+        hc.setInput(-1.0)
+        hc.update()
+        assert hc.getOutput() == 0.0
+
+        # Crossing from below to above
+        hc.setInput(1.0)
+        hc.update()
+        assert hc.getOutput() == 1.0
+
+        # Above threshold, no new crossing
+        hc.setInput(2.0)
+        hc.update()
+        assert hc.getOutput() == 0.0
+
+    def test_hit_crossing_falling(self):
+        """Test HitCrossing detects falling edge crossing."""
+        from src.osk.blocks.nonlinear import HitCrossing
+
+        hc = HitCrossing(threshold=0.0, direction='falling')
+        hc.init()
+
+        # Start above threshold
+        hc.setInput(1.0)
+        hc.update()
+        assert hc.getOutput() == 0.0
+
+        # Cross from above to below
+        hc.setInput(-1.0)
+        hc.update()
+        assert hc.getOutput() == 1.0
+
+    def test_hit_crossing_either(self):
+        """Test HitCrossing detects both rising and falling."""
+        from src.osk.blocks.nonlinear import HitCrossing
+
+        hc = HitCrossing(threshold=0.0, direction='either')
+        hc.init()
+
+        # Start below
+        hc.setInput(-1.0)
+        hc.update()
+
+        # Rising crossing
+        hc.setInput(1.0)
+        hc.update()
+        assert hc.getOutput() == 1.0
+
+        # No crossing
+        hc.setInput(2.0)
+        hc.update()
+        assert hc.getOutput() == 0.0
+
+        # Falling crossing
+        hc.setInput(-1.0)
+        hc.update()
+        assert hc.getOutput() == 1.0
+
+
+class TestHysteresisBlock:
+    """Tests for the Hysteresis block."""
+
+    def test_hysteresis_initial_state(self):
+        """Test Hysteresis starts in low state."""
+        from src.osk.blocks.nonlinear import Hysteresis
+
+        hyst = Hysteresis(upper_threshold=1.0, lower_threshold=-1.0,
+                         output_high=1.0, output_low=0.0)
+        hyst.init()
+        assert hyst.getOutput() == 0.0
+
+    def test_hysteresis_switch_high(self):
+        """Test Hysteresis switches to high state."""
+        from src.osk.blocks.nonlinear import Hysteresis
+
+        hyst = Hysteresis(upper_threshold=1.0, lower_threshold=-1.0,
+                         output_high=1.0, output_low=0.0)
+        hyst.init()
+
+        # Input below upper threshold - stays low
+        hyst.setInput(0.5)
+        hyst.update()
+        assert hyst.getOutput() == 0.0
+
+        # Input above upper threshold - switches high
+        hyst.setInput(1.5)
+        hyst.update()
+        assert hyst.getOutput() == 1.0
+
+    def test_hysteresis_stays_high(self):
+        """Test Hysteresis stays high until lower threshold crossed."""
+        from src.osk.blocks.nonlinear import Hysteresis
+
+        hyst = Hysteresis(upper_threshold=1.0, lower_threshold=-1.0,
+                         output_high=1.0, output_low=0.0)
+        hyst.init()
+
+        # Switch to high
+        hyst.setInput(1.5)
+        hyst.update()
+        assert hyst.getOutput() == 1.0
+
+        # Between thresholds - stays high
+        hyst.setInput(0.0)
+        hyst.update()
+        assert hyst.getOutput() == 1.0
+
+        # Still above lower threshold
+        hyst.setInput(-0.5)
+        hyst.update()
+        assert hyst.getOutput() == 1.0
+
+        # Below lower threshold - switches low
+        hyst.setInput(-1.5)
+        hyst.update()
+        assert hyst.getOutput() == 0.0
+
+
+class TestStictionBlock:
+    """Tests for the Stiction block."""
+
+    def test_stiction_initial_stuck(self):
+        """Test Stiction starts in stuck state."""
+        from src.osk.blocks.nonlinear import Stiction
+
+        st = Stiction(breakaway_force=1.0, velocity_threshold=0.01)
+        st.init()
+        assert st.is_stuck is True
+        assert st.getOutput() == 0.0
+
+    def test_stiction_breakaway(self):
+        """Test Stiction breaks away when force exceeds threshold."""
+        from src.osk.blocks.nonlinear import Stiction
+
+        st = Stiction(breakaway_force=1.0, velocity_threshold=0.01)
+        st.init()
+
+        # Force below breakaway - stays stuck
+        st.setInput(0.5, port=0)  # force
+        st.setInput(0.0, port=1)  # velocity
+        st.update()
+        assert st.is_stuck is True
+
+        # Force above breakaway - breaks free
+        st.setInput(1.5, port=0)
+        st.setInput(0.1, port=1)
+        st.update()
+        assert st.is_stuck is False
+
+    def test_stiction_sticks_again(self):
+        """Test Stiction sticks again when velocity drops."""
+        from src.osk.blocks.nonlinear import Stiction
+
+        st = Stiction(breakaway_force=1.0, velocity_threshold=0.01)
+        st.init()
+
+        # Break free
+        st.setInput(2.0, port=0)
+        st.setInput(0.5, port=1)
+        st.update()
+        assert st.is_stuck is False
+
+        # Velocity drops - sticks again
+        st.setInput(0.5, port=0)
+        st.setInput(0.001, port=1)
+        st.update()
+        assert st.is_stuck is True
+
+
+class TestSlewRateLimiterBlock:
+    """Tests for the SlewRateLimiter block."""
+
+    def test_slew_rate_limiter_within_limits(self):
+        """Test SlewRateLimiter passes signal within rate limits."""
+        from src.osk.blocks.nonlinear import SlewRateLimiter
+
+        slew = SlewRateLimiter(rising_rate=10.0, falling_rate=-10.0, sample_time=0.01)
+        slew.init()
+
+        # Small change within limits
+        slew.setInput(0.05)  # 0.05 / 0.01 = 5 < 10
+        slew.update()
+        assert slew.getOutput() == pytest.approx(0.05)
+
+    def test_slew_rate_limiter_rising_limited(self):
+        """Test SlewRateLimiter limits rising rate."""
+        from src.osk.blocks.nonlinear import SlewRateLimiter
+
+        slew = SlewRateLimiter(rising_rate=1.0, falling_rate=-1.0, sample_time=0.01)
+        slew.init()
+
+        # Large jump would exceed rate
+        slew.setInput(1.0)  # Would be 1.0/0.01 = 100, but limited to 1.0
+        slew.update()
+        # Max rise = 1.0 * 0.01 = 0.01
+        assert slew.getOutput() == pytest.approx(0.01)
+
+    def test_slew_rate_limiter_falling_limited(self):
+        """Test SlewRateLimiter limits falling rate."""
+        from src.osk.blocks.nonlinear import SlewRateLimiter
+
+        slew = SlewRateLimiter(rising_rate=1.0, falling_rate=-1.0, sample_time=0.01)
+        slew.init()
+
+        # Start at 1.0
+        slew.output = 1.0
+
+        # Large drop would exceed rate
+        slew.setInput(0.0)
+        slew.update()
+        # Max fall = -1.0 * 0.01 = -0.01
+        assert slew.getOutput() == pytest.approx(0.99)
+
+
+# =============================================================================
+# New Math Block Tests
+# =============================================================================
+
+
+class TestDivideBlock:
+    """Tests for the Divide block."""
+
+    def test_divide_basic(self):
+        """Test basic division."""
+        from src.osk.blocks.math_ops import Divide
+
+        div = Divide()
+        div.init()
+        div.setInput(10.0, port=0)
+        div.setInput(2.0, port=1)
+        div.update()
+        assert div.getOutput() == pytest.approx(5.0)
+
+    def test_divide_by_zero(self):
+        """Test division by zero returns infinity."""
+        from src.osk.blocks.math_ops import Divide
+
+        div = Divide()
+        div.init()
+        div.setInput(1.0, port=0)
+        div.setInput(0.0, port=1)
+        div.update()
+        assert math.isinf(div.getOutput())
+
+
+class TestModBlock:
+    """Tests for the Mod block."""
+
+    def test_mod_basic(self):
+        """Test basic modulo operation."""
+        from src.osk.blocks.math_ops import Mod
+
+        mod = Mod()
+        mod.init()
+        mod.setInput(7.0, port=0)
+        mod.setInput(3.0, port=1)
+        mod.update()
+        assert mod.getOutput() == pytest.approx(1.0)
+
+    def test_mod_floating_point(self):
+        """Test modulo with floating point."""
+        from src.osk.blocks.math_ops import Mod
+
+        mod = Mod()
+        mod.init()
+        mod.setInput(5.5, port=0)
+        mod.setInput(2.0, port=1)
+        mod.update()
+        assert mod.getOutput() == pytest.approx(1.5)
+
+
+class TestAtan2Block:
+    """Tests for the Atan2 block."""
+
+    def test_atan2_basic(self):
+        """Test basic atan2 calculation."""
+        from src.osk.blocks.math_ops import Atan2
+
+        at = Atan2()
+        at.init()
+        at.setInput(1.0, port=0)  # y
+        at.setInput(1.0, port=1)  # x
+        at.update()
+        assert at.getOutput() == pytest.approx(math.pi / 4)
+
+    def test_atan2_quadrants(self):
+        """Test atan2 in different quadrants."""
+        from src.osk.blocks.math_ops import Atan2
+
+        at = Atan2()
+        at.init()
+
+        # Second quadrant
+        at.setInput(1.0, port=0)
+        at.setInput(-1.0, port=1)
+        at.update()
+        assert at.getOutput() == pytest.approx(3 * math.pi / 4)
+
+
+class TestHypotBlock:
+    """Tests for the Hypot block."""
+
+    def test_hypot_basic(self):
+        """Test basic hypotenuse calculation."""
+        from src.osk.blocks.math_ops import Hypot
+
+        hyp = Hypot()
+        hyp.init()
+        hyp.setInput(3.0, port=0)
+        hyp.setInput(4.0, port=1)
+        hyp.update()
+        assert hyp.getOutput() == pytest.approx(5.0)
+
+
+class TestSqrtBlock:
+    """Tests for the Sqrt block."""
+
+    def test_sqrt_basic(self):
+        """Test basic square root."""
+        from src.osk.blocks.math_ops import Sqrt
+
+        sq = Sqrt()
+        sq.init()
+        sq.setInput(16.0)
+        sq.update()
+        assert sq.getOutput() == pytest.approx(4.0)
+
+    def test_sqrt_negative(self):
+        """Test square root of negative returns NaN."""
+        from src.osk.blocks.math_ops import Sqrt
+
+        sq = Sqrt()
+        sq.init()
+        sq.setInput(-1.0)
+        sq.update()
+        assert math.isnan(sq.getOutput())
+
+
+class TestSquareBlock:
+    """Tests for the Square block."""
+
+    def test_square_basic(self):
+        """Test basic squaring."""
+        from src.osk.blocks.math_ops import Square
+
+        sq = Square()
+        sq.init()
+        sq.setInput(5.0)
+        sq.update()
+        assert sq.getOutput() == pytest.approx(25.0)
+
+    def test_square_negative(self):
+        """Test squaring negative number."""
+        from src.osk.blocks.math_ops import Square
+
+        sq = Square()
+        sq.init()
+        sq.setInput(-3.0)
+        sq.update()
+        assert sq.getOutput() == pytest.approx(9.0)
+
+
+class TestReciprocalBlock:
+    """Tests for the Reciprocal block."""
+
+    def test_reciprocal_basic(self):
+        """Test basic reciprocal."""
+        from src.osk.blocks.math_ops import Reciprocal
+
+        rec = Reciprocal()
+        rec.init()
+        rec.setInput(4.0)
+        rec.update()
+        assert rec.getOutput() == pytest.approx(0.25)
+
+    def test_reciprocal_zero(self):
+        """Test reciprocal of zero returns infinity."""
+        from src.osk.blocks.math_ops import Reciprocal
+
+        rec = Reciprocal()
+        rec.init()
+        rec.setInput(0.0)
+        rec.update()
+        assert math.isinf(rec.getOutput())
+
+
+class TestPowerBlock:
+    """Tests for the Power block."""
+
+    def test_power_basic(self):
+        """Test basic power operation."""
+        from src.osk.blocks.math_ops import Power
+
+        pw = Power(exponent=3)
+        pw.init()
+        pw.setInput(2.0)
+        pw.update()
+        assert pw.getOutput() == pytest.approx(8.0)
+
+    def test_power_fractional(self):
+        """Test fractional power (square root)."""
+        from src.osk.blocks.math_ops import Power
+
+        pw = Power(exponent=0.5)
+        pw.init()
+        pw.setInput(9.0)
+        pw.update()
+        assert pw.getOutput() == pytest.approx(3.0)
+
+
+class TestExpBlock:
+    """Tests for the Exp block."""
+
+    def test_exp_basic(self):
+        """Test basic exponential."""
+        from src.osk.blocks.math_ops import Exp
+
+        exp = Exp()
+        exp.init()
+        exp.setInput(1.0)
+        exp.update()
+        assert exp.getOutput() == pytest.approx(math.e)
+
+    def test_exp_zero(self):
+        """Test e^0 = 1."""
+        from src.osk.blocks.math_ops import Exp
+
+        exp = Exp()
+        exp.init()
+        exp.setInput(0.0)
+        exp.update()
+        assert exp.getOutput() == pytest.approx(1.0)
+
+
+class TestLogBlock:
+    """Tests for the Log block."""
+
+    def test_log_basic(self):
+        """Test basic natural logarithm."""
+        from src.osk.blocks.math_ops import Log
+
+        log = Log()
+        log.init()
+        log.setInput(math.e)
+        log.update()
+        assert log.getOutput() == pytest.approx(1.0)
+
+    def test_log_negative(self):
+        """Test log of negative returns NaN."""
+        from src.osk.blocks.math_ops import Log
+
+        log = Log()
+        log.init()
+        log.setInput(-1.0)
+        log.update()
+        assert math.isnan(log.getOutput())
+
+
+class TestLog10Block:
+    """Tests for the Log10 block."""
+
+    def test_log10_basic(self):
+        """Test basic base-10 logarithm."""
+        from src.osk.blocks.math_ops import Log10
+
+        log = Log10()
+        log.init()
+        log.setInput(100.0)
+        log.update()
+        assert log.getOutput() == pytest.approx(2.0)
+
+
+class TestUnaryMinusBlock:
+    """Tests for the UnaryMinus block."""
+
+    def test_unary_minus_basic(self):
+        """Test basic negation."""
+        from src.osk.blocks.math_ops import UnaryMinus
+
+        um = UnaryMinus()
+        um.init()
+        um.setInput(5.0)
+        um.update()
+        assert um.getOutput() == pytest.approx(-5.0)
+
+    def test_unary_minus_negative(self):
+        """Test negating negative number."""
+        from src.osk.blocks.math_ops import UnaryMinus
+
+        um = UnaryMinus()
+        um.init()
+        um.setInput(-3.0)
+        um.update()
+        assert um.getOutput() == pytest.approx(3.0)
+
+
+class TestDotProductBlock:
+    """Tests for the DotProduct block."""
+
+    def test_dot_product_basic(self):
+        """Test basic dot product."""
+        from src.osk.blocks.math_ops import DotProduct
+
+        dp = DotProduct()
+        dp.init()
+
+        # Connect two vector sources
+        const1 = Constant(value=[1.0, 2.0, 3.0])
+        const2 = Constant(value=[4.0, 5.0, 6.0])
+        const1.init()
+        const2.init()
+
+        dp.connectInput(const1, port=0)
+        dp.connectInput(const2, port=1)
+
+        const1.update()
+        const2.update()
+        dp.update()
+
+        # 1*4 + 2*5 + 3*6 = 4 + 10 + 18 = 32
+        assert dp.getOutput() == pytest.approx(32.0)
+
+
+class TestCrossProductBlock:
+    """Tests for the CrossProduct block."""
+
+    def test_cross_product_basic(self):
+        """Test basic cross product."""
+        from src.osk.blocks.math_ops import CrossProduct
+
+        cp = CrossProduct()
+        cp.init()
+
+        const1 = Constant(value=[1.0, 0.0, 0.0])  # i
+        const2 = Constant(value=[0.0, 1.0, 0.0])  # j
+        const1.init()
+        const2.init()
+
+        cp.connectInput(const1, port=0)
+        cp.connectInput(const2, port=1)
+
+        const1.update()
+        const2.update()
+        cp.update()
+
+        # i x j = k = [0, 0, 1]
+        vec = cp.getOutputVector()
+        assert vec is not None
+        assert vec[0] == pytest.approx(0.0)
+        assert vec[1] == pytest.approx(0.0)
+        assert vec[2] == pytest.approx(1.0)
+
+
+class TestMinMaxBlock:
+    """Tests for the MinMax block."""
+
+    def test_minmax_min(self):
+        """Test MinMax finds minimum."""
+        from src.osk.blocks.math_ops import MinMax
+
+        mm = MinMax(function='min', num_inputs=3)
+        mm.init()
+        mm.setInput(5.0, port=0)
+        mm.setInput(2.0, port=1)
+        mm.setInput(8.0, port=2)
+        mm.update()
+        assert mm.getOutput() == pytest.approx(2.0)
+
+    def test_minmax_max(self):
+        """Test MinMax finds maximum."""
+        from src.osk.blocks.math_ops import MinMax
+
+        mm = MinMax(function='max', num_inputs=3)
+        mm.init()
+        mm.setInput(5.0, port=0)
+        mm.setInput(2.0, port=1)
+        mm.setInput(8.0, port=2)
+        mm.update()
+        assert mm.getOutput() == pytest.approx(8.0)
+
+
+class TestRoundingBlock:
+    """Tests for the Rounding block."""
+
+    def test_rounding_round(self):
+        """Test rounding to nearest."""
+        from src.osk.blocks.math_ops import Rounding
+
+        r = Rounding(mode='round')
+        r.init()
+        r.setInput(2.6)
+        r.update()
+        assert r.getOutput() == pytest.approx(3.0)
+
+    def test_rounding_floor(self):
+        """Test floor function."""
+        from src.osk.blocks.math_ops import Rounding
+
+        r = Rounding(mode='floor')
+        r.init()
+        r.setInput(2.9)
+        r.update()
+        assert r.getOutput() == pytest.approx(2.0)
+
+    def test_rounding_ceil(self):
+        """Test ceiling function."""
+        from src.osk.blocks.math_ops import Rounding
+
+        r = Rounding(mode='ceil')
+        r.init()
+        r.setInput(2.1)
+        r.update()
+        assert r.getOutput() == pytest.approx(3.0)
+
+    def test_rounding_fix(self):
+        """Test fix (truncation) function."""
+        from src.osk.blocks.math_ops import Rounding
+
+        r = Rounding(mode='fix')
+        r.init()
+        r.setInput(-2.9)
+        r.update()
+        assert r.getOutput() == pytest.approx(-2.0)
+
+
+# =============================================================================
+# New Logic Block Tests
+# =============================================================================
+
+
+class TestCompareToZeroBlock:
+    """Tests for the CompareToZero block."""
+
+    def test_compare_to_zero_greater(self):
+        """Test greater than zero comparison."""
+        from src.osk.blocks.logic import CompareToZero
+
+        cz = CompareToZero(operator='>')
+        cz.init()
+        cz.setInput(1.0)
+        cz.update()
+        assert cz.getOutput() == 1.0
+
+        cz.setInput(-1.0)
+        cz.update()
+        assert cz.getOutput() == 0.0
+
+    def test_compare_to_zero_equal(self):
+        """Test equal to zero comparison."""
+        from src.osk.blocks.logic import CompareToZero
+
+        cz = CompareToZero(operator='==')
+        cz.init()
+        cz.setInput(0.0)
+        cz.update()
+        assert cz.getOutput() == 1.0
+
+        cz.setInput(0.001)
+        cz.update()
+        assert cz.getOutput() == 0.0
+
+
+class TestCompareToConstantBlock:
+    """Tests for the CompareToConstant block."""
+
+    def test_compare_to_constant_greater(self):
+        """Test greater than constant comparison."""
+        from src.osk.blocks.logic import CompareToConstant
+
+        cc = CompareToConstant(constant=5.0, operator='>')
+        cc.init()
+        cc.setInput(6.0)
+        cc.update()
+        assert cc.getOutput() == 1.0
+
+        cc.setInput(4.0)
+        cc.update()
+        assert cc.getOutput() == 0.0
+
+
+class TestRelationalOperatorBlock:
+    """Tests for the RelationalOperator block."""
+
+    def test_relational_operator_less_than(self):
+        """Test less than comparison between two inputs."""
+        from src.osk.blocks.logic import RelationalOperator
+
+        ro = RelationalOperator(operator='<')
+        ro.init()
+        ro.setInput(3.0, port=0)
+        ro.setInput(5.0, port=1)
+        ro.update()
+        assert ro.getOutput() == 1.0
+
+        ro.setInput(7.0, port=0)
+        ro.update()
+        assert ro.getOutput() == 0.0
+
+
+class TestLogicalOperatorBlock:
+    """Tests for the LogicalOperator block."""
+
+    def test_logical_and(self):
+        """Test logical AND operation."""
+        from src.osk.blocks.logic import LogicalOperator
+
+        lo = LogicalOperator(operator='AND', num_inputs=2)
+        lo.init()
+        lo.setInput(1.0, port=0)
+        lo.setInput(1.0, port=1)
+        lo.update()
+        assert lo.getOutput() == 1.0
+
+        lo.setInput(0.0, port=1)
+        lo.update()
+        assert lo.getOutput() == 0.0
+
+    def test_logical_or(self):
+        """Test logical OR operation."""
+        from src.osk.blocks.logic import LogicalOperator
+
+        lo = LogicalOperator(operator='OR', num_inputs=2)
+        lo.init()
+        lo.setInput(0.0, port=0)
+        lo.setInput(1.0, port=1)
+        lo.update()
+        assert lo.getOutput() == 1.0
+
+        lo.setInput(0.0, port=1)
+        lo.update()
+        assert lo.getOutput() == 0.0
+
+    def test_logical_not(self):
+        """Test logical NOT operation."""
+        from src.osk.blocks.logic import LogicalOperator
+
+        lo = LogicalOperator(operator='NOT', num_inputs=1)
+        lo.init()
+        lo.setInput(1.0, port=0)
+        lo.update()
+        assert lo.getOutput() == 0.0
+
+        lo.setInput(0.0, port=0)
+        lo.update()
+        assert lo.getOutput() == 1.0
+
+
+class TestBitOperatorBlock:
+    """Tests for the BitOperator block."""
+
+    def test_bit_and(self):
+        """Test bitwise AND operation."""
+        from src.osk.blocks.logic import BitOperator
+
+        bo = BitOperator(operator='AND')
+        bo.init()
+        bo.setInput(0b1100, port=0)
+        bo.setInput(0b1010, port=1)
+        bo.update()
+        assert bo.getOutput() == 0b1000
+
+    def test_bit_or(self):
+        """Test bitwise OR operation."""
+        from src.osk.blocks.logic import BitOperator
+
+        bo = BitOperator(operator='OR')
+        bo.init()
+        bo.setInput(0b1100, port=0)
+        bo.setInput(0b1010, port=1)
+        bo.update()
+        assert bo.getOutput() == 0b1110
+
+    def test_bit_xor(self):
+        """Test bitwise XOR operation."""
+        from src.osk.blocks.logic import BitOperator
+
+        bo = BitOperator(operator='XOR')
+        bo.init()
+        bo.setInput(0b1100, port=0)
+        bo.setInput(0b1010, port=1)
+        bo.update()
+        assert bo.getOutput() == 0b0110
+
+
+# =============================================================================
+# New Source Block Tests
+# =============================================================================
+
+
+class TestRepeatingSequenceBlock:
+    """Tests for the RepeatingSequence block."""
+
+    def test_repeating_sequence_basic(self):
+        """Test basic repeating sequence."""
+        from src.osk.blocks.sources import RepeatingSequence
+
+        rs = RepeatingSequence(time_values=[0, 1, 2], output_values=[0, 1, 0])
+        rs.init()
+
+        State.t = 0.5
+        rs.update()
+        assert rs.getOutput() == pytest.approx(0.5)  # Interpolated
+
+        State.t = 1.5
+        rs.update()
+        assert rs.getOutput() == pytest.approx(0.5)
+
+
+class TestChirpSignalBlock:
+    """Tests for the ChirpSignal block."""
+
+    def test_chirp_signal_initial(self):
+        """Test chirp signal at t=0."""
+        from src.osk.blocks.sources import ChirpSignal
+
+        chirp = ChirpSignal(initial_frequency=1.0, target_time=10.0, target_frequency=10.0)
+        chirp.init()
+
+        State.t = 0.0
+        chirp.update()
+        # At t=0, sin(0) = 0
+        assert chirp.getOutput() == pytest.approx(0.0, abs=0.01)
+
+
+class TestGroundBlock:
+    """Tests for the Ground block."""
+
+    def test_ground_output(self):
+        """Test Ground always outputs zero."""
+        from src.osk.blocks.sources import Ground
+
+        gnd = Ground()
+        gnd.init()
+        gnd.update()
+        assert gnd.getOutput() == 0.0
+
+
+class TestSignalGeneratorBlock:
+    """Tests for the SignalGenerator block."""
+
+    def test_signal_generator_sine(self):
+        """Test SignalGenerator with sine wave."""
+        from src.osk.blocks.sources import SignalGenerator
+
+        sg = SignalGenerator(wave_type='sine', amplitude=2.0, frequency=1.0, units='hertz')
+        sg.init()
+
+        State.t = 0.25  # Quarter period
+        sg.update()
+        assert sg.getOutput() == pytest.approx(2.0, abs=0.01)
+
+    def test_signal_generator_square(self):
+        """Test SignalGenerator with square wave."""
+        from src.osk.blocks.sources import SignalGenerator
+
+        sg = SignalGenerator(wave_type='square', amplitude=1.0, frequency=1.0, units='hertz')
+        sg.init()
+
+        State.t = 0.25
+        sg.update()
+        assert sg.getOutput() == pytest.approx(1.0)
+
+
+# =============================================================================
+# New Discrete Block Tests
+# =============================================================================
+
+
+class TestMemoryBlock:
+    """Tests for the Memory block."""
+
+    def test_memory_basic(self):
+        """Test Memory stores previous value."""
+        from src.osk.blocks.discrete import Memory
+
+        mem = Memory(initial_condition=0.0)
+        mem.init()
+
+        # First update
+        mem.setInput(5.0)
+        mem.update()
+        assert mem.getOutput() == 0.0  # Initial condition
+
+        mem.propagateStates()
+        mem.setInput(10.0)
+        mem.update()
+        assert mem.getOutput() == 5.0  # Previous value
+
+
+class TestFirstOrderHoldBlock:
+    """Tests for the FirstOrderHold block."""
+
+    def test_first_order_hold_basic(self):
+        """Test FirstOrderHold interpolation."""
+        from src.osk.blocks.discrete import FirstOrderHold
+
+        State.dt = 0.1
+        foh = FirstOrderHold(sample_time=0.1)
+        foh.init()
+
+        foh.setInput(1.0)
+        foh.update()
+        assert foh.getOutput() == pytest.approx(1.0)
+
+
+class TestDiscretePIDControllerBlock:
+    """Tests for the DiscretePIDController block."""
+
+    def test_discrete_pid_proportional(self):
+        """Test discrete PID proportional action."""
+        from src.osk.blocks.discrete import DiscretePIDController
+
+        State.dt = 0.01
+        pid = DiscretePIDController(Kp=2.0, Ki=0.0, Kd=0.0, N=100, sample_time=0.01)
+        pid.init()
+
+        pid.setInput(5.0)
+        pid.update()
+        # Output should be Kp * error = 2.0 * 5.0 = 10.0
+        assert pid.getOutput() == pytest.approx(10.0)
+
+
+class TestDiscreteStateSpaceBlock:
+    """Tests for the DiscreteStateSpace block."""
+
+    def test_discrete_state_space_basic(self):
+        """Test discrete state space model."""
+        from src.osk.blocks.discrete import DiscreteStateSpace
+
+        # Simple first-order discrete system
+        dss = DiscreteStateSpace(
+            A=[[0.9]],
+            B=[[0.1]],
+            C=[[1.0]],
+            D=[[0.0]],
+            initial_state=[0.0],
+            sample_time=0.1
+        )
+        dss.init()
+
+        dss.setInput(1.0)
+        dss.update()
+        assert dss.getOutput() == pytest.approx(0.0)  # Initial output
+
+        dss.propagateStates()
+        dss.update()
+        # x[k+1] = 0.9 * 0 + 0.1 * 1 = 0.1
+        # y = 1.0 * 0.1 = 0.1
+        assert dss.getOutput() == pytest.approx(0.1)

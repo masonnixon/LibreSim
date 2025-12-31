@@ -50,11 +50,15 @@ The core simulation engine using multi-pass numerical integration.
 - `sources.py` - Constant, Step, Ramp, Sine, Pulse, Clock, FromWorkspace
 - `sinks.py` - Scope, ToWorkspace, Display, Terminator
 - `math_ops.py` - Sum, Gain, Product, Abs, Sign, Bias, Saturation, MathFunction, Trigonometry, DeadZone, Switch, Mux, Demux
-- `continuous.py` - Integrator, Derivative, TransferFunction, StateSpace, PIDController
-- `discrete.py` - UnitDelay, ZeroOrderHold, DiscreteIntegrator, DiscreteDerivative, DiscreteTransferFunction
+- `continuous.py` - Integrator, Derivative, TransferFunction, StateSpace, ZeroPole, TransportDelay, SecondOrder, LimitedIntegrator
+- `discrete.py` - UnitDelay, ZeroOrderHold, FirstOrderHold, DiscreteIntegrator, DiscreteDerivative, DiscreteTransferFunction, DiscreteStateSpace, DiscreteFilter, Memory
+- `control_design.py` - PIDController, DiscretePIDController, LQRController, PolePlacement, LeadLagCompensator, PIController, PDController, AntiWindupPID, ModelReference
 - `signal_processing.py` - MovingAverage, LowPassFilter, HighPassFilter, BandPassFilter
 - `nonlinear.py` - RateLimiter, Backlash, CoulombFriction, LookupTable, Relay
 - `observers.py` - LuenbergerObserver, KalmanFilter, ExtendedKalmanFilter
+- `data_types.py` - DataTypeConversion, RealImagToComplex, ComplexToRealImag
+- `matrix_ops.py` - MatrixMultiply, MatrixTranspose, MatrixInverse, Selector, Assignment, Concatenate, MatrixSum, VectorNorm
+- `aerospace.py` - QuaternionNormalize, QuaternionMultiply, QuaternionConjugate, QuaternionToEuler, EulerToQuaternion, QuaternionRotateVector, DCMToQuaternion, QuaternionToDCM, ISAAtmosphere, SixDOF, FlatEarthGravity, WGS84Gravity
 
 ## Docker Configuration
 - Uses Docker Compose for orchestration
@@ -110,10 +114,13 @@ def rpt(self):   # optional, for recording data
 - Sum, Gain, Product, Abs, Sign, Bias, Saturation, DeadZone, Switch, MathFunction, Trigonometry
 
 ### Continuous
-- Integrator, Derivative, TransferFunction, StateSpace, PIDController
+- Integrator, Derivative, TransferFunction, StateSpace, ZeroPole, TransportDelay, SecondOrder, LimitedIntegrator
 
 ### Discrete
-- UnitDelay, ZeroOrderHold, DiscreteIntegrator, DiscreteDerivative, DiscreteTransferFunction
+- UnitDelay, ZeroOrderHold, FirstOrderHold, DiscreteIntegrator, DiscreteDerivative, DiscreteTransferFunction, DiscreteStateSpace, DiscreteFilter, Memory
+
+### Control Design
+- PIDController, DiscretePIDController, LQRController, PolePlacement, LeadLagCompensator, PIController, PDController, AntiWindupPID, ModelReference
 
 ### Signal Processing
 - MovingAverage, LowPassFilter, HighPassFilter, BandPassFilter
@@ -126,6 +133,15 @@ def rpt(self):   # optional, for recording data
 
 ### Routing
 - Subsystem (with Inport/Outport for hierarchical modeling)
+
+### Data Types
+- DataTypeConversion, RealImagToComplex, ComplexToRealImag
+
+### Matrix Operations
+- MatrixMultiply, MatrixTranspose, MatrixInverse, Selector, Assignment, Concatenate, MatrixSum, VectorNorm
+
+### Aerospace
+- QuaternionNormalize, QuaternionMultiply, QuaternionConjugate, QuaternionToEuler, EulerToQuaternion, QuaternionRotateVector, DCMToQuaternion, QuaternionToDCM, ISAAtmosphere, SixDOF, FlatEarthGravity, WGS84Gravity
 
 ## Library Block System
 

@@ -25,7 +25,7 @@ interface UIState {
   showSettingsModal: boolean
   showImportModal: boolean
   showHelpModal: boolean
-  helpModalTab: 'shortcuts' | 'about'
+  helpModalTab: 'shortcuts' | 'about' | 'blocks'
 
   // Actions
   toggleProperties: () => void
@@ -53,7 +53,7 @@ interface UIState {
   closeSettingsModal: () => void
   openImportModal: () => void
   closeImportModal: () => void
-  openHelpModal: (tab?: 'shortcuts' | 'about') => void
+  openHelpModal: (tab?: 'shortcuts' | 'about' | 'blocks') => void
   closeHelpModal: () => void
 }
 
