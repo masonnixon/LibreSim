@@ -1,0 +1,193 @@
+{
+  "id": "example-quaternion-rotate-vector",
+  "metadata": {
+    "name": "Quaternion Vector Rotation",
+    "description": "Demonstrates rotating a 3D vector using quaternions. Shows a unit vector being rotated by a time-varying quaternion, useful for transforming vectors between reference frames in aerospace applications.",
+    "author": "LibreSim Examples",
+    "createdAt": "2024-12-31T00:00:00Z",
+    "modifiedAt": "2024-12-31T00:00:00Z",
+    "version": "1.0.0"
+  },
+  "blocks": [
+    {
+      "id": "angle",
+      "type": "ramp",
+      "name": "Rotation Angle",
+      "position": { "x": 50, "y": 150 },
+      "parameters": { "slope": 0.5, "startTime": 0, "initialValue": 0 },
+      "inputPorts": [],
+      "outputPorts": [{ "id": "angle-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "cos_half",
+      "type": "trigonometry",
+      "name": "cos(θ/2)",
+      "position": { "x": 200, "y": 100 },
+      "parameters": { "function": "cos" },
+      "inputPorts": [{ "id": "cos_half-in", "name": "in", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": [{ "id": "cos_half-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "sin_half",
+      "type": "trigonometry",
+      "name": "sin(θ/2)",
+      "position": { "x": 200, "y": 200 },
+      "parameters": { "function": "sin" },
+      "inputPorts": [{ "id": "sin_half-in", "name": "in", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": [{ "id": "sin_half-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "gain_half",
+      "type": "gain",
+      "name": "÷2",
+      "position": { "x": 120, "y": 150 },
+      "parameters": { "gain": 0.5 },
+      "inputPorts": [{ "id": "gain_half-in", "name": "in", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": [{ "id": "gain_half-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "zero1",
+      "type": "constant",
+      "name": "0",
+      "position": { "x": 200, "y": 280 },
+      "parameters": { "value": 0 },
+      "inputPorts": [],
+      "outputPorts": [{ "id": "zero1-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "zero2",
+      "type": "constant",
+      "name": "0",
+      "position": { "x": 200, "y": 340 },
+      "parameters": { "value": 0 },
+      "inputPorts": [],
+      "outputPorts": [{ "id": "zero2-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "mux_quat",
+      "type": "mux",
+      "name": "Quaternion [w,x,y,z]",
+      "position": { "x": 350, "y": 200 },
+      "parameters": { "numInputs": 4 },
+      "inputPorts": [
+        { "id": "mux_quat-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
+        { "id": "mux_quat-in2", "name": "in2", "dataType": "double", "dimensions": [1] },
+        { "id": "mux_quat-in3", "name": "in3", "dataType": "double", "dimensions": [1] },
+        { "id": "mux_quat-in4", "name": "in4", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [{ "id": "mux_quat-out", "name": "out", "dataType": "double", "dimensions": [4] }]
+    },
+    {
+      "id": "vec_x",
+      "type": "constant",
+      "name": "Vx = 1",
+      "position": { "x": 350, "y": 350 },
+      "parameters": { "value": 1 },
+      "inputPorts": [],
+      "outputPorts": [{ "id": "vec_x-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "vec_y",
+      "type": "constant",
+      "name": "Vy = 0",
+      "position": { "x": 350, "y": 410 },
+      "parameters": { "value": 0 },
+      "inputPorts": [],
+      "outputPorts": [{ "id": "vec_y-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "vec_z",
+      "type": "constant",
+      "name": "Vz = 0",
+      "position": { "x": 350, "y": 470 },
+      "parameters": { "value": 0 },
+      "inputPorts": [],
+      "outputPorts": [{ "id": "vec_z-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "mux_vec",
+      "type": "mux",
+      "name": "Vector [x,y,z]",
+      "position": { "x": 480, "y": 410 },
+      "parameters": { "numInputs": 3 },
+      "inputPorts": [
+        { "id": "mux_vec-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
+        { "id": "mux_vec-in2", "name": "in2", "dataType": "double", "dimensions": [1] },
+        { "id": "mux_vec-in3", "name": "in3", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [{ "id": "mux_vec-out", "name": "out", "dataType": "double", "dimensions": [3] }]
+    },
+    {
+      "id": "q_norm",
+      "type": "quaternion_normalize",
+      "name": "Normalize Q",
+      "position": { "x": 500, "y": 200 },
+      "parameters": {},
+      "inputPorts": [{ "id": "q_norm-in", "name": "q", "dataType": "double", "dimensions": [4] }],
+      "outputPorts": [{ "id": "q_norm-out", "name": "q_norm", "dataType": "double", "dimensions": [4] }]
+    },
+    {
+      "id": "rotate",
+      "type": "quaternion_rotate_vector",
+      "name": "Rotate Vector",
+      "position": { "x": 650, "y": 300 },
+      "parameters": {},
+      "inputPorts": [
+        { "id": "rotate-in1", "name": "q", "dataType": "double", "dimensions": [4] },
+        { "id": "rotate-in2", "name": "v", "dataType": "double", "dimensions": [3] }
+      ],
+      "outputPorts": [{ "id": "rotate-out", "name": "v_rot", "dataType": "double", "dimensions": [3] }]
+    },
+    {
+      "id": "scope_rotated",
+      "type": "scope",
+      "name": "Rotated Vector",
+      "position": { "x": 820, "y": 300 },
+      "parameters": { "numInputs": 1 },
+      "inputPorts": [{ "id": "scope_rotated-in1", "name": "in1", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": []
+    },
+    {
+      "id": "scope_quat",
+      "type": "scope",
+      "name": "Quaternion",
+      "position": { "x": 650, "y": 100 },
+      "parameters": { "numInputs": 1 },
+      "inputPorts": [{ "id": "scope_quat-in1", "name": "in1", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": []
+    },
+    {
+      "id": "scope_angle",
+      "type": "scope",
+      "name": "Rotation Angle (rad)",
+      "position": { "x": 200, "y": 50 },
+      "parameters": { "numInputs": 1 },
+      "inputPorts": [{ "id": "scope_angle-in1", "name": "in1", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": []
+    }
+  ],
+  "connections": [
+    { "id": "c1", "sourceBlockId": "angle", "sourcePortId": "angle-out", "targetBlockId": "gain_half", "targetPortId": "gain_half-in" },
+    { "id": "c2", "sourceBlockId": "gain_half", "sourcePortId": "gain_half-out", "targetBlockId": "cos_half", "targetPortId": "cos_half-in" },
+    { "id": "c3", "sourceBlockId": "gain_half", "sourcePortId": "gain_half-out", "targetBlockId": "sin_half", "targetPortId": "sin_half-in" },
+    { "id": "c4", "sourceBlockId": "cos_half", "sourcePortId": "cos_half-out", "targetBlockId": "mux_quat", "targetPortId": "mux_quat-in1" },
+    { "id": "c5", "sourceBlockId": "zero1", "sourcePortId": "zero1-out", "targetBlockId": "mux_quat", "targetPortId": "mux_quat-in2" },
+    { "id": "c6", "sourceBlockId": "zero2", "sourcePortId": "zero2-out", "targetBlockId": "mux_quat", "targetPortId": "mux_quat-in3" },
+    { "id": "c7", "sourceBlockId": "sin_half", "sourcePortId": "sin_half-out", "targetBlockId": "mux_quat", "targetPortId": "mux_quat-in4" },
+    { "id": "c8", "sourceBlockId": "mux_quat", "sourcePortId": "mux_quat-out", "targetBlockId": "q_norm", "targetPortId": "q_norm-in" },
+    { "id": "c9", "sourceBlockId": "vec_x", "sourcePortId": "vec_x-out", "targetBlockId": "mux_vec", "targetPortId": "mux_vec-in1" },
+    { "id": "c10", "sourceBlockId": "vec_y", "sourcePortId": "vec_y-out", "targetBlockId": "mux_vec", "targetPortId": "mux_vec-in2" },
+    { "id": "c11", "sourceBlockId": "vec_z", "sourcePortId": "vec_z-out", "targetBlockId": "mux_vec", "targetPortId": "mux_vec-in3" },
+    { "id": "c12", "sourceBlockId": "q_norm", "sourcePortId": "q_norm-out", "targetBlockId": "rotate", "targetPortId": "rotate-in1" },
+    { "id": "c13", "sourceBlockId": "mux_vec", "sourcePortId": "mux_vec-out", "targetBlockId": "rotate", "targetPortId": "rotate-in2" },
+    { "id": "c14", "sourceBlockId": "rotate", "sourcePortId": "rotate-out", "targetBlockId": "scope_rotated", "targetPortId": "scope_rotated-in1" },
+    { "id": "c15", "sourceBlockId": "q_norm", "sourcePortId": "q_norm-out", "targetBlockId": "scope_quat", "targetPortId": "scope_quat-in1" },
+    { "id": "c16", "sourceBlockId": "angle", "sourcePortId": "angle-out", "targetBlockId": "scope_angle", "targetPortId": "scope_angle-in1" }
+  ],
+  "simulationConfig": {
+    "solver": "rk4",
+    "startTime": 0,
+    "stopTime": 12.566,
+    "stepSize": 0.02
+  }
+}

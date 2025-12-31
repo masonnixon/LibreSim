@@ -520,21 +520,61 @@ Defines an output port within a subsystem.
 
 ## Example Models
 
-LibreSim includes example models in the `examples/` directory demonstrating various capabilities:
+LibreSim includes 26 example models in the `examples/` directory, organized by category:
 
-| Example | Category | Description |
-|---------|----------|-------------|
-| Sine Wave Basic | Basic | Simple source + scope |
-| First-Order Step Response | Basic | Transfer function response |
-| Second-Order Damping | Basic | Damping ratio comparison |
-| PID Controller | Control | Closed-loop feedback control |
-| Mass-Spring-Damper | Control | Mechanical system dynamics |
-| Thermostat Relay | Control | Bang-bang control with hysteresis |
-| Moving Average Filter | Signal | AWGN smoothing comparison |
-| Low-Pass Filter | Signal | Noise reduction tradeoffs |
-| Lookup Table | Signal | Motor torque curve modeling |
-| Rate Limiting | Signal | Actuator limitations |
-| Kalman Filter | Advanced | State estimation |
+### Basic Examples
+| Example | Description |
+|---------|-------------|
+| Sine Wave Basic | Simple source + scope |
+| First-Order Step Response | Transfer function response |
+| Second-Order Damping | Damping ratio comparison |
+
+### Control Systems
+| Example | Description |
+|---------|-------------|
+| PID Controller | Closed-loop feedback control |
+| Mass-Spring-Damper | Mechanical system dynamics |
+| Thermostat Relay | Bang-bang control with hysteresis |
+| Bode Plot Analysis | Frequency response visualization |
+| Nyquist Plot Analysis | Stability analysis via Nyquist diagram |
+| Pole-Zero Map | System stability via pole-zero locations |
+| Step Response Info | Time-domain step response characteristics |
+
+### Control Design
+| Example | Description |
+|---------|-------------|
+| PID Speed Control | Motor speed control with tuned PID |
+| Discrete PID | Discrete-time PID with sample-hold effects |
+| LQR State Feedback | Optimal LQR control with state feedback |
+| Lead-Lag Compensator | Phase compensation for improved transient response |
+| Anti-Windup PID | PID with back-calculation anti-windup |
+| PI vs PD Controllers | Comparing PI and PD controller characteristics |
+| Model Reference Control | Tracking control with reference model |
+| Pole Placement Control | State feedback with pole placement design |
+
+### Signal Processing
+| Example | Description |
+|---------|-------------|
+| Moving Average Filter | AWGN smoothing comparison |
+| Low-Pass Filter | Noise reduction tradeoffs |
+| Lookup Table | Motor torque curve modeling |
+| Rate Limiting | Actuator limitations |
+
+### Aerospace Blockset
+| Example | Description |
+|---------|-------------|
+| Quaternion Attitude Propagation | Spacecraft attitude dynamics with quaternion integration |
+| ISA Atmosphere Model | Standard atmosphere properties vs altitude |
+| Gravity Models Comparison | WGS84 vs flat Earth gravity models |
+| DCM/Quaternion Conversion | Direction cosine matrix and quaternion conversions |
+| Quaternion Vector Rotation | Rotating vectors using quaternion operations |
+
+### Advanced
+| Example | Description |
+|---------|-------------|
+| Kalman Filter | State estimation with Kalman filter |
+| Kalman Position/Velocity | Hidden state estimation (velocity from position) |
+| Vector Signal Processing | 3D vector operations with Mux, Demux, and element-wise math |
 
 See [examples/README.md](examples/README.md) for detailed documentation and Simulink reference links.
 

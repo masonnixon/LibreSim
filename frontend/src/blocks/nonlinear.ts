@@ -230,7 +230,11 @@ export const nonlinearBlocks: BlockDefinition[] = [
         default: 'rising',
         label: 'Direction',
         description: 'Crossing direction to detect',
-        options: ['rising', 'falling', 'either'],
+        options: [
+          { value: 'rising', label: 'Rising' },
+          { value: 'falling', label: 'Falling' },
+          { value: 'either', label: 'Either' },
+        ],
       },
     ],
     icon: '⨉',

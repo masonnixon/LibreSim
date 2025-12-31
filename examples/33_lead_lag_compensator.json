@@ -1,0 +1,100 @@
+{
+  "id": "example-lead-lag-compensator",
+  "metadata": {
+    "name": "Lead-Lag Compensator Design",
+    "description": "Demonstrates classical lead-lag compensator for improving transient response and steady-state error. Shows a lead compensator (phase lead for faster response) controlling a second-order plant.",
+    "author": "LibreSim Examples",
+    "createdAt": "2024-12-31T00:00:00Z",
+    "modifiedAt": "2024-12-31T00:00:00Z",
+    "version": "1.0.0"
+  },
+  "blocks": [
+    {
+      "id": "setpoint",
+      "type": "step",
+      "name": "Reference",
+      "position": { "x": 50, "y": 150 },
+      "parameters": { "stepTime": 0.5, "initialValue": 0, "finalValue": 1 },
+      "inputPorts": [],
+      "outputPorts": [{ "id": "setpoint-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "error",
+      "type": "sum",
+      "name": "Error",
+      "position": { "x": 180, "y": 150 },
+      "parameters": { "signs": "+-" },
+      "inputPorts": [
+        { "id": "error-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
+        { "id": "error-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [{ "id": "error-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "lead_compensator",
+      "type": "lead_lag_compensator",
+      "name": "Lead Compensator",
+      "position": { "x": 320, "y": 150 },
+      "parameters": { "K": 10, "zero": 2, "pole": 20 },
+      "inputPorts": [{ "id": "lead_compensator-in", "name": "in", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": [{ "id": "lead_compensator-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "plant",
+      "type": "transfer_function",
+      "name": "Plant G(s)",
+      "position": { "x": 500, "y": 150 },
+      "parameters": { "numerator": [1], "denominator": [1, 2, 1] },
+      "inputPorts": [{ "id": "plant-in", "name": "in", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": [{ "id": "plant-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "uncompensated_plant",
+      "type": "transfer_function",
+      "name": "Uncompensated",
+      "position": { "x": 320, "y": 300 },
+      "parameters": { "numerator": [1], "denominator": [1, 2, 1] },
+      "inputPorts": [{ "id": "uncompensated_plant-in", "name": "in", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": [{ "id": "uncompensated_plant-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "scope_comparison",
+      "type": "scope",
+      "name": "Compensated vs Uncompensated",
+      "position": { "x": 700, "y": 220 },
+      "parameters": { "numInputs": 3 },
+      "inputPorts": [
+        { "id": "scope_comparison-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
+        { "id": "scope_comparison-in2", "name": "in2", "dataType": "double", "dimensions": [1] },
+        { "id": "scope_comparison-in3", "name": "in3", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": []
+    },
+    {
+      "id": "scope_control",
+      "type": "scope",
+      "name": "Compensator Output",
+      "position": { "x": 500, "y": 50 },
+      "parameters": { "numInputs": 1 },
+      "inputPorts": [{ "id": "scope_control-in1", "name": "in1", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": []
+    }
+  ],
+  "connections": [
+    { "id": "c1", "sourceBlockId": "setpoint", "sourcePortId": "setpoint-out", "targetBlockId": "error", "targetPortId": "error-in1" },
+    { "id": "c2", "sourceBlockId": "error", "sourcePortId": "error-out", "targetBlockId": "lead_compensator", "targetPortId": "lead_compensator-in" },
+    { "id": "c3", "sourceBlockId": "lead_compensator", "sourcePortId": "lead_compensator-out", "targetBlockId": "plant", "targetPortId": "plant-in" },
+    { "id": "c4", "sourceBlockId": "plant", "sourcePortId": "plant-out", "targetBlockId": "error", "targetPortId": "error-in2" },
+    { "id": "c5", "sourceBlockId": "setpoint", "sourcePortId": "setpoint-out", "targetBlockId": "uncompensated_plant", "targetPortId": "uncompensated_plant-in" },
+    { "id": "c6", "sourceBlockId": "setpoint", "sourcePortId": "setpoint-out", "targetBlockId": "scope_comparison", "targetPortId": "scope_comparison-in1" },
+    { "id": "c7", "sourceBlockId": "plant", "sourcePortId": "plant-out", "targetBlockId": "scope_comparison", "targetPortId": "scope_comparison-in2" },
+    { "id": "c8", "sourceBlockId": "uncompensated_plant", "sourcePortId": "uncompensated_plant-out", "targetBlockId": "scope_comparison", "targetPortId": "scope_comparison-in3" },
+    { "id": "c9", "sourceBlockId": "lead_compensator", "sourcePortId": "lead_compensator-out", "targetBlockId": "scope_control", "targetPortId": "scope_control-in1" }
+  ],
+  "simulationConfig": {
+    "solver": "rk4",
+    "startTime": 0,
+    "stopTime": 8,
+    "stepSize": 0.01
+  }
+}

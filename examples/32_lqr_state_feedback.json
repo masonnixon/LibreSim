@@ -1,0 +1,123 @@
+{
+  "id": "example-lqr-state-feedback",
+  "metadata": {
+    "name": "LQR State Feedback Control",
+    "description": "Demonstrates Linear Quadratic Regulator (LQR) optimal state feedback control. Controls a double integrator (position-velocity) system using full state feedback u = -K*x. Similar to Simulink Control Design LQR example.",
+    "author": "LibreSim Examples",
+    "createdAt": "2024-12-31T00:00:00Z",
+    "modifiedAt": "2024-12-31T00:00:00Z",
+    "version": "1.0.0"
+  },
+  "blocks": [
+    {
+      "id": "x1_ic",
+      "type": "constant",
+      "name": "x1(0) = 1",
+      "position": { "x": 50, "y": 100 },
+      "parameters": { "value": 1 },
+      "inputPorts": [],
+      "outputPorts": [{ "id": "x1_ic-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "x2_ic",
+      "type": "constant",
+      "name": "x2(0) = 0",
+      "position": { "x": 50, "y": 180 },
+      "parameters": { "value": 0 },
+      "inputPorts": [],
+      "outputPorts": [{ "id": "x2_ic-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "sum_x1",
+      "type": "sum",
+      "name": "ẋ1",
+      "position": { "x": 300, "y": 100 },
+      "parameters": { "signs": "+" },
+      "inputPorts": [{ "id": "sum_x1-in1", "name": "in1", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": [{ "id": "sum_x1-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "sum_x2",
+      "type": "sum",
+      "name": "ẋ2",
+      "position": { "x": 300, "y": 200 },
+      "parameters": { "signs": "+" },
+      "inputPorts": [{ "id": "sum_x2-in1", "name": "in1", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": [{ "id": "sum_x2-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "int_x1",
+      "type": "integrator",
+      "name": "∫ → x1",
+      "position": { "x": 420, "y": 100 },
+      "parameters": { "initialCondition": 1.0 },
+      "inputPorts": [{ "id": "int_x1-in", "name": "in", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": [{ "id": "int_x1-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "int_x2",
+      "type": "integrator",
+      "name": "∫ → x2",
+      "position": { "x": 420, "y": 200 },
+      "parameters": { "initialCondition": 0.0 },
+      "inputPorts": [{ "id": "int_x2-in", "name": "in", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": [{ "id": "int_x2-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "mux_state",
+      "type": "mux",
+      "name": "State x",
+      "position": { "x": 560, "y": 150 },
+      "parameters": { "numInputs": 2 },
+      "inputPorts": [
+        { "id": "mux_state-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
+        { "id": "mux_state-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [{ "id": "mux_state-out", "name": "out", "dataType": "double", "dimensions": [2] }]
+    },
+    {
+      "id": "lqr",
+      "type": "lqr_controller",
+      "name": "LQR (u = -Kx)",
+      "position": { "x": 700, "y": 150 },
+      "parameters": { "K": [[1.0, 1.732]] },
+      "inputPorts": [{ "id": "lqr-in", "name": "x", "dataType": "double", "dimensions": [2] }],
+      "outputPorts": [{ "id": "lqr-out", "name": "u", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "scope_states",
+      "type": "scope",
+      "name": "States x1, x2",
+      "position": { "x": 700, "y": 50 },
+      "parameters": { "numInputs": 1 },
+      "inputPorts": [{ "id": "scope_states-in1", "name": "in1", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": []
+    },
+    {
+      "id": "scope_control",
+      "type": "scope",
+      "name": "Control u",
+      "position": { "x": 850, "y": 150 },
+      "parameters": { "numInputs": 1 },
+      "inputPorts": [{ "id": "scope_control-in1", "name": "in1", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": []
+    }
+  ],
+  "connections": [
+    { "id": "c1", "sourceBlockId": "int_x2", "sourcePortId": "int_x2-out", "targetBlockId": "sum_x1", "targetPortId": "sum_x1-in1" },
+    { "id": "c2", "sourceBlockId": "lqr", "sourcePortId": "lqr-out", "targetBlockId": "sum_x2", "targetPortId": "sum_x2-in1" },
+    { "id": "c3", "sourceBlockId": "sum_x1", "sourcePortId": "sum_x1-out", "targetBlockId": "int_x1", "targetPortId": "int_x1-in" },
+    { "id": "c4", "sourceBlockId": "sum_x2", "sourcePortId": "sum_x2-out", "targetBlockId": "int_x2", "targetPortId": "int_x2-in" },
+    { "id": "c5", "sourceBlockId": "int_x1", "sourcePortId": "int_x1-out", "targetBlockId": "mux_state", "targetPortId": "mux_state-in1" },
+    { "id": "c6", "sourceBlockId": "int_x2", "sourcePortId": "int_x2-out", "targetBlockId": "mux_state", "targetPortId": "mux_state-in2" },
+    { "id": "c7", "sourceBlockId": "mux_state", "sourcePortId": "mux_state-out", "targetBlockId": "lqr", "targetPortId": "lqr-in" },
+    { "id": "c8", "sourceBlockId": "mux_state", "sourcePortId": "mux_state-out", "targetBlockId": "scope_states", "targetPortId": "scope_states-in1" },
+    { "id": "c9", "sourceBlockId": "lqr", "sourcePortId": "lqr-out", "targetBlockId": "scope_control", "targetPortId": "scope_control-in1" }
+  ],
+  "simulationConfig": {
+    "solver": "rk4",
+    "startTime": 0,
+    "stopTime": 10,
+    "stepSize": 0.01
+  }
+}

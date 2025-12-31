@@ -1,0 +1,109 @@
+{
+  "id": "example-isa-atmosphere",
+  "metadata": {
+    "name": "ISA Standard Atmosphere",
+    "description": "Demonstrates the ISA Atmosphere block: compute air density, pressure, temperature, and speed of sound as a function of altitude. Essential for aerospace vehicle performance analysis.",
+    "author": "LibreSim Examples",
+    "createdAt": "2024-12-31T00:00:00Z",
+    "modifiedAt": "2024-12-31T00:00:00Z",
+    "version": "1.0.0"
+  },
+  "blocks": [
+    {
+      "id": "altitude_ramp",
+      "type": "ramp",
+      "name": "Altitude (m)",
+      "position": { "x": 100, "y": 200 },
+      "parameters": { "slope": 1000, "startTime": 0, "initialValue": 0 },
+      "inputPorts": [],
+      "outputPorts": [{ "id": "altitude_ramp-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "isa",
+      "type": "isa_atmosphere",
+      "name": "ISA Atmosphere",
+      "position": { "x": 280, "y": 200 },
+      "parameters": {},
+      "inputPorts": [{ "id": "isa-in", "name": "altitude", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": [
+        { "id": "isa-out1", "name": "T", "dataType": "double", "dimensions": [1] },
+        { "id": "isa-out2", "name": "a", "dataType": "double", "dimensions": [1] },
+        { "id": "isa-out3", "name": "P", "dataType": "double", "dimensions": [1] },
+        { "id": "isa-out4", "name": "rho", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "demux_isa",
+      "type": "demux",
+      "name": "Demux",
+      "position": { "x": 450, "y": 200 },
+      "parameters": { "numOutputs": 4 },
+      "inputPorts": [{ "id": "demux_isa-in", "name": "in", "dataType": "double", "dimensions": [4] }],
+      "outputPorts": [
+        { "id": "demux_isa-out1", "name": "out1", "dataType": "double", "dimensions": [1] },
+        { "id": "demux_isa-out2", "name": "out2", "dataType": "double", "dimensions": [1] },
+        { "id": "demux_isa-out3", "name": "out3", "dataType": "double", "dimensions": [1] },
+        { "id": "demux_isa-out4", "name": "out4", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "scope_temp",
+      "type": "scope",
+      "name": "Temperature (K)",
+      "position": { "x": 620, "y": 100 },
+      "parameters": { "numInputs": 1 },
+      "inputPorts": [{ "id": "scope_temp-in1", "name": "in1", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": []
+    },
+    {
+      "id": "scope_sound",
+      "type": "scope",
+      "name": "Speed of Sound (m/s)",
+      "position": { "x": 620, "y": 180 },
+      "parameters": { "numInputs": 1 },
+      "inputPorts": [{ "id": "scope_sound-in1", "name": "in1", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": []
+    },
+    {
+      "id": "scope_pressure",
+      "type": "scope",
+      "name": "Pressure (Pa)",
+      "position": { "x": 620, "y": 260 },
+      "parameters": { "numInputs": 1 },
+      "inputPorts": [{ "id": "scope_pressure-in1", "name": "in1", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": []
+    },
+    {
+      "id": "scope_density",
+      "type": "scope",
+      "name": "Density (kg/m³)",
+      "position": { "x": 620, "y": 340 },
+      "parameters": { "numInputs": 1 },
+      "inputPorts": [{ "id": "scope_density-in1", "name": "in1", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": []
+    },
+    {
+      "id": "scope_altitude",
+      "type": "scope",
+      "name": "Altitude (m)",
+      "position": { "x": 280, "y": 350 },
+      "parameters": { "numInputs": 1 },
+      "inputPorts": [{ "id": "scope_altitude-in1", "name": "in1", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": []
+    }
+  ],
+  "connections": [
+    { "id": "c1", "sourceBlockId": "altitude_ramp", "sourcePortId": "altitude_ramp-out", "targetBlockId": "isa", "targetPortId": "isa-in" },
+    { "id": "c2", "sourceBlockId": "altitude_ramp", "sourcePortId": "altitude_ramp-out", "targetBlockId": "scope_altitude", "targetPortId": "scope_altitude-in1" },
+    { "id": "c3", "sourceBlockId": "isa", "sourcePortId": "isa-out1", "targetBlockId": "scope_temp", "targetPortId": "scope_temp-in1" },
+    { "id": "c4", "sourceBlockId": "isa", "sourcePortId": "isa-out2", "targetBlockId": "scope_sound", "targetPortId": "scope_sound-in1" },
+    { "id": "c5", "sourceBlockId": "isa", "sourcePortId": "isa-out3", "targetBlockId": "scope_pressure", "targetPortId": "scope_pressure-in1" },
+    { "id": "c6", "sourceBlockId": "isa", "sourcePortId": "isa-out4", "targetBlockId": "scope_density", "targetPortId": "scope_density-in1" }
+  ],
+  "simulationConfig": {
+    "solver": "rk4",
+    "startTime": 0,
+    "stopTime": 30,
+    "stepSize": 0.1
+  }
+}

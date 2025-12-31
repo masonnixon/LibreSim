@@ -1,0 +1,140 @@
+{
+  "id": "example-gravity-models",
+  "metadata": {
+    "name": "Gravity Models Comparison",
+    "description": "Compares Flat Earth constant gravity with WGS84 gravity model that varies with latitude and altitude. Demonstrates the difference between simple and high-fidelity gravity models for aerospace simulations.",
+    "author": "LibreSim Examples",
+    "createdAt": "2024-12-31T00:00:00Z",
+    "modifiedAt": "2024-12-31T00:00:00Z",
+    "version": "1.0.0"
+  },
+  "blocks": [
+    {
+      "id": "lat_sweep",
+      "type": "ramp",
+      "name": "Latitude (deg)",
+      "position": { "x": 100, "y": 150 },
+      "parameters": { "slope": 9, "startTime": 0, "initialValue": 0 },
+      "inputPorts": [],
+      "outputPorts": [{ "id": "lat_sweep-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "deg2rad",
+      "type": "gain",
+      "name": "Deg→Rad",
+      "position": { "x": 250, "y": 150 },
+      "parameters": { "gain": 0.0174533 },
+      "inputPorts": [{ "id": "deg2rad-in", "name": "in", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": [{ "id": "deg2rad-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "altitude_const",
+      "type": "constant",
+      "name": "Altitude = 10km",
+      "position": { "x": 100, "y": 250 },
+      "parameters": { "value": 10000 },
+      "inputPorts": [],
+      "outputPorts": [{ "id": "altitude_const-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "mux_latalt",
+      "type": "mux",
+      "name": "Lat,Alt",
+      "position": { "x": 400, "y": 200 },
+      "parameters": { "numInputs": 2 },
+      "inputPorts": [
+        { "id": "mux_latalt-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
+        { "id": "mux_latalt-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [{ "id": "mux_latalt-out", "name": "out", "dataType": "double", "dimensions": [2] }]
+    },
+    {
+      "id": "wgs84",
+      "type": "wgs84_gravity",
+      "name": "WGS84 Gravity",
+      "position": { "x": 550, "y": 200 },
+      "parameters": {},
+      "inputPorts": [
+        { "id": "wgs84-in1", "name": "latitude", "dataType": "double", "dimensions": [1] },
+        { "id": "wgs84-in2", "name": "altitude", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [{ "id": "wgs84-out", "name": "g", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "flat_earth",
+      "type": "flat_earth_gravity",
+      "name": "Flat Earth g",
+      "position": { "x": 550, "y": 320 },
+      "parameters": { "g": 9.80665 },
+      "inputPorts": [],
+      "outputPorts": [{ "id": "flat_earth-out", "name": "g", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "diff",
+      "type": "sum",
+      "name": "Difference",
+      "position": { "x": 720, "y": 260 },
+      "parameters": { "signs": "+-" },
+      "inputPorts": [
+        { "id": "diff-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
+        { "id": "diff-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [{ "id": "diff-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "scope_wgs84",
+      "type": "scope",
+      "name": "WGS84 g (m/s²)",
+      "position": { "x": 750, "y": 150 },
+      "parameters": { "numInputs": 1 },
+      "inputPorts": [{ "id": "scope_wgs84-in1", "name": "in1", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": []
+    },
+    {
+      "id": "scope_flat",
+      "type": "scope",
+      "name": "Flat Earth g (m/s²)",
+      "position": { "x": 750, "y": 380 },
+      "parameters": { "numInputs": 1 },
+      "inputPorts": [{ "id": "scope_flat-in1", "name": "in1", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": []
+    },
+    {
+      "id": "scope_diff",
+      "type": "scope",
+      "name": "Δg (m/s²)",
+      "position": { "x": 880, "y": 260 },
+      "parameters": { "numInputs": 1 },
+      "inputPorts": [{ "id": "scope_diff-in1", "name": "in1", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": []
+    },
+    {
+      "id": "scope_lat",
+      "type": "scope",
+      "name": "Latitude (deg)",
+      "position": { "x": 250, "y": 50 },
+      "parameters": { "numInputs": 1 },
+      "inputPorts": [{ "id": "scope_lat-in1", "name": "in1", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": []
+    }
+  ],
+  "connections": [
+    { "id": "c1", "sourceBlockId": "lat_sweep", "sourcePortId": "lat_sweep-out", "targetBlockId": "deg2rad", "targetPortId": "deg2rad-in" },
+    { "id": "c2", "sourceBlockId": "lat_sweep", "sourcePortId": "lat_sweep-out", "targetBlockId": "scope_lat", "targetPortId": "scope_lat-in1" },
+    { "id": "c3", "sourceBlockId": "deg2rad", "sourcePortId": "deg2rad-out", "targetBlockId": "mux_latalt", "targetPortId": "mux_latalt-in1" },
+    { "id": "c4", "sourceBlockId": "altitude_const", "sourcePortId": "altitude_const-out", "targetBlockId": "mux_latalt", "targetPortId": "mux_latalt-in2" },
+    { "id": "c5", "sourceBlockId": "deg2rad", "sourcePortId": "deg2rad-out", "targetBlockId": "wgs84", "targetPortId": "wgs84-in1" },
+    { "id": "c6", "sourceBlockId": "altitude_const", "sourcePortId": "altitude_const-out", "targetBlockId": "wgs84", "targetPortId": "wgs84-in2" },
+    { "id": "c7", "sourceBlockId": "wgs84", "sourcePortId": "wgs84-out", "targetBlockId": "scope_wgs84", "targetPortId": "scope_wgs84-in1" },
+    { "id": "c8", "sourceBlockId": "flat_earth", "sourcePortId": "flat_earth-out", "targetBlockId": "scope_flat", "targetPortId": "scope_flat-in1" },
+    { "id": "c9", "sourceBlockId": "wgs84", "sourcePortId": "wgs84-out", "targetBlockId": "diff", "targetPortId": "diff-in1" },
+    { "id": "c10", "sourceBlockId": "flat_earth", "sourcePortId": "flat_earth-out", "targetBlockId": "diff", "targetPortId": "diff-in2" },
+    { "id": "c11", "sourceBlockId": "diff", "sourcePortId": "diff-out", "targetBlockId": "scope_diff", "targetPortId": "scope_diff-in1" }
+  ],
+  "simulationConfig": {
+    "solver": "rk4",
+    "startTime": 0,
+    "stopTime": 10,
+    "stepSize": 0.05
+  }
+}

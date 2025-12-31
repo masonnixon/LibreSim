@@ -6,6 +6,7 @@ import { useLibraryStore } from '../../store/libraryStore'
 import { api } from '../../api/client'
 import { toast } from '../Toast/Toast'
 import { exampleList, getExample } from '../../data/examples'
+import { ExamplesModal } from '../Examples/ExamplesModal'
 import { exportModelAsMDL } from '../../utils/mdlExporter'
 import { importMDL, isMDLFile, importMDLAsLibrary } from '../../utils/mdlImporter'
 import { blockRegistry } from '../../blocks'
@@ -45,6 +46,9 @@ export function Toolbar() {
     openPlotWindow,
     openSettingsModal,
     openHelpModal,
+    showExamplesModal,
+    openExamplesModal,
+    closeExamplesModal,
   } = useUIStore()
   const importLibrary = useLibraryStore((state) => state.importLibrary)
 
@@ -52,7 +56,6 @@ export function Toolbar() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const importInputRef = useRef<HTMLInputElement>(null)
   const libraryInputRef = useRef<HTMLInputElement>(null)
-  const [showExamplesMenu, setShowExamplesMenu] = useState(false)
   const [showExportMenu, setShowExportMenu] = useState(false)
   const [showImportMenu, setShowImportMenu] = useState(false)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
@@ -98,7 +101,6 @@ export function Toolbar() {
   // Close menus when clicking outside
   useEffect(() => {
     const handleClickOutside = () => {
-      setShowExamplesMenu(false)
       setShowExportMenu(false)
       setShowImportMenu(false)
       setShowMobileMenu(false)
@@ -376,7 +378,7 @@ export function Toolbar() {
     } else {
       toast.warning('Example Not Found', 'This example is not available yet.')
     }
-    setShowExamplesMenu(false)
+    closeExamplesModal()
     setShowMobileMenu(false)
   }
 
@@ -486,12 +488,9 @@ export function Toolbar() {
       <div className="dropdown-item" onClick={handleImportModel}>Import Model</div>
       <div className="dropdown-item text-cyan-400" onClick={handleImportLibrary}>Import Library</div>
       <div className="border-t border-editor-border my-1" />
-      <div className="dropdown-item font-medium text-gray-400 text-xs">Examples</div>
-      {exampleList.slice(0, 5).map((ex) => (
-        <div key={ex.id} className="dropdown-item text-sm" onClick={() => handleLoadExample(ex.id)}>
-          {ex.name}
-        </div>
-      ))}
+      <div className="dropdown-item" onClick={() => { openExamplesModal(); setShowMobileMenu(false) }}>
+        Browse Examples
+      </div>
       <div className="border-t border-editor-border my-1" />
       <div className="dropdown-item" onClick={() => { toggleSidebar(); setShowMobileMenu(false) }}>
         {sidebarCollapsed ? 'Show Blocks' : 'Hide Blocks'}
@@ -666,85 +665,15 @@ export function Toolbar() {
             </div>
           </div>
 
-          {/* Examples Menu */}
-          <div className="relative pr-2 border-r border-editor-border">
+          {/* Examples Button */}
+          <div className="pr-2 border-r border-editor-border">
             <button
-              onClick={(e) => {
-                e.stopPropagation()
-                setShowExamplesMenu(!showExamplesMenu)
-              }}
-              className="px-3 py-1.5 text-sm hover:bg-editor-border rounded transition-colors flex items-center gap-1"
+              onClick={openExamplesModal}
+              className="px-3 py-1.5 text-sm hover:bg-editor-border rounded transition-colors"
               title="Load Example Models"
             >
               Examples
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
             </button>
-            {showExamplesMenu && (
-              <div className="dropdown-menu" onClick={(e) => e.stopPropagation()}>
-                <div className="px-3 py-2 text-xs text-gray-400 font-medium border-b border-editor-border">
-                  Basic
-                </div>
-                {exampleList
-                  .filter((ex) => ex.category === 'basic')
-                  .map((ex) => (
-                    <div
-                      key={ex.id}
-                      className="dropdown-item"
-                      onClick={() => handleLoadExample(ex.id)}
-                    >
-                      <div className="text-sm">{ex.name}</div>
-                      <div className="text-xs text-gray-500">{ex.description}</div>
-                    </div>
-                  ))}
-                <div className="px-3 py-2 text-xs text-gray-400 font-medium border-b border-t border-editor-border">
-                  Control Systems
-                </div>
-                {exampleList
-                  .filter((ex) => ex.category === 'control')
-                  .map((ex) => (
-                    <div
-                      key={ex.id}
-                      className="dropdown-item"
-                      onClick={() => handleLoadExample(ex.id)}
-                    >
-                      <div className="text-sm">{ex.name}</div>
-                      <div className="text-xs text-gray-500">{ex.description}</div>
-                    </div>
-                  ))}
-                <div className="px-3 py-2 text-xs text-gray-400 font-medium border-b border-t border-editor-border">
-                  Signal Processing
-                </div>
-                {exampleList
-                  .filter((ex) => ex.category === 'signal')
-                  .map((ex) => (
-                    <div
-                      key={ex.id}
-                      className="dropdown-item"
-                      onClick={() => handleLoadExample(ex.id)}
-                    >
-                      <div className="text-sm">{ex.name}</div>
-                      <div className="text-xs text-gray-500">{ex.description}</div>
-                    </div>
-                  ))}
-                <div className="px-3 py-2 text-xs text-gray-400 font-medium border-b border-t border-editor-border">
-                  Advanced
-                </div>
-                {exampleList
-                  .filter((ex) => ex.category === 'advanced')
-                  .map((ex) => (
-                    <div
-                      key={ex.id}
-                      className="dropdown-item"
-                      onClick={() => handleLoadExample(ex.id)}
-                    >
-                      <div className="text-sm">{ex.name}</div>
-                      <div className="text-xs text-gray-500">{ex.description}</div>
-                    </div>
-                  ))}
-              </div>
-            )}
           </div>
 
           {/* Simulation Controls */}
@@ -897,6 +826,15 @@ export function Toolbar() {
           </div>
         </>
       )}
+
+      {/* Examples Modal */}
+      <ExamplesModal
+        isOpen={showExamplesModal}
+        onClose={closeExamplesModal}
+        examples={exampleList}
+        onLoadExample={handleLoadExample}
+        onOpenBlockReference={() => openHelpModal('blocks')}
+      />
     </div>
   )
 }

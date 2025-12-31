@@ -415,6 +415,261 @@ Uniform random noise between configurable min/max bounds.
 | 08 | Lookup Table - Motor Curve | Signal | Empirical data modeling | Torque drops, efficiency peaks mid-range |
 | 09 | Second-Order Damping | Basic | Damping ratio comparison | Under: oscillates, Critical: fastest, Over: slow |
 | 10 | Rate Limiting | Signal | Actuator limitations | Slew-limited + quantized output |
+| 20 | Quaternion Attitude | Aerospace | Quaternion propagation | Euler angles from angular rates |
+| 21 | ISA Atmosphere | Aerospace | Air properties vs altitude | T, P, ρ, a vs altitude |
+| 22 | Gravity Models | Aerospace | WGS84 vs Flat Earth | Gravity variation with latitude |
+| 23 | DCM-Quaternion | Aerospace | Rotation representations | Round-trip conversion verification |
+| 24 | Vector Rotation | Aerospace | Quaternion rotation | Circular motion of rotated vector |
+| 30 | PID Speed Control | Control Design | Motor speed regulation | Fast response, zero SS error |
+| 31 | Discrete PID | Control Design | Sampled-data control | Staircase control signal |
+| 32 | LQR State Feedback | Control Design | Optimal control | States converge to zero |
+| 33 | Lead-Lag Compensator | Control Design | Classical compensation | Faster response with lead |
+| 34 | Anti-Windup PID | Control Design | Saturation handling | Smooth recovery vs windup |
+| 35 | PI vs PD | Control Design | Controller comparison | Trade-off: accuracy vs speed |
+| 36 | Model Reference | Control Design | Adaptive control | Plant tracks reference model |
+| 37 | Pole Placement | Control Design | State feedback design | Disturbance rejection |
+
+---
+
+## Aerospace Blockset Examples
+
+### 20. Quaternion Attitude Propagation
+**File:** `20_quaternion_attitude_propagation.json`
+
+Demonstrates aerospace quaternion blocks for attitude representation. Propagates attitude using angular velocity, normalizes quaternions, and converts to Euler angles for visualization.
+
+**Blocks Used:**
+- Quaternion Normalize
+- Quaternion to Euler
+- Mux (for building quaternion/omega vectors)
+- Integrators (for quaternion kinematics)
+
+**Expected Output:**
+- Quaternion components evolve based on angular rates
+- Euler angles show attitude in degrees
+- Quaternion remains normalized (|q| = 1)
+
+**Reference:** https://www.mathworks.com/help/aeroblks/quaternions.html
+
+---
+
+### 21. ISA Standard Atmosphere
+**File:** `21_isa_atmosphere_model.json`
+
+Demonstrates the ISA Atmosphere block computing air properties as a function of altitude:
+- Temperature (K)
+- Speed of Sound (m/s)
+- Pressure (Pa)
+- Density (kg/m³)
+
+**Expected Output:**
+- At sea level: T=288.15K, a=340.3m/s, P=101325Pa, ρ=1.225kg/m³
+- Properties decrease with altitude per ISA model
+- Valid up to 11km (troposphere)
+
+**Reference:** https://www.mathworks.com/help/aeroblks/isaatmospheremodel.html
+
+---
+
+### 22. Gravity Models Comparison
+**File:** `22_gravity_models_comparison.json`
+
+Compares Flat Earth (constant g) vs WGS84 (latitude/altitude-dependent) gravity models:
+- Sweeps latitude from 0° to 90°
+- Shows gravity variation with latitude
+- Highlights importance of high-fidelity models for aerospace
+
+**Expected Output:**
+- Flat Earth: Constant 9.80665 m/s²
+- WGS84: Varies from ~9.78 (equator) to ~9.83 (pole)
+- Difference: Up to 0.05 m/s² between models
+
+**Reference:** https://www.mathworks.com/help/aeroblks/wgs84gravitymodel.html
+
+---
+
+### 23. DCM-Quaternion Conversion
+**File:** `23_dcm_quaternion_conversion.json`
+
+Demonstrates conversion between Direction Cosine Matrix (DCM) and Quaternion:
+- Euler → Quaternion → DCM → Quaternion → Euler round-trip
+- Verifies conversion consistency (error should be ~0)
+
+**Blocks Used:**
+- Euler to Quaternion
+- Quaternion to DCM
+- DCM to Quaternion
+- Quaternion to Euler
+
+**Expected Output:**
+- Input and output Euler angles match exactly
+- Conversion error: ~0 (machine precision)
+
+**Reference:** https://www.mathworks.com/help/aeroblks/directioncosinematrixtoquaternion.html
+
+---
+
+### 24. Quaternion Vector Rotation
+**File:** `24_quaternion_vector_rotation.json`
+
+Rotates a 3D vector using quaternion rotation (v' = qvq*):
+- Unit vector [1,0,0] rotated about z-axis
+- Shows circular motion of vector tip in XY plane
+
+**Blocks Used:**
+- Quaternion Normalize
+- Quaternion Rotate Vector
+- Trigonometry (sin/cos for quaternion from angle)
+
+**Expected Output:**
+- Rotated vector traces a circle
+- X component: cos(θ)
+- Y component: sin(θ)
+- Z component: 0
+
+**Reference:** https://www.mathworks.com/help/aeroblks/rotatevectorsbyquaternion.html
+
+---
+
+## Control Design Examples
+
+### 30. PID Motor Speed Control
+**File:** `30_pid_speed_control.json`
+
+Classic PID controller for DC motor speed regulation:
+- Step setpoint to 100 RPM
+- First-order motor model G(s) = 10/(s+2)
+- Actuator saturation limits
+
+**Expected Output:**
+- Fast rise time with minimal overshoot
+- Zero steady-state error
+- Control signal within saturation limits
+
+**Reference:** https://www.mathworks.com/help/control/ug/designing-pid-controllers.html
+
+---
+
+### 31. Discrete PID Sampled Control
+**File:** `31_discrete_pid_sampled_control.json`
+
+Demonstrates Discrete PID Controller for digital control systems:
+- Zero-Order Hold for sampling
+- Trapezoidal (Tustin) discretization
+- Sample time = 0.1s
+
+**Expected Output:**
+- Staircase control signal (sampled)
+- Good tracking despite discretization
+- Compare with continuous response
+
+**Reference:** https://www.mathworks.com/help/control/ug/discrete-time-pid-controller-design.html
+
+---
+
+### 32. LQR State Feedback Control
+**File:** `32_lqr_state_feedback.json`
+
+Linear Quadratic Regulator (LQR) optimal control:
+- Double integrator plant (position-velocity)
+- Full state feedback u = -Kx
+- Optimal gains K = [1, 1.732]
+
+**Expected Output:**
+- States converge to zero from initial conditions
+- Smooth, optimal control trajectory
+- No overshoot with proper tuning
+
+**Reference:** https://www.mathworks.com/help/control/ug/lqg-regulation.html
+
+---
+
+### 33. Lead-Lag Compensator Design
+**File:** `33_lead_lag_compensator.json`
+
+Classical lead compensator for improved transient response:
+- Lead compensator: K(s+z)/(s+p) with z < p
+- Compares compensated vs uncompensated response
+- Phase lead for faster response
+
+**Expected Output:**
+- Compensated: Faster rise time, reduced overshoot
+- Uncompensated: Slower, more oscillatory
+- Lead provides phase margin improvement
+
+**Reference:** https://www.mathworks.com/help/control/ug/lead-and-lag-compensator-design.html
+
+---
+
+### 34. Anti-Windup PID Controller
+**File:** `34_anti_windup_pid.json`
+
+PID with back-calculation anti-windup:
+- Compares anti-windup vs standard PID during saturation
+- Large setpoint causes actuator saturation
+- Back-calculation prevents integrator windup
+
+**Expected Output:**
+- Anti-windup PID: Smooth recovery from saturation
+- Standard PID: Prolonged overshoot (windup)
+- Demonstrates importance for real actuators
+
+**Reference:** https://www.mathworks.com/help/simulink/slref/pidcontroller.html#bsu1cxn-1
+
+---
+
+### 35. PI and PD Controller Comparison
+**File:** `35_pi_pd_controllers.json`
+
+Compares PI vs PD controller characteristics:
+- PI: Zero steady-state error, slower response
+- PD: Fast response, has steady-state error
+- Same plant for fair comparison
+
+**Expected Output:**
+- PI: Eventually reaches setpoint (no error)
+- PD: Fast but settles below setpoint
+- Trade-off between speed and accuracy
+
+**Reference:** https://www.mathworks.com/help/control/ug/pid-controller-types.html
+
+---
+
+### 36. Model Reference Control
+**File:** `36_model_reference_control.json`
+
+Model Reference Adaptive Control (MRAC) structure:
+- Reference model defines desired behavior
+- Controller aims to match plant output to reference
+- Foundation for adaptive control
+
+**Blocks Used:**
+- Model Reference block
+- PID for tracking controller
+
+**Expected Output:**
+- Plant output tracks reference model
+- Tracking error converges to zero
+- Reference model shapes closed-loop response
+
+**Reference:** https://www.mathworks.com/help/control/ug/model-reference-adaptive-control.html
+
+---
+
+### 37. Pole Placement State Feedback
+**File:** `37_pole_placement_control.json`
+
+State feedback via pole placement:
+- Places closed-loop poles at desired locations
+- Double integrator with disturbance rejection
+- Demonstrates state feedback structure
+
+**Expected Output:**
+- States return to zero after disturbance
+- Transient determined by pole locations
+- Faster poles = faster response
+
+**Reference:** https://www.mathworks.com/help/control/ref/place.html
 
 ---
 

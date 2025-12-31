@@ -1,0 +1,128 @@
+{
+  "id": "example-pi-pd-controllers",
+  "metadata": {
+    "name": "PI and PD Controller Comparison",
+    "description": "Compares PI Controller (good steady-state, slower response) vs PD Controller (fast response, steady-state error). Demonstrates when to use each controller type.",
+    "author": "LibreSim Examples",
+    "createdAt": "2024-12-31T00:00:00Z",
+    "modifiedAt": "2024-12-31T00:00:00Z",
+    "version": "1.0.0"
+  },
+  "blocks": [
+    {
+      "id": "setpoint",
+      "type": "step",
+      "name": "Setpoint",
+      "position": { "x": 50, "y": 200 },
+      "parameters": { "stepTime": 1, "initialValue": 0, "finalValue": 1 },
+      "inputPorts": [],
+      "outputPorts": [{ "id": "setpoint-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "error_pi",
+      "type": "sum",
+      "name": "Error (PI)",
+      "position": { "x": 180, "y": 100 },
+      "parameters": { "signs": "+-" },
+      "inputPorts": [
+        { "id": "error_pi-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
+        { "id": "error_pi-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [{ "id": "error_pi-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "pi_controller",
+      "type": "pi_controller",
+      "name": "PI Controller",
+      "position": { "x": 320, "y": 100 },
+      "parameters": { "Kp": 2, "Ki": 1 },
+      "inputPorts": [{ "id": "pi_controller-in", "name": "error", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": [{ "id": "pi_controller-out", "name": "u", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "plant_pi",
+      "type": "transfer_function",
+      "name": "Plant (PI)",
+      "position": { "x": 480, "y": 100 },
+      "parameters": { "numerator": [1], "denominator": [1, 2] },
+      "inputPorts": [{ "id": "plant_pi-in", "name": "in", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": [{ "id": "plant_pi-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "error_pd",
+      "type": "sum",
+      "name": "Error (PD)",
+      "position": { "x": 180, "y": 300 },
+      "parameters": { "signs": "+-" },
+      "inputPorts": [
+        { "id": "error_pd-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
+        { "id": "error_pd-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [{ "id": "error_pd-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "pd_controller",
+      "type": "pd_controller",
+      "name": "PD Controller",
+      "position": { "x": 320, "y": 300 },
+      "parameters": { "Kp": 5, "Kd": 1, "N": 100 },
+      "inputPorts": [{ "id": "pd_controller-in", "name": "error", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": [{ "id": "pd_controller-out", "name": "u", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "plant_pd",
+      "type": "transfer_function",
+      "name": "Plant (PD)",
+      "position": { "x": 480, "y": 300 },
+      "parameters": { "numerator": [1], "denominator": [1, 2] },
+      "inputPorts": [{ "id": "plant_pd-in", "name": "in", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": [{ "id": "plant_pd-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "scope_response",
+      "type": "scope",
+      "name": "PI vs PD Response",
+      "position": { "x": 680, "y": 200 },
+      "parameters": { "numInputs": 3 },
+      "inputPorts": [
+        { "id": "scope_response-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
+        { "id": "scope_response-in2", "name": "in2", "dataType": "double", "dimensions": [1] },
+        { "id": "scope_response-in3", "name": "in3", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": []
+    },
+    {
+      "id": "scope_control",
+      "type": "scope",
+      "name": "Control Effort",
+      "position": { "x": 480, "y": 430 },
+      "parameters": { "numInputs": 2 },
+      "inputPorts": [
+        { "id": "scope_control-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
+        { "id": "scope_control-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": []
+    }
+  ],
+  "connections": [
+    { "id": "c1", "sourceBlockId": "setpoint", "sourcePortId": "setpoint-out", "targetBlockId": "error_pi", "targetPortId": "error_pi-in1" },
+    { "id": "c2", "sourceBlockId": "error_pi", "sourcePortId": "error_pi-out", "targetBlockId": "pi_controller", "targetPortId": "pi_controller-in" },
+    { "id": "c3", "sourceBlockId": "pi_controller", "sourcePortId": "pi_controller-out", "targetBlockId": "plant_pi", "targetPortId": "plant_pi-in" },
+    { "id": "c4", "sourceBlockId": "plant_pi", "sourcePortId": "plant_pi-out", "targetBlockId": "error_pi", "targetPortId": "error_pi-in2" },
+    { "id": "c5", "sourceBlockId": "setpoint", "sourcePortId": "setpoint-out", "targetBlockId": "error_pd", "targetPortId": "error_pd-in1" },
+    { "id": "c6", "sourceBlockId": "error_pd", "sourcePortId": "error_pd-out", "targetBlockId": "pd_controller", "targetPortId": "pd_controller-in" },
+    { "id": "c7", "sourceBlockId": "pd_controller", "sourcePortId": "pd_controller-out", "targetBlockId": "plant_pd", "targetPortId": "plant_pd-in" },
+    { "id": "c8", "sourceBlockId": "plant_pd", "sourcePortId": "plant_pd-out", "targetBlockId": "error_pd", "targetPortId": "error_pd-in2" },
+    { "id": "c9", "sourceBlockId": "setpoint", "sourcePortId": "setpoint-out", "targetBlockId": "scope_response", "targetPortId": "scope_response-in1" },
+    { "id": "c10", "sourceBlockId": "plant_pi", "sourcePortId": "plant_pi-out", "targetBlockId": "scope_response", "targetPortId": "scope_response-in2" },
+    { "id": "c11", "sourceBlockId": "plant_pd", "sourcePortId": "plant_pd-out", "targetBlockId": "scope_response", "targetPortId": "scope_response-in3" },
+    { "id": "c12", "sourceBlockId": "pi_controller", "sourcePortId": "pi_controller-out", "targetBlockId": "scope_control", "targetPortId": "scope_control-in1" },
+    { "id": "c13", "sourceBlockId": "pd_controller", "sourcePortId": "pd_controller-out", "targetBlockId": "scope_control", "targetPortId": "scope_control-in2" }
+  ],
+  "simulationConfig": {
+    "solver": "rk4",
+    "startTime": 0,
+    "stopTime": 10,
+    "stepSize": 0.01
+  }
+}

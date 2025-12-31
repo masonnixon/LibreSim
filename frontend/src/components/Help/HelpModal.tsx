@@ -306,7 +306,7 @@ LibreSim includes 110+ blocks across categories:
 
 ## Credits
 
-Object-oriented Simulation Kernel (OSK) by Mason Nixon
+Object-oriented Simulation Kernel (OSK) by Ray Sells
 Inspired by MathWorks Simulink
 `
 

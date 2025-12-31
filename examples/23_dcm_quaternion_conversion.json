@@ -1,0 +1,178 @@
+{
+  "id": "example-dcm-quaternion",
+  "metadata": {
+    "name": "DCM-Quaternion Conversion",
+    "description": "Demonstrates conversion between Direction Cosine Matrix (DCM) and Quaternion representations. Shows round-trip conversion: Euler → Quaternion → DCM → Quaternion → Euler to verify consistency.",
+    "author": "LibreSim Examples",
+    "createdAt": "2024-12-31T00:00:00Z",
+    "modifiedAt": "2024-12-31T00:00:00Z",
+    "version": "1.0.0"
+  },
+  "blocks": [
+    {
+      "id": "roll_input",
+      "type": "sine_wave",
+      "name": "Roll (φ)",
+      "position": { "x": 50, "y": 100 },
+      "parameters": { "amplitude": 0.5, "frequency": 0.5, "phase": 0, "bias": 0 },
+      "inputPorts": [],
+      "outputPorts": [{ "id": "roll_input-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "pitch_input",
+      "type": "sine_wave",
+      "name": "Pitch (θ)",
+      "position": { "x": 50, "y": 180 },
+      "parameters": { "amplitude": 0.3, "frequency": 0.3, "phase": 1.57, "bias": 0 },
+      "inputPorts": [],
+      "outputPorts": [{ "id": "pitch_input-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "yaw_input",
+      "type": "sine_wave",
+      "name": "Yaw (ψ)",
+      "position": { "x": 50, "y": 260 },
+      "parameters": { "amplitude": 0.2, "frequency": 0.2, "phase": 0.785, "bias": 0 },
+      "inputPorts": [],
+      "outputPorts": [{ "id": "yaw_input-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "mux_euler",
+      "type": "mux",
+      "name": "Euler Angles",
+      "position": { "x": 200, "y": 180 },
+      "parameters": { "numInputs": 3 },
+      "inputPorts": [
+        { "id": "mux_euler-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
+        { "id": "mux_euler-in2", "name": "in2", "dataType": "double", "dimensions": [1] },
+        { "id": "mux_euler-in3", "name": "in3", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [{ "id": "mux_euler-out", "name": "out", "dataType": "double", "dimensions": [3] }]
+    },
+    {
+      "id": "euler_to_q",
+      "type": "euler_to_quaternion",
+      "name": "Euler→Q",
+      "position": { "x": 350, "y": 180 },
+      "parameters": { "sequence": "ZYX" },
+      "inputPorts": [{ "id": "euler_to_q-in", "name": "euler", "dataType": "double", "dimensions": [3] }],
+      "outputPorts": [{ "id": "euler_to_q-out", "name": "q", "dataType": "double", "dimensions": [4] }]
+    },
+    {
+      "id": "q_to_dcm",
+      "type": "quaternion_to_dcm",
+      "name": "Q→DCM",
+      "position": { "x": 500, "y": 180 },
+      "parameters": {},
+      "inputPorts": [{ "id": "q_to_dcm-in", "name": "q", "dataType": "double", "dimensions": [4] }],
+      "outputPorts": [{ "id": "q_to_dcm-out", "name": "dcm", "dataType": "double", "dimensions": [9] }]
+    },
+    {
+      "id": "dcm_to_q",
+      "type": "dcm_to_quaternion",
+      "name": "DCM→Q",
+      "position": { "x": 650, "y": 180 },
+      "parameters": {},
+      "inputPorts": [{ "id": "dcm_to_q-in", "name": "dcm", "dataType": "double", "dimensions": [9] }],
+      "outputPorts": [{ "id": "dcm_to_q-out", "name": "q", "dataType": "double", "dimensions": [4] }]
+    },
+    {
+      "id": "q_to_euler",
+      "type": "quaternion_to_euler",
+      "name": "Q→Euler",
+      "position": { "x": 800, "y": 180 },
+      "parameters": { "sequence": "ZYX" },
+      "inputPorts": [{ "id": "q_to_euler-in", "name": "q", "dataType": "double", "dimensions": [4] }],
+      "outputPorts": [{ "id": "q_to_euler-out", "name": "euler", "dataType": "double", "dimensions": [3] }]
+    },
+    {
+      "id": "error_calc",
+      "type": "sum",
+      "name": "Error",
+      "position": { "x": 950, "y": 250 },
+      "parameters": { "signs": "+-" },
+      "inputPorts": [
+        { "id": "error_calc-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
+        { "id": "error_calc-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [{ "id": "error_calc-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "rad2deg_in",
+      "type": "gain",
+      "name": "Rad→Deg",
+      "position": { "x": 350, "y": 350 },
+      "parameters": { "gain": 57.2957795 },
+      "inputPorts": [{ "id": "rad2deg_in-in", "name": "in", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": [{ "id": "rad2deg_in-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "rad2deg_out",
+      "type": "gain",
+      "name": "Rad→Deg",
+      "position": { "x": 950, "y": 180 },
+      "parameters": { "gain": 57.2957795 },
+      "inputPorts": [{ "id": "rad2deg_out-in", "name": "in", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": [{ "id": "rad2deg_out-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "scope_input",
+      "type": "scope",
+      "name": "Input Euler (deg)",
+      "position": { "x": 500, "y": 350 },
+      "parameters": { "numInputs": 1 },
+      "inputPorts": [{ "id": "scope_input-in1", "name": "in1", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": []
+    },
+    {
+      "id": "scope_output",
+      "type": "scope",
+      "name": "Output Euler (deg)",
+      "position": { "x": 1100, "y": 180 },
+      "parameters": { "numInputs": 1 },
+      "inputPorts": [{ "id": "scope_output-in1", "name": "in1", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": []
+    },
+    {
+      "id": "scope_error",
+      "type": "scope",
+      "name": "Conversion Error",
+      "position": { "x": 1100, "y": 250 },
+      "parameters": { "numInputs": 1 },
+      "inputPorts": [{ "id": "scope_error-in1", "name": "in1", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": []
+    },
+    {
+      "id": "scope_quat",
+      "type": "scope",
+      "name": "Quaternion",
+      "position": { "x": 500, "y": 80 },
+      "parameters": { "numInputs": 1 },
+      "inputPorts": [{ "id": "scope_quat-in1", "name": "in1", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": []
+    }
+  ],
+  "connections": [
+    { "id": "c1", "sourceBlockId": "roll_input", "sourcePortId": "roll_input-out", "targetBlockId": "mux_euler", "targetPortId": "mux_euler-in1" },
+    { "id": "c2", "sourceBlockId": "pitch_input", "sourcePortId": "pitch_input-out", "targetBlockId": "mux_euler", "targetPortId": "mux_euler-in2" },
+    { "id": "c3", "sourceBlockId": "yaw_input", "sourcePortId": "yaw_input-out", "targetBlockId": "mux_euler", "targetPortId": "mux_euler-in3" },
+    { "id": "c4", "sourceBlockId": "mux_euler", "sourcePortId": "mux_euler-out", "targetBlockId": "euler_to_q", "targetPortId": "euler_to_q-in" },
+    { "id": "c5", "sourceBlockId": "euler_to_q", "sourcePortId": "euler_to_q-out", "targetBlockId": "q_to_dcm", "targetPortId": "q_to_dcm-in" },
+    { "id": "c6", "sourceBlockId": "q_to_dcm", "sourcePortId": "q_to_dcm-out", "targetBlockId": "dcm_to_q", "targetPortId": "dcm_to_q-in" },
+    { "id": "c7", "sourceBlockId": "dcm_to_q", "sourcePortId": "dcm_to_q-out", "targetBlockId": "q_to_euler", "targetPortId": "q_to_euler-in" },
+    { "id": "c8", "sourceBlockId": "mux_euler", "sourcePortId": "mux_euler-out", "targetBlockId": "rad2deg_in", "targetPortId": "rad2deg_in-in" },
+    { "id": "c9", "sourceBlockId": "q_to_euler", "sourcePortId": "q_to_euler-out", "targetBlockId": "rad2deg_out", "targetPortId": "rad2deg_out-in" },
+    { "id": "c10", "sourceBlockId": "rad2deg_in", "sourcePortId": "rad2deg_in-out", "targetBlockId": "scope_input", "targetPortId": "scope_input-in1" },
+    { "id": "c11", "sourceBlockId": "rad2deg_out", "sourcePortId": "rad2deg_out-out", "targetBlockId": "scope_output", "targetPortId": "scope_output-in1" },
+    { "id": "c12", "sourceBlockId": "mux_euler", "sourcePortId": "mux_euler-out", "targetBlockId": "error_calc", "targetPortId": "error_calc-in1" },
+    { "id": "c13", "sourceBlockId": "q_to_euler", "sourcePortId": "q_to_euler-out", "targetBlockId": "error_calc", "targetPortId": "error_calc-in2" },
+    { "id": "c14", "sourceBlockId": "error_calc", "sourcePortId": "error_calc-out", "targetBlockId": "scope_error", "targetPortId": "scope_error-in1" },
+    { "id": "c15", "sourceBlockId": "euler_to_q", "sourcePortId": "euler_to_q-out", "targetBlockId": "scope_quat", "targetPortId": "scope_quat-in1" }
+  ],
+  "simulationConfig": {
+    "solver": "rk4",
+    "startTime": 0,
+    "stopTime": 20,
+    "stepSize": 0.02
+  }
+}

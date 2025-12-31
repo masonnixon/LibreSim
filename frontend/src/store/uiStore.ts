@@ -26,6 +26,7 @@ interface UIState {
   showImportModal: boolean
   showHelpModal: boolean
   helpModalTab: 'shortcuts' | 'about' | 'blocks'
+  showExamplesModal: boolean
 
   // Actions
   toggleProperties: () => void
@@ -55,6 +56,8 @@ interface UIState {
   closeImportModal: () => void
   openHelpModal: (tab?: 'shortcuts' | 'about' | 'blocks') => void
   closeHelpModal: () => void
+  openExamplesModal: () => void
+  closeExamplesModal: () => void
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -69,6 +72,7 @@ export const useUIStore = create<UIState>((set) => ({
   showImportModal: false,
   showHelpModal: false,
   helpModalTab: 'shortcuts',
+  showExamplesModal: false,
 
   toggleProperties: () => set((state) => ({ showProperties: !state.showProperties })),
   toggleSimulation: () => set((state) => ({ showSimulation: !state.showSimulation })),
@@ -159,4 +163,6 @@ export const useUIStore = create<UIState>((set) => ({
   closeImportModal: () => set({ showImportModal: false }),
   openHelpModal: (tab = 'shortcuts') => set({ showHelpModal: true, helpModalTab: tab }),
   closeHelpModal: () => set({ showHelpModal: false }),
+  openExamplesModal: () => set({ showExamplesModal: true }),
+  closeExamplesModal: () => set({ showExamplesModal: false }),
 }))
