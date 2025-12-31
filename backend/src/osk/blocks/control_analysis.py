@@ -51,8 +51,18 @@ class BodePlot(Block):
 
     def init(self):
         """Compute frequency response at simulation start."""
+        # If connected to a TransferFunction block, extract its coefficients
+        self._extract_tf_from_input()
         self._compute_frequency_response()
         self._compute_stability_margins()
+
+    def _extract_tf_from_input(self):
+        """Extract TF coefficients from connected input block if available."""
+        if self.input_block is not None:
+            # Check for TransferFunction block
+            if hasattr(self.input_block, 'numerator') and hasattr(self.input_block, 'denominator'):
+                self.numerator = list(self.input_block.numerator)
+                self.denominator = list(self.input_block.denominator)
 
     def _evaluate_tf(self, s):
         """Evaluate transfer function H(s) at complex frequency s."""
@@ -167,6 +177,13 @@ class BodePlot(Block):
             'phase_crossover_freq': self.phase_crossover_freq,
         }
 
+    def getData(self):
+        """Return analysis data for visualization."""
+        return {
+            'analysisType': 'bode',
+            **self.get_bode_data()
+        }
+
 
 class NyquistPlot(Block):
     """Nyquist plot analysis block.
@@ -206,8 +223,17 @@ class NyquistPlot(Block):
 
     def init(self):
         """Compute Nyquist diagram at simulation start."""
+        self._extract_tf_from_input()
         self._compute_nyquist()
         self._count_encirclements()
+
+    def _extract_tf_from_input(self):
+        """Extract TF coefficients from connected input block if available."""
+        if self.input_block is not None:
+            # Check for TransferFunction block
+            if hasattr(self.input_block, 'numerator') and hasattr(self.input_block, 'denominator'):
+                self.numerator = list(self.input_block.numerator)
+                self.denominator = list(self.input_block.denominator)
 
     def _evaluate_tf(self, s):
         """Evaluate transfer function H(s) at complex frequency s."""
@@ -295,6 +321,13 @@ class NyquistPlot(Block):
             'encirclements': self.encirclements,
         }
 
+    def getData(self):
+        """Return analysis data for visualization."""
+        return {
+            'analysisType': 'nyquist',
+            **self.get_nyquist_data()
+        }
+
 
 class PoleZeroMap(Block):
     """Pole-Zero map analysis block.
@@ -327,8 +360,17 @@ class PoleZeroMap(Block):
 
     def init(self):
         """Compute poles and zeros at simulation start."""
+        self._extract_tf_from_input()
         self._compute_poles_zeros()
         self._analyze_stability()
+
+    def _extract_tf_from_input(self):
+        """Extract TF coefficients from connected input block if available."""
+        if self.input_block is not None:
+            # Check for TransferFunction block
+            if hasattr(self.input_block, 'numerator') and hasattr(self.input_block, 'denominator'):
+                self.numerator = list(self.input_block.numerator)
+                self.denominator = list(self.input_block.denominator)
 
     def _find_roots(self, coefficients):
         """Find roots of a polynomial using numpy."""
@@ -385,6 +427,13 @@ class PoleZeroMap(Block):
             'dominant_pole': self.dominant_pole,
         }
 
+    def getData(self):
+        """Return analysis data for visualization."""
+        return {
+            'analysisType': 'pzmap',
+            **self.get_pole_zero_data()
+        }
+
 
 class StepInfo(Block):
     """Step response information block.
@@ -432,8 +481,17 @@ class StepInfo(Block):
 
     def init(self):
         """Compute step response at simulation start."""
+        self._extract_tf_from_input()
         self._compute_step_response()
         self._compute_characteristics()
+
+    def _extract_tf_from_input(self):
+        """Extract TF coefficients from connected input block if available."""
+        if self.input_block is not None:
+            # Check for TransferFunction block
+            if hasattr(self.input_block, 'numerator') and hasattr(self.input_block, 'denominator'):
+                self.numerator = list(self.input_block.numerator)
+                self.denominator = list(self.input_block.denominator)
 
     def _compute_step_response(self):
         """Simulate step response using RK4 integration."""
@@ -589,4 +647,11 @@ class StepInfo(Block):
             'peak_time': self.peak_time,
             'peak_value': self.peak_value,
             'steady_state_value': self.steady_state_value,
+        }
+
+    def getData(self):
+        """Return analysis data for visualization."""
+        return {
+            'analysisType': 'stepinfo',
+            **self.get_step_data()
         }

@@ -2,51 +2,54 @@
   "id": "example-nyquist-plot-analysis",
   "metadata": {
     "name": "Nyquist Plot - Stability Analysis",
-    "description": "Demonstrates Nyquist diagram for stability analysis of an open-loop transfer function G(s) = 10/(s*(s+1)*(s+2)). The Nyquist plot shows the frequency response in the complex plane and can be used to determine closed-loop stability via encirclements of the -1 point. This type III system has three poles and requires careful stability analysis. Reference: https://www.mathworks.com/help/control/ref/lti.nyquist.html",
+    "description": "Demonstrates Nyquist diagram for stability analysis of an open-loop transfer function G(s) = 10/(s*(s+1)*(s+2)). The Transfer Function block connects to the Nyquist Plot block for automatic coefficient extraction. The Nyquist plot shows the frequency response in the complex plane for determining closed-loop stability via encirclements of the -1 point.",
     "author": "LibreSim Examples",
     "createdAt": "2024-01-01T00:00:00Z",
-    "modifiedAt": "2024-01-01T00:00:00Z",
-    "version": "1.0.0"
+    "modifiedAt": "2024-12-31T00:00:00Z",
+    "version": "1.1.0"
   },
   "blocks": [
     {
-      "id": "nyquist1",
-      "type": "nyquist_plot",
-      "name": "Open-Loop Nyquist",
-      "position": { "x": 200, "y": 100 },
+      "id": "tf1",
+      "type": "transfer_function",
+      "name": "G(s)",
+      "position": { "x": 100, "y": 100 },
       "parameters": {
         "numerator": [10],
-        "denominator": [1, 3, 2, 0],
+        "denominator": [1, 3, 2, 0]
+      },
+      "inputPorts": [
+        { "id": "tf1-in", "name": "in", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [
+        { "id": "tf1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "nyquist1",
+      "type": "nyquist_plot",
+      "name": "Nyquist Plot",
+      "position": { "x": 300, "y": 100 },
+      "parameters": {
         "minFrequency": 0.01,
         "maxFrequency": 100,
         "numPoints": 500
       },
-      "inputPorts": [],
+      "inputPorts": [
+        { "id": "nyquist1-in", "name": "in", "dataType": "double", "dimensions": [1] }
+      ],
       "outputPorts": [
         { "id": "nyquist1-out", "name": "encirclements", "dataType": "double", "dimensions": [1] }
       ]
-    },
-    {
-      "id": "scope_encircle",
-      "type": "scope",
-      "name": "Encirclement Count",
-      "position": { "x": 400, "y": 100 },
-      "parameters": {
-        "numInputs": 1
-      },
-      "inputPorts": [
-        { "id": "scope_encircle-in1", "name": "in", "dataType": "double", "dimensions": [1] }
-      ],
-      "outputPorts": []
     }
   ],
   "connections": [
     {
       "id": "conn1",
-      "sourceBlockId": "nyquist1",
-      "sourcePortId": "nyquist1-out",
-      "targetBlockId": "scope_encircle",
-      "targetPortId": "scope_encircle-in1"
+      "sourceBlockId": "tf1",
+      "sourcePortId": "tf1-out",
+      "targetBlockId": "nyquist1",
+      "targetPortId": "nyquist1-in"
     }
   ],
   "simulationConfig": {

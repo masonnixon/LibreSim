@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 export interface ExampleInfo {
   id: string
@@ -50,9 +52,125 @@ const categoryInfo: Record<string, { title: string; description: string; icon: s
 
 const categoryOrder = ['basic', 'control', 'control_design', 'signal', 'aerospace', 'advanced']
 
+// Examples README content embedded for offline access
+const examplesReadme = `# LibreSim Example Models
+
+This directory contains example models demonstrating LibreSim's simulation capabilities. Each example includes a reference URL to corresponding MathWorks/Simulink documentation for validation comparison.
+
+## Basic Examples
+
+### 01. Sine Wave Basic
+**File:** \`01_sine_wave_basic.json\` | \`01_sine_wave_basic.mdl\`
+
+The simplest possible model - a sine wave source connected to a scope. Perfect for verifying your LibreSim installation is working.
+
+**Expected Output:**
+- Amplitude: 1
+- Frequency: 1 Hz (2π rad/s)
+- Period: 1 second
+- Range: -1 to +1
+
+**Reference:** https://www.mathworks.com/help/simulink/slref/sinewave.html
+
+---
+
+### 02. First-Order System Step Response
+**File:** \`02_first_order_step_response.json\` | \`02_first_order_step_response.mdl\`
+
+Step response of a first-order system (like an RC circuit). Transfer function: H(s) = 1/(s+1) with time constant τ = 1 second.
+
+**Expected Output:**
+- At t=1s: output ≈ 0.632 (63.2% of final value)
+- At t=3s: output ≈ 0.95 (95% - within 5%)
+- Final value: 1.0
+
+**Reference:** https://www.mathworks.com/help/simulink/slref/transferfcn.html
+
+---
+
+## Control Systems Examples
+
+### 03. PID Controller
+Classic closed-loop PID control of a second-order plant (Kp=10, Ki=5, Kd=2).
+
+**Reference:** https://www.mathworks.com/help/simulink/slref/pidcontroller.html
+
+### 04. Mass-Spring-Damper System
+Models a mechanical system using Newton's second law with Simscape defaults.
+
+**Reference:** https://www.mathworks.com/help/simscape/ug/mass-spring-damper-in-simulink-and-simscape.html
+
+---
+
+## Control Analysis Examples
+
+### 07a. Bode Plot - Frequency Response Analysis
+Demonstrates Bode plot analysis for H(s) = 1/(s² + 0.5s + 1) with ωn=1 rad/s, ζ=0.25.
+
+**Reference:** https://www.mathworks.com/help/control/ref/lti.bode.html
+
+### 07b. Nyquist Plot - Stability Analysis
+Nyquist diagram for G(s) = 10/(s(s+1)(s+2)).
+
+**Reference:** https://www.mathworks.com/help/control/ref/lti.nyquist.html
+
+### 07c. Pole-Zero Map - System Stability
+Pole-zero mapping with stable, marginally stable, and unstable systems.
+
+**Reference:** https://www.mathworks.com/help/control/ref/lti.pzmap.html
+
+### 07d. Step Response Info
+Compares step response of overdamped (ζ=2), critically damped (ζ=1), and underdamped (ζ=0.3) systems.
+
+**Reference:** https://www.mathworks.com/help/control/ref/lti.stepinfo.html
+
+---
+
+## Signal Processing Examples
+
+### 05a. Moving Average Filter
+Demonstrates smoothing with different window sizes (5, 10, 20 samples).
+
+**Reference:** https://www.mathworks.com/help/dsp/ref/movingaverage.html
+
+### 05b. Low-Pass Filter Comparison
+Compares Butterworth and Bessel filters at various orders.
+
+**Reference:** https://www.mathworks.com/help/dsp/ref/lowpassfilter.html
+
+---
+
+## Aerospace Blockset Examples
+
+### 20-24. Quaternion and Atmosphere Examples
+Quaternion attitude propagation, ISA atmosphere, gravity models, DCM conversions, and vector rotation.
+
+**Reference:** https://www.mathworks.com/help/aeroblks/quaternions.html
+
+---
+
+## Control Design Examples
+
+### 30-37. Controller Design
+PID speed control, discrete PID, LQR, lead-lag compensators, anti-windup PID, pole placement.
+
+**Reference:** https://www.mathworks.com/help/control/ug/designing-pid-controllers.html
+
+---
+
+## Loading Examples
+
+1. Click **File** → **Examples**
+2. Select an example from the categorized list
+3. Examples are organized by: Basic, Control, Signal Processing, Advanced
+
+See the full documentation at [GitHub](https://github.com/masonnixon/LibreSim/blob/master/examples/README.md).
+`
+
 export function ExamplesModal({ isOpen, onClose, examples, onLoadExample, onOpenBlockReference }: ExamplesModalProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>('basic')
   const [searchQuery, setSearchQuery] = useState('')
+  const [showDocs, setShowDocs] = useState(false)
 
   if (!isOpen) return null
 
@@ -154,17 +272,15 @@ export function ExamplesModal({ isOpen, onClose, examples, onLoadExample, onOpen
             </div>
             <div className="border-t border-editor-border my-2" />
             <div className="p-3 text-xs text-gray-500 space-y-2">
-              <a
-                href="https://github.com/masonnixon/LibreSim/blob/master/examples/README.md"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-400 hover:text-blue-300 flex items-center gap-1"
+              <button
+                onClick={() => setShowDocs(true)}
+                className="text-blue-400 hover:text-blue-300 flex items-center gap-1 w-full text-left"
               >
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
                 Documentation
-              </a>
+              </button>
               <a
                 href="https://github.com/masonnixon/LibreSim/tree/master/examples"
                 target="_blank"
@@ -179,48 +295,76 @@ export function ExamplesModal({ isOpen, onClose, examples, onLoadExample, onOpen
             </div>
           </div>
 
-          {/* Examples List */}
-          <div className="flex-1 overflow-y-auto p-4">
-            {selectedCategory !== 'all' && categoryInfo[selectedCategory] && (
-              <div className="mb-4 pb-3 border-b border-editor-border">
-                <h3 className="text-lg font-medium text-white flex items-center gap-2">
-                  <span>{categoryInfo[selectedCategory].icon}</span>
-                  {categoryInfo[selectedCategory].title}
-                </h3>
-                <p className="text-sm text-gray-400 mt-1">
-                  {categoryInfo[selectedCategory].description}
-                </p>
+          {/* Examples List or Documentation */}
+          {showDocs ? (
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-editor-border">
+                <h3 className="text-lg font-medium text-white">Examples Documentation</h3>
+                <button
+                  onClick={() => setShowDocs(false)}
+                  className="text-sm text-blue-400 hover:text-blue-300"
+                >
+                  ← Back to Examples
+                </button>
               </div>
-            )}
+              <div className="prose prose-invert prose-sm max-w-none
+                prose-headings:text-blue-400 prose-headings:font-semibold prose-headings:mt-6 prose-headings:mb-3
+                prose-h1:text-xl prose-h2:text-lg prose-h3:text-base
+                prose-p:text-gray-300 prose-p:my-2
+                prose-a:text-blue-400 prose-a:no-underline hover:prose-a:text-blue-300
+                prose-strong:text-white prose-strong:font-semibold
+                prose-code:text-green-400 prose-code:bg-gray-800 prose-code:px-1 prose-code:rounded prose-code:text-xs
+                prose-ul:text-gray-300 prose-ul:my-2 prose-li:my-0.5
+                prose-hr:border-editor-border prose-hr:my-4
+              ">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {examplesReadme}
+                </ReactMarkdown>
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1 overflow-y-auto p-4">
+              {selectedCategory !== 'all' && categoryInfo[selectedCategory] && (
+                <div className="mb-4 pb-3 border-b border-editor-border">
+                  <h3 className="text-lg font-medium text-white flex items-center gap-2">
+                    <span>{categoryInfo[selectedCategory].icon}</span>
+                    {categoryInfo[selectedCategory].title}
+                  </h3>
+                  <p className="text-sm text-gray-400 mt-1">
+                    {categoryInfo[selectedCategory].description}
+                  </p>
+                </div>
+              )}
 
-            {filteredExamples.length === 0 ? (
-              <div className="text-center text-gray-500 py-8">
-                No examples found matching your search.
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {filteredExamples.map((ex) => (
-                  <button
-                    key={ex.id}
-                    onClick={() => handleLoadExample(ex.id)}
-                    className="text-left p-4 bg-gray-800/50 hover:bg-gray-700/50 border border-editor-border hover:border-blue-500/50 rounded-lg transition-all group"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="font-medium text-white group-hover:text-blue-400 transition-colors">
-                          {ex.name}
+              {filteredExamples.length === 0 ? (
+                <div className="text-center text-gray-500 py-8">
+                  No examples found matching your search.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {filteredExamples.map((ex) => (
+                    <button
+                      key={ex.id}
+                      onClick={() => handleLoadExample(ex.id)}
+                      className="text-left p-4 bg-gray-800/50 hover:bg-gray-700/50 border border-editor-border hover:border-blue-500/50 rounded-lg transition-all group"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="font-medium text-white group-hover:text-blue-400 transition-colors">
+                            {ex.name}
+                          </div>
+                          <div className="text-sm text-gray-400 mt-1">{ex.description}</div>
                         </div>
-                        <div className="text-sm text-gray-400 mt-1">{ex.description}</div>
+                        <span className="text-xs px-2 py-0.5 bg-gray-700 rounded text-gray-400">
+                          {categoryInfo[ex.category]?.icon}
+                        </span>
                       </div>
-                      <span className="text-xs px-2 py-0.5 bg-gray-700 rounded text-gray-400">
-                        {categoryInfo[ex.category]?.icon}
-                      </span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Footer */}

@@ -36,8 +36,42 @@ export interface SignalData {
   numInputs?: number  // Number of inputs (1 for single-input scopes)
 }
 
+export type AnalysisType = 'bode' | 'nyquist' | 'pzmap' | 'stepinfo'
+
+export interface AnalysisData {
+  analysisType: AnalysisType
+  name?: string  // Block name for display
+  // Bode-specific
+  frequencies?: number[]
+  magnitude_db?: number[]
+  phase_deg?: number[]
+  gain_margin?: number | null
+  phase_margin?: number | null
+  gain_crossover_freq?: number | null
+  phase_crossover_freq?: number | null
+  // Nyquist-specific
+  real?: number[]
+  imag?: number[]
+  encirclements?: number
+  // Pole-Zero specific
+  poles?: [number, number][]
+  zeros?: [number, number][]
+  is_stable?: boolean
+  dominant_pole?: [number, number] | null
+  // Step response specific
+  times?: number[]
+  response?: number[]
+  rise_time?: number | null
+  settling_time?: number | null
+  overshoot_percent?: number | null
+  peak_time?: number | null
+  peak_value?: number | null
+  steady_state_value?: number | null
+}
+
 export interface SimulationResults {
   signals: SignalData[]
+  analyses?: Record<string, AnalysisData>  // Analysis block data keyed by block ID
   statistics: {
     totalSteps: number
     executionTime: number

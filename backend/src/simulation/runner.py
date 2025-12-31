@@ -183,8 +183,12 @@ class SimulationRunner:
                 del block_data["numInputs"]
             signals.append(block_data)
 
+        # Get analysis data from control analysis blocks
+        analyses = self._adapter.get_analysis_data()
+
         return {
             "signals": signals,
+            "analyses": analyses,
             "statistics": {
                 "totalSteps": self._total_steps,
                 "executionTime": self._execution_time * 1000,  # ms

@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { useUIStore } from '../../store/uiStore'
 
 // Block reference documentation
@@ -264,50 +266,93 @@ const shortcuts = {
   ],
 }
 
-// About content (rendered as simple HTML-like structure)
-const aboutContent = `
-LibreSim is a web-based block diagram simulation tool inspired by Simulink, powered by the Object-oriented Simulation Kernel (OSK).
+// About content - Project README
+const aboutContent = `# LibreSim
+
+A web-based block diagram simulation tool inspired by Simulink, powered by the Object-oriented Simulation Kernel (OSK).
+
+## Overview
+
+LibreSim provides a graphical environment for modeling, simulating, and analyzing dynamic systems. It features a drag-and-drop block diagram editor, real-time simulation visualization, and support for importing Simulink \`.mdl\` files.
 
 ## Features
 
 - **Visual Block Diagram Editor**: Drag-and-drop interface for building system models
 - **Control Systems Focus**: Comprehensive library of blocks for control system design
 - **Real-time Simulation**: Live visualization of simulation results with scopes and plots
-- **Simulink Import/Export**: Import and export .mdl files for Simulink compatibility
+- **Simulink Import/Export**: Import and export \`.mdl\` model files for Simulink compatibility
 - **Library Import**: Import MDL libraries as reusable subsystem blocks
 - **Multiple Solvers**: RK4, Euler, and Merson's method ODE solvers
 - **Undo/Redo**: Full history support for model editing
+- **Keyboard Shortcuts**: Efficient workflow with comprehensive hotkey support
+- **Extensible Architecture**: Easy to add custom blocks and solvers
 
 ## Block Library
 
 LibreSim includes 110+ blocks across categories:
-- **Sources**: Constant, Step, Ramp, Sine Wave, Pulse, Clock, White Noise
-- **Sinks**: Scope, Display, To Workspace
-- **Continuous**: Integrator, Derivative, Transfer Function, State-Space
-- **Discrete**: Unit Delay, Zero-Order Hold, Discrete Integrator
-- **Math**: Sum, Gain, Product, Abs, Trigonometry, Saturation
-- **Logic**: Compare To Zero, Relational Operator, Logical Operator
-- **Signal Routing**: Mux, Demux, Switch
-- **Signal Processing**: Filters, Rate Limiter, Backlash
-- **Nonlinear**: Lookup Tables, Quantizer, Relay, Friction, Hysteresis
-- **Observers**: Kalman Filter, Luenberger Observer
-- **Control Design**: PID, Discrete PID, LQR, Pole Placement, Lead-Lag, Anti-Windup PID
-- **Data Types**: Data Type Conversion, Complex/Real-Imag
-- **Matrix Ops**: Matrix Multiply, Inverse, Selector, Concatenate
-- **Aerospace**: Quaternions, 6-DOF, ISA Atmosphere, WGS84 Gravity
 
-## Solvers
+| Category | Examples |
+|----------|----------|
+| **Sources** | Constant, Step, Ramp, Sine Wave, Pulse, Clock, White Noise |
+| **Sinks** | Scope, Display, To Workspace |
+| **Continuous** | Integrator, Derivative, Transfer Function, State-Space, PID |
+| **Discrete** | Unit Delay, Zero-Order Hold, Discrete Integrator |
+| **Math** | Sum, Gain, Product, Abs, Trigonometry, Saturation |
+| **Signal Processing** | Filters (Butterworth, Bessel), Rate Limiter, Moving Average |
+| **Nonlinear** | Lookup Tables, Quantizer, Relay, Friction, Hysteresis |
+| **Observers** | Kalman Filter, Extended Kalman Filter, Luenberger Observer |
+| **Control Design** | PID, Discrete PID, LQR, Pole Placement, Lead-Lag |
+| **Control Analysis** | Bode Plot, Nyquist Plot, Pole-Zero Map, Step Info |
+| **Aerospace** | Quaternions, 6-DOF, ISA Atmosphere, WGS84 Gravity |
 
-| Solver | Order | Use Case |
-|--------|-------|----------|
-| Euler | 1st | Quick prototyping |
-| RK4 | 4th | General purpose (default) |
-| Merson | 4th | Stiff systems |
+## Solver Comparison
+
+| Solver | Order | Accuracy | Speed | Use Case |
+|--------|-------|----------|-------|----------|
+| Euler | 1st | Low | Fast | Quick prototyping |
+| RK4 | 4th | High | Medium | General purpose (default) |
+| Merson | 4th | High | Medium | Stiff systems |
+
+## Example Models
+
+LibreSim includes 30+ example models organized by category:
+- **Basic**: Sine wave, step response, damping comparison
+- **Control**: PID, mass-spring-damper, thermostat relay
+- **Control Analysis**: Bode, Nyquist, Pole-Zero, Step Response
+- **Control Design**: LQR, lead-lag, anti-windup PID, pole placement
+- **Signal Processing**: Filters, lookup tables, rate limiting
+- **Aerospace**: Quaternions, atmosphere, gravity models
+- **Advanced**: Kalman filter, state estimation
+
+## Quick Start
+
+1. Open LibreSim in your browser
+2. Drag blocks from the library palette to the canvas
+3. Connect blocks by clicking outputs and dragging to inputs
+4. Configure block parameters in the Properties panel
+5. Click **Run** to simulate and view results in Scope windows
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| \`Ctrl+S\` | Save model |
+| \`Ctrl+Z\` / \`Ctrl+Y\` | Undo / Redo |
+| \`Ctrl+R\` | Rotate selected blocks |
+| \`Space\` | Fit view to content |
+| \`Delete\` | Delete selected blocks |
 
 ## Credits
 
-Object-oriented Simulation Kernel (OSK) by Ray Sells
-Inspired by MathWorks Simulink
+- Object-oriented Simulation Kernel (OSK) by Mason Nixon
+- Inspired by MathWorks Simulink
+- Built with React, FastAPI, and Python
+
+## License
+
+MIT License - Open source and free to use.
+
+[View on GitHub](https://github.com/masonnixon/LibreSim)
 `
 
 function ShortcutKey({ children }: { children: string }) {
@@ -446,112 +491,24 @@ function BlockReferenceTab() {
 }
 
 function AboutTab() {
-  // Simple markdown-like rendering
-  const renderContent = (content: string) => {
-    const lines = content.trim().split('\n')
-    const elements: JSX.Element[] = []
-    let inTable = false
-    let tableRows: string[] = []
-
-    const flushTable = () => {
-      if (tableRows.length > 0) {
-        const headerRow = tableRows[0]
-        const dataRows = tableRows.slice(2) // Skip header separator
-        const headers = headerRow.split('|').filter(Boolean).map(h => h.trim())
-
-        elements.push(
-          <table key={`table-${elements.length}`} className="w-full text-sm my-3 border-collapse">
-            <thead>
-              <tr className="border-b border-editor-border">
-                {headers.map((h, i) => (
-                  <th key={i} className="py-2 px-2 text-left text-gray-400 font-medium">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {dataRows.map((row, i) => {
-                const cells = row.split('|').filter(Boolean).map(c => c.trim())
-                return (
-                  <tr key={i} className="border-b border-editor-border/50">
-                    {cells.map((cell, j) => (
-                      <td key={j} className="py-1.5 px-2 text-gray-300">{cell}</td>
-                    ))}
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        )
-        tableRows = []
-      }
-    }
-
-    lines.forEach((line, i) => {
-      // Table detection
-      if (line.startsWith('|')) {
-        inTable = true
-        tableRows.push(line)
-        return
-      } else if (inTable) {
-        flushTable()
-        inTable = false
-      }
-
-      // Headers
-      if (line.startsWith('## ')) {
-        elements.push(
-          <h3 key={i} className="text-lg font-semibold text-blue-400 mt-4 mb-2">
-            {line.slice(3)}
-          </h3>
-        )
-        return
-      }
-
-      // Bold text with **
-      if (line.includes('**')) {
-        const parts = line.split(/\*\*([^*]+)\*\*/g)
-        elements.push(
-          <p key={i} className="text-gray-300 mb-2">
-            {parts.map((part, j) =>
-              j % 2 === 1 ? <strong key={j} className="text-white">{part}</strong> : part
-            )}
-          </p>
-        )
-        return
-      }
-
-      // List items
-      if (line.startsWith('- ')) {
-        elements.push(
-          <p key={i} className="text-gray-300 ml-4 mb-1">
-            <span className="text-blue-400 mr-2">•</span>
-            {line.slice(2)}
-          </p>
-        )
-        return
-      }
-
-      // Empty lines
-      if (line.trim() === '') {
-        elements.push(<div key={i} className="h-2" />)
-        return
-      }
-
-      // Regular paragraphs
-      elements.push(
-        <p key={i} className="text-gray-300 mb-2">{line}</p>
-      )
-    })
-
-    // Flush any remaining table
-    flushTable()
-
-    return elements
-  }
-
   return (
-    <div className="prose prose-invert max-w-none">
-      {renderContent(aboutContent)}
+    <div className="prose prose-invert prose-sm max-w-none
+      prose-headings:text-blue-400 prose-headings:font-semibold prose-headings:mt-6 prose-headings:mb-3
+      prose-h1:text-xl prose-h2:text-lg prose-h3:text-base
+      prose-p:text-gray-300 prose-p:my-2
+      prose-a:text-blue-400 prose-a:no-underline hover:prose-a:text-blue-300
+      prose-strong:text-white prose-strong:font-semibold
+      prose-code:text-green-400 prose-code:bg-gray-800 prose-code:px-1 prose-code:rounded prose-code:text-xs
+      prose-ul:text-gray-300 prose-ul:my-2 prose-li:my-0.5
+      prose-ol:text-gray-300 prose-ol:my-2
+      prose-table:text-sm prose-table:my-3
+      prose-th:text-gray-400 prose-th:font-medium prose-th:py-2 prose-th:px-2 prose-th:text-left prose-th:border-b prose-th:border-editor-border
+      prose-td:py-1.5 prose-td:px-2 prose-td:text-gray-300 prose-td:border-b prose-td:border-editor-border/50
+      prose-hr:border-editor-border prose-hr:my-4
+    ">
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+        {aboutContent}
+      </ReactMarkdown>
     </div>
   )
 }

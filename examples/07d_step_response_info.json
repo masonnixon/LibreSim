@@ -2,101 +2,134 @@
   "id": "example-step-response-info",
   "metadata": {
     "name": "Step Response - Time Domain Analysis",
-    "description": "Compares step response characteristics of three second-order systems with different damping ratios: overdamped (zeta=2), critically damped (zeta=1), and underdamped (zeta=0.3). The step response shows rise time, settling time, overshoot, and steady-state behavior. Underdamped systems oscillate; overdamped systems respond slowly without oscillation. Reference: https://www.mathworks.com/help/control/ref/lti.stepinfo.html",
+    "description": "Compares step response characteristics of three second-order systems with different damping ratios: overdamped (zeta=2), critically damped (zeta=1), and underdamped (zeta=0.3). Each Transfer Function block connects to its Step Info block for automatic coefficient extraction. The step response shows rise time, settling time, overshoot, and steady-state behavior.",
     "author": "LibreSim Examples",
     "createdAt": "2024-01-01T00:00:00Z",
-    "modifiedAt": "2024-01-01T00:00:00Z",
-    "version": "1.0.0"
+    "modifiedAt": "2024-12-31T00:00:00Z",
+    "version": "1.1.0"
   },
   "blocks": [
+    {
+      "id": "tf_overdamped",
+      "type": "transfer_function",
+      "name": "Overdamped TF",
+      "position": { "x": 50, "y": 80 },
+      "parameters": {
+        "numerator": [1],
+        "denominator": [1, 4, 1]
+      },
+      "inputPorts": [
+        { "id": "tf_overdamped-in", "name": "in", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [
+        { "id": "tf_overdamped-out", "name": "out", "dataType": "double", "dimensions": [1] }
+      ]
+    },
     {
       "id": "step_overdamped",
       "type": "step_info",
       "name": "Overdamped (zeta=2)",
-      "position": { "x": 100, "y": 80 },
+      "position": { "x": 200, "y": 80 },
       "parameters": {
-        "numerator": [1],
-        "denominator": [1, 4, 1],
         "simulationTime": 20,
         "numPoints": 1000,
         "settlingPercent": 2
       },
-      "inputPorts": [],
+      "inputPorts": [
+        { "id": "step_overdamped-in", "name": "in", "dataType": "double", "dimensions": [1] }
+      ],
       "outputPorts": [
         { "id": "step_overdamped-out", "name": "settlingTime", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "tf_critical",
+      "type": "transfer_function",
+      "name": "Critical TF",
+      "position": { "x": 50, "y": 180 },
+      "parameters": {
+        "numerator": [1],
+        "denominator": [1, 2, 1]
+      },
+      "inputPorts": [
+        { "id": "tf_critical-in", "name": "in", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [
+        { "id": "tf_critical-out", "name": "out", "dataType": "double", "dimensions": [1] }
       ]
     },
     {
       "id": "step_critical",
       "type": "step_info",
       "name": "Critical (zeta=1)",
-      "position": { "x": 100, "y": 180 },
+      "position": { "x": 200, "y": 180 },
       "parameters": {
-        "numerator": [1],
-        "denominator": [1, 2, 1],
         "simulationTime": 15,
         "numPoints": 1000,
         "settlingPercent": 2
       },
-      "inputPorts": [],
+      "inputPorts": [
+        { "id": "step_critical-in", "name": "in", "dataType": "double", "dimensions": [1] }
+      ],
       "outputPorts": [
         { "id": "step_critical-out", "name": "settlingTime", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "tf_underdamped",
+      "type": "transfer_function",
+      "name": "Underdamped TF",
+      "position": { "x": 50, "y": 280 },
+      "parameters": {
+        "numerator": [1],
+        "denominator": [1, 0.6, 1]
+      },
+      "inputPorts": [
+        { "id": "tf_underdamped-in", "name": "in", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [
+        { "id": "tf_underdamped-out", "name": "out", "dataType": "double", "dimensions": [1] }
       ]
     },
     {
       "id": "step_underdamped",
       "type": "step_info",
       "name": "Underdamped (zeta=0.3)",
-      "position": { "x": 100, "y": 280 },
+      "position": { "x": 200, "y": 280 },
       "parameters": {
-        "numerator": [1],
-        "denominator": [1, 0.6, 1],
         "simulationTime": 20,
         "numPoints": 1000,
         "settlingPercent": 2
       },
-      "inputPorts": [],
+      "inputPorts": [
+        { "id": "step_underdamped-in", "name": "in", "dataType": "double", "dimensions": [1] }
+      ],
       "outputPorts": [
         { "id": "step_underdamped-out", "name": "settlingTime", "dataType": "double", "dimensions": [1] }
       ]
-    },
-    {
-      "id": "scope_settling",
-      "type": "scope",
-      "name": "Settling Times",
-      "position": { "x": 350, "y": 180 },
-      "parameters": {
-        "numInputs": 3
-      },
-      "inputPorts": [
-        { "id": "scope_settling-in1", "name": "Overdamped", "dataType": "double", "dimensions": [1] },
-        { "id": "scope_settling-in2", "name": "Critical", "dataType": "double", "dimensions": [1] },
-        { "id": "scope_settling-in3", "name": "Underdamped", "dataType": "double", "dimensions": [1] }
-      ],
-      "outputPorts": []
     }
   ],
   "connections": [
     {
       "id": "conn1",
-      "sourceBlockId": "step_overdamped",
-      "sourcePortId": "step_overdamped-out",
-      "targetBlockId": "scope_settling",
-      "targetPortId": "scope_settling-in1"
+      "sourceBlockId": "tf_overdamped",
+      "sourcePortId": "tf_overdamped-out",
+      "targetBlockId": "step_overdamped",
+      "targetPortId": "step_overdamped-in"
     },
     {
       "id": "conn2",
-      "sourceBlockId": "step_critical",
-      "sourcePortId": "step_critical-out",
-      "targetBlockId": "scope_settling",
-      "targetPortId": "scope_settling-in2"
+      "sourceBlockId": "tf_critical",
+      "sourcePortId": "tf_critical-out",
+      "targetBlockId": "step_critical",
+      "targetPortId": "step_critical-in"
     },
     {
       "id": "conn3",
-      "sourceBlockId": "step_underdamped",
-      "sourcePortId": "step_underdamped-out",
-      "targetBlockId": "scope_settling",
-      "targetPortId": "scope_settling-in3"
+      "sourceBlockId": "tf_underdamped",
+      "sourcePortId": "tf_underdamped-out",
+      "targetBlockId": "step_underdamped",
+      "targetPortId": "step_underdamped-in"
     }
   ],
   "simulationConfig": {

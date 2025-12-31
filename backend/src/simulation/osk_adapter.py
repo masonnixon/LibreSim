@@ -476,6 +476,7 @@ class OSKAdapter:
         self._osk_blocks: dict[str, Block] = {}
         self._block_map: dict[str, CompiledBlock] = {}
         self._sink_blocks: list[str] = []
+        self._analysis_blocks: list[str] = []  # Track control analysis blocks
         # Track source block names for each scope input: scope_id -> [source_name, ...]
         self._scope_input_names: dict[str, list[str]] = {}
 
@@ -491,6 +492,7 @@ class OSKAdapter:
         self._osk_blocks = {}
         self._block_map = {}
         self._sink_blocks = []
+        self._analysis_blocks = []
         self._scope_input_names = {}
 
         # Reset global State for fresh simulation
@@ -551,6 +553,10 @@ class OSKAdapter:
             # Track sink blocks for output recording
             if block_type in ["scope", "display", "to_workspace"]:
                 self._sink_blocks.append(compiled_block.id)
+
+            # Track analysis blocks for visualization data collection
+            if block_type in ["bode_plot", "nyquist_plot", "pole_zero_map", "step_info"]:
+                self._analysis_blocks.append(compiled_block.id)
 
         except Exception as e:
             print(f"Error creating block '{compiled_block.name}': {e}")
@@ -1115,3 +1121,21 @@ class OSKAdapter:
             Dictionary mapping block IDs to OSK block instances
         """
         return self._osk_blocks.copy()
+
+    def get_analysis_data(self) -> dict[str, Any]:
+        """Get analysis data from all control analysis blocks.
+
+        Returns:
+            Dictionary mapping block IDs to analysis data
+        """
+        analyses = {}
+        for block_id in self._analysis_blocks:
+            osk_block = self._osk_blocks.get(block_id)
+            compiled_block = self._block_map.get(block_id)
+            if osk_block and hasattr(osk_block, 'getData'):
+                data = osk_block.getData()
+                # Add block name for display
+                if compiled_block:
+                    data['name'] = compiled_block.name
+                analyses[block_id] = data
+        return analyses
