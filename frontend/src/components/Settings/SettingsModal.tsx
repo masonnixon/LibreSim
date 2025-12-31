@@ -146,9 +146,9 @@ export function SettingsModal() {
                 <input
                   type="number"
                   value={stopTime}
-                  onChange={(e) => setStopTime(parseFloat(e.target.value) || 10)}
-                  step={0.1}
-                  min={startTime + 0.1}
+                  onChange={(e) => setStopTime(e.target.value === '' ? 10 : parseFloat(e.target.value))}
+                  step={0.0001}
+                  min={0.0001}
                   className="w-full px-3 py-2 bg-editor-bg border border-editor-border rounded text-sm focus:outline-none focus:border-blue-500"
                 />
               </div>

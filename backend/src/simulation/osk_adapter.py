@@ -255,6 +255,14 @@ class OSKAdapter:
         self._sink_blocks = []
         self._scope_input_names = {}
 
+        # Reset global State for fresh simulation
+        State.t = 0.0
+        State.t1 = 0.0
+        State.kpass = 0
+        State.ready = 1
+        State.tickfirst = 1
+        State.ticklast = 0
+
         # Set the integration method
         solver_method = self._get_solver_method(config.solver)
         State.method = solver_method
@@ -320,7 +328,42 @@ class OSKAdapter:
             osk_name = param_mapping.get(libresim_name, libresim_name)
             osk_params[osk_name] = value
 
+        # Special handling for Product block operations
+        # The frontend may pass a numeric string like "2" instead of "**"
+        # Convert numeric values to the proper operation string
+        if block_type == "product" and "operations" in osk_params:
+            osk_params["operations"] = self._convert_product_operations(osk_params["operations"])
+
         return osk_params
+
+    def _convert_product_operations(self, value: Any) -> str:
+        """Convert Product block operations parameter to proper format.
+
+        The frontend may pass:
+        - A number like 2 or "2" -> "**" (2 multiply operations)
+        - An operation string like "**/" -> "**/" (unchanged)
+        """
+        if value is None:
+            return "**"  # Default to 2 multiply inputs
+
+        # Convert to string if needed
+        value_str = str(value)
+
+        # If it's a pure number, convert to that many '*' characters
+        try:
+            num_inputs = int(value_str)
+            return "*" * max(1, num_inputs)
+        except ValueError:
+            pass
+
+        # Otherwise, it should already be an operation string
+        # Validate it contains only valid characters
+        valid_ops = {'*', '/'}
+        if all(c in valid_ops for c in value_str):
+            return value_str
+
+        # Invalid format, default to multiply operations based on string length
+        return "*" * max(1, len(value_str))
 
     def _setup_connections(self):
         """Set up connections between OSK blocks."""
@@ -428,6 +471,58 @@ class OSKAdapter:
                     if hasattr(osk_block, 'setInputName'):
                         osk_block.setInputName(source_compiled_block.name, target_port_index)
 
+    def _record_outputs(self) -> dict[str, float]:
+        """Record outputs from all sink blocks.
+
+        Returns:
+            Dictionary mapping signal keys to values
+        """
+        recorded_outputs: dict[str, float] = {}
+
+        for block_id in self._sink_blocks:
+            osk_block = self._osk_blocks.get(block_id)
+            compiled_block = self._block_map.get(block_id)
+
+            if not osk_block or not compiled_block:
+                continue
+
+            # For scopes with multiple inputs or vector inputs, record each trace separately
+            if block_id in self._scope_input_names and hasattr(osk_block, 'inputs'):
+                input_names = self._scope_input_names[block_id]
+                input_blocks = getattr(osk_block, 'input_blocks', [])
+
+                trace_idx = 0
+                for i in range(len(osk_block.inputs)):
+                    # Skip unconnected inputs
+                    if i < len(input_blocks) and input_blocks[i] is None:
+                        continue
+
+                    base_name = input_names[i] if i < len(input_names) else f"Input {i+1}"
+                    # Check if this input is a vector (from Mux)
+                    if hasattr(osk_block, '_vector_inputs') and i in osk_block._vector_inputs:
+                        vec = osk_block._vector_inputs[i]
+                        for j, val in enumerate(vec):
+                            signal_name = f"{base_name}[{j+1}]"
+                            key = f"{block_id}:{trace_idx}:{signal_name}"
+                            if isinstance(val, (int, float)):
+                                recorded_outputs[key] = float(val)
+                            trace_idx += 1
+                    else:
+                        # Scalar input
+                        value = osk_block.inputs[i] if i < len(osk_block.inputs) else 0.0
+                        key = f"{block_id}:{trace_idx}:{base_name}"
+                        if isinstance(value, (int, float)):
+                            recorded_outputs[key] = float(value)
+                        trace_idx += 1
+            else:
+                # Single-input sink block
+                output = osk_block.getOutput()
+                key = f"{block_id}:out:{compiled_block.name if compiled_block else block_id}"
+                if isinstance(output, (int, float)):
+                    recorded_outputs[key] = float(output)
+
+        return recorded_outputs
+
     def step(self, t: float, dt: float) -> dict[str, float]:
         """Execute one simulation step.
 
@@ -460,13 +555,47 @@ class OSKAdapter:
 
         recorded_outputs: dict[str, float] = {}
 
-        # Execute all integration passes for this time step
-        for kpass in range(num_passes):
-            State.kpass = kpass
-            # ready is 1 only on the final pass
-            State.ready = 1 if kpass == num_passes - 1 else 0
+        # At t=0, we need to record initial conditions BEFORE any propagation
+        # This matches how OSK's Sim.run() works - first report happens before first propagation
+        is_first_step = t < dt / 2.0  # Use dt/2 as tolerance for floating point
 
-            # Execute blocks in topological order
+        # For the first step (t=0), we need to:
+        # 1. Update all blocks once to establish initial values (read external ICs, etc.)
+        # 2. Record initial condition outputs BEFORE any propagation
+        # 3. Then run the full integration cycle
+        if is_first_step:
+            # Initial update pass to read external ICs and establish initial state
+            State.kpass = 0
+            State.ready = 1  # Ready to record
+
+            # At t=0, we need a special initialization order:
+            # 1. First, update all source blocks (constants) to output their values
+            # 2. Then, have integrators read their external ICs (but NOT their derivatives yet)
+            # 3. Finally, update all other blocks that depend on integrator outputs
+            #
+            # The normal execution order puts integrator-dependent blocks FIRST
+            # (because integrators are state-holding and excluded from dependencies),
+            # which is wrong for initialization.
+
+            # Pass 1: Update constants and other source blocks
+            for block_id in self._compiled_model.execution_order:
+                compiled_block = self._block_map.get(block_id)
+                osk_block = self._osk_blocks.get(block_id)
+                if compiled_block and compiled_block.type == 'constant':
+                    osk_block.update()
+
+            # Pass 2: Have integrators read their external ICs
+            # We call _read_external_ic directly to avoid also reading garbage derivatives
+            for block_id in self._compiled_model.execution_order:
+                compiled_block = self._block_map.get(block_id)
+                osk_block = self._osk_blocks.get(block_id)
+                if compiled_block and compiled_block.type == 'integrator':
+                    # Only read external IC, don't update derivative yet
+                    if hasattr(osk_block, '_read_external_ic'):
+                        osk_block._read_external_ic()
+
+            # Pass 3: Update all non-integrator blocks in execution order
+            # These will read the initialized integrator states
             for block_id in self._compiled_model.execution_order:
                 osk_block = self._osk_blocks.get(block_id)
                 compiled_block = self._block_map.get(block_id)
@@ -474,8 +603,11 @@ class OSKAdapter:
                 if not osk_block or not compiled_block:
                     continue
 
-                # For blocks without automatic input connection, set inputs manually
-                # Skip blocks that have input_blocks (like Scope) - they get inputs via connectInput
+                # Skip constants (already updated) and integrators (will be updated after)
+                if compiled_block.type in ('constant', 'integrator'):
+                    continue
+
+                # Set inputs manually for blocks without automatic connection
                 has_input_block = hasattr(osk_block, 'input_block') and osk_block.input_block is not None
                 has_input_blocks = hasattr(osk_block, 'input_blocks') and osk_block.input_blocks is not None and any(b is not None for b in osk_block.input_blocks)
                 if not has_input_block and not has_input_blocks:
@@ -486,56 +618,161 @@ class OSKAdapter:
                             value = source_block.getOutput()
                             osk_block.setInput(value, i)
 
-                # Update block (computes derivatives)
+                # Update block to compute initial outputs
                 osk_block.update()
 
-                # Only record outputs and report on final pass
-                if State.ready:
-                    # Record sink block outputs
-                    if block_id in self._sink_blocks:
-                        # For scopes with multiple inputs or vector inputs, record each trace separately
-                        # Only record CONNECTED inputs (where input_blocks[i] is not None)
-                        if block_id in self._scope_input_names and hasattr(osk_block, 'inputs'):
-                            input_names = self._scope_input_names[block_id]
-                            input_blocks = getattr(osk_block, 'input_blocks', [])
+            # Pass 4: Now update integrators to read their derivatives
+            # (computed by the blocks updated in Pass 3)
+            for block_id in self._compiled_model.execution_order:
+                compiled_block = self._block_map.get(block_id)
+                osk_block = self._osk_blocks.get(block_id)
+                if compiled_block and compiled_block.type == 'integrator':
+                    osk_block.update()
 
-                            trace_idx = 0
-                            for i in range(len(osk_block.inputs)):
-                                # Skip unconnected inputs
-                                if i < len(input_blocks) and input_blocks[i] is None:
-                                    continue
+            # Record initial condition outputs BEFORE any propagation
+            recorded_outputs = self._record_outputs()
 
-                                base_name = input_names[i] if i < len(input_names) else f"Input {i+1}"
-                                # Check if this input is a vector (from Mux)
-                                if hasattr(osk_block, '_vector_inputs') and i in osk_block._vector_inputs:
-                                    vec = osk_block._vector_inputs[i]
-                                    for j, val in enumerate(vec):
-                                        signal_name = f"{base_name}[{j+1}]"
-                                        key = f"{block_id}:{trace_idx}:{signal_name}"
-                                        if isinstance(val, (int, float)):
-                                            recorded_outputs[key] = float(val)
-                                        trace_idx += 1
-                                else:
-                                    # Scalar input
-                                    value = osk_block.inputs[i] if i < len(osk_block.inputs) else 0.0
-                                    key = f"{block_id}:{trace_idx}:{base_name}"
-                                    if isinstance(value, (int, float)):
-                                        recorded_outputs[key] = float(value)
-                                    trace_idx += 1
-                        else:
-                            # Single-input sink block
-                            output = osk_block.getOutput()
-                            compiled_block = self._block_map.get(block_id)
-                            key = f"{block_id}:out:{compiled_block.name if compiled_block else block_id}"
-                            if isinstance(output, (int, float)):
-                                recorded_outputs[key] = float(output)
-
-                    # Report (for data recording in sink blocks)
-                    osk_block.rpt()
-
-            # Propagate states for all blocks after each pass
+            # Report for all blocks
             for osk_block in self._osk_blocks.values():
-                osk_block.propagateStates()
+                osk_block.rpt()
+
+            # Now run the full integration cycle to compute state for next step
+            # But don't record outputs again - we already recorded the ICs
+            #
+            # During integration passes, we need proper execution order:
+            # 1. Integrators output their current state (no update needed, just getOutput works)
+            # 2. All non-integrator blocks update (computing derivatives for integrators)
+            # 3. Integrators read their derivative inputs
+            # 4. Propagate all states
+
+            for kpass in range(num_passes):
+                State.kpass = kpass
+                State.ready = 0  # Don't record during integration passes
+
+                # First pass: Update all non-integrator blocks
+                # They will read integrator outputs (which reflect current state)
+                for block_id in self._compiled_model.execution_order:
+                    osk_block = self._osk_blocks.get(block_id)
+                    compiled_block = self._block_map.get(block_id)
+
+                    if not osk_block or not compiled_block:
+                        continue
+
+                    # Skip integrators in first pass
+                    if compiled_block.type == 'integrator':
+                        continue
+
+                    has_input_block = hasattr(osk_block, 'input_block') and osk_block.input_block is not None
+                    has_input_blocks = hasattr(osk_block, 'input_blocks') and osk_block.input_blocks is not None and any(b is not None for b in osk_block.input_blocks)
+                    if not has_input_block and not has_input_blocks:
+                        for i, conn in enumerate(compiled_block.input_connections):
+                            source_block_id, _ = conn.split(":")
+                            source_block = self._osk_blocks.get(source_block_id)
+                            if source_block:
+                                value = source_block.getOutput()
+                                osk_block.setInput(value, i)
+
+                    osk_block.update()
+
+                # Second pass: Update integrators (they read derivatives from upstream blocks)
+                for block_id in self._compiled_model.execution_order:
+                    osk_block = self._osk_blocks.get(block_id)
+                    compiled_block = self._block_map.get(block_id)
+
+                    if not osk_block or not compiled_block:
+                        continue
+
+                    if compiled_block.type == 'integrator':
+                        osk_block.update()
+
+                # Propagate states after each pass
+                for osk_block in self._osk_blocks.values():
+                    osk_block.propagateStates()
+        else:
+            # Normal step (t > 0):
+            # 1. Record outputs BEFORE integration (integrator states reflect current time t)
+            # 2. Run integration passes to advance state for next step
+            #
+            # This is important because during multi-pass integration (RK4, Merson),
+            # the integrator state x[0] is modified to intermediate values that don't
+            # represent the actual system state at any real time point.
+
+            State.kpass = 0
+            State.ready = 1  # Ready to record
+
+            # First, update all non-integrator blocks to read current integrator outputs
+            for block_id in self._compiled_model.execution_order:
+                osk_block = self._osk_blocks.get(block_id)
+                compiled_block = self._block_map.get(block_id)
+
+                if not osk_block or not compiled_block:
+                    continue
+
+                # Skip integrators - their outputs already reflect current state
+                if compiled_block.type == 'integrator':
+                    continue
+
+                # For blocks without automatic input connection, set inputs manually
+                has_input_block = hasattr(osk_block, 'input_block') and osk_block.input_block is not None
+                has_input_blocks = hasattr(osk_block, 'input_blocks') and osk_block.input_blocks is not None and any(b is not None for b in osk_block.input_blocks)
+                if not has_input_block and not has_input_blocks:
+                    for i, conn in enumerate(compiled_block.input_connections):
+                        source_block_id, _ = conn.split(":")
+                        source_block = self._osk_blocks.get(source_block_id)
+                        if source_block:
+                            value = source_block.getOutput()
+                            osk_block.setInput(value, i)
+
+                # Update block to compute outputs
+                osk_block.update()
+
+            # Record outputs and report BEFORE integration
+            recorded_outputs = self._record_outputs()
+            for osk_block in self._osk_blocks.values():
+                osk_block.rpt()
+
+            # Now run the integration passes to advance state
+            for kpass in range(num_passes):
+                State.kpass = kpass
+                State.ready = 0  # Don't record during integration
+
+                # Update non-integrator blocks (compute derivative inputs for integrators)
+                for block_id in self._compiled_model.execution_order:
+                    osk_block = self._osk_blocks.get(block_id)
+                    compiled_block = self._block_map.get(block_id)
+
+                    if not osk_block or not compiled_block:
+                        continue
+
+                    if compiled_block.type == 'integrator':
+                        continue
+
+                    has_input_block = hasattr(osk_block, 'input_block') and osk_block.input_block is not None
+                    has_input_blocks = hasattr(osk_block, 'input_blocks') and osk_block.input_blocks is not None and any(b is not None for b in osk_block.input_blocks)
+                    if not has_input_block and not has_input_blocks:
+                        for i, conn in enumerate(compiled_block.input_connections):
+                            source_block_id, _ = conn.split(":")
+                            source_block = self._osk_blocks.get(source_block_id)
+                            if source_block:
+                                value = source_block.getOutput()
+                                osk_block.setInput(value, i)
+
+                    osk_block.update()
+
+                # Update integrators (they read derivatives from upstream blocks)
+                for block_id in self._compiled_model.execution_order:
+                    osk_block = self._osk_blocks.get(block_id)
+                    compiled_block = self._block_map.get(block_id)
+
+                    if not osk_block or not compiled_block:
+                        continue
+
+                    if compiled_block.type == 'integrator':
+                        osk_block.update()
+
+                # Propagate states for all blocks after each pass
+                for osk_block in self._osk_blocks.values():
+                    osk_block.propagateStates()
 
         # Reset kpass to 0 for next step (avoid polluting global state)
         State.kpass = 0

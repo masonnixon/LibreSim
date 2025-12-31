@@ -223,6 +223,19 @@ The toolbar supports:
 
 ## Recent Changes Log
 
+### Session 2024-12-30 (Product Block Operations Bug Fix)
+- **Fixed critical frontend-backend parameter mismatch for Product blocks**:
+  - **Root Cause**: Frontend sent `'operations': '2'` (raw MDL numeric string) instead of `'operations': '**'` (proper operation format)
+  - Product block interpreted `'2'` as division operation, causing `1.0 / State.EPS = 10 billion` when inputs were 0
+  - This corrupted quaternion derivative calculations, producing ~95 million instead of ~5 degrees for euler_y
+  - **Fix**: Added `_convert_product_operations()` method in `backend/src/simulation/osk_adapter.py`
+  - Converts numeric strings like `'2'` → `'**'`, `'3'` → `'***'`, etc.
+  - Conversion happens in `_map_parameters()` ensuring both MDL and frontend API models work correctly
+
+- **Key Lesson**: Frontend may send raw/unconverted parameter values that differ from MDL parser output
+  - Always validate and convert parameters at the backend adapter level
+  - Integration tests should verify parameter conversion for all block types
+
 ### Session 2024-12-28 (Bug Fixes and Integration Tests)
 - **Fixed Negative Number Input Bug** (`frontend/src/components/Properties/PropertiesPanel.tsx`):
   - Created `NumberInput` component that uses local state to allow intermediate typing states like "-"
