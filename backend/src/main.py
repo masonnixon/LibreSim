@@ -1,11 +1,21 @@
 """Main FastAPI application entry point."""
 
-from fastapi import FastAPI
+from pathlib import Path
+
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import PlainTextResponse
 
 from .api.routes import blocks, import_export, models, simulation
 from .api.websocket import router as ws_router
 from .config import settings
+
+# Project root directory - in Docker, mounted at /project; locally, parent of backend/
+# Check if running in Docker (where files are mounted at /project)
+DOCKER_PROJECT_ROOT = Path("/project")
+LOCAL_PROJECT_ROOT = Path(__file__).parent.parent.parent
+
+PROJECT_ROOT = DOCKER_PROJECT_ROOT if DOCKER_PROJECT_ROOT.exists() else LOCAL_PROJECT_ROOT
 
 app = FastAPI(
     title="LibreSim API",
@@ -40,3 +50,21 @@ async def root():
 async def health_check():
     """Health check endpoint."""
     return {"status": "healthy"}
+
+
+@app.get("/api/docs/readme", response_class=PlainTextResponse)
+async def get_project_readme():
+    """Get the project README.md content."""
+    readme_path = PROJECT_ROOT / "README.md"
+    if not readme_path.exists():
+        raise HTTPException(status_code=404, detail="README.md not found")
+    return readme_path.read_text(encoding="utf-8")
+
+
+@app.get("/api/docs/examples", response_class=PlainTextResponse)
+async def get_examples_readme():
+    """Get the examples/README.md content."""
+    readme_path = PROJECT_ROOT / "examples" / "README.md"
+    if not readme_path.exists():
+        raise HTTPException(status_code=404, detail="examples/README.md not found")
+    return readme_path.read_text(encoding="utf-8")

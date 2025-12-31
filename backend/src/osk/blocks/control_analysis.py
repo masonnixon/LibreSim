@@ -93,6 +93,9 @@ class BodePlot(Block):
         log_min = math.log10(self.minFrequency)
         log_max = math.log10(self.maxFrequency)
 
+        prev_phase = None
+        cumulative_phase = 0.0  # For unwrapping
+
         for i in range(self.numPoints):
             # Frequency in Hz
             log_f = log_min + (log_max - log_min) * i / (self.numPoints - 1)
@@ -112,13 +115,24 @@ class BodePlot(Block):
             else:
                 mag_db = -200  # Floor value
 
-            # Phase in degrees (unwrapped would need more logic)
+            # Phase in degrees with unwrapping
             phase_rad = cmath.phase(H)
             phase_deg = math.degrees(phase_rad)
 
+            # Unwrap phase: detect jumps > 180 degrees and adjust
+            if prev_phase is not None:
+                delta = phase_deg - prev_phase
+                if delta > 180:
+                    cumulative_phase -= 360
+                elif delta < -180:
+                    cumulative_phase += 360
+
+            unwrapped_phase = phase_deg + cumulative_phase
+            prev_phase = phase_deg
+
             self.frequencies.append(freq_hz)
             self.magnitude_db.append(mag_db)
-            self.phase_deg.append(phase_deg)
+            self.phase_deg.append(unwrapped_phase)
 
         # Set output to DC gain
         if self.magnitude_db:
@@ -140,17 +154,27 @@ class BodePlot(Block):
                 break
 
         # Find phase crossover frequency (where phase = -180 deg)
+        # With unwrapped phase, look for where phase crosses any odd multiple of -180
         self.phase_crossover_freq = None
         self.gain_margin = None
 
         for i in range(len(self.frequencies) - 1):
-            if self.phase_deg[i] > -180 and self.phase_deg[i + 1] <= -180:
-                # Interpolate
-                t = (-180 - self.phase_deg[i]) / (self.phase_deg[i + 1] - self.phase_deg[i])
-                self.phase_crossover_freq = self.frequencies[i] + t * (self.frequencies[i + 1] - self.frequencies[i])
-                mag_at_pc = self.magnitude_db[i] + t * (self.magnitude_db[i + 1] - self.magnitude_db[i])
-                self.gain_margin = -mag_at_pc
-                break
+            # Check if phase crosses -180, -540, -900, etc. (odd multiples of -180)
+            # This handles both the direct crossing and crossings after wrapping
+            phase_i = self.phase_deg[i]
+            phase_next = self.phase_deg[i + 1]
+
+            # Find which -180 degree multiple (if any) is crossed
+            # The phase is typically monotonically decreasing for stable systems
+            for k in range(1, 10):  # Check first several crossings
+                target = -180 * (2 * k - 1)  # -180, -540, -900, ...
+                if phase_i > target and phase_next <= target:
+                    # Interpolate
+                    t = (target - phase_i) / (phase_next - phase_i)
+                    self.phase_crossover_freq = self.frequencies[i] + t * (self.frequencies[i + 1] - self.frequencies[i])
+                    mag_at_pc = self.magnitude_db[i] + t * (self.magnitude_db[i + 1] - self.magnitude_db[i])
+                    self.gain_margin = -mag_at_pc
+                    return  # Found first phase crossover
 
     def setInput(self, value, port=0):
         self.input = value

@@ -93,6 +93,23 @@ export const api = {
     const response = await apiClient.get('/blocks')
     return response.data
   },
+
+  // Documentation
+  async getProjectReadme(): Promise<string> {
+    const response = await apiClient.get('/docs/readme', {
+      responseType: 'text',
+      transformResponse: [(data) => data],
+    })
+    return response.data
+  },
+
+  async getExamplesReadme(): Promise<string> {
+    const response = await apiClient.get('/docs/examples', {
+      responseType: 'text',
+      transformResponse: [(data) => data],
+    })
+    return response.data
+  },
 }
 
 // WebSocket connection for real-time simulation data

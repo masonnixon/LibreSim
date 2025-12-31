@@ -14,7 +14,7 @@
       "type": "ramp",
       "name": "Latitude (deg)",
       "position": { "x": 100, "y": 150 },
-      "parameters": { "slope": 9, "startTime": 0, "initialValue": 0 },
+      "parameters": { "slope": 9, "startTime": 0, "initialOutput": 0 },
       "inputPorts": [],
       "outputPorts": [{ "id": "lat_sweep-out", "name": "out", "dataType": "double", "dimensions": [1] }]
     },

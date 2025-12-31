@@ -14,7 +14,7 @@
       "type": "ramp",
       "name": "Rotation Angle",
       "position": { "x": 50, "y": 150 },
-      "parameters": { "slope": 0.5, "startTime": 0, "initialValue": 0 },
+      "parameters": { "slope": 0.5, "startTime": 0, "initialOutput": 0 },
       "inputPorts": [],
       "outputPorts": [{ "id": "angle-out", "name": "out", "dataType": "double", "dimensions": [1] }]
     },

@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { api } from '../../api/client'
 
 export interface ExampleInfo {
   id: string
@@ -52,125 +53,31 @@ const categoryInfo: Record<string, { title: string; description: string; icon: s
 
 const categoryOrder = ['basic', 'control', 'control_design', 'signal', 'aerospace', 'advanced']
 
-// Examples README content embedded for offline access
-const examplesReadme = `# LibreSim Example Models
-
-This directory contains example models demonstrating LibreSim's simulation capabilities. Each example includes a reference URL to corresponding MathWorks/Simulink documentation for validation comparison.
-
-## Basic Examples
-
-### 01. Sine Wave Basic
-**File:** \`01_sine_wave_basic.json\` | \`01_sine_wave_basic.mdl\`
-
-The simplest possible model - a sine wave source connected to a scope. Perfect for verifying your LibreSim installation is working.
-
-**Expected Output:**
-- Amplitude: 1
-- Frequency: 1 Hz (2π rad/s)
-- Period: 1 second
-- Range: -1 to +1
-
-**Reference:** https://www.mathworks.com/help/simulink/slref/sinewave.html
-
----
-
-### 02. First-Order System Step Response
-**File:** \`02_first_order_step_response.json\` | \`02_first_order_step_response.mdl\`
-
-Step response of a first-order system (like an RC circuit). Transfer function: H(s) = 1/(s+1) with time constant τ = 1 second.
-
-**Expected Output:**
-- At t=1s: output ≈ 0.632 (63.2% of final value)
-- At t=3s: output ≈ 0.95 (95% - within 5%)
-- Final value: 1.0
-
-**Reference:** https://www.mathworks.com/help/simulink/slref/transferfcn.html
-
----
-
-## Control Systems Examples
-
-### 03. PID Controller
-Classic closed-loop PID control of a second-order plant (Kp=10, Ki=5, Kd=2).
-
-**Reference:** https://www.mathworks.com/help/simulink/slref/pidcontroller.html
-
-### 04. Mass-Spring-Damper System
-Models a mechanical system using Newton's second law with Simscape defaults.
-
-**Reference:** https://www.mathworks.com/help/simscape/ug/mass-spring-damper-in-simulink-and-simscape.html
-
----
-
-## Control Analysis Examples
-
-### 07a. Bode Plot - Frequency Response Analysis
-Demonstrates Bode plot analysis for H(s) = 1/(s² + 0.5s + 1) with ωn=1 rad/s, ζ=0.25.
-
-**Reference:** https://www.mathworks.com/help/control/ref/lti.bode.html
-
-### 07b. Nyquist Plot - Stability Analysis
-Nyquist diagram for G(s) = 10/(s(s+1)(s+2)).
-
-**Reference:** https://www.mathworks.com/help/control/ref/lti.nyquist.html
-
-### 07c. Pole-Zero Map - System Stability
-Pole-zero mapping with stable, marginally stable, and unstable systems.
-
-**Reference:** https://www.mathworks.com/help/control/ref/lti.pzmap.html
-
-### 07d. Step Response Info
-Compares step response of overdamped (ζ=2), critically damped (ζ=1), and underdamped (ζ=0.3) systems.
-
-**Reference:** https://www.mathworks.com/help/control/ref/lti.stepinfo.html
-
----
-
-## Signal Processing Examples
-
-### 05a. Moving Average Filter
-Demonstrates smoothing with different window sizes (5, 10, 20 samples).
-
-**Reference:** https://www.mathworks.com/help/dsp/ref/movingaverage.html
-
-### 05b. Low-Pass Filter Comparison
-Compares Butterworth and Bessel filters at various orders.
-
-**Reference:** https://www.mathworks.com/help/dsp/ref/lowpassfilter.html
-
----
-
-## Aerospace Blockset Examples
-
-### 20-24. Quaternion and Atmosphere Examples
-Quaternion attitude propagation, ISA atmosphere, gravity models, DCM conversions, and vector rotation.
-
-**Reference:** https://www.mathworks.com/help/aeroblks/quaternions.html
-
----
-
-## Control Design Examples
-
-### 30-37. Controller Design
-PID speed control, discrete PID, LQR, lead-lag compensators, anti-windup PID, pole placement.
-
-**Reference:** https://www.mathworks.com/help/control/ug/designing-pid-controllers.html
-
----
-
-## Loading Examples
-
-1. Click **File** → **Examples**
-2. Select an example from the categorized list
-3. Examples are organized by: Basic, Control, Signal Processing, Advanced
-
-See the full documentation at [GitHub](https://github.com/masonnixon/LibreSim/blob/master/examples/README.md).
-`
-
 export function ExamplesModal({ isOpen, onClose, examples, onLoadExample, onOpenBlockReference }: ExamplesModalProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>('basic')
   const [searchQuery, setSearchQuery] = useState('')
   const [showDocs, setShowDocs] = useState(false)
+  const [docsContent, setDocsContent] = useState<string>('')
+  const [docsLoading, setDocsLoading] = useState(false)
+  const [docsError, setDocsError] = useState<string | null>(null)
+
+  // Fetch documentation when docs view is opened
+  useEffect(() => {
+    if (showDocs && !docsContent && !docsLoading) {
+      setDocsLoading(true)
+      setDocsError(null)
+      api.getExamplesReadme()
+        .then((content) => {
+          setDocsContent(content)
+          setDocsLoading(false)
+        })
+        .catch((err) => {
+          console.error('Failed to load examples documentation:', err)
+          setDocsError('Failed to load documentation. Please try again.')
+          setDocsLoading(false)
+        })
+    }
+  }, [showDocs, docsContent, docsLoading])
 
   if (!isOpen) return null
 
@@ -307,20 +214,43 @@ export function ExamplesModal({ isOpen, onClose, examples, onLoadExample, onOpen
                   ← Back to Examples
                 </button>
               </div>
-              <div className="prose prose-invert prose-sm max-w-none
-                prose-headings:text-blue-400 prose-headings:font-semibold prose-headings:mt-6 prose-headings:mb-3
-                prose-h1:text-xl prose-h2:text-lg prose-h3:text-base
-                prose-p:text-gray-300 prose-p:my-2
-                prose-a:text-blue-400 prose-a:no-underline hover:prose-a:text-blue-300
-                prose-strong:text-white prose-strong:font-semibold
-                prose-code:text-green-400 prose-code:bg-gray-800 prose-code:px-1 prose-code:rounded prose-code:text-xs
-                prose-ul:text-gray-300 prose-ul:my-2 prose-li:my-0.5
-                prose-hr:border-editor-border prose-hr:my-4
-              ">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {examplesReadme}
-                </ReactMarkdown>
-              </div>
+              {docsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-gray-400">Loading documentation...</div>
+                </div>
+              ) : docsError ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <div className="text-red-400 mb-4">{docsError}</div>
+                  <button
+                    onClick={() => {
+                      setDocsContent('')
+                      setDocsError(null)
+                    }}
+                    className="text-blue-400 hover:text-blue-300"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : (
+                <div className="prose prose-invert prose-sm max-w-none
+                  prose-headings:text-blue-400 prose-headings:font-semibold prose-headings:mt-6 prose-headings:mb-3
+                  prose-h1:text-xl prose-h2:text-lg prose-h3:text-base
+                  prose-p:text-gray-300 prose-p:my-2
+                  prose-a:text-blue-400 prose-a:no-underline hover:prose-a:text-blue-300
+                  prose-strong:text-white prose-strong:font-semibold
+                  prose-code:text-green-400 prose-code:bg-gray-800 prose-code:px-1 prose-code:rounded prose-code:text-xs
+                  prose-ul:text-gray-300 prose-ul:my-2 prose-li:my-0.5
+                  prose-hr:border-editor-border prose-hr:my-4
+                  prose-table:text-sm prose-table:my-3
+                  prose-th:text-gray-400 prose-th:font-medium prose-th:py-2 prose-th:px-2 prose-th:text-left prose-th:border-b prose-th:border-editor-border
+                  prose-td:py-1.5 prose-td:px-2 prose-td:text-gray-300 prose-td:border-b prose-td:border-editor-border/50
+                  prose-pre:bg-gray-800 prose-pre:text-gray-300 prose-pre:text-xs prose-pre:p-3 prose-pre:rounded
+                ">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {docsContent}
+                  </ReactMarkdown>
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex-1 overflow-y-auto p-4">

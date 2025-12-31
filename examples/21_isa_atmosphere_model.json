@@ -14,7 +14,7 @@
       "type": "ramp",
       "name": "Altitude (m)",
       "position": { "x": 100, "y": 200 },
-      "parameters": { "slope": 1000, "startTime": 0, "initialValue": 0 },
+      "parameters": { "slope": 1000, "startTime": 0, "initialOutput": 0 },
       "inputPorts": [],
       "outputPorts": [{ "id": "altitude_ramp-out", "name": "out", "dataType": "double", "dimensions": [1] }]
     },

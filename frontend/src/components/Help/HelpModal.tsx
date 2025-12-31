@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useUIStore } from '../../store/uiStore'
+import { api } from '../../api/client'
 
 // Block reference documentation
 const blockReference = {
@@ -266,95 +267,6 @@ const shortcuts = {
   ],
 }
 
-// About content - Project README
-const aboutContent = `# LibreSim
-
-A web-based block diagram simulation tool inspired by Simulink, powered by the Object-oriented Simulation Kernel (OSK).
-
-## Overview
-
-LibreSim provides a graphical environment for modeling, simulating, and analyzing dynamic systems. It features a drag-and-drop block diagram editor, real-time simulation visualization, and support for importing Simulink \`.mdl\` files.
-
-## Features
-
-- **Visual Block Diagram Editor**: Drag-and-drop interface for building system models
-- **Control Systems Focus**: Comprehensive library of blocks for control system design
-- **Real-time Simulation**: Live visualization of simulation results with scopes and plots
-- **Simulink Import/Export**: Import and export \`.mdl\` model files for Simulink compatibility
-- **Library Import**: Import MDL libraries as reusable subsystem blocks
-- **Multiple Solvers**: RK4, Euler, and Merson's method ODE solvers
-- **Undo/Redo**: Full history support for model editing
-- **Keyboard Shortcuts**: Efficient workflow with comprehensive hotkey support
-- **Extensible Architecture**: Easy to add custom blocks and solvers
-
-## Block Library
-
-LibreSim includes 110+ blocks across categories:
-
-| Category | Examples |
-|----------|----------|
-| **Sources** | Constant, Step, Ramp, Sine Wave, Pulse, Clock, White Noise |
-| **Sinks** | Scope, Display, To Workspace |
-| **Continuous** | Integrator, Derivative, Transfer Function, State-Space, PID |
-| **Discrete** | Unit Delay, Zero-Order Hold, Discrete Integrator |
-| **Math** | Sum, Gain, Product, Abs, Trigonometry, Saturation |
-| **Signal Processing** | Filters (Butterworth, Bessel), Rate Limiter, Moving Average |
-| **Nonlinear** | Lookup Tables, Quantizer, Relay, Friction, Hysteresis |
-| **Observers** | Kalman Filter, Extended Kalman Filter, Luenberger Observer |
-| **Control Design** | PID, Discrete PID, LQR, Pole Placement, Lead-Lag |
-| **Control Analysis** | Bode Plot, Nyquist Plot, Pole-Zero Map, Step Info |
-| **Aerospace** | Quaternions, 6-DOF, ISA Atmosphere, WGS84 Gravity |
-
-## Solver Comparison
-
-| Solver | Order | Accuracy | Speed | Use Case |
-|--------|-------|----------|-------|----------|
-| Euler | 1st | Low | Fast | Quick prototyping |
-| RK4 | 4th | High | Medium | General purpose (default) |
-| Merson | 4th | High | Medium | Stiff systems |
-
-## Example Models
-
-LibreSim includes 30+ example models organized by category:
-- **Basic**: Sine wave, step response, damping comparison
-- **Control**: PID, mass-spring-damper, thermostat relay
-- **Control Analysis**: Bode, Nyquist, Pole-Zero, Step Response
-- **Control Design**: LQR, lead-lag, anti-windup PID, pole placement
-- **Signal Processing**: Filters, lookup tables, rate limiting
-- **Aerospace**: Quaternions, atmosphere, gravity models
-- **Advanced**: Kalman filter, state estimation
-
-## Quick Start
-
-1. Open LibreSim in your browser
-2. Drag blocks from the library palette to the canvas
-3. Connect blocks by clicking outputs and dragging to inputs
-4. Configure block parameters in the Properties panel
-5. Click **Run** to simulate and view results in Scope windows
-
-## Keyboard Shortcuts
-
-| Shortcut | Action |
-|----------|--------|
-| \`Ctrl+S\` | Save model |
-| \`Ctrl+Z\` / \`Ctrl+Y\` | Undo / Redo |
-| \`Ctrl+R\` | Rotate selected blocks |
-| \`Space\` | Fit view to content |
-| \`Delete\` | Delete selected blocks |
-
-## Credits
-
-- Object-oriented Simulation Kernel (OSK) by Mason Nixon
-- Inspired by MathWorks Simulink
-- Built with React, FastAPI, and Python
-
-## License
-
-MIT License - Open source and free to use.
-
-[View on GitHub](https://github.com/masonnixon/LibreSim)
-`
-
 function ShortcutKey({ children }: { children: string }) {
   return (
     <kbd className="px-2 py-1 bg-editor-bg border border-editor-border rounded text-xs font-mono">
@@ -491,6 +403,52 @@ function BlockReferenceTab() {
 }
 
 function AboutTab() {
+  const [content, setContent] = useState<string>('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!content && !loading) {
+      setLoading(true)
+      setError(null)
+      api.getProjectReadme()
+        .then((readme) => {
+          setContent(readme)
+          setLoading(false)
+        })
+        .catch((err) => {
+          console.error('Failed to load project README:', err)
+          setError('Failed to load documentation. Please try again.')
+          setLoading(false)
+        })
+    }
+  }, [content, loading])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-gray-400">Loading documentation...</div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <div className="text-red-400 mb-4">{error}</div>
+        <button
+          onClick={() => {
+            setContent('')
+            setError(null)
+          }}
+          className="text-blue-400 hover:text-blue-300"
+        >
+          Retry
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div className="prose prose-invert prose-sm max-w-none
       prose-headings:text-blue-400 prose-headings:font-semibold prose-headings:mt-6 prose-headings:mb-3
@@ -505,9 +463,10 @@ function AboutTab() {
       prose-th:text-gray-400 prose-th:font-medium prose-th:py-2 prose-th:px-2 prose-th:text-left prose-th:border-b prose-th:border-editor-border
       prose-td:py-1.5 prose-td:px-2 prose-td:text-gray-300 prose-td:border-b prose-td:border-editor-border/50
       prose-hr:border-editor-border prose-hr:my-4
+      prose-pre:bg-gray-800 prose-pre:text-gray-300 prose-pre:text-xs prose-pre:p-3 prose-pre:rounded
     ">
       <ReactMarkdown remarkPlugins={[remarkGfm]}>
-        {aboutContent}
+        {content}
       </ReactMarkdown>
     </div>
   )

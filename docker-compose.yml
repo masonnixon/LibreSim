@@ -22,6 +22,8 @@ services:
       - "9000:9000"
     volumes:
       - ./backend:/app
+      - ./README.md:/project/README.md:ro
+      - ./examples:/project/examples:ro
     environment:
       - ENVIRONMENT=development
       - DATABASE_URL=sqlite:///./libresim.db
