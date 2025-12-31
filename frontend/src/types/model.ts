@@ -8,6 +8,7 @@ export interface ModelMetadata {
   createdAt: string
   modifiedAt: string
   version: string
+  sourceFile?: string // Original filename if imported
 }
 
 export interface Model {

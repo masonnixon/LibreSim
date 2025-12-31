@@ -210,6 +210,8 @@ export function Toolbar() {
         if (!modelData.metadata.name || modelData.metadata.name === 'Imported Model') {
           modelData.metadata.name = file.name.replace(/\.mdl$/i, '')
         }
+        // Store original filename for tooltip display
+        modelData.metadata.sourceFile = file.name
         closeAllPlotWindows()
         clearResults()
         loadModel(modelData)
@@ -511,7 +513,10 @@ export function Toolbar() {
       <div className="flex items-center gap-2 pr-2 md:pr-4 border-r border-editor-border">
         <span className="font-bold text-lg text-blue-400">LibreSim</span>
         <span className="text-gray-500 hidden sm:inline">|</span>
-        <span className="text-gray-300 text-sm hidden sm:inline truncate max-w-[200px]" title={model?.metadata?.name || 'Untitled'}>
+        <span
+          className="text-gray-300 text-sm hidden sm:inline truncate max-w-[200px]"
+          title={model?.metadata?.sourceFile || model?.metadata?.name || 'Untitled'}
+        >
           {model?.metadata?.name || 'Untitled'}
           {isDirty && <span className="text-yellow-400 ml-1">*</span>}
         </span>
