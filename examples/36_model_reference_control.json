@@ -24,11 +24,8 @@
       "name": "Reference Model",
       "position": { "x": 200, "y": 100 },
       "parameters": {
-        "A": [[-2]],
-        "B": [[2]],
-        "C": [[1]],
-        "D": [[0]],
-        "initialState": [0]
+        "naturalFrequency": 2.0,
+        "dampingRatio": 1.0
       },
       "inputPorts": [{ "id": "ref_model-in", "name": "r", "dataType": "double", "dimensions": [1] }],
       "outputPorts": [{ "id": "ref_model-out", "name": "y", "dataType": "double", "dimensions": [1] }]

@@ -442,11 +442,11 @@ PARAM_MAP: dict[str, dict[str, str]] = {
     # Control Design
     "lqr_controller": {"K": "K"},
     "pole_placement": {"K": "K"},
-    "lead_lag_compensator": {"K": "K", "zero": "zero", "pole": "pole"},
+    "lead_lag_compensator": {"K": "gain", "zero": "zero", "pole": "pole"},
     "pi_controller": {"Kp": "Kp", "Ki": "Ki"},
     "pd_controller": {"Kp": "Kp", "Kd": "Kd", "N": "N"},
     "anti_windup_pid": {"Kp": "Kp", "Ki": "Ki", "Kd": "Kd", "N": "N", "Kb": "Kb", "upperLimit": "upper_limit", "lowerLimit": "lower_limit"},
-    "model_reference": {"A": "A", "B": "B", "C": "C", "D": "D", "initialState": "initial_state"},
+    "model_reference": {"naturalFrequency": "natural_frequency", "dampingRatio": "damping_ratio"},
     # Aerospace
     "quaternion_normalize": {},
     "quaternion_multiply": {},

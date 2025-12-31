@@ -1,8 +1,8 @@
 {
   "id": "example-quaternion-attitude",
   "metadata": {
-    "name": "Quaternion Attitude Propagation",
-    "description": "Demonstrates aerospace quaternion blocks: propagate attitude using angular velocity, normalize quaternions, and convert to Euler angles for visualization. Similar to Simulink Aerospace Blockset examples.",
+    "name": "Quaternion Attitude Operations",
+    "description": "Demonstrates aerospace quaternion blocks: Euler angles are integrated over time, converted to quaternions, normalized, and converted back to Euler for verification. Shows QuaternionNormalize, EulerToQuaternion, and QuaternionToEuler blocks.",
     "author": "LibreSim Examples",
     "createdAt": "2024-12-31T00:00:00Z",
     "modifiedAt": "2024-12-31T00:00:00Z",
@@ -10,205 +10,145 @@
   },
   "blocks": [
     {
-      "id": "omega_x",
+      "id": "roll_rate",
       "type": "constant",
-      "name": "ωx (Roll Rate)",
+      "name": "Roll Rate (rad/s)",
       "position": { "x": 50, "y": 100 },
       "parameters": { "value": 0.1 },
       "inputPorts": [],
-      "outputPorts": [{ "id": "omega_x-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "outputPorts": [{ "id": "roll_rate-out", "name": "out", "dataType": "double", "dimensions": [1] }]
     },
     {
-      "id": "omega_y",
+      "id": "pitch_rate",
       "type": "constant",
-      "name": "ωy (Pitch Rate)",
+      "name": "Pitch Rate (rad/s)",
       "position": { "x": 50, "y": 180 },
       "parameters": { "value": 0.05 },
       "inputPorts": [],
-      "outputPorts": [{ "id": "omega_y-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "outputPorts": [{ "id": "pitch_rate-out", "name": "out", "dataType": "double", "dimensions": [1] }]
     },
     {
-      "id": "omega_z",
+      "id": "yaw_rate",
       "type": "constant",
-      "name": "ωz (Yaw Rate)",
+      "name": "Yaw Rate (rad/s)",
       "position": { "x": 50, "y": 260 },
       "parameters": { "value": 0.02 },
       "inputPorts": [],
-      "outputPorts": [{ "id": "omega_z-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "outputPorts": [{ "id": "yaw_rate-out", "name": "out", "dataType": "double", "dimensions": [1] }]
     },
     {
-      "id": "mux_omega",
-      "type": "mux",
-      "name": "ω Vector",
+      "id": "int_roll",
+      "type": "integrator",
+      "name": "∫ → Roll",
+      "position": { "x": 200, "y": 100 },
+      "parameters": { "initialCondition": 0.0 },
+      "inputPorts": [{ "id": "int_roll-in", "name": "in", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": [{ "id": "int_roll-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "int_pitch",
+      "type": "integrator",
+      "name": "∫ → Pitch",
       "position": { "x": 200, "y": 180 },
+      "parameters": { "initialCondition": 0.0 },
+      "inputPorts": [{ "id": "int_pitch-in", "name": "in", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": [{ "id": "int_pitch-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "int_yaw",
+      "type": "integrator",
+      "name": "∫ → Yaw",
+      "position": { "x": 200, "y": 260 },
+      "parameters": { "initialCondition": 0.0 },
+      "inputPorts": [{ "id": "int_yaw-in", "name": "in", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": [{ "id": "int_yaw-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "mux_euler",
+      "type": "mux",
+      "name": "Euler [φ,θ,ψ]",
+      "position": { "x": 350, "y": 180 },
       "parameters": { "numInputs": 3 },
       "inputPorts": [
-        { "id": "mux_omega-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
-        { "id": "mux_omega-in2", "name": "in2", "dataType": "double", "dimensions": [1] },
-        { "id": "mux_omega-in3", "name": "in3", "dataType": "double", "dimensions": [1] }
+        { "id": "mux_euler-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
+        { "id": "mux_euler-in2", "name": "in2", "dataType": "double", "dimensions": [1] },
+        { "id": "mux_euler-in3", "name": "in3", "dataType": "double", "dimensions": [1] }
       ],
-      "outputPorts": [{ "id": "mux_omega-out", "name": "out", "dataType": "double", "dimensions": [3] }]
+      "outputPorts": [{ "id": "mux_euler-out", "name": "out", "dataType": "double", "dimensions": [3] }]
     },
     {
-      "id": "gain_half",
-      "type": "gain",
-      "name": "0.5",
-      "position": { "x": 320, "y": 180 },
-      "parameters": { "gain": 0.5 },
-      "inputPorts": [{ "id": "gain_half-in", "name": "in", "dataType": "double", "dimensions": [1] }],
-      "outputPorts": [{ "id": "gain_half-out", "name": "out", "dataType": "double", "dimensions": [1] }]
-    },
-    {
-      "id": "q0_ic",
-      "type": "constant",
-      "name": "q0 IC",
-      "position": { "x": 50, "y": 400 },
-      "parameters": { "value": 1.0 },
-      "inputPorts": [],
-      "outputPorts": [{ "id": "q0_ic-out", "name": "out", "dataType": "double", "dimensions": [1] }]
-    },
-    {
-      "id": "q1_ic",
-      "type": "constant",
-      "name": "q1 IC",
-      "position": { "x": 50, "y": 480 },
-      "parameters": { "value": 0.0 },
-      "inputPorts": [],
-      "outputPorts": [{ "id": "q1_ic-out", "name": "out", "dataType": "double", "dimensions": [1] }]
-    },
-    {
-      "id": "q2_ic",
-      "type": "constant",
-      "name": "q2 IC",
-      "position": { "x": 50, "y": 560 },
-      "parameters": { "value": 0.0 },
-      "inputPorts": [],
-      "outputPorts": [{ "id": "q2_ic-out", "name": "out", "dataType": "double", "dimensions": [1] }]
-    },
-    {
-      "id": "q3_ic",
-      "type": "constant",
-      "name": "q3 IC",
-      "position": { "x": 50, "y": 640 },
-      "parameters": { "value": 0.0 },
-      "inputPorts": [],
-      "outputPorts": [{ "id": "q3_ic-out", "name": "out", "dataType": "double", "dimensions": [1] }]
-    },
-    {
-      "id": "int_q0",
-      "type": "integrator",
-      "name": "∫ q0",
-      "position": { "x": 500, "y": 400 },
-      "parameters": { "initialCondition": 1.0 },
-      "inputPorts": [{ "id": "int_q0-in", "name": "in", "dataType": "double", "dimensions": [1] }],
-      "outputPorts": [{ "id": "int_q0-out", "name": "out", "dataType": "double", "dimensions": [1] }]
-    },
-    {
-      "id": "int_q1",
-      "type": "integrator",
-      "name": "∫ q1",
-      "position": { "x": 500, "y": 480 },
-      "parameters": { "initialCondition": 0.0 },
-      "inputPorts": [{ "id": "int_q1-in", "name": "in", "dataType": "double", "dimensions": [1] }],
-      "outputPorts": [{ "id": "int_q1-out", "name": "out", "dataType": "double", "dimensions": [1] }]
-    },
-    {
-      "id": "int_q2",
-      "type": "integrator",
-      "name": "∫ q2",
-      "position": { "x": 500, "y": 560 },
-      "parameters": { "initialCondition": 0.0 },
-      "inputPorts": [{ "id": "int_q2-in", "name": "in", "dataType": "double", "dimensions": [1] }],
-      "outputPorts": [{ "id": "int_q2-out", "name": "out", "dataType": "double", "dimensions": [1] }]
-    },
-    {
-      "id": "int_q3",
-      "type": "integrator",
-      "name": "∫ q3",
-      "position": { "x": 500, "y": 640 },
-      "parameters": { "initialCondition": 0.0 },
-      "inputPorts": [{ "id": "int_q3-in", "name": "in", "dataType": "double", "dimensions": [1] }],
-      "outputPorts": [{ "id": "int_q3-out", "name": "out", "dataType": "double", "dimensions": [1] }]
-    },
-    {
-      "id": "mux_q",
-      "type": "mux",
-      "name": "Quaternion",
-      "position": { "x": 620, "y": 520 },
-      "parameters": { "numInputs": 4 },
-      "inputPorts": [
-        { "id": "mux_q-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
-        { "id": "mux_q-in2", "name": "in2", "dataType": "double", "dimensions": [1] },
-        { "id": "mux_q-in3", "name": "in3", "dataType": "double", "dimensions": [1] },
-        { "id": "mux_q-in4", "name": "in4", "dataType": "double", "dimensions": [1] }
-      ],
-      "outputPorts": [{ "id": "mux_q-out", "name": "out", "dataType": "double", "dimensions": [4] }]
+      "id": "euler_to_quat",
+      "type": "euler_to_quaternion",
+      "name": "Euler → Q",
+      "position": { "x": 500, "y": 180 },
+      "parameters": {},
+      "inputPorts": [{ "id": "euler_to_quat-in", "name": "euler", "dataType": "double", "dimensions": [3] }],
+      "outputPorts": [{ "id": "euler_to_quat-out", "name": "q", "dataType": "double", "dimensions": [4] }]
     },
     {
       "id": "q_normalize",
       "type": "quaternion_normalize",
       "name": "Normalize",
-      "position": { "x": 750, "y": 520 },
+      "position": { "x": 650, "y": 180 },
       "parameters": {},
       "inputPorts": [{ "id": "q_normalize-in", "name": "q", "dataType": "double", "dimensions": [4] }],
       "outputPorts": [{ "id": "q_normalize-out", "name": "q_norm", "dataType": "double", "dimensions": [4] }]
     },
     {
-      "id": "q_to_euler",
+      "id": "quat_to_euler",
       "type": "quaternion_to_euler",
       "name": "Q → Euler",
-      "position": { "x": 880, "y": 520 },
-      "parameters": { "sequence": "ZYX" },
-      "inputPorts": [{ "id": "q_to_euler-in", "name": "q", "dataType": "double", "dimensions": [4] }],
-      "outputPorts": [{ "id": "q_to_euler-out", "name": "euler", "dataType": "double", "dimensions": [3] }]
+      "position": { "x": 800, "y": 180 },
+      "parameters": {},
+      "inputPorts": [{ "id": "quat_to_euler-in", "name": "q", "dataType": "double", "dimensions": [4] }],
+      "outputPorts": [{ "id": "quat_to_euler-out", "name": "euler", "dataType": "double", "dimensions": [3] }]
     },
     {
       "id": "rad2deg",
       "type": "gain",
       "name": "Rad→Deg",
-      "position": { "x": 1010, "y": 520 },
+      "position": { "x": 950, "y": 180 },
       "parameters": { "gain": 57.2957795 },
       "inputPorts": [{ "id": "rad2deg-in", "name": "in", "dataType": "double", "dimensions": [1] }],
       "outputPorts": [{ "id": "rad2deg-out", "name": "out", "dataType": "double", "dimensions": [1] }]
     },
     {
-      "id": "scope_euler",
+      "id": "scope_euler_deg",
       "type": "scope",
       "name": "Euler Angles (deg)",
-      "position": { "x": 1150, "y": 520 },
+      "position": { "x": 1100, "y": 180 },
       "parameters": { "numInputs": 1 },
-      "inputPorts": [{ "id": "scope_euler-in1", "name": "in1", "dataType": "double", "dimensions": [1] }],
+      "inputPorts": [{ "id": "scope_euler_deg-in1", "name": "in1", "dataType": "double", "dimensions": [1] }],
       "outputPorts": []
     },
     {
       "id": "scope_quat",
       "type": "scope",
       "name": "Quaternion",
-      "position": { "x": 880, "y": 650 },
+      "position": { "x": 800, "y": 320 },
       "parameters": { "numInputs": 1 },
       "inputPorts": [{ "id": "scope_quat-in1", "name": "in1", "dataType": "double", "dimensions": [1] }],
       "outputPorts": []
     }
   ],
   "connections": [
-    { "id": "c1", "sourceBlockId": "omega_x", "sourcePortId": "omega_x-out", "targetBlockId": "mux_omega", "targetPortId": "mux_omega-in1" },
-    { "id": "c2", "sourceBlockId": "omega_y", "sourcePortId": "omega_y-out", "targetBlockId": "mux_omega", "targetPortId": "mux_omega-in2" },
-    { "id": "c3", "sourceBlockId": "omega_z", "sourcePortId": "omega_z-out", "targetBlockId": "mux_omega", "targetPortId": "mux_omega-in3" },
-    { "id": "c4", "sourceBlockId": "mux_omega", "sourcePortId": "mux_omega-out", "targetBlockId": "gain_half", "targetPortId": "gain_half-in" },
-    { "id": "c10", "sourceBlockId": "mux_q", "sourcePortId": "mux_q-out", "targetBlockId": "q_normalize", "targetPortId": "q_normalize-in" },
-    { "id": "c11", "sourceBlockId": "q_normalize", "sourcePortId": "q_normalize-out", "targetBlockId": "q_to_euler", "targetPortId": "q_to_euler-in" },
-    { "id": "c12", "sourceBlockId": "q_to_euler", "sourcePortId": "q_to_euler-out", "targetBlockId": "rad2deg", "targetPortId": "rad2deg-in" },
-    { "id": "c13", "sourceBlockId": "rad2deg", "sourcePortId": "rad2deg-out", "targetBlockId": "scope_euler", "targetPortId": "scope_euler-in1" },
-    { "id": "c14", "sourceBlockId": "q_normalize", "sourcePortId": "q_normalize-out", "targetBlockId": "scope_quat", "targetPortId": "scope_quat-in1" },
-    { "id": "c20", "sourceBlockId": "int_q0", "sourcePortId": "int_q0-out", "targetBlockId": "mux_q", "targetPortId": "mux_q-in1" },
-    { "id": "c21", "sourceBlockId": "int_q1", "sourcePortId": "int_q1-out", "targetBlockId": "mux_q", "targetPortId": "mux_q-in2" },
-    { "id": "c22", "sourceBlockId": "int_q2", "sourcePortId": "int_q2-out", "targetBlockId": "mux_q", "targetPortId": "mux_q-in3" },
-    { "id": "c23", "sourceBlockId": "int_q3", "sourcePortId": "int_q3-out", "targetBlockId": "mux_q", "targetPortId": "mux_q-in4" }
+    { "id": "c1", "sourceBlockId": "roll_rate", "sourcePortId": "roll_rate-out", "targetBlockId": "int_roll", "targetPortId": "int_roll-in" },
+    { "id": "c2", "sourceBlockId": "pitch_rate", "sourcePortId": "pitch_rate-out", "targetBlockId": "int_pitch", "targetPortId": "int_pitch-in" },
+    { "id": "c3", "sourceBlockId": "yaw_rate", "sourcePortId": "yaw_rate-out", "targetBlockId": "int_yaw", "targetPortId": "int_yaw-in" },
+    { "id": "c4", "sourceBlockId": "int_roll", "sourcePortId": "int_roll-out", "targetBlockId": "mux_euler", "targetPortId": "mux_euler-in1" },
+    { "id": "c5", "sourceBlockId": "int_pitch", "sourcePortId": "int_pitch-out", "targetBlockId": "mux_euler", "targetPortId": "mux_euler-in2" },
+    { "id": "c6", "sourceBlockId": "int_yaw", "sourcePortId": "int_yaw-out", "targetBlockId": "mux_euler", "targetPortId": "mux_euler-in3" },
+    { "id": "c7", "sourceBlockId": "mux_euler", "sourcePortId": "mux_euler-out", "targetBlockId": "euler_to_quat", "targetPortId": "euler_to_quat-in" },
+    { "id": "c8", "sourceBlockId": "euler_to_quat", "sourcePortId": "euler_to_quat-out", "targetBlockId": "q_normalize", "targetPortId": "q_normalize-in" },
+    { "id": "c9", "sourceBlockId": "q_normalize", "sourcePortId": "q_normalize-out", "targetBlockId": "quat_to_euler", "targetPortId": "quat_to_euler-in" },
+    { "id": "c10", "sourceBlockId": "quat_to_euler", "sourcePortId": "quat_to_euler-out", "targetBlockId": "rad2deg", "targetPortId": "rad2deg-in" },
+    { "id": "c11", "sourceBlockId": "rad2deg", "sourcePortId": "rad2deg-out", "targetBlockId": "scope_euler_deg", "targetPortId": "scope_euler_deg-in1" },
+    { "id": "c12", "sourceBlockId": "q_normalize", "sourcePortId": "q_normalize-out", "targetBlockId": "scope_quat", "targetPortId": "scope_quat-in1" }
   ],
   "simulationConfig": {
     "solver": "rk4",
     "startTime": 0,
-    "stopTime": 60,
+    "stopTime": 30,
     "stepSize": 0.01
   }
 }
