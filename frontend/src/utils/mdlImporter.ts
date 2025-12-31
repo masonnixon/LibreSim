@@ -402,6 +402,37 @@ function parseValue(value: string): unknown {
 }
 
 /**
+ * Convert Product block operations parameter to proper format.
+ * MDL may use a number (e.g., "2" for 2 inputs) or operation string (e.g., "**").
+ *
+ * @param value - The Inputs value from MDL (e.g., "2", "3", "**", "*\/")
+ * @returns The operations string (e.g., "**", "***", "*\/")
+ */
+function convertProductOperations(value: string): string {
+  if (!value) {
+    return '**' // Default to 2 multiply inputs
+  }
+
+  const trimmed = value.trim()
+
+  // If it's a pure number, convert to that many '*' characters
+  const num = parseInt(trimmed, 10)
+  if (!isNaN(num) && String(num) === trimmed) {
+    // It's a pure integer - convert to multiply operations
+    return '*'.repeat(Math.max(1, num))
+  }
+
+  // Check if it's already a valid operations string (only * and / characters)
+  const validOps = new Set(['*', '/'])
+  if ([...trimmed].every(c => validOps.has(c))) {
+    return trimmed
+  }
+
+  // Unknown format - try to use length as number of operations
+  return '*'.repeat(Math.max(1, trimmed.length))
+}
+
+/**
  * Parse MDL content into structured data
  */
 function parseMDL(content: string): ParsedModel {
@@ -699,7 +730,11 @@ function convertBlockParameters(block: ParsedBlock, libreSimType: string): Recor
       break
 
     case 'product':
-      if (block.Inputs !== undefined) params.operations = String(block.Inputs)
+      if (block.Inputs !== undefined) {
+        // Convert MDL Inputs parameter to operations format
+        // MDL may use a number (e.g., "2" for 2 inputs) or operation string (e.g., "**")
+        params.operations = convertProductOperations(String(block.Inputs))
+      }
       break
 
     case 'saturation':
@@ -906,6 +941,23 @@ function createPorts(blockType: string, params: Record<string, unknown>): { inpu
           dataType: 'double',
           dimensions: [1],
         })
+      }
+    }
+
+    // Handle product with dynamic number of inputs based on operations
+    if (blockType === 'product' && params.operations) {
+      const operations = String(params.operations)
+      const numPorts = operations.length
+      if (numPorts > 0) {
+        inputPorts.length = 0
+        for (let i = 0; i < numPorts; i++) {
+          inputPorts.push({
+            id: `in_${i}`,
+            name: `in${i + 1}`,
+            dataType: 'double',
+            dimensions: [1],
+          })
+        }
       }
     }
 

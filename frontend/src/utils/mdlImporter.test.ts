@@ -986,6 +986,58 @@ describe('mdlImporter', () => {
       const product = model.blocks[0]
 
       expect(product.parameters.operations).toBe('*/')
+      expect(product.inputPorts.length).toBe(2)
+    })
+
+    it('should convert numeric Product inputs to operations string', () => {
+      const mdl = `Model {
+        Name "ProductNumericTest"
+        System {
+          Name "ProductNumericTest"
+          Block {
+            BlockType Product
+            Name "TwoInputProduct"
+            Inputs "2"
+          }
+          Block {
+            BlockType Product
+            Name "ThreeInputProduct"
+            Inputs "3"
+          }
+        }
+      }`
+
+      const model = importMDL(mdl)
+      const twoInput = model.blocks.find(b => b.name === 'TwoInputProduct')!
+      const threeInput = model.blocks.find(b => b.name === 'ThreeInputProduct')!
+
+      // Numeric inputs should be converted to multiply operations
+      expect(twoInput.parameters.operations).toBe('**')
+      expect(twoInput.inputPorts.length).toBe(2)
+
+      expect(threeInput.parameters.operations).toBe('***')
+      expect(threeInput.inputPorts.length).toBe(3)
+    })
+
+    it('should preserve valid Product operations strings', () => {
+      const mdl = `Model {
+        Name "ProductOpsTest"
+        System {
+          Name "ProductOpsTest"
+          Block {
+            BlockType Product
+            Name "MixedOps"
+            Inputs "**/"
+          }
+        }
+      }`
+
+      const model = importMDL(mdl)
+      const product = model.blocks[0]
+
+      // Valid operations string should be preserved
+      expect(product.parameters.operations).toBe('**/')
+      expect(product.inputPorts.length).toBe(3)
     })
   })
 
