@@ -26,12 +26,15 @@ def sum_template(block: BlockInfo, class_name: str) -> str:
         else:
             sum_terms.append(f"-{var}")
 
+    # Join input attrs with proper indentation (newline + 8 spaces)
+    input_attrs_code = "\n        ".join(input_attrs)
+
     return f'''
 class {class_name}:
     """Sum block: {block.name}"""
 
     def __init__(self):
-        {chr(10).join("        " + attr for attr in input_attrs)}
+        {input_attrs_code}
         self.output = 0.0
         self.signs = "{inputs}"
 
@@ -80,23 +83,27 @@ def product_template(block: BlockInfo, class_name: str) -> str:
         input_attrs.append(f"self.input{i} = 0.0")
 
     # Generate product computation
-    product_code = "result = 1.0"
+    product_lines = ["result = 1.0"]
     for i, op in enumerate(operations):
         if i == 0:
             var = "self.input"
         else:
             var = f"self.input{i}"
         if op == "*":
-            product_code += f"\n        result *= {var}"
+            product_lines.append(f"result *= {var}")
         else:
-            product_code += f"\n        result /= {var} if {var} != 0 else 1e-10"
+            product_lines.append(f"result /= {var} if {var} != 0 else 1e-10")
+
+    # Join with proper indentation
+    input_attrs_code = "\n        ".join(input_attrs)
+    product_code = "\n        ".join(product_lines)
 
     return f'''
 class {class_name}:
     """Product block: {block.name}"""
 
     def __init__(self):
-        {chr(10).join("        " + attr for attr in input_attrs)}
+        {input_attrs_code}
         self.output = 0.0
         self.operations = "{operations}"
 
@@ -362,13 +369,16 @@ def mux_template(block: BlockInfo, class_name: str) -> str:
     for i in range(1, num_inputs):
         output_list.append(f"self.input{i}")
 
+    # Join with proper indentation
+    input_attrs_code = "\n        ".join(input_attrs)
+
     return f'''
 class {class_name}:
     """Mux block: {block.name}"""
 
     def __init__(self):
         self.num_inputs = {num_inputs}
-        {chr(10).join("        " + attr for attr in input_attrs)}
+        {input_attrs_code}
         self.output = [0.0] * {num_inputs}
 
     def init(self):

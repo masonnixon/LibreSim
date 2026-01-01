@@ -57,7 +57,30 @@ class PythonCodeGenerator(LanguageGenerator):
         readme = self._generate_readme(model_info, config)
         project.add_file("README.md", readme)
 
+        # Validate generated Python code
+        self._validate_python_code(project)
+
         return project
+
+    def _validate_python_code(self, project: GeneratedProject) -> None:
+        """Validate that generated Python code has no syntax errors.
+
+        Raises:
+            SyntaxError: If any Python file has syntax errors
+        """
+        for file in project.files:
+            if file.path.endswith('.py'):
+                try:
+                    compile(file.content, file.path, 'exec')
+                except SyntaxError as e:
+                    # Add more context to the error
+                    error_msg = (
+                        f"Syntax error in generated {file.path}:\n"
+                        f"  Line {e.lineno}: {e.text.strip() if e.text else '(no text)'}\n"
+                        f"  Error: {e.msg}"
+                    )
+                    # Re-raise with better message
+                    raise SyntaxError(error_msg) from e
 
     def generate_block_code(self, block: BlockInfo) -> str:
         """Generate code for a single block."""
@@ -218,13 +241,13 @@ class {class_name}:
         # Build connection wiring code
         connection_code = self._generate_connection_code(model_info)
 
-        # Build update order code
+        # Build update order code (8 spaces - inside method body)
         update_calls = []
         for block_id in model_info.execution_order:
             block = next((b for b in model_info.blocks if b.id == block_id), None)
             if block:
                 var_name = self.get_block_var_name(block)
-                update_calls.append(f"            self.{var_name}.update(t)")
+                update_calls.append(f"        self.{var_name}.update(t)")
 
         # Build integrator list for state propagation
         integrator_list = []

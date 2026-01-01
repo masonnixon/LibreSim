@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 
 from src.simulation.compiler import ModelCompiler
+from src.models.model import Model
 from .models import (
     Language,
     IntegrationMethod,
@@ -13,7 +14,18 @@ from .models import (
 )
 
 
-# Block types that contain integrators/state
+# Block types that require numerical integration (have state/derivative interface)
+# These blocks implement the integrator interface with state, derivative, x0, xd0, etc.
+INTEGRATOR_BLOCKS = {
+    "integrator",
+    "limited_integrator",
+    "transfer_function",
+    "state_space",
+    "second_order",
+}
+
+# Block types that hold state but use their own internal update mechanism
+# These blocks don't need external integration - they update their own state
 STATE_HOLDING_BLOCKS = {
     "integrator",
     "limited_integrator",
@@ -129,8 +141,12 @@ class CodeGenerator:
         Returns:
             GeneratedProject containing all generated files
         """
-        # Step 1: Compile the model using existing compiler
-        compiled = self._compiler.compile(model)
+        # Step 1: Convert dict to Model object if needed and compile
+        if isinstance(model, dict):
+            model_obj = Model.model_validate(model)
+        else:
+            model_obj = model
+        compiled = self._compiler.compile(model_obj)
         if not compiled.success:
             raise CodeGenerationError(f"Model compilation failed: {compiled.message}")
 
@@ -186,7 +202,8 @@ class CodeGenerator:
             blocks.append(block_info)
 
             # Categorize blocks
-            if compiled_block.type in STATE_HOLDING_BLOCKS:
+            # Only blocks with the integrator interface go in integrator_blocks
+            if compiled_block.type in INTEGRATOR_BLOCKS:
                 integrator_blocks.append(block_id)
             if compiled_block.type in SOURCE_BLOCKS:
                 source_blocks.append(block_id)
