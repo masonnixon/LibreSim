@@ -1,0 +1,14 @@
+# Rust compiler for LibreSim Coder
+FROM rust:1.75-bookworm
+
+LABEL maintainer="LibreSim Team"
+LABEL description="Rust compiler for LibreSim code generation"
+
+# Create working directory
+WORKDIR /build
+
+# Copy compile script
+COPY compile-rust.sh /compile.sh
+RUN chmod +x /compile.sh
+
+ENTRYPOINT ["/compile.sh"]

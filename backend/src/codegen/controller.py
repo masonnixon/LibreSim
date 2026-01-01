@@ -2,11 +2,12 @@
 
 from typing import Any
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, Response
 from pydantic import BaseModel
 
 from .generator import CodeGenerator, CodeGenerationConfig, CodeGenerationError
 from .models import Language, IntegrationMethod
+from .compilation import DockerCompiler, CompilationError
 
 
 router = APIRouter(prefix="/codegen", tags=["Code Generation"])
@@ -143,3 +144,147 @@ async def get_language_info(language: str):
     }
 
     return info.get(lang.value, {"error": "Unknown language"})
+
+
+class CompileRequest(BaseModel):
+    """Request model for code compilation."""
+    model: dict[str, Any]
+    language: str = "python"
+    integration_method: str = "rk4"
+    step_size: float = 0.01
+    stop_time: float = 10.0
+    start_time: float = 0.0
+    project_name: str = "simulation"
+
+
+class CompileStatusResponse(BaseModel):
+    """Response model for compilation status."""
+    docker_available: bool
+    images_available: dict[str, bool]
+
+
+@router.post("/compile")
+async def compile_code(request: CompileRequest):
+    """Generate and compile simulation code into an executable.
+
+    Returns the compiled executable binary.
+    """
+    try:
+        # Parse language
+        try:
+            language = Language(request.language.lower())
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported language: {request.language}. "
+                       f"Supported: {[l.value for l in Language]}"
+            )
+
+        # Parse integration method
+        try:
+            method = IntegrationMethod(request.integration_method.lower())
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported integration method: {request.integration_method}. "
+                       f"Supported: {[m.value for m in IntegrationMethod]}"
+            )
+
+        # Create config
+        config = CodeGenerationConfig(
+            language=language,
+            integration_method=method,
+            step_size=request.step_size,
+            stop_time=request.stop_time,
+            start_time=request.start_time,
+            project_name=request.project_name,
+            include_csv_output=True,
+            include_main=True,
+        )
+
+        # Generate code
+        generator = CodeGenerator()
+        project = generator.generate(request.model, config)
+
+        # Compile
+        compiler = DockerCompiler()
+        executable_bytes, filename = await compiler.get_executable_bytes(project)
+
+        # Determine content type based on language
+        if language == Language.PYTHON:
+            # PyInstaller creates Linux ELF or Windows EXE
+            content_type = "application/octet-stream"
+        else:
+            content_type = "application/octet-stream"
+
+        return Response(
+            content=executable_bytes,
+            media_type=content_type,
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"'
+            }
+        )
+
+    except CompilationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except CodeGenerationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Compilation failed: {str(e)}")
+
+
+@router.get("/compile/status", response_model=CompileStatusResponse)
+async def get_compile_status():
+    """Check compilation service availability.
+
+    Returns information about Docker availability and compiler images.
+    """
+    compiler = DockerCompiler()
+
+    docker_available = compiler.check_docker_available()
+
+    images_available = {}
+    if docker_available:
+        for lang in Language:
+            images_available[lang.value] = compiler.check_image_exists(lang)
+    else:
+        for lang in Language:
+            images_available[lang.value] = False
+
+    return CompileStatusResponse(
+        docker_available=docker_available,
+        images_available=images_available
+    )
+
+
+@router.post("/compile/build-image/{language}")
+async def build_compiler_image(language: str):
+    """Build or rebuild a compiler Docker image.
+
+    This is an administrative endpoint for setting up compilation support.
+    """
+    try:
+        lang = Language(language.lower())
+    except ValueError:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Language not found: {language}"
+        )
+
+    compiler = DockerCompiler()
+
+    if not compiler.check_docker_available():
+        raise HTTPException(
+            status_code=503,
+            detail="Docker is not available on this system"
+        )
+
+    success = compiler.build_compiler_image(lang)
+
+    if success:
+        return {"status": "success", "message": f"Built compiler image for {language}"}
+    else:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to build compiler image for {language}"
+        )

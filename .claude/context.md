@@ -259,6 +259,57 @@ The toolbar supports:
 
 ## Recent Changes Log
 
+### Session 2024-12-31 (LibreSim Coder - Code Generation - Continued)
+- **Completed Docker Compilation Support**:
+  - `docker/codegen/docker-compose.yml` - Docker Compose for compiler containers
+  - `docker/codegen/compilers/Dockerfile.{python,c,cpp,rust}` - Compiler images
+  - `docker/codegen/compilers/compile-{python,c,cpp,rust}.sh` - Build scripts
+  - `backend/src/codegen/compilation/docker_compiler.py` - DockerCompiler service class
+  - API endpoints: `/api/codegen/compile`, `/api/codegen/compile/status`, `/api/codegen/compile/build-image/{language}`
+
+- **Completed Frontend UI**:
+  - `frontend/src/components/CodeGen/CodeGenModal.tsx` - Modal for code generation
+  - Updated `frontend/src/store/uiStore.ts` - Added showCodeGenModal state
+  - Updated `frontend/src/components/Toolbar/Toolbar.tsx` - Added purple "Generate" button
+
+- **Completed C Code Generator** (full implementation):
+  - `backend/src/codegen/languages/c/generator.py` - CCodeGenerator class
+  - `backend/src/codegen/languages/c/blocks/` - Block templates:
+    - `sources.py` - Constant, Step, Ramp, SineWave, Pulse, Clock, Ground
+    - `sinks.py` - Scope, Display, Terminator, ToWorkspace
+    - `math_ops.py` - Sum, Gain, Product, Abs, Sign, Bias, Saturation, DeadZone, Switch, MathFunction, Trigonometry
+    - `continuous.py` - Integrator, Derivative, TransferFunction, StateSpace, SecondOrder, TransportDelay
+
+- **Pending**: C++/Rust block templates (currently stubs with basic project structure)
+
+### Session 2024-12-31 (LibreSim Coder - Initial Implementation)
+- **Added LibreSim Coder** - Code generation feature similar to Simulink Coder:
+
+- **Core Infrastructure** (`backend/src/codegen/`):
+  - `generator.py` - Main CodeGenerator orchestrator
+  - `models.py` - Data models (GeneratedProject, BlockInfo, etc.)
+  - `integration.py` - Integration method code for all languages (Euler, RK2, RK4, Merson)
+  - `controller.py` - FastAPI endpoints for code generation
+
+- **Python Code Generator** (fully implemented):
+  - Complete project generation with blocks.py, simulation.py, main.py
+  - Block templates for sources, sinks, math, continuous, discrete
+  - Multi-pass integration support (RK4, Merson)
+  - CSV output generation
+
+- **C/C++/Rust Generators** (stub implementations):
+  - Project structure with CMakeLists.txt / Cargo.toml
+  - Ready for full implementation
+
+- **API Endpoints**:
+  - `POST /api/codegen/generate` - Generate code ZIP
+  - `GET /api/codegen/info` - Get supported languages/methods/blocks
+
+- **Documentation** (`docs/libresim-coder.md`):
+  - Complete user guide for code generation
+  - Block support matrix
+  - API reference
+
 ### Session 2024-12-31 (New Toolboxes Implementation)
 - **Added four new blocksets** following the Simulink toolbox pattern:
 

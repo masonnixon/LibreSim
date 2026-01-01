@@ -7,6 +7,7 @@ import { api } from '../../api/client'
 import { toast } from '../Toast/Toast'
 import { exampleList, getExample } from '../../data/examples'
 import { ExamplesModal } from '../Examples/ExamplesModal'
+import { CodeGenModal } from '../CodeGen/CodeGenModal'
 import { exportModelAsMDL } from '../../utils/mdlExporter'
 import { importMDL, isMDLFile, importMDLAsLibrary } from '../../utils/mdlImporter'
 import { blockRegistry } from '../../blocks'
@@ -49,6 +50,9 @@ export function Toolbar() {
     showExamplesModal,
     openExamplesModal,
     closeExamplesModal,
+    showCodeGenModal,
+    openCodeGenModal,
+    closeCodeGenModal,
   } = useUIStore()
   const importLibrary = useLibraryStore((state) => state.importLibrary)
 
@@ -491,6 +495,9 @@ export function Toolbar() {
       <div className="dropdown-item" onClick={() => { openExamplesModal(); setShowMobileMenu(false) }}>
         Browse Examples
       </div>
+      <div className="dropdown-item text-purple-400" onClick={() => { openCodeGenModal(); setShowMobileMenu(false) }}>
+        Generate Code
+      </div>
       <div className="border-t border-editor-border my-1" />
       <div className="dropdown-item" onClick={() => { toggleSidebar(); setShowMobileMenu(false) }}>
         {sidebarCollapsed ? 'Show Blocks' : 'Hide Blocks'}
@@ -676,6 +683,21 @@ export function Toolbar() {
             </button>
           </div>
 
+          {/* Generate Code Button */}
+          <div className="pr-2 border-r border-editor-border">
+            <button
+              onClick={openCodeGenModal}
+              disabled={!model}
+              className="px-3 py-1.5 text-sm hover:bg-editor-border rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 text-purple-400 hover:text-purple-300"
+              title="Generate Simulation Code (Python, C, C++, Rust)"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+              </svg>
+              Generate
+            </button>
+          </div>
+
           {/* Simulation Controls */}
           <div className="flex items-center gap-1 pr-2 border-r border-editor-border">
             <button
@@ -834,6 +856,12 @@ export function Toolbar() {
         examples={exampleList}
         onLoadExample={handleLoadExample}
         onOpenBlockReference={() => openHelpModal('blocks')}
+      />
+
+      {/* Code Generation Modal */}
+      <CodeGenModal
+        isOpen={showCodeGenModal}
+        onClose={closeCodeGenModal}
       />
     </div>
   )

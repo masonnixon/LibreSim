@@ -1,0 +1,17 @@
+# Python compiler for LibreSim Coder
+FROM python:3.11-slim
+
+LABEL maintainer="LibreSim Team"
+LABEL description="Python compiler for LibreSim code generation"
+
+# Install dependencies
+RUN pip install --no-cache-dir numpy pyinstaller
+
+# Create working directory
+WORKDIR /build
+
+# Copy compile script
+COPY compile-python.sh /compile.sh
+RUN chmod +x /compile.sh
+
+ENTRYPOINT ["/compile.sh"]
