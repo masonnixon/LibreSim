@@ -7,7 +7,7 @@ export interface ExampleInfo {
   id: string
   name: string
   description: string
-  category: 'basic' | 'control' | 'signal' | 'advanced' | 'aerospace' | 'control_design'
+  category: 'basic' | 'control' | 'signal' | 'advanced' | 'aerospace' | 'control_design' | 'dsp' | 'rf' | 'navigation' | 'sensor_fusion'
 }
 
 interface ExamplesModalProps {
@@ -49,9 +49,29 @@ const categoryInfo: Record<string, { title: string; description: string; icon: s
     description: 'PID, LQR, pole placement, and compensator design',
     icon: '⚙️',
   },
+  dsp: {
+    title: 'DSP System Toolbox',
+    description: 'FFT, digital filters, windowing, and signal statistics',
+    icon: '🎵',
+  },
+  rf: {
+    title: 'RF Blockset',
+    description: 'RF budget analysis, modulators, and power conversion',
+    icon: '📡',
+  },
+  navigation: {
+    title: 'Navigation Toolbox',
+    description: 'Coordinate transforms and geodetic calculations',
+    icon: '🧭',
+  },
+  sensor_fusion: {
+    title: 'Sensor Fusion & Tracking',
+    description: 'IMU sensors, AHRS filters, and tracking algorithms',
+    icon: '🎯',
+  },
 }
 
-const categoryOrder = ['basic', 'control', 'control_design', 'signal', 'aerospace', 'advanced']
+const categoryOrder = ['basic', 'control', 'control_design', 'signal', 'aerospace', 'dsp', 'rf', 'navigation', 'sensor_fusion', 'advanced']
 
 export function ExamplesModal({ isOpen, onClose, examples, onLoadExample, onOpenBlockReference }: ExamplesModalProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>('basic')

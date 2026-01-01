@@ -24,6 +24,10 @@ const categoryLabels: Record<BlockCategory, string> = {
   matrix_ops: 'Matrix Operations',
   control_design: 'Control Design',
   aerospace: 'Aerospace Blockset',
+  dsp: 'DSP System Toolbox',
+  rf: 'RF Blockset',
+  navigation: 'Navigation Toolbox',
+  sensor_fusion: 'Sensor Fusion & Tracking',
 }
 
 const categoryColors: Record<BlockCategory, string> = {
@@ -43,6 +47,10 @@ const categoryColors: Record<BlockCategory, string> = {
   matrix_ops: 'bg-emerald-600',
   control_design: 'bg-violet-600',
   aerospace: 'bg-sky-600',
+  dsp: 'bg-fuchsia-600',
+  rf: 'bg-red-600',
+  navigation: 'bg-blue-600',
+  sensor_fusion: 'bg-yellow-600',
 }
 
 export function Sidebar() {

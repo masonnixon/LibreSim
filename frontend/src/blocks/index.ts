@@ -16,6 +16,10 @@ import { dataTypeBlocks } from './data_types'
 import { matrixOpsBlocks } from './matrix_ops'
 import { controlDesignBlocks } from './control_design'
 import { aerospaceBlocks } from './aerospace'
+import { dspBlocks } from './dsp'
+import { rfBlocks } from './rf'
+import { navigationBlocks } from './navigation'
+import { sensorFusionBlocks } from './sensor_fusion'
 
 // All built-in block definitions
 const builtInBlocks: BlockDefinition[] = [
@@ -35,6 +39,10 @@ const builtInBlocks: BlockDefinition[] = [
   ...matrixOpsBlocks,
   ...controlDesignBlocks,
   ...aerospaceBlocks,
+  ...dspBlocks,
+  ...rfBlocks,
+  ...navigationBlocks,
+  ...sensorFusionBlocks,
 ]
 
 // Block registry for quick lookup - supports dynamic addition of library blocks
@@ -192,6 +200,10 @@ export const blockCategories: BlockCategory[] = [
   'matrix_ops',
   'control_design',
   'aerospace',
+  'dsp',
+  'rf',
+  'navigation',
+  'sensor_fusion',
 ]
 
 export { sourceBlocks } from './sources'
@@ -210,3 +222,7 @@ export { dataTypeBlocks } from './data_types'
 export { matrixOpsBlocks } from './matrix_ops'
 export { controlDesignBlocks } from './control_design'
 export { aerospaceBlocks } from './aerospace'
+export { dspBlocks } from './dsp'
+export { rfBlocks } from './rf'
+export { navigationBlocks } from './navigation'
+export { sensorFusionBlocks } from './sensor_fusion'

@@ -1,0 +1,163 @@
+{
+  "id": "example-nav-coordinate-transform",
+  "metadata": {
+    "name": "Navigation Coordinate Transformations",
+    "description": "Demonstrates Navigation Toolbox coordinate transformations: Convert a trajectory from geodetic (LLA) to ECEF and then to local NED coordinates. Shows LLAToECEF, ECEFToNED, and GreatCircleDistance blocks.",
+    "author": "LibreSim Examples",
+    "createdAt": "2024-12-31T00:00:00Z",
+    "modifiedAt": "2024-12-31T00:00:00Z",
+    "version": "1.0.0"
+  },
+  "blocks": [
+    {
+      "id": "lat_start",
+      "type": "constant",
+      "name": "Latitude (37.0 deg)",
+      "position": { "x": 50, "y": 80 },
+      "parameters": { "value": 37.0 },
+      "inputPorts": [],
+      "outputPorts": [{ "id": "lat_start-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "lon_ramp",
+      "type": "ramp",
+      "name": "Longitude (moving)",
+      "position": { "x": 50, "y": 160 },
+      "parameters": { "slope": 0.001, "start": 0, "initialOutput": -122.0 },
+      "inputPorts": [],
+      "outputPorts": [{ "id": "lon_ramp-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "alt",
+      "type": "constant",
+      "name": "Altitude (1000 m)",
+      "position": { "x": 50, "y": 240 },
+      "parameters": { "value": 1000.0 },
+      "inputPorts": [],
+      "outputPorts": [{ "id": "alt-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "mux_lla",
+      "type": "mux",
+      "name": "LLA Vector",
+      "position": { "x": 200, "y": 160 },
+      "parameters": { "numInputs": 3 },
+      "inputPorts": [
+        { "id": "mux_lla-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
+        { "id": "mux_lla-in2", "name": "in2", "dataType": "double", "dimensions": [1] },
+        { "id": "mux_lla-in3", "name": "in3", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [{ "id": "mux_lla-out", "name": "out", "dataType": "double", "dimensions": [3] }]
+    },
+    {
+      "id": "lla_to_ecef",
+      "type": "lla_to_ecef",
+      "name": "LLA to ECEF",
+      "position": { "x": 350, "y": 160 },
+      "parameters": {},
+      "inputPorts": [{ "id": "lla_to_ecef-in", "name": "lla", "dataType": "double", "dimensions": [3] }],
+      "outputPorts": [{ "id": "lla_to_ecef-out", "name": "ecef", "dataType": "double", "dimensions": [3] }]
+    },
+    {
+      "id": "ecef_to_ned",
+      "type": "ecef_to_ned",
+      "name": "ECEF to NED",
+      "position": { "x": 520, "y": 160 },
+      "parameters": { "referenceLat": 37.0, "referenceLon": -122.0, "referenceAlt": 0.0 },
+      "inputPorts": [{ "id": "ecef_to_ned-in", "name": "ecef", "dataType": "double", "dimensions": [3] }],
+      "outputPorts": [{ "id": "ecef_to_ned-out", "name": "ned", "dataType": "double", "dimensions": [3] }]
+    },
+    {
+      "id": "ref_point",
+      "type": "constant",
+      "name": "Ref Point [37, -122]",
+      "position": { "x": 350, "y": 320 },
+      "parameters": { "value": [37.0, -122.0] },
+      "inputPorts": [],
+      "outputPorts": [{ "id": "ref_point-out", "name": "out", "dataType": "double", "dimensions": [2] }]
+    },
+    {
+      "id": "demux_latlon",
+      "type": "demux",
+      "name": "Extract Lat/Lon",
+      "position": { "x": 200, "y": 320 },
+      "parameters": { "numOutputs": 2 },
+      "inputPorts": [{ "id": "demux_latlon-in", "name": "in", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": [
+        { "id": "demux_latlon-out1", "name": "out1", "dataType": "double", "dimensions": [1] },
+        { "id": "demux_latlon-out2", "name": "out2", "dataType": "double", "dimensions": [1] }
+      ]
+    },
+    {
+      "id": "mux_current",
+      "type": "mux",
+      "name": "Current [lat, lon]",
+      "position": { "x": 350, "y": 400 },
+      "parameters": { "numInputs": 2 },
+      "inputPorts": [
+        { "id": "mux_current-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
+        { "id": "mux_current-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [{ "id": "mux_current-out", "name": "out", "dataType": "double", "dimensions": [2] }]
+    },
+    {
+      "id": "great_circle",
+      "type": "great_circle_distance",
+      "name": "Great Circle Dist",
+      "position": { "x": 520, "y": 360 },
+      "parameters": {},
+      "inputPorts": [
+        { "id": "great_circle-in1", "name": "point1", "dataType": "double", "dimensions": [2] },
+        { "id": "great_circle-in2", "name": "point2", "dataType": "double", "dimensions": [2] }
+      ],
+      "outputPorts": [{ "id": "great_circle-out", "name": "distance", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "scope_ecef",
+      "type": "scope",
+      "name": "ECEF Position",
+      "position": { "x": 700, "y": 100 },
+      "parameters": { "numInputs": 1 },
+      "inputPorts": [{ "id": "scope_ecef-in1", "name": "in1", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": []
+    },
+    {
+      "id": "scope_ned",
+      "type": "scope",
+      "name": "NED Position",
+      "position": { "x": 700, "y": 200 },
+      "parameters": { "numInputs": 1 },
+      "inputPorts": [{ "id": "scope_ned-in1", "name": "in1", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": []
+    },
+    {
+      "id": "scope_dist",
+      "type": "scope",
+      "name": "Distance (m)",
+      "position": { "x": 700, "y": 360 },
+      "parameters": { "numInputs": 1 },
+      "inputPorts": [{ "id": "scope_dist-in1", "name": "in1", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": []
+    }
+  ],
+  "connections": [
+    { "id": "c1", "sourceBlockId": "lat_start", "sourcePortId": "lat_start-out", "targetBlockId": "mux_lla", "targetPortId": "mux_lla-in1" },
+    { "id": "c2", "sourceBlockId": "lon_ramp", "sourcePortId": "lon_ramp-out", "targetBlockId": "mux_lla", "targetPortId": "mux_lla-in2" },
+    { "id": "c3", "sourceBlockId": "alt", "sourcePortId": "alt-out", "targetBlockId": "mux_lla", "targetPortId": "mux_lla-in3" },
+    { "id": "c4", "sourceBlockId": "mux_lla", "sourcePortId": "mux_lla-out", "targetBlockId": "lla_to_ecef", "targetPortId": "lla_to_ecef-in" },
+    { "id": "c5", "sourceBlockId": "lla_to_ecef", "sourcePortId": "lla_to_ecef-out", "targetBlockId": "ecef_to_ned", "targetPortId": "ecef_to_ned-in" },
+    { "id": "c6", "sourceBlockId": "lla_to_ecef", "sourcePortId": "lla_to_ecef-out", "targetBlockId": "scope_ecef", "targetPortId": "scope_ecef-in1" },
+    { "id": "c7", "sourceBlockId": "ecef_to_ned", "sourcePortId": "ecef_to_ned-out", "targetBlockId": "scope_ned", "targetPortId": "scope_ned-in1" },
+    { "id": "c8", "sourceBlockId": "lat_start", "sourcePortId": "lat_start-out", "targetBlockId": "mux_current", "targetPortId": "mux_current-in1" },
+    { "id": "c9", "sourceBlockId": "lon_ramp", "sourcePortId": "lon_ramp-out", "targetBlockId": "mux_current", "targetPortId": "mux_current-in2" },
+    { "id": "c10", "sourceBlockId": "mux_current", "sourcePortId": "mux_current-out", "targetBlockId": "great_circle", "targetPortId": "great_circle-in1" },
+    { "id": "c11", "sourceBlockId": "ref_point", "sourcePortId": "ref_point-out", "targetBlockId": "great_circle", "targetPortId": "great_circle-in2" },
+    { "id": "c12", "sourceBlockId": "great_circle", "sourcePortId": "great_circle-out", "targetBlockId": "scope_dist", "targetPortId": "scope_dist-in1" }
+  ],
+  "simulationConfig": {
+    "solver": "euler",
+    "startTime": 0,
+    "stopTime": 100,
+    "stepSize": 0.1
+  }
+}

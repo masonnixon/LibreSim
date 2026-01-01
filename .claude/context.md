@@ -59,6 +59,10 @@ The core simulation engine using multi-pass numerical integration.
 - `data_types.py` - DataTypeConversion, RealImagToComplex, ComplexToRealImag
 - `matrix_ops.py` - MatrixMultiply, MatrixTranspose, MatrixInverse, Selector, Assignment, Concatenate, MatrixSum, VectorNorm
 - `aerospace.py` - QuaternionNormalize, QuaternionMultiply, QuaternionConjugate, QuaternionToEuler, EulerToQuaternion, QuaternionRotateVector, DCMToQuaternion, QuaternionToDCM, ISAAtmosphere, SixDOF, FlatEarthGravity, WGS84Gravity
+- `dsp.py` - FFT, IFFT, FIRFilter, IIRFilter, Convolution, Downsampler, Upsampler, Interpolator, WindowFunction, Mean, Variance, RMS, PeakDetector, ZeroCrossingDetector
+- `rf.py` - RFAmplifier, RFMixer, RFFilter, SParameterNetwork, RFBudgetElement, Attenuator, AMModulator, FMModulator, PhaseNoise, dBmToWatts, WattsTodBm
+- `navigation.py` - CoordinateTransformationConversion, LLAToECEF, ECEFToLLA, ECEFToNED, NEDToECEF, WaypointFollower, GreatCircleDistance, FlatEarthPosition
+- `sensor_fusion.py` - IMUSensor, Accelerometer, Gyroscope, Magnetometer, GPSSensor, Altimeter, ComplementaryFilter, MadgwickFilter, MahonyFilter, INSGPSFusion, AlphaBetaFilter, AlphaBetaGammaFilter
 
 ## Docker Configuration
 - Uses Docker Compose for orchestration
@@ -142,6 +146,22 @@ def rpt(self):   # optional, for recording data
 
 ### Aerospace
 - QuaternionNormalize, QuaternionMultiply, QuaternionConjugate, QuaternionToEuler, EulerToQuaternion, QuaternionRotateVector, DCMToQuaternion, QuaternionToDCM, ISAAtmosphere, SixDOF, FlatEarthGravity, WGS84Gravity
+
+### DSP (Digital Signal Processing)
+- FFT, IFFT, FIRFilter, IIRFilter, Convolution, Downsampler, Upsampler, Interpolator, WindowFunction, Mean, Variance, RMS, PeakDetector, ZeroCrossingDetector
+
+### RF (Radio Frequency)
+- RFAmplifier, RFMixer, RFFilter, SParameterNetwork, RFBudgetElement, Attenuator, AMModulator, FMModulator, PhaseNoise, dBmToWatts, WattsTodBm
+
+### Navigation
+- CoordinateTransformationConversion, LLAToECEF, ECEFToLLA, ECEFToNED, NEDToECEF, WaypointFollower, GreatCircleDistance, FlatEarthPosition
+- WGS84 ellipsoid geodetic transformations
+
+### Sensor Fusion & Tracking
+- IMUSensor, Accelerometer, Gyroscope, Magnetometer, GPSSensor, Altimeter
+- ComplementaryFilter, MadgwickFilter, MahonyFilter (AHRS attitude estimation)
+- INSGPSFusion (loosely coupled INS/GPS)
+- AlphaBetaFilter, AlphaBetaGammaFilter (tracking filters)
 
 ## Library Block System
 
@@ -238,6 +258,51 @@ The toolbar supports:
 - `backend/tests/test_block_integration.py` - Frontend-backend integration tests
 
 ## Recent Changes Log
+
+### Session 2024-12-31 (New Toolboxes Implementation)
+- **Added four new blocksets** following the Simulink toolbox pattern:
+
+- **DSP System Toolbox** (`dsp.py`, 14 blocks):
+  - Transforms: FFT, IFFT (DFT-based implementation)
+  - Filters: FIRFilter, IIRFilter, Convolution
+  - Sample rate conversion: Downsampler, Upsampler, Interpolator
+  - Window functions: WindowFunction (hamming, hanning, blackman, rectangular, kaiser)
+  - Statistics: Mean, Variance, RMS
+  - Detection: PeakDetector, ZeroCrossingDetector
+
+- **RF Blockset** (`rf.py`, 11 blocks):
+  - Active components: RFAmplifier (with compression, NF, OIP3), RFMixer
+  - Passive components: RFFilter, Attenuator
+  - Analysis: SParameterNetwork (2-port), RFBudgetElement (Friis formula for cascaded NF)
+  - Modulation: AMModulator, FMModulator, PhaseNoise
+  - Power conversion: dBmToWatts, WattsTodBm
+
+- **Navigation Toolbox** (`navigation.py`, 8 blocks):
+  - Coordinate transforms: CoordinateTransformationConversion (LLA/ECEF/NED/Euler/DCM/Quaternion)
+  - Geodetic: LLAToECEF, ECEFToLLA (WGS84 ellipsoid)
+  - Local frames: ECEFToNED, NEDToECEF, FlatEarthPosition
+  - Navigation: WaypointFollower, GreatCircleDistance (Haversine)
+
+- **Sensor Fusion & Tracking Toolbox** (`sensor_fusion.py`, 12 blocks):
+  - Sensors: IMUSensor, Accelerometer, Gyroscope, Magnetometer, GPSSensor, Altimeter
+  - Attitude filters: ComplementaryFilter, MadgwickFilter (AHRS), MahonyFilter
+  - Navigation: INSGPSFusion (loosely coupled)
+  - Tracking: AlphaBetaFilter, AlphaBetaGammaFilter
+
+- **Added unit tests** for all new blocks (4 test files)
+- **Added 7 example models** demonstrating new toolboxes:
+  - 40: DSP FFT Spectrum Analysis
+  - 41: DSP FIR Lowpass Filter
+  - 42: RF Receiver Chain Budget Analysis
+  - 43: RF AM Modulation
+  - 44: Navigation Coordinate Transformations
+  - 45: Sensor Fusion AHRS Attitude Estimation
+  - 46: Sensor Fusion Alpha-Beta-Gamma Tracking
+
+- **Created blockset development guide** (`docs/blockset-development-guide.md`)
+  - Complete step-by-step instructions for adding new blocksets
+  - Covers backend implementation, tests, registration, frontend definitions
+  - Includes templates and checklist
 
 ### Session 2024-12-30 (Product Block Operations Bug Fix)
 - **Fixed critical frontend-backend parameter mismatch for Product blocks**:

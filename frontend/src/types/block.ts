@@ -15,6 +15,10 @@ export type BlockCategory =
   | 'matrix_ops'
   | 'control_design'
   | 'aerospace'
+  | 'dsp'
+  | 'rf'
+  | 'navigation'
+  | 'sensor_fusion'
 
 export type DataType = 'double' | 'single' | 'int32' | 'boolean' | 'bus'
 

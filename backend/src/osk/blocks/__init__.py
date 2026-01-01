@@ -151,6 +151,59 @@ from .aerospace import (
     FlatEarthGravity,
     WGS84Gravity,
 )
+from .dsp import (
+    FFT,
+    IFFT,
+    FIRFilter,
+    IIRFilter,
+    Convolution,
+    Downsampler,
+    Upsampler,
+    Interpolator,
+    WindowFunction,
+    Mean,
+    Variance,
+    RMS,
+    PeakDetector,
+    ZeroCrossingDetector,
+)
+from .rf import (
+    RFAmplifier,
+    RFMixer,
+    RFFilter,
+    SParameterNetwork,
+    RFBudgetElement,
+    Attenuator,
+    AMModulator,
+    FMModulator,
+    PhaseNoise,
+    dBmToWatts,
+    WattsTodBm,
+)
+from .navigation import (
+    CoordinateTransformationConversion,
+    LLAToECEF,
+    ECEFToLLA,
+    ECEFToNED,
+    NEDToECEF,
+    WaypointFollower,
+    GreatCircleDistance,
+    FlatEarthPosition,
+)
+from .sensor_fusion import (
+    IMUSensor,
+    Accelerometer,
+    Gyroscope,
+    Magnetometer,
+    GPSSensor,
+    Altimeter,
+    ComplementaryFilter,
+    MadgwickFilter,
+    MahonyFilter,
+    INSGPSFusion,
+    AlphaBetaFilter,
+    AlphaBetaGammaFilter,
+)
 
 __all__ = [
     # Sources
@@ -199,4 +252,18 @@ __all__ = [
     "QuaternionNormalize", "QuaternionMultiply", "QuaternionConjugate", "QuaternionToEuler",
     "EulerToQuaternion", "QuaternionRotateVector", "DCMToQuaternion", "QuaternionToDCM",
     "ISAAtmosphere", "SixDOFEuler", "FlatEarthGravity", "WGS84Gravity",
+    # DSP
+    "FFT", "IFFT", "FIRFilter", "IIRFilter", "Convolution", "Downsampler", "Upsampler",
+    "Interpolator", "WindowFunction", "Mean", "Variance", "RMS", "PeakDetector",
+    "ZeroCrossingDetector",
+    # RF
+    "RFAmplifier", "RFMixer", "RFFilter", "SParameterNetwork", "RFBudgetElement",
+    "Attenuator", "AMModulator", "FMModulator", "PhaseNoise", "dBmToWatts", "WattsTodBm",
+    # Navigation
+    "CoordinateTransformationConversion", "LLAToECEF", "ECEFToLLA", "ECEFToNED", "NEDToECEF",
+    "WaypointFollower", "GreatCircleDistance", "FlatEarthPosition",
+    # Sensor Fusion
+    "IMUSensor", "Accelerometer", "Gyroscope", "Magnetometer", "GPSSensor", "Altimeter",
+    "ComplementaryFilter", "MadgwickFilter", "MahonyFilter", "INSGPSFusion",
+    "AlphaBetaFilter", "AlphaBetaGammaFilter",
 ]
