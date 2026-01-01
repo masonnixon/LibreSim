@@ -283,6 +283,89 @@ impl {struct_name} {{
 """
 
 
+def template_white_noise(block: BlockInfo, struct_name: str) -> str:
+    """Generate Rust code for White Noise block."""
+    power = block.parameters.get("power", 1.0)
+    sample_time = block.parameters.get("sampleTime", 0.1)
+    seed = block.parameters.get("seed", 0)
+
+    return f"""
+/// {block.name} - White Noise source
+/// Uses a simple LCG-based Box-Muller transform for Gaussian random numbers
+pub struct {struct_name} {{
+    pub output: f64,
+    power: f64,
+    sample_time: f64,
+    std_dev: f64,
+    last_sample_time: f64,
+    seed: u64,
+    spare: f64,
+    has_spare: bool,
+}}
+
+impl {struct_name} {{
+    pub fn new() -> Self {{
+        let power = {power}_f64;
+        let sample_time = {sample_time}_f64;
+        Self {{
+            output: 0.0,
+            power,
+            sample_time,
+            std_dev: (power / sample_time).sqrt(),
+            last_sample_time: f64::NEG_INFINITY,
+            seed: {seed if seed else 12345},
+            spare: 0.0,
+            has_spare: false,
+        }}
+    }}
+
+    pub fn init(&mut self) {{
+        self.output = 0.0;
+        self.last_sample_time = f64::NEG_INFINITY;
+        self.has_spare = false;
+    }}
+
+    fn randn(&mut self) -> f64 {{
+        if self.has_spare {{
+            self.has_spare = false;
+            return self.spare * self.std_dev;
+        }}
+
+        loop {{
+            self.seed = self.seed.wrapping_mul(1103515245).wrapping_add(12345);
+            let u = ((self.seed % 65536) as f64 / 32768.0) - 1.0;
+            self.seed = self.seed.wrapping_mul(1103515245).wrapping_add(12345);
+            let v = ((self.seed % 65536) as f64 / 32768.0) - 1.0;
+            let s = u * u + v * v;
+            if s < 1.0 && s != 0.0 {{
+                let mul = (-2.0 * s.ln() / s).sqrt();
+                self.spare = v * mul;
+                self.has_spare = true;
+                return u * mul * self.std_dev;
+            }}
+        }}
+    }}
+
+    pub fn update(&mut self, t: f64) {{
+        if t - self.last_sample_time >= self.sample_time - 1e-10 {{
+            self.output = self.randn();
+            self.last_sample_time = t;
+        }}
+    }}
+
+    pub fn get_output(&self, _port: usize) -> f64 {{
+        self.output
+    }}
+}}
+
+impl Default for {struct_name} {{
+    fn default() -> Self {{
+        Self::new()
+    }}
+}}
+"""
+
+
 SOURCE_TEMPLATES = {
     "constant": template_constant,
     "step": template_step,
@@ -291,4 +374,5 @@ SOURCE_TEMPLATES = {
     "pulse": template_pulse,
     "clock": template_clock,
     "ground": template_ground,
+    "white_noise": template_white_noise,
 }

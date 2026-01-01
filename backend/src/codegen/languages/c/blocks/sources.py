@@ -221,6 +221,71 @@ double {struct_name}_get_output({struct_name}* b, int port) {{
 """
 
 
+def template_white_noise(block: BlockInfo, struct_name: str) -> str:
+    """Generate C code for White Noise block."""
+    power = block.parameters.get("power", 1.0)
+    sample_time = block.parameters.get("sampleTime", 0.1)
+    seed = block.parameters.get("seed", 0)
+
+    return f"""
+// {block.name} - White Noise source
+typedef struct {{
+    double power;
+    double sample_time;
+    double output;
+    double last_sample_time;
+    double std_dev;
+    unsigned int seed;
+}} {struct_name};
+
+// Simple Box-Muller transform for Gaussian random numbers
+static double {struct_name}_randn({struct_name}* b) {{
+    static int have_spare = 0;
+    static double spare;
+
+    if (have_spare) {{
+        have_spare = 0;
+        return spare * b->std_dev;
+    }}
+
+    double u, v, s;
+    do {{
+        b->seed = b->seed * 1103515245 + 12345;
+        u = ((double)(b->seed % 65536) / 32768.0) - 1.0;
+        b->seed = b->seed * 1103515245 + 12345;
+        v = ((double)(b->seed % 65536) / 32768.0) - 1.0;
+        s = u * u + v * v;
+    }} while (s >= 1.0 || s == 0.0);
+
+    double mul = sqrt(-2.0 * log(s) / s);
+    spare = v * mul;
+    have_spare = 1;
+    return u * mul * b->std_dev;
+}}
+
+void {struct_name}_init({struct_name}* b) {{
+    b->power = {power};
+    b->sample_time = {sample_time};
+    b->output = 0.0;
+    b->last_sample_time = -1e308;
+    b->std_dev = sqrt(b->power / b->sample_time);
+    b->seed = {seed if seed else 12345};
+}}
+
+void {struct_name}_update({struct_name}* b, double t) {{
+    if (t - b->last_sample_time >= b->sample_time - 1e-10) {{
+        b->output = {struct_name}_randn(b);
+        b->last_sample_time = t;
+    }}
+}}
+
+double {struct_name}_get_output({struct_name}* b, int port) {{
+    (void)port;
+    return b->output;
+}}
+"""
+
+
 SOURCE_TEMPLATES = {
     "constant": template_constant,
     "step": template_step,
@@ -229,4 +294,5 @@ SOURCE_TEMPLATES = {
     "pulse": template_pulse,
     "clock": template_clock,
     "ground": template_ground,
+    "white_noise": template_white_noise,
 }

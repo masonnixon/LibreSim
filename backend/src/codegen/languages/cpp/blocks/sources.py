@@ -225,6 +225,45 @@ private:
 """
 
 
+def template_white_noise(block: BlockInfo, class_name: str) -> str:
+    """Generate C++ code for White Noise block."""
+    power = block.parameters.get("power", 1.0)
+    sample_time = block.parameters.get("sampleTime", 0.1)
+    seed = block.parameters.get("seed", 0)
+
+    return f"""
+// {block.name} - White Noise source
+class {class_name} : public Block {{
+public:
+    {class_name}() : gen_({seed if seed else 'std::random_device{{}}()'}),
+                     dist_(0.0, std::sqrt({power} / {sample_time})) {{}}
+
+    void init() override {{
+        output_ = 0.0;
+        last_sample_time_ = -std::numeric_limits<double>::infinity();
+    }}
+
+    void update(double t) override {{
+        if (t - last_sample_time_ >= {sample_time} - 1e-10) {{
+            output_ = dist_(gen_);
+            last_sample_time_ = t;
+        }}
+    }}
+
+    double getOutput(int port = 0) const override {{
+        (void)port;
+        return output_;
+    }}
+
+private:
+    std::mt19937 gen_;
+    std::normal_distribution<double> dist_;
+    double output_ = 0.0;
+    double last_sample_time_ = -std::numeric_limits<double>::infinity();
+}};
+"""
+
+
 SOURCE_TEMPLATES = {
     "constant": template_constant,
     "step": template_step,
@@ -233,4 +272,5 @@ SOURCE_TEMPLATES = {
     "pulse": template_pulse,
     "clock": template_clock,
     "ground": template_ground,
+    "white_noise": template_white_noise,
 }

@@ -382,6 +382,76 @@ private:
 """
 
 
+def template_mux(block: BlockInfo, class_name: str) -> str:
+    """Generate C++ code for Mux block."""
+    num_inputs = block.parameters.get("numInputs", 2)
+    input_decls = "\n    ".join([f"double input{i} = 0.0;" for i in range(num_inputs)])
+    output_assigns = "\n        ".join([f"output_[{i}] = input{i};" for i in range(num_inputs)])
+
+    return f"""
+// {block.name} - Mux block
+class {class_name} : public Block {{
+public:
+    {input_decls}
+    static constexpr int NUM_INPUTS = {num_inputs};
+
+    void init() override {{
+        output_.fill(0.0);
+    }}
+
+    void update(double t) override {{
+        (void)t;
+        {output_assigns}
+    }}
+
+    double getOutput(int port = 0) const override {{
+        if (port >= 0 && port < NUM_INPUTS) return output_[port];
+        return 0.0;
+    }}
+
+    const std::array<double, NUM_INPUTS>& getOutputVector() const {{
+        return output_;
+    }}
+
+private:
+    std::array<double, {num_inputs}> output_ = {{}};
+}};
+"""
+
+
+def template_demux(block: BlockInfo, class_name: str) -> str:
+    """Generate C++ code for Demux block."""
+    num_outputs = block.parameters.get("numOutputs", 2)
+
+    return f"""
+// {block.name} - Demux block
+class {class_name} : public Block {{
+public:
+    std::array<double, {num_outputs}> input = {{}};
+    static constexpr int NUM_OUTPUTS = {num_outputs};
+
+    void init() override {{
+        outputs_.fill(0.0);
+    }}
+
+    void update(double t) override {{
+        (void)t;
+        for (int i = 0; i < NUM_OUTPUTS; i++) {{
+            outputs_[i] = input[i];
+        }}
+    }}
+
+    double getOutput(int port = 0) const override {{
+        if (port >= 0 && port < NUM_OUTPUTS) return outputs_[port];
+        return 0.0;
+    }}
+
+private:
+    std::array<double, {num_outputs}> outputs_ = {{}};
+}};
+"""
+
+
 MATH_TEMPLATES = {
     "sum": template_sum,
     "gain": template_gain,
@@ -394,4 +464,6 @@ MATH_TEMPLATES = {
     "switch": template_switch,
     "math_function": template_math_function,
     "trigonometry": template_trigonometry,
+    "mux": template_mux,
+    "demux": template_demux,
 }

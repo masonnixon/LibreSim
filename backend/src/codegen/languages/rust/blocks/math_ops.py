@@ -477,6 +477,107 @@ impl {struct_name} {{
 """
 
 
+def template_mux(block: BlockInfo, struct_name: str) -> str:
+    """Generate Rust code for Mux block."""
+    num_inputs = block.parameters.get("numInputs", 2)
+    input_fields = "\n    ".join([f"pub input{i}: f64," for i in range(num_inputs)])
+    input_inits = "\n            ".join([f"input{i}: 0.0," for i in range(num_inputs)])
+    output_assigns = "\n        ".join([f"self.output[{i}] = self.input{i};" for i in range(num_inputs)])
+
+    return f"""
+/// {block.name} - Mux block
+pub struct {struct_name} {{
+    {input_fields}
+    pub output: [f64; {num_inputs}],
+}}
+
+impl {struct_name} {{
+    pub const NUM_INPUTS: usize = {num_inputs};
+
+    pub fn new() -> Self {{
+        Self {{
+            {input_inits}
+            output: [0.0; {num_inputs}],
+        }}
+    }}
+
+    pub fn init(&mut self) {{
+        self.output = [0.0; {num_inputs}];
+    }}
+
+    pub fn update(&mut self, _t: f64) {{
+        {output_assigns}
+    }}
+
+    pub fn get_output(&self, port: usize) -> f64 {{
+        if port < Self::NUM_INPUTS {{
+            self.output[port]
+        }} else {{
+            0.0
+        }}
+    }}
+
+    pub fn get_output_vector(&self) -> &[f64; {num_inputs}] {{
+        &self.output
+    }}
+}}
+
+impl Default for {struct_name} {{
+    fn default() -> Self {{
+        Self::new()
+    }}
+}}
+"""
+
+
+def template_demux(block: BlockInfo, struct_name: str) -> str:
+    """Generate Rust code for Demux block."""
+    num_outputs = block.parameters.get("numOutputs", 2)
+
+    return f"""
+/// {block.name} - Demux block
+pub struct {struct_name} {{
+    pub input: [f64; {num_outputs}],
+    outputs: [f64; {num_outputs}],
+}}
+
+impl {struct_name} {{
+    pub const NUM_OUTPUTS: usize = {num_outputs};
+
+    pub fn new() -> Self {{
+        Self {{
+            input: [0.0; {num_outputs}],
+            outputs: [0.0; {num_outputs}],
+        }}
+    }}
+
+    pub fn init(&mut self) {{
+        self.outputs = [0.0; {num_outputs}];
+    }}
+
+    pub fn update(&mut self, _t: f64) {{
+        for i in 0..Self::NUM_OUTPUTS {{
+            self.outputs[i] = self.input[i];
+        }}
+    }}
+
+    pub fn get_output(&self, port: usize) -> f64 {{
+        if port < Self::NUM_OUTPUTS {{
+            self.outputs[port]
+        }} else {{
+            0.0
+        }}
+    }}
+}}
+
+impl Default for {struct_name} {{
+    fn default() -> Self {{
+        Self::new()
+    }}
+}}
+"""
+
+
 MATH_TEMPLATES = {
     "sum": template_sum,
     "gain": template_gain,
@@ -489,4 +590,6 @@ MATH_TEMPLATES = {
     "switch": template_switch,
     "math_function": template_math_function,
     "trigonometry": template_trigonometry,
+    "mux": template_mux,
+    "demux": template_demux,
 }

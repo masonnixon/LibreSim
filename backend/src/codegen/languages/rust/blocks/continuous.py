@@ -480,6 +480,7 @@ impl {struct_name} {{
 
 CONTINUOUS_TEMPLATES = {
     "integrator": template_integrator,
+    "limited_integrator": template_integrator,  # Same as integrator with limits
     "derivative": template_derivative,
     "transfer_function": template_transfer_function,
     "state_space": template_state_space,
