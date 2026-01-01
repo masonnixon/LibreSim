@@ -8,6 +8,7 @@ from fastapi.responses import PlainTextResponse
 
 from .api.routes import blocks, import_export, models, simulation
 from .api.websocket import router as ws_router
+from .codegen.controller import router as codegen_router
 from .config import settings
 
 # Project root directory - in Docker, mounted at /project; locally, parent of backend/
@@ -37,6 +38,7 @@ app.include_router(models.router, prefix="/api/models", tags=["models"])
 app.include_router(blocks.router, prefix="/api/blocks", tags=["blocks"])
 app.include_router(simulation.router, prefix="/api/simulate", tags=["simulation"])
 app.include_router(import_export.router, prefix="/api/import", tags=["import"])
+app.include_router(codegen_router, prefix="/api")
 app.include_router(ws_router)
 
 

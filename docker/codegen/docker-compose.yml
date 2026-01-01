@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  compiler-python:
+    build:
+      context: ./compilers
+      dockerfile: Dockerfile.python
+    image: libresim-compiler-python:latest
+    volumes:
+      - ../../build:/build
+    command: ["echo", "Python compiler ready"]
+
+  compiler-c:
+    build:
+      context: ./compilers
+      dockerfile: Dockerfile.c
+    image: libresim-compiler-c:latest
+    volumes:
+      - ../../build:/build
+    command: ["echo", "C compiler ready"]
+
+  compiler-cpp:
+    build:
+      context: ./compilers
+      dockerfile: Dockerfile.cpp
+    image: libresim-compiler-cpp:latest
+    volumes:
+      - ../../build:/build
+    command: ["echo", "C++ compiler ready"]
+
+  compiler-rust:
+    build:
+      context: ./compilers
+      dockerfile: Dockerfile.rust
+    image: libresim-compiler-rust:latest
+    volumes:
+      - ../../build:/build
+    command: ["echo", "Rust compiler ready"]
