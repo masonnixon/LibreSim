@@ -37,16 +37,26 @@ interface CodeGenModalProps {
 export function CodeGenModal({ isOpen, onClose }: CodeGenModalProps) {
   const { model } = useModelStore()
   const [isGenerating, setIsGenerating] = useState(false)
+
+  // Derive project name from model - update when model changes
+  const defaultProjectName = model?.metadata?.name?.toLowerCase().replace(/\s+/g, '_') ?? 'simulation'
+
   const [config, setConfig] = useState<CodeGenConfig>({
     language: 'python',
     integrationMethod: 'rk4',
     stepSize: model?.simulationConfig?.stepSize ?? 0.01,
     stopTime: model?.simulationConfig?.stopTime ?? 10.0,
     startTime: model?.simulationConfig?.startTime ?? 0.0,
-    projectName: model?.metadata?.name?.toLowerCase().replace(/\s+/g, '_') ?? 'simulation',
+    projectName: defaultProjectName,
     includeMain: true,
     includeCsvOutput: true,
   })
+
+  // Update project name when model changes (if user hasn't customized it)
+  const [hasCustomizedName, setHasCustomizedName] = useState(false)
+  if (!hasCustomizedName && config.projectName !== defaultProjectName && defaultProjectName !== 'simulation') {
+    setConfig(prev => ({ ...prev, projectName: defaultProjectName }))
+  }
 
   const handleGenerate = useCallback(async () => {
     if (!model) {
@@ -83,13 +93,14 @@ export function CodeGenModal({ isOpen, onClose }: CodeGenModalProps) {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `${config.projectName}.zip`
+      const filename = `${config.projectName}_${config.language}.zip`
+      a.download = filename
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
 
-      toast.success('Code Generated', `Downloaded ${config.projectName}.zip`)
+      toast.success('Code Generated', `Downloaded ${filename}`)
       onClose()
     } catch (error) {
       console.error('Code generation failed:', error)
@@ -217,7 +228,10 @@ export function CodeGenModal({ isOpen, onClose }: CodeGenModalProps) {
                 <input
                   type="text"
                   value={config.projectName}
-                  onChange={(e) => setConfig({ ...config, projectName: e.target.value.replace(/[^a-zA-Z0-9_-]/g, '_') })}
+                  onChange={(e) => {
+                    setHasCustomizedName(true)
+                    setConfig({ ...config, projectName: e.target.value.replace(/[^a-zA-Z0-9_-]/g, '_') })
+                  }}
                   className="w-full px-3 py-2 bg-editor-bg border border-editor-border rounded text-white focus:border-blue-500 focus:outline-none"
                   placeholder="simulation"
                 />
@@ -249,7 +263,7 @@ export function CodeGenModal({ isOpen, onClose }: CodeGenModalProps) {
           <div className="bg-editor-bg rounded-lg p-4 border border-editor-border">
             <div className="text-sm font-medium text-gray-300 mb-2">Output Preview</div>
             <div className="text-xs text-gray-500 font-mono">
-              {config.projectName}.zip
+              {config.projectName}_{config.language}.zip
               <div className="ml-4 mt-1 space-y-0.5">
                 {config.language === 'python' && (
                   <>
@@ -258,7 +272,9 @@ export function CodeGenModal({ isOpen, onClose }: CodeGenModalProps) {
                     <div>├── blocks.py</div>
                     <div>├── integration.py</div>
                     <div>├── requirements.txt</div>
-                    <div>└── README.md</div>
+                    <div>├── README.md</div>
+                    <div>├── Dockerfile</div>
+                    <div>└── build.sh</div>
                   </>
                 )}
                 {config.language === 'c' && (
@@ -270,7 +286,9 @@ export function CodeGenModal({ isOpen, onClose }: CodeGenModalProps) {
                     <div>│   ├── main.c</div>
                     <div>│   └── simulation.c</div>
                     <div>├── CMakeLists.txt</div>
-                    <div>└── README.md</div>
+                    <div>├── README.md</div>
+                    <div>├── Dockerfile</div>
+                    <div>└── build.sh</div>
                   </>
                 )}
                 {config.language === 'cpp' && (
@@ -282,7 +300,9 @@ export function CodeGenModal({ isOpen, onClose }: CodeGenModalProps) {
                     <div>│   ├── main.cpp</div>
                     <div>│   └── simulation.cpp</div>
                     <div>├── CMakeLists.txt</div>
-                    <div>└── README.md</div>
+                    <div>├── README.md</div>
+                    <div>├── Dockerfile</div>
+                    <div>└── build.sh</div>
                   </>
                 )}
                 {config.language === 'rust' && (
@@ -292,7 +312,9 @@ export function CodeGenModal({ isOpen, onClose }: CodeGenModalProps) {
                     <div>│   ├── lib.rs</div>
                     <div>│   └── integration.rs</div>
                     <div>├── Cargo.toml</div>
-                    <div>└── README.md</div>
+                    <div>├── README.md</div>
+                    <div>├── Dockerfile</div>
+                    <div>└── build.sh</div>
                   </>
                 )}
               </div>
