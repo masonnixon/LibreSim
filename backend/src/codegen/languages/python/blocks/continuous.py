@@ -103,7 +103,7 @@ class {class_name}:
         # State variables for controllable canonical form
         self.states = [0.0] * {order}
         self.derivatives = [0.0] * {order}
-        # Integration state (for first-order systems, use single state interface)
+        # Integration state for first state (used by propagator)
         self.state = 0.0
         self.derivative = 0.0
         self.x0 = 0.0
@@ -112,6 +112,12 @@ class {class_name}:
         self.xd2 = 0.0
         self.xd3 = 0.0
         self.xd4 = 0.0
+        # Integration state for additional states (order > 1)
+        self.states_x0 = [0.0] * {order}
+        self.states_xd0 = [0.0] * {order}
+        self.states_xd1 = [0.0] * {order}
+        self.states_xd2 = [0.0] * {order}
+        self.states_xd3 = [0.0] * {order}
 
     def init(self):
         self.states = [0.0] * self.order
@@ -121,10 +127,6 @@ class {class_name}:
         self.output = 0.0
 
     def update(self, t: float):
-        # Sync state back from integration (integration modifies self.state)
-        if self.order > 0:
-            self.states[0] = self.state
-
         if self.order == 0:
             # Static gain
             self.output = self.input * self.numerator[0] / self.denominator[0]
@@ -136,17 +138,18 @@ class {class_name}:
         num_norm = [n / a0 for n in self.numerator]
 
         # Controllable canonical form state equations
+        # x' = A*x + B*u where A is companion matrix
         for i in range(self.order):
             if i < self.order - 1:
                 self.derivatives[i] = self.states[i + 1]
             else:
-                # Last state derivative
+                # Last state derivative: x_n' = u - sum(a_i * x_i)
                 self.derivatives[i] = self.input
                 for j in range(1, len(den_norm)):
                     if j - 1 < len(self.states):
                         self.derivatives[i] -= den_norm[j] * self.states[self.order - j]
 
-        # Compute output
+        # Compute output: y = C*x + D*u
         self.output = 0.0
         for i in range(len(num_norm)):
             if i < len(self.states):
@@ -156,10 +159,44 @@ class {class_name}:
         if len(num_norm) > self.order:
             self.output += num_norm[0] * self.input
 
-        # Sync single state/derivative for integration
+        # Sync for integration (first state uses standard interface)
         if self.order > 0:
             self.state = self.states[0]
             self.derivative = self.derivatives[0]
+
+    def propagate_states(self, dt: float, kpass: int):
+        """Propagate all internal states using RK4 integration.
+
+        This is called by the simulation after the standard propagator
+        handles the first state.
+        """
+        if self.order <= 1:
+            # Single state is handled by standard propagator
+            self.states[0] = self.state
+            return
+
+        # For multi-state systems, propagate all states
+        # First state is synced from self.state (handled by standard propagator)
+        self.states[0] = self.state
+
+        # Propagate additional states (index 1 to order-1)
+        for i in range(1, self.order):
+            if kpass == 0:
+                self.states_x0[i] = self.states[i]
+                self.states_xd0[i] = self.derivatives[i]
+                self.states[i] = self.states_x0[i] + dt / 2.0 * self.states_xd0[i]
+            elif kpass == 1:
+                self.states_xd1[i] = self.derivatives[i]
+                self.states[i] = self.states_x0[i] + dt / 2.0 * self.states_xd1[i]
+            elif kpass == 2:
+                self.states_xd2[i] = self.derivatives[i]
+                self.states[i] = self.states_x0[i] + dt * self.states_xd2[i]
+            elif kpass == 3:
+                self.states_xd3[i] = self.derivatives[i]
+                self.states[i] = self.states_x0[i] + dt / 6.0 * (
+                    self.states_xd0[i] + 2.0 * self.states_xd1[i] +
+                    2.0 * self.states_xd2[i] + self.states_xd3[i]
+                )
 
     def get_output(self, port: int = 0) -> float:
         return self.output
@@ -203,6 +240,12 @@ class {class_name}:
         self.xd2 = 0.0
         self.xd3 = 0.0
         self.xd4 = 0.0
+        # Integration state for additional states (order > 1)
+        self.states_x0 = [0.0] * {order}
+        self.states_xd0 = [0.0] * {order}
+        self.states_xd1 = [0.0] * {order}
+        self.states_xd2 = [0.0] * {order}
+        self.states_xd3 = [0.0] * {order}
 
     def init(self):
         self.states = [0.0] * self.order
@@ -228,6 +271,34 @@ class {class_name}:
             self.state = self.states[0]
             self.derivative = self.derivatives[0]
 
+    def propagate_states(self, dt: float, kpass: int):
+        """Propagate all internal states using RK4 integration."""
+        if self.order <= 1:
+            self.states[0] = self.state
+            return
+
+        # First state is synced from self.state
+        self.states[0] = self.state
+
+        # Propagate additional states
+        for i in range(1, self.order):
+            if kpass == 0:
+                self.states_x0[i] = self.states[i]
+                self.states_xd0[i] = self.derivatives[i]
+                self.states[i] = self.states_x0[i] + dt / 2.0 * self.states_xd0[i]
+            elif kpass == 1:
+                self.states_xd1[i] = self.derivatives[i]
+                self.states[i] = self.states_x0[i] + dt / 2.0 * self.states_xd1[i]
+            elif kpass == 2:
+                self.states_xd2[i] = self.derivatives[i]
+                self.states[i] = self.states_x0[i] + dt * self.states_xd2[i]
+            elif kpass == 3:
+                self.states_xd3[i] = self.derivatives[i]
+                self.states[i] = self.states_x0[i] + dt / 6.0 * (
+                    self.states_xd0[i] + 2.0 * self.states_xd1[i] +
+                    2.0 * self.states_xd2[i] + self.states_xd3[i]
+                )
+
     def get_output(self, port: int = 0) -> float:
         return self.output
 '''
@@ -252,13 +323,19 @@ class {class_name}:
         self.state1 = 0.0  # Velocity
         self.derivative = 0.0   # d(position)/dt = velocity
         self.derivative1 = 0.0  # d(velocity)/dt = acceleration
-        # Integration state
+        # Integration state for first state (handled by standard propagator)
         self.x0 = 0.0
         self.xd0 = 0.0
         self.xd1 = 0.0
         self.xd2 = 0.0
         self.xd3 = 0.0
         self.xd4 = 0.0
+        # Integration state for second state (velocity)
+        self.state1_x0 = 0.0
+        self.state1_xd0 = 0.0
+        self.state1_xd1 = 0.0
+        self.state1_xd2 = 0.0
+        self.state1_xd3 = 0.0
 
     def init(self):
         self.state = 0.0
@@ -274,6 +351,25 @@ class {class_name}:
             - self.omega * self.omega * self.state
         )
         self.output = self.state
+
+    def propagate_states(self, dt: float, kpass: int):
+        """Propagate the second state (velocity) using RK4 integration."""
+        if kpass == 0:
+            self.state1_x0 = self.state1
+            self.state1_xd0 = self.derivative1
+            self.state1 = self.state1_x0 + dt / 2.0 * self.state1_xd0
+        elif kpass == 1:
+            self.state1_xd1 = self.derivative1
+            self.state1 = self.state1_x0 + dt / 2.0 * self.state1_xd1
+        elif kpass == 2:
+            self.state1_xd2 = self.derivative1
+            self.state1 = self.state1_x0 + dt * self.state1_xd2
+        elif kpass == 3:
+            self.state1_xd3 = self.derivative1
+            self.state1 = self.state1_x0 + dt / 6.0 * (
+                self.state1_xd0 + 2.0 * self.state1_xd1 +
+                2.0 * self.state1_xd2 + self.state1_xd3
+            )
 
     def get_output(self, port: int = 0) -> float:
         return self.output

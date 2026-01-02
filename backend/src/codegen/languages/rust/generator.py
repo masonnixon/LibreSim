@@ -446,11 +446,8 @@ COPY . /build/
 # Build the project in release mode
 RUN cargo build --release
 
-# Create output directory and copy executable
-RUN mkdir -p /output && cp target/release/simulation /output/
-
 # Default command copies the executable to mounted output
-CMD ["cp", "/output/simulation", "/output/"]
+CMD ["cp", "target/release/simulation", "/output/"]
 '''
 
     def _generate_build_script(self, config: Any) -> str:

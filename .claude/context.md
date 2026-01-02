@@ -259,6 +259,35 @@ The toolbar supports:
 
 ## Recent Changes Log
 
+### Session 2026-01-01 (Python Codegen Multi-State Integration Fix)
+- **Fixed Python code generation for multi-state blocks**:
+  - **Problem**: Transfer functions, state-space, and second-order blocks produce incorrect outputs (always 0)
+  - **Root Cause**: Only `self.state` (first state) was being integrated. For order>1 systems, additional states were never propagated
+  - **Solution**: Added `propagate_states(dt, kpass)` method to multi-state block templates
+
+- **Files Modified**:
+  - `backend/src/codegen/languages/python/blocks/continuous.py`:
+    - Added `propagate_states()` method to `transfer_function_template`
+    - Added `propagate_states()` method to `state_space_template`
+    - Added `propagate_states()` method to `second_order_template`
+    - Added integration state arrays for additional states (states_x0, states_xd0, etc.)
+
+  - `backend/src/codegen/languages/python/generator.py`:
+    - Added `multi_state_list` to track blocks with `propagate_states` method
+    - Added `_multi_state_blocks` list to Model class
+    - Added multi-state propagation call in simulation loop after standard propagator
+    - Fixed output signal naming to use source block names instead of "Response_0", "Response_1"
+
+- **Fixed Dockerfile CMD for all languages**:
+  - **Problem**: CMD tried to copy from `/output/` which was overwritten by volume mount at runtime
+  - **Solution**: Copy from build directory directly (e.g., `build/simulation`, `target/release/simulation`)
+  - Files fixed: `c/generator.py`, `cpp/generator.py`, `rust/generator.py`, `python/generator.py`
+
+- **Tests verified**:
+  - PID example: Plant output reaches ~0.995 at t=10 (correct step response)
+  - Second-order damping: Shows proper underdamped oscillation, critical damping, overdamped response
+  - All 29 codegen unit tests pass
+
 ### Session 2026-01-01 (Examples Refactoring)
 - **Refactored examples.ts to load from JSON files via API**:
   - **Backend**: Added `/api/examples` endpoints (`backend/src/api/routes/examples.py`)
@@ -603,7 +632,7 @@ The toolbar supports:
 - Simulation now runs successfully
 
 ## Known Issues / TODO
-- PID controller example may produce incorrect results (under investigation)
+- C/C++/Rust code generators need multi-state integration support (like Python fix below)
 
 ## Development Environment
 

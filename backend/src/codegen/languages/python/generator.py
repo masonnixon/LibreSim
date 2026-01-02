@@ -267,14 +267,27 @@ class {class_name}:
 
         # Build integrator list for state propagation
         integrator_list = []
+        multi_state_list = []  # Blocks with propagate_states method
         for block_id in model_info.integrator_blocks:
             block = next((b for b in model_info.blocks if b.id == block_id), None)
             if block:
                 var_name = self.get_block_var_name(block)
                 integrator_list.append(f"self.{var_name}")
+                # Multi-state blocks need additional propagation
+                if block.type in ("transfer_function", "state_space", "second_order"):
+                    multi_state_list.append(f"self.{var_name}")
 
         # Build output recording code
         output_recording = self._generate_output_recording(model_info)
+
+        # Generate multi-state propagation code (if any)
+        multi_state_propagation = ""
+        if multi_state_list:
+            multi_state_propagation = """
+            # Propagate multi-state blocks (transfer functions, state-space)
+            for block in model._multi_state_blocks:
+                if hasattr(block, 'propagate_states'):
+                    block.propagate_states(dt, kpass)"""
 
         return f'''"""Simulation model.
 
@@ -294,6 +307,9 @@ class Model:
 
         # List of integrator blocks for state propagation
         self._integrators = [{', '.join(integrator_list)}]
+
+        # List of multi-state blocks needing additional propagation
+        self._multi_state_blocks = [{', '.join(multi_state_list)}]
 
     def init(self):
         """Initialize all blocks."""
@@ -359,7 +375,7 @@ def run_simulation(
         # Integration passes
         for kpass in range(num_passes):
             model.step(t, dt, kpass)
-            propagate(model._integrators, dt, kpass)
+            propagate(model._integrators, dt, kpass){multi_state_propagation}
 
         # Record outputs after stepping but before incrementing t (matches backend behavior)
         results['time'].append(t)
@@ -455,10 +471,29 @@ def run_simulation(
                 signal_name = self.sanitize_identifier(block.name or block.id)
 
                 # For multi-input scopes, record each input separately
+                # Use the source block name if available
                 num_inputs = block.parameters.get("numInputs", 1)
                 if block.type == "scope" and num_inputs > 1:
+                    # Build a map of port index -> source name
+                    port_names = {}
+                    for conn in block.input_connections:
+                        source_id, source_port, target_port = self.parse_connection(conn)
+                        source_block = next(
+                            (b for b in model_info.blocks if b.id == source_id), None
+                        )
+                        if source_block:
+                            source_name = self.sanitize_identifier(
+                                source_block.name or source_block.id
+                            )
+                            port_idx = target_port if target_port is not None else 0
+                            port_names[port_idx] = source_name
+
                     for i in range(num_inputs):
-                        port_name = f"{signal_name}_{i}"
+                        # Use source block name if we found it, otherwise use index
+                        if i in port_names:
+                            port_name = port_names[i]
+                        else:
+                            port_name = f"{signal_name}_{i}"
                         init_lines.append(f"    results['{port_name}'] = []")
                         record_lines.append(
                             f"        results['{port_name}'].append("
@@ -593,14 +628,14 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Build executable
 RUN pyinstaller \\
     --onefile \\
-    --distpath /output \\
+    --distpath /output-build \\
     --workpath /tmp/pyinstaller \\
     --specpath /tmp/pyinstaller \\
     --name {config.project_name} \\
     main.py
 
 # Default command copies the executable to mounted output
-CMD ["cp", "/output/{config.project_name}", "/output/"]
+CMD ["cp", "/output-build/{config.project_name}", "/output/"]
 '''
 
     def _generate_build_script(self, config: Any) -> str:

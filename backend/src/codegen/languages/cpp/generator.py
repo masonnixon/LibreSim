@@ -535,11 +535,8 @@ RUN mkdir -p build && cd build && \\
     cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=17 && \\
     make -j$(nproc)
 
-# Create output directory and copy executable
-RUN mkdir -p /output && cp build/simulation /output/
-
 # Default command copies the executable to mounted output
-CMD ["cp", "/output/simulation", "/output/"]
+CMD ["cp", "build/simulation", "/output/"]
 '''
 
     def _generate_build_script(self, config: Any) -> str:
