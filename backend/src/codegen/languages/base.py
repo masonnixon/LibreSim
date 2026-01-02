@@ -81,10 +81,63 @@ class LanguageGenerator(ABC):
         Returns:
             Valid identifier string
         """
-        # Replace non-alphanumeric with underscore
+        # Map common Unicode superscript/subscript to ASCII equivalents
+        unicode_replacements = {
+            "²": "2",
+            "³": "3",
+            "¹": "1",
+            "⁴": "4",
+            "⁵": "5",
+            "⁶": "6",
+            "⁷": "7",
+            "⁸": "8",
+            "⁹": "9",
+            "⁰": "0",
+            "₀": "0",
+            "₁": "1",
+            "₂": "2",
+            "₃": "3",
+            "₄": "4",
+            "₅": "5",
+            "₆": "6",
+            "₇": "7",
+            "₈": "8",
+            "₉": "9",
+            "°": "deg",
+            "π": "pi",
+            "α": "alpha",
+            "β": "beta",
+            "γ": "gamma",
+            "δ": "delta",
+            "Δ": "Delta",
+            "θ": "theta",
+            "Θ": "Theta",
+            "ω": "omega",
+            "Ω": "Omega",
+            "φ": "phi",
+            "Φ": "Phi",
+            "ψ": "psi",
+            "Ψ": "Psi",
+            "μ": "mu",
+            "σ": "sigma",
+            "τ": "tau",
+            "ρ": "rho",
+            "λ": "lambda",
+            "ε": "epsilon",
+        }
+
+        # Replace Unicode characters first
+        for unicode_char, replacement in unicode_replacements.items():
+            name = name.replace(unicode_char, replacement)
+
+        # Replace non-ASCII alphanumeric with underscore
+        # Only allow ASCII letters (a-z, A-Z), digits (0-9), and underscores
         result = ""
         for char in name:
-            if char.isalnum():
+            if (char >= "a" and char <= "z") or \
+               (char >= "A" and char <= "Z") or \
+               (char >= "0" and char <= "9") or \
+               char == "_":
                 result += char
             else:
                 result += "_"

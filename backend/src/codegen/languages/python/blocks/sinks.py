@@ -7,18 +7,30 @@ def scope_template(block: BlockInfo, class_name: str) -> str:
     """Generate Scope block code."""
     num_inputs = block.parameters.get("numInputs", 1)
 
-    # For multi-input scopes, generate output list
+    # For multi-input scopes, generate input attributes and output list
+    # Port 0 uses self.input, ports 1+ use self.input1, self.input2, etc.
     if num_inputs > 1:
+        # Generate input attributes: input (port 0), input1 (port 1), input2 (port 2), etc.
+        input_attrs = ["self.input = 0.0"]
+        for i in range(1, num_inputs):
+            input_attrs.append(f"self.input{i} = 0.0")
+
         outputs_init = f"self.outputs = [0.0] * {num_inputs}"
-        update_code = "\n".join([
-            f"        self.outputs[0] = self.input",
-            *[f"        self.outputs[{i}] = self.input{i+1}" for i in range(1, num_inputs)]
-        ])
+
+        # Update code: copy inputs to outputs array
+        update_lines = ["        self.outputs[0] = self.input"]
+        for i in range(1, num_inputs):
+            update_lines.append(f"        self.outputs[{i}] = self.input{i}")
+        update_code = "\n".join(update_lines)
+
         get_output_code = "return self.outputs[port] if port < len(self.outputs) else 0.0"
     else:
+        input_attrs = ["self.input = 0.0"]
         outputs_init = ""
         update_code = "        self.output = self.input"
         get_output_code = "return self.output"
+
+    input_attrs_str = "\n        ".join(input_attrs)
 
     return f'''
 class {class_name}:
@@ -26,8 +38,7 @@ class {class_name}:
 
     def __init__(self):
         self.num_inputs = {num_inputs}
-        self.input = 0.0
-{chr(10).join(f"        self.input{i+1} = 0.0" for i in range(1, num_inputs))}
+        {input_attrs_str}
         self.output = 0.0
         {outputs_init}
 

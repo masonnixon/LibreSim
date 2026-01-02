@@ -3,6 +3,13 @@
 from ....models import BlockInfo
 
 
+def _format_f64(value) -> str:
+    """Format a numeric value as a Rust f64 literal."""
+    if isinstance(value, (int, float)):
+        return f"{float(value)}"
+    return str(value)
+
+
 def pid_controller_template(block: BlockInfo, struct_name: str) -> str:
     """Generate PID controller block code."""
     kp = block.parameters.get("Kp", 1.0)
@@ -38,10 +45,10 @@ impl {struct_name} {{
         Self {{
             input: 0.0,
             output: 0.0,
-            kp: {kp},
-            ki: {ki},
-            kd: {kd},
-            n: {n},
+            kp: {_format_f64(kp)},
+            ki: {_format_f64(ki)},
+            kd: {_format_f64(kd)},
+            n: {_format_f64(n)},
             integrator: [0.0, 0.0],
             xd0_int: 0.0,
             xd1_int: 0.0,
@@ -112,10 +119,10 @@ impl {struct_name} {{
         Self {{
             input: 0.0,
             output: 0.0,
-            kp: {kp},
-            ki: {ki},
-            initial_integrator: {initial},
-            integrator: [{initial}, 0.0],
+            kp: {_format_f64(kp)},
+            ki: {_format_f64(ki)},
+            initial_integrator: {_format_f64(initial)},
+            integrator: [{_format_f64(initial)}, 0.0],
             xd0: 0.0,
             xd1: 0.0,
             xd2: 0.0,
@@ -172,9 +179,9 @@ impl {struct_name} {{
         Self {{
             input: 0.0,
             output: 0.0,
-            kp: {kp},
-            kd: {kd},
-            n: {n},
+            kp: {_format_f64(kp)},
+            kd: {_format_f64(kd)},
+            n: {_format_f64(n)},
             deriv_state: [0.0, 0.0],
             xd0: 0.0,
             xd1: 0.0,
@@ -211,9 +218,14 @@ def anti_windup_pid_template(block: BlockInfo, struct_name: str) -> str:
     ki = block.parameters.get("Ki", 1.0)
     kd = block.parameters.get("Kd", 0.0)
     n = block.parameters.get("N", 100.0)
-    upper = block.parameters.get("upper_limit", "f64::INFINITY")
-    lower = block.parameters.get("lower_limit", "f64::NEG_INFINITY")
+    upper = block.parameters.get("upper_limit", None)
+    lower = block.parameters.get("lower_limit", None)
     kb = block.parameters.get("Kb", 1.0)
+
+    # Format limits - use f64::INFINITY if not specified
+    upper_str = _format_f64(upper) if upper is not None else "f64::INFINITY"
+    lower_str = _format_f64(lower) if lower is not None else "f64::NEG_INFINITY"
+
     return f"""
 /// {block.name} - Anti-windup PID Controller
 #[derive(Clone)]
@@ -246,13 +258,13 @@ impl {struct_name} {{
         Self {{
             input: 0.0,
             output: 0.0,
-            kp: {kp},
-            ki: {ki},
-            kd: {kd},
-            n: {n},
-            upper_limit: {upper},
-            lower_limit: {lower},
-            kb: {kb},
+            kp: {_format_f64(kp)},
+            ki: {_format_f64(ki)},
+            kd: {_format_f64(kd)},
+            n: {_format_f64(n)},
+            upper_limit: {upper_str},
+            lower_limit: {lower_str},
+            kb: {_format_f64(kb)},
             integrator: [0.0, 0.0],
             xd0_int: 0.0,
             xd1_int: 0.0,
@@ -331,9 +343,9 @@ impl {struct_name} {{
         Self {{
             input: 0.0,
             output: 0.0,
-            gain: {gain},
-            zero: {zero},
-            pole: {pole},
+            gain: {_format_f64(gain)},
+            zero: {_format_f64(zero)},
+            pole: {_format_f64(pole)},
             x: [0.0, 0.0],
             xd0: 0.0,
             xd1: 0.0,
@@ -504,8 +516,8 @@ impl {struct_name} {{
         Self {{
             input: 0.0,
             output: 0.0,
-            wn: {wn},
-            zeta: {zeta},
+            wn: {_format_f64(wn)},
+            zeta: {_format_f64(zeta)},
             x1: [0.0, 0.0],
             x2: [0.0, 0.0],
             xd0_1: 0.0,

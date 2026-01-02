@@ -453,11 +453,23 @@ def run_simulation(
             if block:
                 var_name = self.get_block_var_name(block)
                 signal_name = self.sanitize_identifier(block.name or block.id)
-                init_lines.append(f"    results['{signal_name}'] = []")
-                record_lines.append(
-                    f"        results['{signal_name}'].append("
-                    f"model.{var_name}.get_output())"
-                )
+
+                # For multi-input scopes, record each input separately
+                num_inputs = block.parameters.get("numInputs", 1)
+                if block.type == "scope" and num_inputs > 1:
+                    for i in range(num_inputs):
+                        port_name = f"{signal_name}_{i}"
+                        init_lines.append(f"    results['{port_name}'] = []")
+                        record_lines.append(
+                            f"        results['{port_name}'].append("
+                            f"model.{var_name}.get_output({i}))"
+                        )
+                else:
+                    init_lines.append(f"    results['{signal_name}'] = []")
+                    record_lines.append(
+                        f"        results['{signal_name}'].append("
+                        f"model.{var_name}.get_output())"
+                    )
 
         return {
             'init': "\n".join(init_lines) if init_lines else "    pass",
