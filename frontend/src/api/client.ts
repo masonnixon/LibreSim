@@ -110,6 +110,17 @@ export const api = {
     })
     return response.data
   },
+
+  // Examples
+  async getExampleList(): Promise<{ id: string; name: string; description: string; category: string }[]> {
+    const response = await apiClient.get('/examples')
+    return response.data
+  },
+
+  async getExample(id: string): Promise<Model> {
+    const response = await apiClient.get(`/examples/${id}`)
+    return response.data
+  },
 }
 
 // WebSocket connection for real-time simulation data

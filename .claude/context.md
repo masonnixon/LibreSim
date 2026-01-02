@@ -259,7 +259,115 @@ The toolbar supports:
 
 ## Recent Changes Log
 
-### Session 2024-12-31 (LibreSim Coder - Code Generation - Continued)
+### Session 2026-01-01 (Examples Refactoring)
+- **Refactored examples.ts to load from JSON files via API**:
+  - **Backend**: Added `/api/examples` endpoints (`backend/src/api/routes/examples.py`)
+    - `GET /api/examples` - Returns list of available examples with metadata
+    - `GET /api/examples/{id}` - Returns full example model JSON
+  - **Frontend**: Updated `frontend/src/data/examples.ts`
+    - Removed 71K+ tokens of embedded model data
+    - Added `fetchExampleList()` and `fetchExample(id)` async functions
+    - Added example caching to avoid repeated API calls
+    - Kept `exampleList` for fallback/backwards compatibility
+  - **Frontend**: Updated `frontend/src/api/client.ts`
+    - Added `getExampleList()` and `getExample(id)` API methods
+  - **Frontend**: Updated `frontend/src/components/Toolbar/Toolbar.tsx`
+    - Changed `handleLoadExample` to async function
+    - Now fetches examples from backend API instead of embedded data
+    - Added loading toast feedback
+
+- **Previous Session (LibreSim Coder - Numerical Accuracy)**:
+  - Added end-to-end numerical accuracy tests (`scripts/test_codegen_accuracy.py`)
+  - Fixed port naming mismatch in osk_adapter.py and base.py
+  - Fixed inline wiring for proper signal propagation in Python generator
+  - Fixed transfer function state sync in continuous.py template
+  - Fixed step parameter naming (snake_case vs camelCase) in sources.py template
+  - Fixed scope template to return self.output in sinks.py template
+  - All 5 accuracy tests pass, all 29 codegen unit tests pass
+
+### Session 2024-12-31 (LibreSim Coder - Block Template Expansion)
+- **Added comprehensive block templates across all 4 languages** (Python, C, C++, Rust):
+
+- **Control Design Templates** (`control_design.py` in each language):
+  - `pid_controller` - Full PID with filtered derivative
+  - `pi_controller` - Proportional-Integral controller
+  - `pd_controller` - Proportional-Derivative controller
+  - `anti_windup_pid` - PID with back-calculation anti-windup
+  - `lead_lag_compensator` - Phase lead/lag compensator
+  - `lqr_controller` - Linear Quadratic Regulator
+  - `pole_placement` - State feedback via pole placement
+  - `model_reference` - Second-order reference model
+
+- **Aerospace Templates** (`aerospace.py` in each language):
+  - `quaternion_normalize` - Normalize quaternion to unit length
+  - `quaternion_multiply` - Hamilton product of quaternions
+  - `quaternion_conjugate` - Quaternion conjugate
+  - `quaternion_to_euler` - Convert quaternion to Euler angles (ZYX)
+  - `euler_to_quaternion` - Convert Euler angles to quaternion
+  - `quaternion_rotate_vector` - Rotate 3D vector by quaternion
+  - `dcm_to_quaternion` - DCM to quaternion conversion
+  - `quaternion_to_dcm` - Quaternion to DCM conversion
+  - `isa_atmosphere` - International Standard Atmosphere model
+  - `flat_earth_gravity` - Constant gravity vector
+  - `wgs84_gravity` - WGS84 gravity model
+  - `six_dof_euler` - 6-DOF equations of motion with Euler angles
+
+- **Previously Added Templates** (from earlier in session):
+  - Logic blocks: `compare_to_zero`, `compare_to_constant`, `relational_operator`, `logical_operator`, `bit_operator`
+  - Signal processing: `rate_limiter`, `moving_average`, `low_pass_filter`, `high_pass_filter`, `band_pass_filter`, `backlash`, `notch_filter`
+  - Nonlinear: `lookup_table_1d`, `lookup_table_2d`, `quantizer`, `relay`, `coulomb_friction`, `wrap_to_range`, `hit_crossing`, `stiction`
+
+- **Updated all `__init__.py` files** in each language's blocks directory to include new templates
+
+- **Block template count per language**: ~75+ blocks (sources, sinks, math_ops, continuous, discrete, logic, signal_processing, nonlinear, control_design, aerospace)
+
+### Session 2024-12-31 (LibreSim Coder - Bug Fixes)
+- **Fixed Python Code Generation Bugs**:
+  - **Indentation errors**: Fixed templates in `math_ops.py` (`sum_template`, `product_template`, `mux_template`) that had incorrect indentation when generating multi-line attributes
+    - Changed `chr(10).join("        " + attr ...)` to `"\n        ".join(input_attrs)` to avoid double-indentation
+  - **Wrong update_calls indentation**: Fixed `simulation.py` generator to use 8 spaces instead of 12 for update calls inside `step()` method
+  - **Integrator state attribute error**: Separated `INTEGRATOR_BLOCKS` (blocks with state/derivative interface) from `STATE_HOLDING_BLOCKS` (blocks with internal state)
+    - Only blocks like `integrator`, `transfer_function`, `state_space`, `second_order` go in `_integrators` list
+    - Blocks like `pid_controller`, `kalman_filter`, etc. manage their own state internally
+
+- **Added SQA Validation for Generated Python Code**:
+  - Added `_validate_python_code()` method to `PythonCodeGenerator` that uses Python's `compile()` to check for syntax errors
+  - Catches and reports indentation errors with file path, line number, and error message before returning generated project
+
+### Session 2024-12-31 (LibreSim Coder - Complete Implementation)
+- **Fixed dict to Model Conversion Bug**:
+  - Updated `backend/src/codegen/generator.py` to use `Model.model_validate(model)` to convert dict to Model object
+  - This fixes "dict object has no attribute blocks" error during code generation
+
+- **Completed C++ Code Generator** (full implementation):
+  - `backend/src/codegen/languages/cpp/generator.py` - CppCodeGenerator class with full implementation
+  - `backend/src/codegen/languages/cpp/blocks/` - Block templates:
+    - `sources.py` - Constant, Step, Ramp, SineWave, Pulse, Clock, Ground
+    - `sinks.py` - Scope, Display, Terminator, ToWorkspace
+    - `math_ops.py` - Sum, Gain, Product, Abs, Sign, Bias, Saturation, DeadZone, Switch, MathFunction, Trigonometry
+    - `continuous.py` - Integrator, Derivative, TransferFunction, StateSpace, SecondOrder, TransportDelay
+  - Added C++ header/source generation to `backend/src/codegen/integration.py`
+
+- **Completed Rust Code Generator** (full implementation):
+  - `backend/src/codegen/languages/rust/generator.py` - RustCodeGenerator class with full implementation
+  - `backend/src/codegen/languages/rust/blocks/` - Block templates:
+    - `sources.py` - Constant, Step, Ramp, SineWave, Pulse, Clock, Ground
+    - `sinks.py` - Scope, Display, Terminator, ToWorkspace
+    - `math_ops.py` - Sum, Gain, Product, Abs, Sign, Bias, Saturation, DeadZone, Switch, MathFunction, Trigonometry
+    - `continuous.py` - Integrator, Derivative, TransferFunction, StateSpace, SecondOrder, TransportDelay
+  - Updated Rust integration code with `from_str`, `get_num_passes`, and `propagate_integrator` functions
+
+- **Completed Unit Tests** (`backend/tests/test_codegen.py`):
+  - 29 comprehensive tests for code generation module, all passing
+  - `TestCodeGenerationConfig` - Tests for default and custom config values
+  - `TestGeneratedProject` - Tests for file adding and retrieval with `get_file()` API
+  - `TestIntegrationCodeGenerator` - Tests for all integration method generators (Python, C, C++, Rust)
+  - `TestCodeGenerator` - Tests for generating projects in all 4 languages (Python, C, C++, Rust)
+  - `TestBlockTemplates` - Tests for integrator block templates in all languages
+  - `TestLanguageEnums` - Tests for Language and IntegrationMethod enum values
+  - `TestCompiledModelInfo` - Tests for CompiledModelInfo dataclass creation
+
+### Session 2024-12-31 (LibreSim Coder - Docker/Frontend/C Templates)
 - **Completed Docker Compilation Support**:
   - `docker/codegen/docker-compose.yml` - Docker Compose for compiler containers
   - `docker/codegen/compilers/Dockerfile.{python,c,cpp,rust}` - Compiler images
@@ -279,8 +387,6 @@ The toolbar supports:
     - `sinks.py` - Scope, Display, Terminator, ToWorkspace
     - `math_ops.py` - Sum, Gain, Product, Abs, Sign, Bias, Saturation, DeadZone, Switch, MathFunction, Trigonometry
     - `continuous.py` - Integrator, Derivative, TransferFunction, StateSpace, SecondOrder, TransportDelay
-
-- **Pending**: C++/Rust block templates (currently stubs with basic project structure)
 
 ### Session 2024-12-31 (LibreSim Coder - Initial Implementation)
 - **Added LibreSim Coder** - Code generation feature similar to Simulink Coder:

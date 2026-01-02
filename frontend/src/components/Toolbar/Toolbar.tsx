@@ -5,7 +5,7 @@ import { useUIStore } from '../../store/uiStore'
 import { useLibraryStore } from '../../store/libraryStore'
 import { api } from '../../api/client'
 import { toast } from '../Toast/Toast'
-import { exampleList, getExample } from '../../data/examples'
+import { exampleList, fetchExample } from '../../data/examples'
 import { ExamplesModal } from '../Examples/ExamplesModal'
 import { CodeGenModal } from '../CodeGen/CodeGenModal'
 import { exportModelAsMDL } from '../../utils/mdlExporter'
@@ -372,18 +372,27 @@ export function Toolbar() {
     setShowMobileMenu(false)
   }
 
-  const handleLoadExample = (exampleId: string) => {
-    const example = getExample(exampleId)
-    if (example) {
-      closeAllPlotWindows()
-      clearResults()
-      loadModel(example)
-      toast.success('Example Loaded', `Loaded "${example.metadata.name}"`)
-    } else {
-      toast.warning('Example Not Found', 'This example is not available yet.')
-    }
+  const handleLoadExample = async (exampleId: string) => {
     closeExamplesModal()
     setShowMobileMenu(false)
+
+    // Show loading toast
+    toast.info('Loading Example', 'Fetching example model...')
+
+    try {
+      const example = await fetchExample(exampleId)
+      if (example) {
+        closeAllPlotWindows()
+        clearResults()
+        loadModel(example)
+        toast.success('Example Loaded', `Loaded "${example.metadata.name}"`)
+      } else {
+        toast.warning('Example Not Found', 'This example is not available yet.')
+      }
+    } catch (error) {
+      console.error('Failed to load example:', error)
+      toast.warning('Load Failed', 'Failed to load the example. Please try again.')
+    }
   }
 
   // Track scope blocks for reopening windows (including inside subsystems)
