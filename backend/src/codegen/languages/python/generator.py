@@ -274,7 +274,7 @@ class {class_name}:
                 var_name = self.get_block_var_name(block)
                 integrator_list.append(f"self.{var_name}")
                 # Multi-state blocks need additional propagation
-                if block.type in ("transfer_function", "state_space", "second_order"):
+                if block.type in ("transfer_function", "state_space", "second_order", "pid_controller"):
                     multi_state_list.append(f"self.{var_name}")
 
         # Build output recording code
@@ -370,16 +370,20 @@ def run_simulation(
 {output_recording['init']}
 
     # Simulation loop
+    # OSK reports outputs after update() but BEFORE propagation for kpass=0
+    # This captures the state at the current time before integration advances it
     t = t_start
     while t <= t_end:
         # Integration passes
         for kpass in range(num_passes):
             model.step(t, dt, kpass)
-            propagate(model._integrators, dt, kpass){multi_state_propagation}
 
-        # Record outputs after stepping but before incrementing t (matches backend behavior)
-        results['time'].append(t)
+            # Record outputs after kpass=0 update, before propagation (matches OSK)
+            if kpass == 0:
+                results['time'].append(t)
 {output_recording['record']}
+
+            propagate(model._integrators, dt, kpass){multi_state_propagation}
 
         t += dt
 
@@ -496,19 +500,19 @@ def run_simulation(
                             port_name = f"{signal_name}_{i}"
                         init_lines.append(f"    results['{port_name}'] = []")
                         record_lines.append(
-                            f"        results['{port_name}'].append("
+                            f"                results['{port_name}'].append("
                             f"model.{var_name}.get_output({i}))"
                         )
                 else:
                     init_lines.append(f"    results['{signal_name}'] = []")
                     record_lines.append(
-                        f"        results['{signal_name}'].append("
+                        f"                results['{signal_name}'].append("
                         f"model.{var_name}.get_output())"
                     )
 
         return {
             'init': "\n".join(init_lines) if init_lines else "    pass",
-            'record': "\n".join(record_lines) if record_lines else "        pass",
+            'record': "\n".join(record_lines) if record_lines else "                pass",
         }
 
     def _generate_requirements(self) -> str:

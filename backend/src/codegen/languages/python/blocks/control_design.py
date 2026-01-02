@@ -20,22 +20,31 @@ class {class_name}:
         self.N = {n}  # Derivative filter coefficient
         self.input = 0.0
         self.output = 0.0
-        # Integrator state [value, derivative]
-        self.integrator = [0.0, 0.0]
-        self.xd0_int = 0.0
-        self.xd1_int = 0.0
-        self.xd2_int = 0.0
-        self.xd3_int = 0.0
-        # Derivative filter state
-        self.deriv_state = [0.0, 0.0]
-        self.xd0_der = 0.0
-        self.xd1_der = 0.0
-        self.xd2_der = 0.0
-        self.xd3_der = 0.0
+
+        # Primary integrator interface (for integral term)
+        # state/derivative are aliases to integrator[0]/integrator[1]
+        self.state = 0.0
+        self.derivative = 0.0
+        self.x0 = 0.0
+        self.xd0 = 0.0
+        self.xd1 = 0.0
+        self.xd2 = 0.0
+        self.xd3 = 0.0
+
+        # Derivative filter state (second integrator)
+        self.deriv_state = 0.0
+        self.deriv_derivative = 0.0
+        self.deriv_x0 = 0.0
+        self.deriv_xd0 = 0.0
+        self.deriv_xd1 = 0.0
+        self.deriv_xd2 = 0.0
+        self.deriv_xd3 = 0.0
 
     def init(self):
-        self.integrator = [0.0, 0.0]
-        self.deriv_state = [0.0, 0.0]
+        self.state = 0.0
+        self.derivative = 0.0
+        self.deriv_state = 0.0
+        self.deriv_derivative = 0.0
         self.output = 0.0
 
     def update(self, t: float):
@@ -44,15 +53,37 @@ class {class_name}:
         # P term
         p_term = self.Kp * error
 
-        # I term
-        self.integrator[1] = error
-        i_term = self.Ki * self.integrator[0]
+        # I term: derivative is the error, integral accumulates
+        self.derivative = error
+        i_term = self.Ki * self.state
 
         # D term (filtered derivative)
-        self.deriv_state[1] = self.N * (error - self.deriv_state[0])
-        d_term = self.Kd * self.deriv_state[1]
+        # d/dt(deriv_state) = N * (error - deriv_state)
+        self.deriv_derivative = self.N * (error - self.deriv_state)
+        d_term = self.Kd * self.deriv_derivative
 
         self.output = p_term + i_term + d_term
+
+    def propagate_states(self, dt: float, kpass: int):
+        """Propagate the derivative filter state using RK4 integration."""
+        # The main integral state is handled by the standard propagator
+        # We handle the derivative filter state here
+        if kpass == 0:
+            self.deriv_x0 = self.deriv_state
+            self.deriv_xd0 = self.deriv_derivative
+            self.deriv_state = self.deriv_x0 + dt / 2.0 * self.deriv_xd0
+        elif kpass == 1:
+            self.deriv_xd1 = self.deriv_derivative
+            self.deriv_state = self.deriv_x0 + dt / 2.0 * self.deriv_xd1
+        elif kpass == 2:
+            self.deriv_xd2 = self.deriv_derivative
+            self.deriv_state = self.deriv_x0 + dt * self.deriv_xd2
+        elif kpass == 3:
+            self.deriv_xd3 = self.deriv_derivative
+            self.deriv_state = self.deriv_x0 + dt / 6.0 * (
+                self.deriv_xd0 + 2.0 * self.deriv_xd1 +
+                2.0 * self.deriv_xd2 + self.deriv_xd3
+            )
 
     def get_output(self, port: int = 0) -> float:
         return self.output

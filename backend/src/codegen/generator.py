@@ -22,6 +22,7 @@ INTEGRATOR_BLOCKS = {
     "transfer_function",
     "state_space",
     "second_order",
+    "pid_controller",  # Has two internal integrators (integral and derivative filter)
 }
 
 # Block types that hold state but use their own internal update mechanism
