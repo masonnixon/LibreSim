@@ -28,9 +28,10 @@ class {class_name}:
 
 def step_template(block: BlockInfo, class_name: str) -> str:
     """Generate Step block code."""
-    step_time = block.parameters.get("stepTime", 1.0)
-    initial_value = block.parameters.get("initialValue", 0.0)
-    final_value = block.parameters.get("finalValue", 1.0)
+    # Support both camelCase (frontend) and snake_case (backend) parameter names
+    step_time = block.parameters.get("step_time", block.parameters.get("stepTime", 1.0))
+    initial_value = block.parameters.get("initial_value", block.parameters.get("initialValue", 0.0))
+    final_value = block.parameters.get("final_value", block.parameters.get("finalValue", 1.0))
     return f'''
 class {class_name}:
     """Step source: {block.name}"""

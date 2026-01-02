@@ -6,6 +6,20 @@ from ....models import BlockInfo
 def scope_template(block: BlockInfo, class_name: str) -> str:
     """Generate Scope block code."""
     num_inputs = block.parameters.get("numInputs", 1)
+
+    # For multi-input scopes, generate output list
+    if num_inputs > 1:
+        outputs_init = f"self.outputs = [0.0] * {num_inputs}"
+        update_code = "\n".join([
+            f"        self.outputs[0] = self.input",
+            *[f"        self.outputs[{i}] = self.input{i+1}" for i in range(1, num_inputs)]
+        ])
+        get_output_code = "return self.outputs[port] if port < len(self.outputs) else 0.0"
+    else:
+        outputs_init = ""
+        update_code = "        self.output = self.input"
+        get_output_code = "return self.output"
+
     return f'''
 class {class_name}:
     """Scope sink: {block.name}"""
@@ -15,19 +29,17 @@ class {class_name}:
         self.input = 0.0
 {chr(10).join(f"        self.input{i+1} = 0.0" for i in range(1, num_inputs))}
         self.output = 0.0
+        {outputs_init}
 
     def init(self):
         self.output = 0.0
 
     def update(self, t: float):
-        # Scope just passes through the first input
-        self.output = self.input
+        # Scope passes through inputs to outputs
+{update_code}
 
     def get_output(self, port: int = 0) -> float:
-        if port == 0:
-            return self.input
-{chr(10).join(f"        elif port == {i}:" + chr(10) + f"            return self.input{i+1}" for i in range(1, num_inputs))}
-        return self.input
+        {get_output_code}
 '''
 
 

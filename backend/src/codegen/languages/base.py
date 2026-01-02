@@ -117,19 +117,41 @@ class LanguageGenerator(ABC):
         Returns:
             Tuple of (block_id, source_port, target_port or None)
         """
+        import re
+
+        def extract_port_number(port_str: str) -> int:
+            """Extract port number from strings like 'in0', 'out', '0', etc.
+
+            Port naming convention:
+            - 0-indexed: 'in0', 'in1', 'out0', 'out1' -> returns 0, 1, 0, 1
+            - 1-indexed: 'in1', 'in2', 'out1', 'out2' -> returns 0, 1, 0, 1
+
+            The convention is: if the first port is numbered 0, use 0-indexed.
+            If the first port is numbered 1, use 1-indexed (subtract 1).
+            """
+            if port_str.isdigit():
+                return int(port_str)
+            # Try to extract number from end of string (e.g., "in0" -> 0, "out1" -> 1)
+            match = re.search(r'(\d+)$', port_str)
+            if match:
+                port_num = int(match.group(1))
+                # If port_num is 0, it's 0-indexed; otherwise assume 1-indexed
+                return port_num if port_num == 0 else port_num - 1
+            return 0
+
         # Format: "source_id:source_port@target_port" for inputs
         # Format: "target_id:target_port" for outputs
         if "@" in conn_str:
             # Input connection
             parts = conn_str.split("@")
-            target_port = int(parts[1]) if parts[1].isdigit() else 0
+            target_port = extract_port_number(parts[1])
             source_parts = parts[0].rsplit(":", 1)
             source_id = source_parts[0]
-            source_port = int(source_parts[1]) if len(source_parts) > 1 and source_parts[1].isdigit() else 0
+            source_port = extract_port_number(source_parts[1]) if len(source_parts) > 1 else 0
             return (source_id, source_port, target_port)
         else:
             # Output connection
             parts = conn_str.rsplit(":", 1)
             target_id = parts[0]
-            target_port = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 0
+            target_port = extract_port_number(parts[1]) if len(parts) > 1 else 0
             return (target_id, target_port, None)

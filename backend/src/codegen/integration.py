@@ -143,29 +143,18 @@ def get_num_passes(method: str) -> int:
 #define INTEGRATION_H
 
 #include <stddef.h>
+#include <string.h>
 
-// Integrator state structure
-typedef struct {
-    double* state_ptr;      // Pointer to current state
-    double* deriv_ptr;      // Pointer to derivative
-    double x0;              // Initial state for this step
-    double xd0, xd1, xd2, xd3, xd4;  // Intermediate derivatives
-} IntegratorState;
+// Get number of passes for a method (string-based for simple API)
+int get_num_passes(const char* method);
 
-// Integration method enum
-typedef enum {
-    INTEGRATION_EULER = 0,
-    INTEGRATION_RK2 = 1,
-    INTEGRATION_RK4 = 2,
-    INTEGRATION_MERSON = 3
-} IntegrationMethod;
-
-// Get number of passes for a method
-int integration_get_passes(IntegrationMethod method);
-
-// Propagate integrators for one pass
-void integration_propagate(IntegratorState* states, size_t n_states,
-                          double dt, int kpass, IntegrationMethod method);
+// Propagate a single integrator state
+void propagate_integrator(
+    double* state,
+    double* xd0, double* xd1, double* xd2, double* xd3,
+    double derivative,
+    double dt, int kpass, const char* method
+);
 
 #endif // INTEGRATION_H
 '''
@@ -175,95 +164,71 @@ void integration_propagate(IntegratorState* states, size_t n_states,
         return '''
 #include "integration.h"
 
-int integration_get_passes(IntegrationMethod method) {
-    switch (method) {
-        case INTEGRATION_EULER: return 1;
-        case INTEGRATION_RK2: return 2;
-        case INTEGRATION_RK4: return 4;
-        case INTEGRATION_MERSON: return 5;
-        default: return 4;
-    }
+int get_num_passes(const char* method) {
+    if (strcmp(method, "euler") == 0) return 1;
+    if (strcmp(method, "rk2") == 0) return 2;
+    if (strcmp(method, "rk4") == 0) return 4;
+    if (strcmp(method, "merson") == 0) return 5;
+    return 4;  // Default to RK4
 }
 
-static void euler_propagate(IntegratorState* states, size_t n_states, double dt, int kpass) {
-    for (size_t i = 0; i < n_states; i++) {
-        IntegratorState* s = &states[i];
-        *s->state_ptr += dt * (*s->deriv_ptr);
-    }
-}
+// Static storage for x0 (used across passes)
+static double s_x0 = 0.0;
+static double s_xd4 = 0.0;
 
-static void rk2_propagate(IntegratorState* states, size_t n_states, double dt, int kpass) {
-    for (size_t i = 0; i < n_states; i++) {
-        IntegratorState* s = &states[i];
+void propagate_integrator(
+    double* state,
+    double* xd0, double* xd1, double* xd2, double* xd3,
+    double derivative,
+    double dt, int kpass, const char* method
+) {
+    if (strcmp(method, "euler") == 0) {
+        *state += dt * derivative;
+    } else if (strcmp(method, "rk2") == 0) {
         if (kpass == 0) {
-            s->x0 = *s->state_ptr;
-            s->xd0 = *s->deriv_ptr;
-            *s->state_ptr = s->x0 + dt / 2.0 * s->xd0;
+            s_x0 = *state;
+            *xd0 = derivative;
+            *state = s_x0 + dt / 2.0 * (*xd0);
         } else if (kpass == 1) {
-            s->xd1 = *s->deriv_ptr;
-            *s->state_ptr = s->x0 + dt * s->xd1;
+            *xd1 = derivative;
+            *state = s_x0 + dt * (*xd1);
         }
-    }
-}
-
-static void rk4_propagate(IntegratorState* states, size_t n_states, double dt, int kpass) {
-    for (size_t i = 0; i < n_states; i++) {
-        IntegratorState* s = &states[i];
+    } else if (strcmp(method, "rk4") == 0) {
         if (kpass == 0) {
-            s->x0 = *s->state_ptr;
-            s->xd0 = *s->deriv_ptr;
-            *s->state_ptr = s->x0 + dt / 2.0 * s->xd0;
+            s_x0 = *state;
+            *xd0 = derivative;
+            *state = s_x0 + dt / 2.0 * (*xd0);
         } else if (kpass == 1) {
-            s->xd1 = *s->deriv_ptr;
-            *s->state_ptr = s->x0 + dt / 2.0 * s->xd1;
+            *xd1 = derivative;
+            *state = s_x0 + dt / 2.0 * (*xd1);
         } else if (kpass == 2) {
-            s->xd2 = *s->deriv_ptr;
-            *s->state_ptr = s->x0 + dt * s->xd2;
+            *xd2 = derivative;
+            *state = s_x0 + dt * (*xd2);
         } else if (kpass == 3) {
-            s->xd3 = *s->deriv_ptr;
-            *s->state_ptr = s->x0 + dt / 6.0 * (s->xd0 + 2.0*s->xd1 + 2.0*s->xd2 + s->xd3);
+            *xd3 = derivative;
+            *state = s_x0 + dt / 6.0 * ((*xd0) + 2.0*(*xd1) + 2.0*(*xd2) + (*xd3));
         }
-    }
-}
-
-static void merson_propagate(IntegratorState* states, size_t n_states, double dt, int kpass) {
-    for (size_t i = 0; i < n_states; i++) {
-        IntegratorState* s = &states[i];
+    } else if (strcmp(method, "merson") == 0) {
         if (kpass == 0) {
-            s->x0 = *s->state_ptr;
-            s->xd0 = *s->deriv_ptr;
-            *s->state_ptr = s->x0 + dt / 3.0 * s->xd0;
+            s_x0 = *state;
+            *xd0 = derivative;
+            *state = s_x0 + dt / 3.0 * (*xd0);
         } else if (kpass == 1) {
-            s->xd1 = *s->deriv_ptr;
-            *s->state_ptr = s->x0 + dt / 6.0 * (s->xd0 + s->xd1);
+            *xd1 = derivative;
+            *state = s_x0 + dt / 6.0 * ((*xd0) + (*xd1));
         } else if (kpass == 2) {
-            s->xd2 = *s->deriv_ptr;
-            *s->state_ptr = s->x0 + dt / 8.0 * (s->xd0 + 3.0 * s->xd2);
+            *xd2 = derivative;
+            *state = s_x0 + dt / 8.0 * ((*xd0) + 3.0 * (*xd2));
         } else if (kpass == 3) {
-            s->xd3 = *s->deriv_ptr;
-            *s->state_ptr = s->x0 + dt / 2.0 * (s->xd0 - 3.0*s->xd2 + 4.0*s->xd3);
+            *xd3 = derivative;
+            *state = s_x0 + dt / 2.0 * ((*xd0) - 3.0*(*xd2) + 4.0*(*xd3));
         } else if (kpass == 4) {
-            s->xd4 = *s->deriv_ptr;
-            *s->state_ptr = s->x0 + dt / 6.0 * (s->xd0 + 4.0*s->xd3 + s->xd4);
+            s_xd4 = derivative;
+            *state = s_x0 + dt / 6.0 * ((*xd0) + 4.0*(*xd3) + s_xd4);
         }
-    }
-}
-
-void integration_propagate(IntegratorState* states, size_t n_states,
-                          double dt, int kpass, IntegrationMethod method) {
-    switch (method) {
-        case INTEGRATION_EULER:
-            euler_propagate(states, n_states, dt, kpass);
-            break;
-        case INTEGRATION_RK2:
-            rk2_propagate(states, n_states, dt, kpass);
-            break;
-        case INTEGRATION_RK4:
-            rk4_propagate(states, n_states, dt, kpass);
-            break;
-        case INTEGRATION_MERSON:
-            merson_propagate(states, n_states, dt, kpass);
-            break;
+    } else {
+        // Default to RK4
+        propagate_integrator(state, xd0, xd1, xd2, xd3, derivative, dt, kpass, "rk4");
     }
 }
 '''

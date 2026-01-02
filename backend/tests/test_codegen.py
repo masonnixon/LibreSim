@@ -132,17 +132,17 @@ class TestIntegrationCodeGenerator:
         """Test C header generation."""
         code = IntegrationCodeGenerator.generate_c_header()
         assert "#ifndef INTEGRATION_H" in code
-        assert "IntegratorState" in code
-        assert "IntegrationMethod" in code
-        assert "integration_get_passes" in code
+        assert "get_num_passes" in code
+        assert "propagate_integrator" in code
 
     def test_c_source_generator(self):
         """Test C source generation."""
         code = IntegrationCodeGenerator.generate_c_source()
         assert "#include \"integration.h\"" in code
-        assert "euler_propagate" in code
-        assert "rk4_propagate" in code
-        assert "integration_propagate" in code
+        assert "get_num_passes" in code
+        assert "propagate_integrator" in code
+        assert "euler" in code
+        assert "rk4" in code
 
     def test_cpp_header_generator(self):
         """Test C++ header generation."""

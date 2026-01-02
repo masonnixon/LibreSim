@@ -103,9 +103,9 @@ class {class_name}:
         # State variables for controllable canonical form
         self.states = [0.0] * {order}
         self.derivatives = [0.0] * {order}
-        # Integration state
-        self.state = 0.0  # Alias for first state
-        self.derivative = 0.0  # Alias for first derivative
+        # Integration state (for first-order systems, use single state interface)
+        self.state = 0.0
+        self.derivative = 0.0
         self.x0 = 0.0
         self.xd0 = 0.0
         self.xd1 = 0.0
@@ -116,9 +116,15 @@ class {class_name}:
     def init(self):
         self.states = [0.0] * self.order
         self.derivatives = [0.0] * self.order
+        self.state = 0.0
+        self.derivative = 0.0
         self.output = 0.0
 
     def update(self, t: float):
+        # Sync state back from integration (integration modifies self.state)
+        if self.order > 0:
+            self.states[0] = self.state
+
         if self.order == 0:
             # Static gain
             self.output = self.input * self.numerator[0] / self.denominator[0]

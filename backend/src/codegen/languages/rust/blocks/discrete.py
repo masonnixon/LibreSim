@@ -9,6 +9,7 @@ def unit_delay_template(block: BlockInfo, struct_name: str) -> str:
     sample_time = block.parameters.get("sampleTime", 0.1)
 
     return f'''
+#[derive(Clone)]
 pub struct {struct_name} {{
     pub initial_condition: f64,
     pub sample_time: f64,
@@ -62,6 +63,7 @@ def zero_order_hold_template(block: BlockInfo, struct_name: str) -> str:
     sample_time = block.parameters.get("sampleTime", 0.1)
 
     return f'''
+#[derive(Clone)]
 pub struct {struct_name} {{
     pub sample_time: f64,
     pub input: f64,
@@ -113,6 +115,7 @@ def first_order_hold_template(block: BlockInfo, struct_name: str) -> str:
     sample_time = block.parameters.get("sampleTime", 0.1)
 
     return f'''
+#[derive(Clone)]
 pub struct {struct_name} {{
     pub sample_time: f64,
     pub input: f64,
@@ -187,6 +190,7 @@ pub enum IntegrationMethod {{
     Trapezoidal,
 }}
 
+#[derive(Clone)]
 pub struct {struct_name} {{
     pub initial_condition: f64,
     pub sample_time: f64,
@@ -256,6 +260,7 @@ def discrete_derivative_template(block: BlockInfo, struct_name: str) -> str:
     sample_time = block.parameters.get("sampleTime", 0.1)
 
     return f'''
+#[derive(Clone)]
 pub struct {struct_name} {{
     pub sample_time: f64,
     pub input: f64,
@@ -322,6 +327,7 @@ def discrete_transfer_function_template(block: BlockInfo, struct_name: str) -> s
     den_str = ", ".join(f"{d}_f64" for d in denominator)
 
     return f'''
+#[derive(Clone)]
 pub struct {struct_name} {{
     pub numerator: [f64; {num_len}],
     pub denominator: [f64; {den_len}],
@@ -405,6 +411,7 @@ def memory_template(block: BlockInfo, struct_name: str) -> str:
     initial_condition = block.parameters.get("initialCondition", 0.0)
 
     return f'''
+#[derive(Clone)]
 pub struct {struct_name} {{
     pub initial_condition: f64,
     pub input: f64,

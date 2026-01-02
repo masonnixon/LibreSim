@@ -5,22 +5,19 @@ from ....models import BlockInfo
 
 def sum_template(block: BlockInfo, class_name: str) -> str:
     """Generate Sum block code."""
-    inputs = block.parameters.get("inputs", "++")
-    signs = list(inputs)
+    signs_param = block.parameters.get("signs", "++")
+    signs = list(signs_param)
     num_inputs = len(signs)
 
-    # Generate input attributes
-    input_attrs = ["self.input = 0.0"]
-    for i in range(1, num_inputs):
+    # Generate input attributes (use input0, input1, etc. for consistency)
+    input_attrs = []
+    for i in range(num_inputs):
         input_attrs.append(f"self.input{i} = 0.0")
 
     # Generate sum computation
     sum_terms = []
     for i, sign in enumerate(signs):
-        if i == 0:
-            var = "self.input"
-        else:
-            var = f"self.input{i}"
+        var = f"self.input{i}"
         if sign == "+":
             sum_terms.append(var)
         else:
@@ -36,7 +33,7 @@ class {class_name}:
     def __init__(self):
         {input_attrs_code}
         self.output = 0.0
-        self.signs = "{inputs}"
+        self.signs = "{signs_param}"
 
     def init(self):
         self.output = 0.0
@@ -77,18 +74,15 @@ def product_template(block: BlockInfo, class_name: str) -> str:
     operations = block.parameters.get("operations", "**")
     num_inputs = len(operations)
 
-    # Generate input attributes
-    input_attrs = ["self.input = 0.0"]
-    for i in range(1, num_inputs):
+    # Generate input attributes (use input0, input1, etc. for consistency)
+    input_attrs = []
+    for i in range(num_inputs):
         input_attrs.append(f"self.input{i} = 0.0")
 
     # Generate product computation
     product_lines = ["result = 1.0"]
     for i, op in enumerate(operations):
-        if i == 0:
-            var = "self.input"
-        else:
-            var = f"self.input{i}"
+        var = f"self.input{i}"
         if op == "*":
             product_lines.append(f"result *= {var}")
         else:
@@ -260,7 +254,7 @@ class {class_name}:
     def __init__(self):
         self.threshold = {threshold}
         self.criteria = "{criteria}"
-        self.input = 0.0   # First input (when condition true)
+        self.input0 = 0.0  # First input (when condition true)
         self.input1 = 0.0  # Control signal
         self.input2 = 0.0  # Third input (when condition false)
         self.output = 0.0
@@ -277,7 +271,7 @@ class {class_name}:
         elif self.criteria == "!=":
             condition = self.input1 != self.threshold
 
-        self.output = self.input if condition else self.input2
+        self.output = self.input0 if condition else self.input2
 
     def get_output(self, port: int = 0) -> float:
         return self.output
@@ -361,12 +355,13 @@ class {class_name}:
 def mux_template(block: BlockInfo, class_name: str) -> str:
     """Generate Mux block code."""
     num_inputs = block.parameters.get("numInputs", 2)
-    input_attrs = ["self.input = 0.0"]
-    for i in range(1, num_inputs):
+    # Use input0, input1, etc. for consistency
+    input_attrs = []
+    for i in range(num_inputs):
         input_attrs.append(f"self.input{i} = 0.0")
 
-    output_list = ["self.input"]
-    for i in range(1, num_inputs):
+    output_list = []
+    for i in range(num_inputs):
         output_list.append(f"self.input{i}")
 
     # Join with proper indentation

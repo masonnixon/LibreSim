@@ -11,6 +11,7 @@ def pid_controller_template(block: BlockInfo, struct_name: str) -> str:
     n = block.parameters.get("N", 100.0)
     return f"""
 /// {block.name} - PID Controller
+#[derive(Clone)]
 pub struct {struct_name} {{
     pub input: f64,
     pub output: f64,
@@ -91,6 +92,7 @@ def pi_controller_template(block: BlockInfo, struct_name: str) -> str:
     initial = block.parameters.get("initial_integrator", 0.0)
     return f"""
 /// {block.name} - PI Controller
+#[derive(Clone)]
 pub struct {struct_name} {{
     pub input: f64,
     pub output: f64,
@@ -150,6 +152,7 @@ def pd_controller_template(block: BlockInfo, struct_name: str) -> str:
     n = block.parameters.get("N", 100.0)
     return f"""
 /// {block.name} - PD Controller
+#[derive(Clone)]
 pub struct {struct_name} {{
     pub input: f64,
     pub output: f64,
@@ -213,6 +216,7 @@ def anti_windup_pid_template(block: BlockInfo, struct_name: str) -> str:
     kb = block.parameters.get("Kb", 1.0)
     return f"""
 /// {block.name} - Anti-windup PID Controller
+#[derive(Clone)]
 pub struct {struct_name} {{
     pub input: f64,
     pub output: f64,
@@ -307,6 +311,7 @@ def lead_lag_compensator_template(block: BlockInfo, struct_name: str) -> str:
     pole = block.parameters.get("pole", -10.0)
     return f"""
 /// {block.name} - Lead-Lag Compensator: K * (s + z) / (s + p)
+#[derive(Clone)]
 pub struct {struct_name} {{
     pub input: f64,
     pub output: f64,
@@ -374,6 +379,7 @@ def lqr_controller_template(block: BlockInfo, struct_name: str) -> str:
 
     return f"""
 /// {block.name} - LQR Controller: u = -K*x
+#[derive(Clone)]
 pub struct {struct_name} {{
     pub input: f64,
     pub output: [f64; {num_inputs}],
@@ -429,6 +435,7 @@ def pole_placement_template(block: BlockInfo, struct_name: str) -> str:
 
     return f"""
 /// {block.name} - Pole Placement Controller: u = -K*x
+#[derive(Clone)]
 pub struct {struct_name} {{
     pub input: f64,
     pub output: f64,
@@ -473,6 +480,7 @@ def model_reference_template(block: BlockInfo, struct_name: str) -> str:
     zeta = block.parameters.get("damping_ratio", 1.0)
     return f"""
 /// {block.name} - Model Reference: wn^2 / (s^2 + 2*zeta*wn*s + wn^2)
+#[derive(Clone)]
 pub struct {struct_name} {{
     pub input: f64,
     pub output: f64,

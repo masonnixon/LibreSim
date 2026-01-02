@@ -18,20 +18,20 @@ def template_sum(block: BlockInfo, class_name: str) -> str:
 
     return f"""
 // {block.name} - Sum block
-class {class_name} : public Block {{
+class {class_name} {{
 public:
     {input_decls}
 
-    void init() override {{
+    void init() {{
         output_ = 0.0;
     }}
 
-    void update(double t) override {{
+    void update(double t) {{
         (void)t;
         output_ = {sum_expr};
     }}
 
-    double getOutput(int port = 0) const override {{
+    double get_output(int port = 0) const {{
         (void)port;
         return output_;
     }}
@@ -47,21 +47,21 @@ def template_gain(block: BlockInfo, class_name: str) -> str:
     gain = block.parameters.get("gain", 1.0)
     return f"""
 // {block.name} - Gain block
-class {class_name} : public Block {{
+class {class_name} {{
 public:
     double input = 0.0;
     double gain = {gain};
 
-    void init() override {{
+    void init() {{
         output_ = 0.0;
     }}
 
-    void update(double t) override {{
+    void update(double t) {{
         (void)t;
         output_ = gain * input;
     }}
 
-    double getOutput(int port = 0) const override {{
+    double get_output(int port = 0) const {{
         (void)port;
         return output_;
     }}
@@ -90,20 +90,20 @@ def template_product(block: BlockInfo, class_name: str) -> str:
 
     return f"""
 // {block.name} - Product block
-class {class_name} : public Block {{
+class {class_name} {{
 public:
     {input_decls}
 
-    void init() override {{
+    void init() {{
         output_ = 1.0;
     }}
 
-    void update(double t) override {{
+    void update(double t) {{
         (void)t;
         output_ = {product_expr};
     }}
 
-    double getOutput(int port = 0) const override {{
+    double get_output(int port = 0) const {{
         (void)port;
         return output_;
     }}
@@ -118,20 +118,20 @@ def template_abs(block: BlockInfo, class_name: str) -> str:
     """Generate C++ code for Abs block."""
     return f"""
 // {block.name} - Absolute value
-class {class_name} : public Block {{
+class {class_name} {{
 public:
     double input = 0.0;
 
-    void init() override {{
+    void init() {{
         output_ = 0.0;
     }}
 
-    void update(double t) override {{
+    void update(double t) {{
         (void)t;
         output_ = std::fabs(input);
     }}
 
-    double getOutput(int port = 0) const override {{
+    double get_output(int port = 0) const {{
         (void)port;
         return output_;
     }}
@@ -146,22 +146,22 @@ def template_sign(block: BlockInfo, class_name: str) -> str:
     """Generate C++ code for Sign block."""
     return f"""
 // {block.name} - Sign function
-class {class_name} : public Block {{
+class {class_name} {{
 public:
     double input = 0.0;
 
-    void init() override {{
+    void init() {{
         output_ = 0.0;
     }}
 
-    void update(double t) override {{
+    void update(double t) {{
         (void)t;
         if (input > 0) output_ = 1.0;
         else if (input < 0) output_ = -1.0;
         else output_ = 0.0;
     }}
 
-    double getOutput(int port = 0) const override {{
+    double get_output(int port = 0) const {{
         (void)port;
         return output_;
     }}
@@ -177,21 +177,21 @@ def template_bias(block: BlockInfo, class_name: str) -> str:
     bias = block.parameters.get("bias", 0.0)
     return f"""
 // {block.name} - Bias (adds constant)
-class {class_name} : public Block {{
+class {class_name} {{
 public:
     double input = 0.0;
     double bias = {bias};
 
-    void init() override {{
+    void init() {{
         output_ = 0.0;
     }}
 
-    void update(double t) override {{
+    void update(double t) {{
         (void)t;
         output_ = input + bias;
     }}
 
-    double getOutput(int port = 0) const override {{
+    double get_output(int port = 0) const {{
         (void)port;
         return output_;
     }}
@@ -208,22 +208,22 @@ def template_saturation(block: BlockInfo, class_name: str) -> str:
     lower = block.parameters.get("lower_limit", -1.0)
     return f"""
 // {block.name} - Saturation (clamp)
-class {class_name} : public Block {{
+class {class_name} {{
 public:
     double input = 0.0;
     double upper = {upper};
     double lower = {lower};
 
-    void init() override {{
+    void init() {{
         output_ = 0.0;
     }}
 
-    void update(double t) override {{
+    void update(double t) {{
         (void)t;
         output_ = std::clamp(input, lower, upper);
     }}
 
-    double getOutput(int port = 0) const override {{
+    double get_output(int port = 0) const {{
         (void)port;
         return output_;
     }}
@@ -240,24 +240,24 @@ def template_dead_zone(block: BlockInfo, class_name: str) -> str:
     end = block.parameters.get("end", 0.5)
     return f"""
 // {block.name} - Dead Zone
-class {class_name} : public Block {{
+class {class_name} {{
 public:
     double input = 0.0;
     double zone_start = {start};
     double zone_end = {end};
 
-    void init() override {{
+    void init() {{
         output_ = 0.0;
     }}
 
-    void update(double t) override {{
+    void update(double t) {{
         (void)t;
         if (input > zone_end) output_ = input - zone_end;
         else if (input < zone_start) output_ = input - zone_start;
         else output_ = 0.0;
     }}
 
-    double getOutput(int port = 0) const override {{
+    double get_output(int port = 0) const {{
         (void)port;
         return output_;
     }}
@@ -273,23 +273,23 @@ def template_switch(block: BlockInfo, class_name: str) -> str:
     threshold = block.parameters.get("threshold", 0.0)
     return f"""
 // {block.name} - Switch
-class {class_name} : public Block {{
+class {class_name} {{
 public:
     double input0 = 0.0;  // First input (u1)
     double input1 = 0.0;  // Control input (u2)
     double input2 = 0.0;  // Second input (u3)
     double threshold = {threshold};
 
-    void init() override {{
+    void init() {{
         output_ = 0.0;
     }}
 
-    void update(double t) override {{
+    void update(double t) {{
         (void)t;
         output_ = (input1 >= threshold) ? input0 : input2;
     }}
 
-    double getOutput(int port = 0) const override {{
+    double get_output(int port = 0) const {{
         (void)port;
         return output_;
     }}
@@ -316,20 +316,20 @@ def template_math_function(block: BlockInfo, class_name: str) -> str:
 
     return f"""
 // {block.name} - Math function ({func})
-class {class_name} : public Block {{
+class {class_name} {{
 public:
     double input = 0.0;
 
-    void init() override {{
+    void init() {{
         output_ = 0.0;
     }}
 
-    void update(double t) override {{
+    void update(double t) {{
         (void)t;
         output_ = {expr};
     }}
 
-    double getOutput(int port = 0) const override {{
+    double get_output(int port = 0) const {{
         (void)port;
         return output_;
     }}
@@ -358,20 +358,20 @@ def template_trigonometry(block: BlockInfo, class_name: str) -> str:
 
     return f"""
 // {block.name} - Trigonometric function ({func})
-class {class_name} : public Block {{
+class {class_name} {{
 public:
     double input = 0.0;
 
-    void init() override {{
+    void init() {{
         output_ = 0.0;
     }}
 
-    void update(double t) override {{
+    void update(double t) {{
         (void)t;
         output_ = {expr};
     }}
 
-    double getOutput(int port = 0) const override {{
+    double get_output(int port = 0) const {{
         (void)port;
         return output_;
     }}
@@ -390,21 +390,21 @@ def template_mux(block: BlockInfo, class_name: str) -> str:
 
     return f"""
 // {block.name} - Mux block
-class {class_name} : public Block {{
+class {class_name} {{
 public:
     {input_decls}
     static constexpr int NUM_INPUTS = {num_inputs};
 
-    void init() override {{
+    void init() {{
         output_.fill(0.0);
     }}
 
-    void update(double t) override {{
+    void update(double t) {{
         (void)t;
         {output_assigns}
     }}
 
-    double getOutput(int port = 0) const override {{
+    double get_output(int port = 0) const {{
         if (port >= 0 && port < NUM_INPUTS) return output_[port];
         return 0.0;
     }}
@@ -425,23 +425,23 @@ def template_demux(block: BlockInfo, class_name: str) -> str:
 
     return f"""
 // {block.name} - Demux block
-class {class_name} : public Block {{
+class {class_name} {{
 public:
     std::array<double, {num_outputs}> input = {{}};
     static constexpr int NUM_OUTPUTS = {num_outputs};
 
-    void init() override {{
+    void init() {{
         outputs_.fill(0.0);
     }}
 
-    void update(double t) override {{
+    void update(double t) {{
         (void)t;
         for (int i = 0; i < NUM_OUTPUTS; i++) {{
             outputs_[i] = input[i];
         }}
     }}
 
-    double getOutput(int port = 0) const override {{
+    double get_output(int port = 0) const {{
         if (port >= 0 && port < NUM_OUTPUTS) return outputs_[port];
         return 0.0;
     }}

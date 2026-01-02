@@ -107,15 +107,15 @@ fn main() {{
     let num_passes = get_num_passes(method);
 
     while t <= t_end {{
-        // Record data
-        time_data.push(t);
-        output_data.push(model.get_output(0));
-
         // Integration passes
         for kpass in 0..num_passes {{
             model.step(t, dt, kpass);
             model.propagate_integrators(dt, kpass, method);
         }}
+
+        // Record data after stepping (matches backend behavior)
+        time_data.push(t);
+        output_data.push(model.get_output(0));
 
         t += dt;
     }}
@@ -251,6 +251,9 @@ impl Default for Model {{
 
         return header + "\n".join(structs)
 
+    # Block types that use indexed inputs (input0, input1, etc.)
+    MULTI_INPUT_BLOCKS = {"sum", "product", "mux", "switch"}
+
     def _generate_connection_code(self, model_info: CompiledModelInfo) -> str:
         """Generate connection wiring code."""
         lines = []
@@ -263,7 +266,14 @@ impl Default for Model {{
                 )
                 if source_block:
                     source_var = f"block_{self.sanitize_identifier(source_block.id)}"
-                    if target_port is not None and target_port > 0:
+                    # Multi-input blocks use input0, input1, etc.
+                    if block.type in self.MULTI_INPUT_BLOCKS:
+                        port_idx = target_port if target_port is not None else 0
+                        lines.append(
+                            f"        self.{var_name}.input{port_idx} = "
+                            f"self.{source_var}.get_output({source_port});"
+                        )
+                    elif target_port is not None and target_port > 0:
                         lines.append(
                             f"        self.{var_name}.input{target_port} = "
                             f"self.{source_var}.get_output({source_port});"
@@ -283,14 +293,16 @@ impl Default for Model {{
             block = next((b for b in model_info.blocks if b.id == block_id), None)
             if block and block.type == "integrator":
                 var_name = f"block_{self.sanitize_identifier(block.id)}"
+                # Get derivative first to avoid borrow conflicts
                 lines.append(f'''        // Integrator: {block.name}
+        let deriv_{self.sanitize_identifier(block.id)} = self.{var_name}.get_derivative();
         integration::propagate_integrator(
             &mut self.{var_name}.state,
             &mut self.{var_name}.xd0,
             &mut self.{var_name}.xd1,
             &mut self.{var_name}.xd2,
             &mut self.{var_name}.xd3,
-            self.{var_name}.get_derivative(),
+            deriv_{self.sanitize_identifier(block.id)},
             dt, kpass, method
         );''')
 

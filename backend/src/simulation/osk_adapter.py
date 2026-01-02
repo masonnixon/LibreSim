@@ -806,12 +806,23 @@ class OSKAdapter:
                         if suffix.isdigit():
                             # Pure numeric: "block-in-0" -> index 0
                             target_port_index = int(suffix)
-                        elif suffix.startswith("in") and suffix[2:].isdigit():
+                        elif suffix.startswith("in") and len(suffix) > 2 and suffix[2:].isdigit():
                             # Named format: "sum1-in1" -> index 0, "sum1-in2" -> index 1
-                            target_port_index = int(suffix[2:]) - 1
-                        elif suffix.startswith("out") and suffix[3:].isdigit():
+                            # But also support 0-indexed: "in0" -> index 0, "in1" -> index 1
+                            port_num = int(suffix[2:])
+                            # If port_num is 0, it's 0-indexed; otherwise assume 1-indexed
+                            target_port_index = port_num if port_num == 0 else port_num - 1
+                        elif suffix.startswith("out") and len(suffix) > 3 and suffix[3:].isdigit():
                             # Output format: "block-out1" -> index 0
                             target_port_index = int(suffix[3:]) - 1
+                    elif target_port_id.startswith("in") and len(target_port_id) > 2 and target_port_id[2:].isdigit():
+                        # Simple format: "in0", "in1", "in2"
+                        # If port_num is 0, it's 0-indexed; otherwise assume 1-indexed
+                        port_num = int(target_port_id[2:])
+                        target_port_index = port_num if port_num == 0 else port_num - 1
+                    elif target_port_id.startswith("in") and len(target_port_id) == 2:
+                        # Format: "in" (single input port)
+                        target_port_index = 0
 
                 # Extract the source port index from source_port
                 # Handles formats like:

@@ -129,18 +129,17 @@ int main() {{
     int num_passes = get_num_passes("{config.integration_method.value}");
 
     while (t <= t_end) {{
-        // Record data
-        if (sample_idx < n_samples) {{
-            time_data[sample_idx] = t;
-            // Record first output (customize as needed)
-            output_data[sample_idx] = model.get_output(0);
-            sample_idx++;
-        }}
-
         // Integration passes
         for (int kpass = 0; kpass < num_passes; kpass++) {{
             model.step(t, dt, kpass);
             model.propagate_integrators(dt, kpass, "{config.integration_method.value}");
+        }}
+
+        // Record data after stepping (matches backend behavior)
+        if (sample_idx < n_samples) {{
+            time_data[sample_idx] = t;
+            output_data[sample_idx] = model.get_output(0);
+            sample_idx++;
         }}
 
         t += dt;
@@ -165,6 +164,8 @@ int main() {{
 #include <cmath>
 #include <array>
 #include <string>
+#include <algorithm>
+#include <limits>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -329,6 +330,9 @@ void Model::propagate_integrators(double dt, int kpass, const std::string& metho
 }}
 '''
 
+    # Block types that use indexed inputs (input0, input1, etc.)
+    MULTI_INPUT_BLOCKS = {"sum", "product", "mux", "switch"}
+
     def _generate_connection_code(self, model_info: CompiledModelInfo) -> str:
         """Generate connection wiring code."""
         lines = []
@@ -341,7 +345,14 @@ void Model::propagate_integrators(double dt, int kpass, const std::string& metho
                 )
                 if source_block:
                     source_var = f"block_{self.sanitize_identifier(source_block.id)}"
-                    if target_port is not None and target_port > 0:
+                    # Multi-input blocks use input0, input1, etc.
+                    if block.type in self.MULTI_INPUT_BLOCKS:
+                        port_idx = target_port if target_port is not None else 0
+                        lines.append(
+                            f"    {var_name}.input{port_idx} = "
+                            f"{source_var}.get_output({source_port});"
+                        )
+                    elif target_port is not None and target_port > 0:
                         lines.append(
                             f"    {var_name}.input{target_port} = "
                             f"{source_var}.get_output({source_port});"

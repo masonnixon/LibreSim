@@ -1,5 +1,6 @@
 """API controller for code generation."""
 
+import re
 from typing import Any
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse, Response
@@ -8,6 +9,14 @@ from pydantic import BaseModel
 from .generator import CodeGenerator, CodeGenerationConfig, CodeGenerationError
 from .models import Language, IntegrationMethod
 from .compilation import DockerCompiler, CompilationError
+
+
+def sanitize_project_name(name: str) -> str:
+    """Sanitize a name for use as a project/file name."""
+    # Replace spaces with underscores, remove special chars
+    sanitized = re.sub(r'[^\w\s-]', '', name)
+    sanitized = re.sub(r'[\s-]+', '_', sanitized).strip('_')
+    return sanitized if sanitized else "simulation"
 
 
 router = APIRouter(prefix="/codegen", tags=["Code Generation"])
@@ -60,6 +69,15 @@ async def generate_code(request: CodeGenRequest):
                        f"Supported: {[m.value for m in IntegrationMethod]}"
             )
 
+        # Determine project name: use request.project_name if provided and not default,
+        # otherwise try to get from model metadata
+        project_name = request.project_name
+        if project_name == "simulation":
+            # Try to get name from model metadata
+            model_name = request.model.get("name", "")
+            if model_name:
+                project_name = sanitize_project_name(model_name)
+
         # Create config
         config = CodeGenerationConfig(
             language=language,
@@ -67,7 +85,7 @@ async def generate_code(request: CodeGenRequest):
             step_size=request.step_size,
             stop_time=request.stop_time,
             start_time=request.start_time,
-            project_name=request.project_name,
+            project_name=project_name,
             include_csv_output=request.include_csv_output,
             include_main=request.include_main,
         )
@@ -190,6 +208,13 @@ async def compile_code(request: CompileRequest):
                        f"Supported: {[m.value for m in IntegrationMethod]}"
             )
 
+        # Determine project name from model if not explicitly provided
+        project_name = request.project_name
+        if project_name == "simulation":
+            model_name = request.model.get("name", "")
+            if model_name:
+                project_name = sanitize_project_name(model_name)
+
         # Create config
         config = CodeGenerationConfig(
             language=language,
@@ -197,7 +222,7 @@ async def compile_code(request: CompileRequest):
             step_size=request.step_size,
             stop_time=request.stop_time,
             start_time=request.start_time,
-            project_name=request.project_name,
+            project_name=project_name,
             include_csv_output=True,
             include_main=True,
         )

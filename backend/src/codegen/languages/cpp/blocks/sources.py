@@ -8,20 +8,20 @@ def template_constant(block: BlockInfo, class_name: str) -> str:
     value = block.parameters.get("value", 1.0)
     return f"""
 // {block.name} - Constant source
-class {class_name} : public Block {{
+class {class_name} {{
 public:
     double value = {value};
 
-    void init() override {{
+    void init() {{
         output_ = value;
     }}
 
-    void update(double t) override {{
+    void update(double t) {{
         (void)t;
         output_ = value;
     }}
 
-    double getOutput(int port = 0) const override {{
+    double get_output(int port = 0) const {{
         (void)port;
         return output_;
     }}
@@ -39,21 +39,21 @@ def template_step(block: BlockInfo, class_name: str) -> str:
     final_value = block.parameters.get("final_value", 1.0)
     return f"""
 // {block.name} - Step source
-class {class_name} : public Block {{
+class {class_name} {{
 public:
     double step_time = {step_time};
     double initial_value = {initial_value};
     double final_value = {final_value};
 
-    void init() override {{
+    void init() {{
         output_ = initial_value;
     }}
 
-    void update(double t) override {{
+    void update(double t) {{
         output_ = (t >= step_time) ? final_value : initial_value;
     }}
 
-    double getOutput(int port = 0) const override {{
+    double get_output(int port = 0) const {{
         (void)port;
         return output_;
     }}
@@ -71,17 +71,17 @@ def template_ramp(block: BlockInfo, class_name: str) -> str:
     initial_output = block.parameters.get("initial_output", 0.0)
     return f"""
 // {block.name} - Ramp source
-class {class_name} : public Block {{
+class {class_name} {{
 public:
     double slope = {slope};
     double start_time = {start_time};
     double initial_output = {initial_output};
 
-    void init() override {{
+    void init() {{
         output_ = initial_output;
     }}
 
-    void update(double t) override {{
+    void update(double t) {{
         if (t >= start_time) {{
             output_ = initial_output + slope * (t - start_time);
         }} else {{
@@ -89,7 +89,7 @@ public:
         }}
     }}
 
-    double getOutput(int port = 0) const override {{
+    double get_output(int port = 0) const {{
         (void)port;
         return output_;
     }}
@@ -108,22 +108,22 @@ def template_sine_wave(block: BlockInfo, class_name: str) -> str:
     bias = block.parameters.get("bias", 0.0)
     return f"""
 // {block.name} - Sine wave source
-class {class_name} : public Block {{
+class {class_name} {{
 public:
     double amplitude = {amplitude};
     double frequency = {frequency};
     double phase = {phase};
     double bias = {bias};
 
-    void init() override {{
+    void init() {{
         output_ = bias + amplitude * std::sin(phase);
     }}
 
-    void update(double t) override {{
+    void update(double t) {{
         output_ = bias + amplitude * std::sin(2.0 * M_PI * frequency * t + phase);
     }}
 
-    double getOutput(int port = 0) const override {{
+    double get_output(int port = 0) const {{
         (void)port;
         return output_;
     }}
@@ -142,18 +142,18 @@ def template_pulse(block: BlockInfo, class_name: str) -> str:
     phase_delay = block.parameters.get("phase_delay", 0.0)
     return f"""
 // {block.name} - Pulse generator
-class {class_name} : public Block {{
+class {class_name} {{
 public:
     double amplitude = {amplitude};
     double period = {period};
     double duty_cycle = {pulse_width} / 100.0;
     double phase_delay = {phase_delay};
 
-    void init() override {{
+    void init() {{
         output_ = 0.0;
     }}
 
-    void update(double t) override {{
+    void update(double t) {{
         double t_adj = t - phase_delay;
         if (t_adj < 0) {{
             output_ = 0.0;
@@ -163,7 +163,7 @@ public:
         }}
     }}
 
-    double getOutput(int port = 0) const override {{
+    double get_output(int port = 0) const {{
         (void)port;
         return output_;
     }}
@@ -178,17 +178,17 @@ def template_clock(block: BlockInfo, class_name: str) -> str:
     """Generate C++ code for Clock block."""
     return f"""
 // {block.name} - Clock (outputs simulation time)
-class {class_name} : public Block {{
+class {class_name} {{
 public:
-    void init() override {{
+    void init() {{
         output_ = 0.0;
     }}
 
-    void update(double t) override {{
+    void update(double t) {{
         output_ = t;
     }}
 
-    double getOutput(int port = 0) const override {{
+    double get_output(int port = 0) const {{
         (void)port;
         return output_;
     }}
@@ -203,18 +203,18 @@ def template_ground(block: BlockInfo, class_name: str) -> str:
     """Generate C++ code for Ground block."""
     return f"""
 // {block.name} - Ground (zero output)
-class {class_name} : public Block {{
+class {class_name} {{
 public:
-    void init() override {{
+    void init() {{
         output_ = 0.0;
     }}
 
-    void update(double t) override {{
+    void update(double t) {{
         (void)t;
         output_ = 0.0;
     }}
 
-    double getOutput(int port = 0) const override {{
+    double get_output(int port = 0) const {{
         (void)port;
         return output_;
     }}
@@ -233,24 +233,24 @@ def template_white_noise(block: BlockInfo, class_name: str) -> str:
 
     return f"""
 // {block.name} - White Noise source
-class {class_name} : public Block {{
+class {class_name} {{
 public:
     {class_name}() : gen_({seed if seed else 'std::random_device{{}}()'}),
                      dist_(0.0, std::sqrt({power} / {sample_time})) {{}}
 
-    void init() override {{
+    void init() {{
         output_ = 0.0;
         last_sample_time_ = -std::numeric_limits<double>::infinity();
     }}
 
-    void update(double t) override {{
+    void update(double t) {{
         if (t - last_sample_time_ >= {sample_time} - 1e-10) {{
             output_ = dist_(gen_);
             last_sample_time_ = t;
         }}
     }}
 
-    double getOutput(int port = 0) const override {{
+    double get_output(int port = 0) const {{
         (void)port;
         return output_;
     }}
