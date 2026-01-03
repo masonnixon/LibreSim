@@ -33,14 +33,12 @@ from src.models.simulation import SimulationConfig
 EXAMPLES_DIR = REPO_ROOT / "examples"
 CODEGEN_DIR = REPO_ROOT / "codegen_verification"
 
-# Key examples to validate
-KEY_EXAMPLES = [
-    "01_sine_wave_basic",
-    "02_first_order_step_response",
-    "03_pid_controller",
-    "04_mass_spring_damper",
-    "09_second_order_damping",
-]
+# Get all examples from examples directory
+def get_all_examples():
+    """Get all example names from the examples directory."""
+    return sorted([p.stem for p in EXAMPLES_DIR.glob("*.json")])
+
+KEY_EXAMPLES = get_all_examples()
 
 LANGUAGES = ["python", "cpp", "c", "rust"]
 

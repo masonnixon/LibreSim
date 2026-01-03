@@ -174,7 +174,10 @@ class {class_name}:
 def white_noise_template(block: BlockInfo, class_name: str) -> str:
     """Generate WhiteNoise block code."""
     power = block.parameters.get("power", 1.0)
-    sample_time = block.parameters.get("sampleTime", 0.1)
+    sample_time = block.parameters.get("sampleTime", block.parameters.get("sample_time", 0.1))
+    # Avoid division by zero - use reasonable default if sample_time is 0
+    if sample_time <= 0:
+        sample_time = 0.01  # Default to 100Hz sampling
     seed = block.parameters.get("seed", 0)
     return f'''
 class {class_name}:
