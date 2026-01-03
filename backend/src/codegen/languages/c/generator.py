@@ -462,7 +462,7 @@ void model_propagate_integrators(Model* model, double dt, int kpass, const char*
                     lines.append(f'''    // Integrator: {block.name}
     propagate_integrator(
         &model->{var_name}.state,
-        &model->{var_name}.xd0, &model->{var_name}.xd1,
+        &model->{var_name}.x0, &model->{var_name}.xd0, &model->{var_name}.xd1,
         &model->{var_name}.xd2, &model->{var_name}.xd3,
         {struct_name}_get_derivative(&model->{var_name}),
         dt, kpass, method

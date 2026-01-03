@@ -15,6 +15,7 @@ pub struct {struct_name} {{
     pub state: f64,
     pub initial_condition: f64,
     // Integration intermediate values
+    pub x0: f64,  // RK x0 storage (each integrator needs its own)
     pub xd0: f64,
     pub xd1: f64,
     pub xd2: f64,
@@ -28,6 +29,7 @@ impl {struct_name} {{
             initial_condition: {initial_condition}_f64,
             state: {initial_condition}_f64,
             output: {initial_condition}_f64,
+            x0: 0.0,
             xd0: 0.0,
             xd1: 0.0,
             xd2: 0.0,
@@ -38,6 +40,7 @@ impl {struct_name} {{
     pub fn init(&mut self) {{
         self.state = self.initial_condition;
         self.output = self.state;
+        self.x0 = 0.0;
         self.xd0 = 0.0;
         self.xd1 = 0.0;
         self.xd2 = 0.0;

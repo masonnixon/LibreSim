@@ -17,9 +17,11 @@ typedef struct {{
     double Kp, Ki, Kd, N;
     // Integrator state [value, derivative]
     double integrator[2];
+    double x0_int;  // RK x0 storage for integrator
     double xd0_int, xd1_int, xd2_int, xd3_int;
     // Derivative filter state
     double deriv_state[2];
+    double x0_der;  // RK x0 storage for derivative filter
     double xd0_der, xd1_der, xd2_der, xd3_der;
 }} {struct_name};
 
@@ -34,7 +36,9 @@ void {struct_name}_init({struct_name}* b) {{
     b->integrator[1] = 0.0;
     b->deriv_state[0] = 0.0;
     b->deriv_state[1] = 0.0;
+    b->x0_int = 0.0;
     b->xd0_int = b->xd1_int = b->xd2_int = b->xd3_int = 0.0;
+    b->x0_der = 0.0;
     b->xd0_der = b->xd1_der = b->xd2_der = b->xd3_der = 0.0;
 }}
 
@@ -65,14 +69,14 @@ void {struct_name}_propagate_states({struct_name}* b, double dt, int kpass, cons
     // Propagate integrator state
     propagate_integrator(
         &b->integrator[0],
-        &b->xd0_int, &b->xd1_int, &b->xd2_int, &b->xd3_int,
+        &b->x0_int, &b->xd0_int, &b->xd1_int, &b->xd2_int, &b->xd3_int,
         b->integrator[1],
         dt, kpass, method
     );
     // Propagate derivative filter state
     propagate_integrator(
         &b->deriv_state[0],
-        &b->xd0_der, &b->xd1_der, &b->xd2_der, &b->xd3_der,
+        &b->x0_der, &b->xd0_der, &b->xd1_der, &b->xd2_der, &b->xd3_der,
         b->deriv_state[1],
         dt, kpass, method
     );

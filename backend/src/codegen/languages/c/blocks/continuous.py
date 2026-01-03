@@ -14,6 +14,7 @@ typedef struct {{
     double state;
     double initial_condition;
     // Integration intermediate values
+    double x0;  // RK x0 storage (each integrator needs its own)
     double xd0, xd1, xd2, xd3;
 }} {struct_name};
 
@@ -22,6 +23,7 @@ void {struct_name}_init({struct_name}* b) {{
     b->initial_condition = {initial_condition};
     b->state = b->initial_condition;
     b->output = b->state;
+    b->x0 = 0.0;
     b->xd0 = 0.0;
     b->xd1 = 0.0;
     b->xd2 = 0.0;

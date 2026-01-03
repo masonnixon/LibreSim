@@ -149,9 +149,10 @@ def get_num_passes(method: str) -> int:
 int get_num_passes(const char* method);
 
 // Propagate a single integrator state
+// Each integrator MUST provide its own x0 storage to avoid conflicts
 void propagate_integrator(
     double* state,
-    double* xd0, double* xd1, double* xd2, double* xd3,
+    double* x0, double* xd0, double* xd1, double* xd2, double* xd3,
     double derivative,
     double dt, int kpass, const char* method
 );
@@ -172,63 +173,61 @@ int get_num_passes(const char* method) {
     return 4;  // Default to RK4
 }
 
-// Static storage for x0 (used across passes)
-static double s_x0 = 0.0;
-static double s_xd4 = 0.0;
-
 void propagate_integrator(
     double* state,
-    double* xd0, double* xd1, double* xd2, double* xd3,
+    double* x0, double* xd0, double* xd1, double* xd2, double* xd3,
     double derivative,
     double dt, int kpass, const char* method
 ) {
+    // Static storage for merson xd4 only (ok to share, just derivative)
+    static double s_xd4 = 0.0;
     if (strcmp(method, "euler") == 0) {
         *state += dt * derivative;
     } else if (strcmp(method, "rk2") == 0) {
         if (kpass == 0) {
-            s_x0 = *state;
+            *x0 = *state;
             *xd0 = derivative;
-            *state = s_x0 + dt / 2.0 * (*xd0);
+            *state = *x0 + dt / 2.0 * (*xd0);
         } else if (kpass == 1) {
             *xd1 = derivative;
-            *state = s_x0 + dt * (*xd1);
+            *state = *x0 + dt * (*xd1);
         }
     } else if (strcmp(method, "rk4") == 0) {
         if (kpass == 0) {
-            s_x0 = *state;
+            *x0 = *state;
             *xd0 = derivative;
-            *state = s_x0 + dt / 2.0 * (*xd0);
+            *state = *x0 + dt / 2.0 * (*xd0);
         } else if (kpass == 1) {
             *xd1 = derivative;
-            *state = s_x0 + dt / 2.0 * (*xd1);
+            *state = *x0 + dt / 2.0 * (*xd1);
         } else if (kpass == 2) {
             *xd2 = derivative;
-            *state = s_x0 + dt * (*xd2);
+            *state = *x0 + dt * (*xd2);
         } else if (kpass == 3) {
             *xd3 = derivative;
-            *state = s_x0 + dt / 6.0 * ((*xd0) + 2.0*(*xd1) + 2.0*(*xd2) + (*xd3));
+            *state = *x0 + dt / 6.0 * ((*xd0) + 2.0*(*xd1) + 2.0*(*xd2) + (*xd3));
         }
     } else if (strcmp(method, "merson") == 0) {
         if (kpass == 0) {
-            s_x0 = *state;
+            *x0 = *state;
             *xd0 = derivative;
-            *state = s_x0 + dt / 3.0 * (*xd0);
+            *state = *x0 + dt / 3.0 * (*xd0);
         } else if (kpass == 1) {
             *xd1 = derivative;
-            *state = s_x0 + dt / 6.0 * ((*xd0) + (*xd1));
+            *state = *x0 + dt / 6.0 * ((*xd0) + (*xd1));
         } else if (kpass == 2) {
             *xd2 = derivative;
-            *state = s_x0 + dt / 8.0 * ((*xd0) + 3.0 * (*xd2));
+            *state = *x0 + dt / 8.0 * ((*xd0) + 3.0 * (*xd2));
         } else if (kpass == 3) {
             *xd3 = derivative;
-            *state = s_x0 + dt / 2.0 * ((*xd0) - 3.0*(*xd2) + 4.0*(*xd3));
+            *state = *x0 + dt / 2.0 * ((*xd0) - 3.0*(*xd2) + 4.0*(*xd3));
         } else if (kpass == 4) {
             s_xd4 = derivative;
-            *state = s_x0 + dt / 6.0 * ((*xd0) + 4.0*(*xd3) + s_xd4);
+            *state = *x0 + dt / 6.0 * ((*xd0) + 4.0*(*xd3) + s_xd4);
         }
     } else {
         // Default to RK4
-        propagate_integrator(state, xd0, xd1, xd2, xd3, derivative, dt, kpass, "rk4");
+        propagate_integrator(state, x0, xd0, xd1, xd2, xd3, derivative, dt, kpass, "rk4");
     }
 }
 '''
@@ -254,9 +253,10 @@ void propagate_integrator(
 int get_num_passes(const std::string& method);
 
 // Propagate a single integrator state
+// Each integrator MUST provide its own x0 storage to avoid conflicts
 void propagate_integrator(
     double& state,
-    double& xd0, double& xd1, double& xd2, double& xd3,
+    double& x0, double& xd0, double& xd1, double& xd2, double& xd3,
     double derivative,
     double dt, int kpass, const std::string& method
 );
@@ -344,28 +344,26 @@ static void merson_step(
     }
 }
 
-// Static storage for x0 values (one per integrator)
-// In real code, these should be member variables of each integrator
-static double s_x0 = 0.0;
+// Static storage for merson xd4 (rarely used, ok to share)
 static double s_xd4 = 0.0;
 
 void propagate_integrator(
     double& state,
-    double& xd0, double& xd1, double& xd2, double& xd3,
+    double& x0, double& xd0, double& xd1, double& xd2, double& xd3,
     double derivative,
     double dt, int kpass, const std::string& method
 ) {
     if (method == "euler") {
         euler_step(state, derivative, dt);
     } else if (method == "rk2") {
-        rk2_step(state, xd0, xd1, derivative, dt, kpass, s_x0);
+        rk2_step(state, xd0, xd1, derivative, dt, kpass, x0);
     } else if (method == "rk4") {
-        rk4_step(state, xd0, xd1, xd2, xd3, derivative, dt, kpass, s_x0);
+        rk4_step(state, xd0, xd1, xd2, xd3, derivative, dt, kpass, x0);
     } else if (method == "merson") {
-        merson_step(state, xd0, xd1, xd2, xd3, derivative, dt, kpass, s_x0, s_xd4);
+        merson_step(state, xd0, xd1, xd2, xd3, derivative, dt, kpass, x0, s_xd4);
     } else {
         // Default to RK4
-        rk4_step(state, xd0, xd1, xd2, xd3, derivative, dt, kpass, s_x0);
+        rk4_step(state, xd0, xd1, xd2, xd3, derivative, dt, kpass, x0);
     }
 }
 '''
@@ -519,15 +517,11 @@ impl IntegratorState {
     }
 }
 
-// Static storage for x0 (thread-local for safety)
-thread_local! {
-    static X0: std::cell::RefCell<f64> = std::cell::RefCell::new(0.0);
-    static XD4: std::cell::RefCell<f64> = std::cell::RefCell::new(0.0);
-}
-
 /// Propagate a single integrator state
+/// Each integrator MUST provide its own x0 storage to avoid conflicts
 pub fn propagate_integrator(
     state: &mut f64,
+    x0: &mut f64,
     xd0: &mut f64,
     xd1: &mut f64,
     xd2: &mut f64,
@@ -542,77 +536,72 @@ pub fn propagate_integrator(
             *state += dt * derivative;
         }
         IntegrationMethod::Rk2 => {
-            X0.with(|x0_cell| {
-                let mut x0 = x0_cell.borrow_mut();
-                match kpass {
-                    0 => {
-                        *x0 = *state;
-                        *xd0 = derivative;
-                        *state = *x0 + dt / 2.0 * *xd0;
-                    }
-                    1 => {
-                        *xd1 = derivative;
-                        *state = *x0 + dt * *xd1;
-                    }
-                    _ => {}
+            match kpass {
+                0 => {
+                    *x0 = *state;
+                    *xd0 = derivative;
+                    *state = *x0 + dt / 2.0 * *xd0;
                 }
-            });
+                1 => {
+                    *xd1 = derivative;
+                    *state = *x0 + dt * *xd1;
+                }
+                _ => {}
+            }
         }
         IntegrationMethod::Rk4 => {
-            X0.with(|x0_cell| {
-                let mut x0 = x0_cell.borrow_mut();
+            match kpass {
+                0 => {
+                    *x0 = *state;
+                    *xd0 = derivative;
+                    *state = *x0 + dt / 2.0 * *xd0;
+                }
+                1 => {
+                    *xd1 = derivative;
+                    *state = *x0 + dt / 2.0 * *xd1;
+                }
+                2 => {
+                    *xd2 = derivative;
+                    *state = *x0 + dt * *xd2;
+                }
+                3 => {
+                    *xd3 = derivative;
+                    *state = *x0 + dt / 6.0 * (*xd0 + 2.0 * *xd1 + 2.0 * *xd2 + *xd3);
+                }
+                _ => {}
+            }
+        }
+        IntegrationMethod::Merson => {
+            // Static storage for xd4 only (ok to share, just derivative)
+            thread_local! {
+                static XD4: std::cell::RefCell<f64> = std::cell::RefCell::new(0.0);
+            }
+            XD4.with(|xd4_cell| {
+                let mut xd4 = xd4_cell.borrow_mut();
                 match kpass {
                     0 => {
                         *x0 = *state;
                         *xd0 = derivative;
-                        *state = *x0 + dt / 2.0 * *xd0;
+                        *state = *x0 + dt / 3.0 * *xd0;
                     }
                     1 => {
                         *xd1 = derivative;
-                        *state = *x0 + dt / 2.0 * *xd1;
+                        *state = *x0 + dt / 6.0 * (*xd0 + *xd1);
                     }
                     2 => {
                         *xd2 = derivative;
-                        *state = *x0 + dt * *xd2;
+                        *state = *x0 + dt / 8.0 * (*xd0 + 3.0 * *xd2);
                     }
                     3 => {
                         *xd3 = derivative;
-                        *state = *x0 + dt / 6.0 * (*xd0 + 2.0 * *xd1 + 2.0 * *xd2 + *xd3);
+                        *state = *x0 + dt / 2.0 * (*xd0 - 3.0 * *xd2 + 4.0 * *xd3);
+                    }
+                    4 => {
+                        *xd4 = derivative;
+                        *state = *x0 + dt / 6.0 * (*xd0 + 4.0 * *xd3 + *xd4);
                     }
                     _ => {}
                 }
-            });
-        }
-        IntegrationMethod::Merson => {
-            X0.with(|x0_cell| {
-                let mut x0 = x0_cell.borrow_mut();
-                XD4.with(|xd4_cell| {
-                    let mut xd4 = xd4_cell.borrow_mut();
-                    match kpass {
-                        0 => {
-                            *x0 = *state;
-                            *xd0 = derivative;
-                            *state = *x0 + dt / 3.0 * *xd0;
-                        }
-                        1 => {
-                            *xd1 = derivative;
-                            *state = *x0 + dt / 6.0 * (*xd0 + *xd1);
-                        }
-                        2 => {
-                            *xd2 = derivative;
-                            *state = *x0 + dt / 8.0 * (*xd0 + 3.0 * *xd2);
-                        }
-                        3 => {
-                            *xd3 = derivative;
-                            *state = *x0 + dt / 2.0 * (*xd0 - 3.0 * *xd2 + 4.0 * *xd3);
-                        }
-                        4 => {
-                            *xd4 = derivative;
-                            *state = *x0 + dt / 6.0 * (*xd0 + 4.0 * *xd3 + *xd4);
-                        }
-                        _ => {}
-                    }
-                });
             });
         }
     }

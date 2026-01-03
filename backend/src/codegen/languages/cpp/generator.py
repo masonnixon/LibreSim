@@ -441,7 +441,7 @@ void Model::propagate_integrators(double dt, int kpass, const std::string& metho
                     lines.append(f'''    // Integrator: {block.name}
     propagate_integrator(
         {var_name}.state,
-        {var_name}.xd0, {var_name}.xd1, {var_name}.xd2, {var_name}.xd3,
+        {var_name}.x0, {var_name}.xd0, {var_name}.xd1, {var_name}.xd2, {var_name}.xd3,
         {var_name}.get_derivative(),
         dt, kpass, method
     );''')

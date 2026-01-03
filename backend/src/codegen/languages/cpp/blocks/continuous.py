@@ -15,11 +15,13 @@ public:
     double state = 0.0;
     double initial_condition = {initial_condition};
     // Integration intermediate values
+    double x0 = 0.0;  // RK x0 storage
     double xd0 = 0.0, xd1 = 0.0, xd2 = 0.0, xd3 = 0.0;
 
     void init() {{
         state = initial_condition;
         output = state;
+        x0 = 0.0;
         xd0 = xd1 = xd2 = xd3 = 0.0;
     }}
 

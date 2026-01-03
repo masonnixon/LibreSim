@@ -383,6 +383,7 @@ use crate::integration::{IntegrationMethod, propagate_integrator};
         let deriv_{self.sanitize_identifier(block.id)} = self.{var_name}.get_derivative();
         integration::propagate_integrator(
             &mut self.{var_name}.state,
+            &mut self.{var_name}.x0,
             &mut self.{var_name}.xd0,
             &mut self.{var_name}.xd1,
             &mut self.{var_name}.xd2,

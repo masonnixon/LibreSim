@@ -28,12 +28,14 @@ pub struct {struct_name} {{
     pub n: f64,  // Derivative filter coefficient
     // Integrator state [value, derivative]
     pub integrator: [f64; 2],
+    pub x0_int: f64,  // RK x0 storage for integrator
     pub xd0_int: f64,
     pub xd1_int: f64,
     pub xd2_int: f64,
     pub xd3_int: f64,
     // Derivative filter state
     pub deriv_state: [f64; 2],
+    pub x0_der: f64,  // RK x0 storage for derivative filter
     pub xd0_der: f64,
     pub xd1_der: f64,
     pub xd2_der: f64,
@@ -50,11 +52,13 @@ impl {struct_name} {{
             kd: {_format_f64(kd)},
             n: {_format_f64(n)},
             integrator: [0.0, 0.0],
+            x0_int: 0.0,
             xd0_int: 0.0,
             xd1_int: 0.0,
             xd2_int: 0.0,
             xd3_int: 0.0,
             deriv_state: [0.0, 0.0],
+            x0_der: 0.0,
             xd0_der: 0.0,
             xd1_der: 0.0,
             xd2_der: 0.0,
@@ -65,6 +69,8 @@ impl {struct_name} {{
     pub fn init(&mut self) {{
         self.integrator = [0.0, 0.0];
         self.deriv_state = [0.0, 0.0];
+        self.x0_int = 0.0;
+        self.x0_der = 0.0;
         self.output = 0.0;
     }}
 
@@ -90,24 +96,30 @@ impl {struct_name} {{
     }}
 
     pub fn propagate_states(&mut self, dt: f64, kpass: usize, method: IntegrationMethod) {{
+        // Capture derivatives first to avoid borrow conflicts
+        let int_deriv = self.integrator[1];
+        let der_deriv = self.deriv_state[1];
+
         // Propagate integrator state
         propagate_integrator(
             &mut self.integrator[0],
+            &mut self.x0_int,
             &mut self.xd0_int,
             &mut self.xd1_int,
             &mut self.xd2_int,
             &mut self.xd3_int,
-            self.integrator[1],
+            int_deriv,
             dt, kpass, method,
         );
         // Propagate derivative filter state
         propagate_integrator(
             &mut self.deriv_state[0],
+            &mut self.x0_der,
             &mut self.xd0_der,
             &mut self.xd1_der,
             &mut self.xd2_der,
             &mut self.xd3_der,
-            self.deriv_state[1],
+            der_deriv,
             dt, kpass, method,
         );
     }}

@@ -22,15 +22,19 @@ public:
 
     // Integrator state [value, derivative]
     double integrator[2] = {{0.0, 0.0}};
+    double x0_int = 0.0;  // RK x0 storage
     double xd0_int = 0.0, xd1_int = 0.0, xd2_int = 0.0, xd3_int = 0.0;
 
     // Derivative filter state
     double deriv_state[2] = {{0.0, 0.0}};
+    double x0_der = 0.0;  // RK x0 storage
     double xd0_der = 0.0, xd1_der = 0.0, xd2_der = 0.0, xd3_der = 0.0;
 
     void init() {{
         integrator[0] = integrator[1] = 0.0;
         deriv_state[0] = deriv_state[1] = 0.0;
+        x0_int = 0.0;
+        x0_der = 0.0;
         output = 0.0;
     }}
 
@@ -61,14 +65,14 @@ public:
         // Propagate integrator state
         propagate_integrator(
             integrator[0],
-            xd0_int, xd1_int, xd2_int, xd3_int,
+            x0_int, xd0_int, xd1_int, xd2_int, xd3_int,
             integrator[1],
             dt, kpass, method
         );
         // Propagate derivative filter state
         propagate_integrator(
             deriv_state[0],
-            xd0_der, xd1_der, xd2_der, xd3_der,
+            x0_der, xd0_der, xd1_der, xd2_der, xd3_der,
             deriv_state[1],
             dt, kpass, method
         );
