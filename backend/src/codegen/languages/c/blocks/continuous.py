@@ -99,6 +99,7 @@ def template_transfer_function(block: BlockInfo, struct_name: str) -> str:
     """Generate C code for Transfer Function block.
 
     Implements as a chain of integrators in controllable canonical form.
+    Matches Python implementation exactly for numerical accuracy.
     """
     numerator = block.parameters.get("numerator", [1.0])
     denominator = block.parameters.get("denominator", [1.0, 1.0])
@@ -119,16 +120,22 @@ def template_transfer_function(block: BlockInfo, struct_name: str) -> str:
 
     # State array declaration
     state_decl = f"double state[{order}];"
+    deriv_decl = f"double derivatives[{order}];"
+    x0_decl = f"double x0[{order}];"
     xd_decl = f"double xd0[{order}], xd1[{order}], xd2[{order}], xd3[{order}];"
 
     # Initialize state array
     state_init = "\n    ".join([f"b->state[{i}] = 0.0;" for i in range(order)])
+    deriv_init = "\n    ".join([f"b->derivatives[{i}] = 0.0;" for i in range(order)])
+    x0_init = "\n    ".join([f"b->x0[{i}] = 0.0;" for i in range(order)])
 
     # Denominator coefficients (normalized)
     a_coeffs = ", ".join([str(d / a0) for d in denominator])
 
-    # Numerator coefficients
+    # Numerator coefficients (normalized)
     b_coeffs = ", ".join([str(n / a0) for n in numerator])
+
+    num_len = len(numerator)
 
     return f"""
 // {block.name} - Transfer Function (order {order})
@@ -136,15 +143,21 @@ typedef struct {{
     double input;
     double output;
     {state_decl}
+    {deriv_decl}
+    {x0_decl}
     {xd_decl}
     int order;
+    int num_len;
 }} {struct_name};
 
 void {struct_name}_init({struct_name}* b) {{
     b->input = 0.0;
     b->output = 0.0;
     b->order = {order};
+    b->num_len = {num_len};
     {state_init}
+    {deriv_init}
+    {x0_init}
     for (int i = 0; i < {order}; i++) {{
         b->xd0[i] = 0.0;
         b->xd1[i] = 0.0;
@@ -155,31 +168,63 @@ void {struct_name}_init({struct_name}* b) {{
 
 void {struct_name}_update({struct_name}* b, double t) {{
     (void)t;
-    // Compute output from state (controllable canonical form)
-    double a[] = {{{a_coeffs}}};
-    double bcoef[] = {{{b_coeffs}}};
+    // Normalized coefficients
+    double den[] = {{{a_coeffs}}};
+    double num[] = {{{b_coeffs}}};
+    int den_len = sizeof(den) / sizeof(den[0]);
 
-    // State space output
-    b->output = 0.0;
-    int nb = sizeof(bcoef) / sizeof(bcoef[0]);
-    int na = sizeof(a) / sizeof(a[0]);
-
-    // Direct feedthrough term
-    if (nb > 0 && na > 0) {{
-        b->output = bcoef[0] * b->input;
+    // Compute derivatives (controllable canonical form)
+    // x_i' = x_(i+1) for i < order-1
+    // x_(order-1)' = input - sum(a[j] * state[order-j])
+    for (int i = 0; i < b->order; i++) {{
+        if (i < b->order - 1) {{
+            b->derivatives[i] = b->state[i + 1];
+        }} else {{
+            b->derivatives[i] = b->input;
+            for (int j = 1; j < den_len; j++) {{
+                if (b->order - j >= 0 && b->order - j < b->order) {{
+                    b->derivatives[i] -= den[j] * b->state[b->order - j];
+                }}
+            }}
+        }}
     }}
 
-    // State contribution
-    for (int i = 0; i < b->order && i < nb - 1; i++) {{
-        if (i + 1 < nb) {{
-            b->output += bcoef[i + 1] * b->state[i];
-        }}
+    // Compute output: y = sum(num[len-1-i] * state[i]) + feedthrough
+    b->output = 0.0;
+    for (int i = 0; i < b->order && i < b->num_len; i++) {{
+        b->output += num[b->num_len - 1 - i] * b->state[i];
+    }}
+
+    // Direct feedthrough only if numerator degree > order (improper)
+    if (b->num_len > b->order) {{
+        b->output += num[0] * b->input;
     }}
 }}
 
 double {struct_name}_get_output({struct_name}* b, int port) {{
     (void)port;
     return b->output;
+}}
+
+void {struct_name}_propagate_states({struct_name}* b, double dt, int kpass, const char* method) {{
+    (void)method;
+    // RK4 integration for all states
+    for (int i = 0; i < b->order; i++) {{
+        if (kpass == 0) {{
+            b->x0[i] = b->state[i];
+            b->xd0[i] = b->derivatives[i];
+            b->state[i] = b->x0[i] + dt / 2.0 * b->xd0[i];
+        }} else if (kpass == 1) {{
+            b->xd1[i] = b->derivatives[i];
+            b->state[i] = b->x0[i] + dt / 2.0 * b->xd1[i];
+        }} else if (kpass == 2) {{
+            b->xd2[i] = b->derivatives[i];
+            b->state[i] = b->x0[i] + dt * b->xd2[i];
+        }} else if (kpass == 3) {{
+            b->xd3[i] = b->derivatives[i];
+            b->state[i] = b->x0[i] + dt / 6.0 * (b->xd0[i] + 2.0 * b->xd1[i] + 2.0 * b->xd2[i] + b->xd3[i]);
+        }}
+    }}
 }}
 """
 

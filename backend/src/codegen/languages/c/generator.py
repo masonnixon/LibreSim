@@ -46,9 +46,10 @@ class CCodeGenerator(LanguageGenerator):
         project.add_file("CMakeLists.txt", self._generate_cmake(config))
         project.add_file("README.md", self._generate_readme(model_info, config))
 
-        # Generate Dockerfile and build script
+        # Generate Dockerfile and build/run scripts
         project.add_file("Dockerfile", self._generate_dockerfile(config))
         project.add_file("build.sh", self._generate_build_script(config))
+        project.add_file("run.sh", self._generate_run_script(config))
 
         return project
 
@@ -66,34 +67,93 @@ class CCodeGenerator(LanguageGenerator):
         """Generate integration method code."""
         return IntegrationCodeGenerator.generate_c_source()
 
+    def _generate_output_recording(self, model_info: CompiledModelInfo) -> dict:
+        """Generate output recording code for all sink blocks."""
+        output_names = []  # List of column names
+        record_code_lines = []  # Code to record each output
+
+        for block_id in model_info.sink_blocks:
+            block = next((b for b in model_info.blocks if b.id == block_id), None)
+            if block:
+                struct_name = f"Block_{self.sanitize_identifier(block.id)}"
+                var_name = f"block_{self.sanitize_identifier(block.id)}"
+                signal_name = self.sanitize_identifier(block.name or block.id)
+
+                # For multi-input scopes, record each input separately
+                num_inputs = block.parameters.get("numInputs", 1)
+                if block.type == "scope" and num_inputs > 1:
+                    # Build a map of port index -> source name
+                    port_names = {}
+                    for conn in block.input_connections:
+                        source_id, source_port, target_port = self.parse_connection(conn)
+                        source_block = next(
+                            (b for b in model_info.blocks if b.id == source_id), None
+                        )
+                        if source_block:
+                            source_name = self.sanitize_identifier(
+                                source_block.name or source_block.id
+                            )
+                            port_idx = target_port if target_port is not None else 0
+                            port_names[port_idx] = source_name
+
+                    for i in range(num_inputs):
+                        # Use source block name if available, otherwise use index
+                        if i in port_names:
+                            port_name = port_names[i]
+                        else:
+                            port_name = f"{signal_name}_{i}"
+                        output_names.append(port_name)
+                        record_code_lines.append(
+                            f"            output_data[sample_idx * n_outputs + {len(output_names) - 1}] = "
+                            f"{struct_name}_get_output(&model.{var_name}, {i});"
+                        )
+                else:
+                    output_names.append(signal_name)
+                    record_code_lines.append(
+                        f"            output_data[sample_idx * n_outputs + {len(output_names) - 1}] = "
+                        f"{struct_name}_get_output(&model.{var_name}, 0);"
+                    )
+
+        return {
+            'names': output_names,
+            'n_outputs': len(output_names),
+            'record_code': "\n".join(record_code_lines) if record_code_lines else "            // No outputs to record",
+        }
+
     def generate_main_code(
         self,
         model_info: CompiledModelInfo,
         config: Any,
     ) -> str:
         """Generate main entry point code."""
+        # Get output recording info
+        output_info = self._generate_output_recording(model_info)
+        n_outputs = output_info['n_outputs'] or 1
+        output_names = output_info['names']
+        record_code = output_info['record_code']
+
+        # Build CSV header with column names
+        csv_header_parts = ['time'] + output_names
+        csv_header = ','.join(csv_header_parts)
+
         csv_code = ""
         if config.include_csv_output:
-            csv_code = '''
+            csv_code = f'''
     // Write results to CSV
     FILE* csv = fopen("results.csv", "w");
-    if (csv) {
-        fprintf(csv, "time");
-        for (int i = 0; i < n_outputs; i++) {
-            fprintf(csv, ",output%d", i);
-        }
-        fprintf(csv, "\\n");
+    if (csv) {{
+        fprintf(csv, "{csv_header}\\n");
 
-        for (int i = 0; i < n_samples; i++) {
+        for (int i = 0; i < sample_idx; i++) {{
             fprintf(csv, "%g", time_data[i]);
-            for (int j = 0; j < n_outputs; j++) {
+            for (int j = 0; j < n_outputs; j++) {{
                 fprintf(csv, ",%g", output_data[i * n_outputs + j]);
-            }
+            }}
             fprintf(csv, "\\n");
-        }
+        }}
         fclose(csv);
         printf("Results written to results.csv\\n");
-    }
+    }}
 '''
 
         return f'''/**
@@ -117,7 +177,7 @@ int main(void) {{
 
     // Allocate output storage
     int n_samples = (int)((t_end - t) / dt) + 2;
-    int n_outputs = 1;  // Adjust based on model outputs
+    int n_outputs = {n_outputs};  // Number of output signals
     double* time_data = (double*)malloc(n_samples * sizeof(double));
     double* output_data = (double*)malloc(n_samples * n_outputs * sizeof(double));
     int sample_idx = 0;
@@ -129,16 +189,18 @@ int main(void) {{
 
     while (t <= t_end) {{
         // Integration passes
+        // OSK records outputs after update() but BEFORE propagation for kpass=0
         for (int kpass = 0; kpass < num_passes; kpass++) {{
             model_step(&model, t, dt, kpass);
-            // Integrator propagation is handled in model_step
-        }}
 
-        // Record data after stepping (matches backend behavior)
-        if (sample_idx < n_samples) {{
-            time_data[sample_idx] = t;
-            output_data[sample_idx] = model_get_output(&model, 0);
-            sample_idx++;
+            // Record outputs after kpass=0 update, before propagation (matches OSK)
+            if (kpass == 0 && sample_idx < n_samples) {{
+                time_data[sample_idx] = t;
+{record_code}
+                sample_idx++;
+            }}
+
+            model_propagate_integrators(&model, dt, kpass, "{config.integration_method.value}");
         }}
 
         t += dt;
@@ -167,6 +229,7 @@ int main(void) {{
 #define BLOCKS_H
 
 #include <math.h>
+#include "integration.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -264,6 +327,11 @@ void model_wire_connections(Model* model);
  */
 double model_get_output(Model* model, int port);
 
+/**
+ * Propagate integrators using specified method.
+ */
+void model_propagate_integrators(Model* model, double dt, int kpass, const char* method);
+
 #endif // SIMULATION_H
 '''
 
@@ -302,12 +370,16 @@ double model_get_output(Model* model, int port);
                 var_name = f"block_{self.sanitize_identifier(sink_block.id)}"
                 output_code = f"    return {struct_name}_get_output(&model->{var_name}, port);"
 
+        # Build integrator propagation
+        integrator_code = self._generate_integrator_propagation(model_info)
+
         return f'''/**
  * Simulation model implementation.
  * Generated by LibreSim Coder.
  */
 
 #include "simulation.h"
+#include "integration.h"
 
 void model_init(Model* model) {{
     model->time = 0.0;
@@ -332,6 +404,10 @@ void model_step(Model* model, double t, double dt, int kpass) {{
 
 double model_get_output(Model* model, int port) {{
 {output_code}
+}}
+
+void model_propagate_integrators(Model* model, double dt, int kpass, const char* method) {{
+{integrator_code}
 }}
 '''
 
@@ -370,6 +446,32 @@ double model_get_output(Model* model, int port) {{
                         )
 
         return "\n".join(lines) if lines else "    // No connections"
+
+    # Block types that use propagate_states method for multi-state integration
+    MULTI_STATE_BLOCKS = {"transfer_function", "state_space", "second_order", "pid_controller"}
+
+    def _generate_integrator_propagation(self, model_info: CompiledModelInfo) -> str:
+        """Generate integrator propagation code for RK methods."""
+        lines = []
+        for block_id in model_info.integrator_blocks:
+            block = next((b for b in model_info.blocks if b.id == block_id), None)
+            if block:
+                struct_name = f"Block_{self.sanitize_identifier(block.id)}"
+                var_name = f"block_{self.sanitize_identifier(block.id)}"
+                if block.type == "integrator":
+                    lines.append(f'''    // Integrator: {block.name}
+    propagate_integrator(
+        &model->{var_name}.state,
+        &model->{var_name}.xd0, &model->{var_name}.xd1,
+        &model->{var_name}.xd2, &model->{var_name}.xd3,
+        {struct_name}_get_derivative(&model->{var_name}),
+        dt, kpass, method
+    );''')
+                elif block.type in self.MULTI_STATE_BLOCKS:
+                    lines.append(f'''    // {block.type}: {block.name}
+    {struct_name}_propagate_states(&model->{var_name}, dt, kpass, method);''')
+
+        return "\n".join(lines) if lines else "    // No integrators to propagate"
 
     def _generate_passthrough_block(self, block: BlockInfo, struct_name: str) -> str:
         """Generate a passthrough block for unsupported types."""
@@ -497,8 +599,8 @@ The executable will be created in the `output/` directory.
 '''
 
     def _generate_dockerfile(self, config: Any) -> str:
-        """Generate Dockerfile for compilation."""
-        return f'''# Dockerfile for compiling {config.project_name}
+        """Generate Dockerfile for compilation and execution."""
+        return f'''# Dockerfile for compiling and running {config.project_name}
 # Generated by LibreSim Coder
 
 FROM gcc:13-bookworm
@@ -518,40 +620,97 @@ WORKDIR /build
 # Copy project files
 COPY . /build/
 
+# Make scripts executable
+RUN chmod +x /build/run.sh
+
 # Build the project
 RUN mkdir -p build && cd build && \\
     cmake .. -DCMAKE_BUILD_TYPE=Release && \\
     make -j$(nproc)
 
-# Default command copies the executable to mounted output
-CMD ["cp", "build/simulation", "/output/"]
+# Default command runs the simulation and copies outputs
+CMD ["/build/run.sh"]
 '''
 
     def _generate_build_script(self, config: Any) -> str:
         """Generate build script."""
         return f'''#!/bin/bash
-# Build script for {config.project_name}
+# Build and run script for {config.project_name}
 # Generated by LibreSim Coder
+#
+# This script:
+# 1. Builds a Docker image with the compiled simulation
+# 2. Runs the simulation inside the container
+# 3. Copies the executable and results to ./output/
 
 set -e
 
 PROJECT_NAME="{config.project_name}"
 IMAGE_NAME="${{PROJECT_NAME}}-builder"
 
-echo "=== Building $PROJECT_NAME (C) ==="
+echo "=== Building and Running $PROJECT_NAME (C) ==="
 
 # Create output directory
 mkdir -p output
 
-# Build Docker image
-echo "Building Docker image..."
+# Get absolute path (works on both Linux/Mac and Windows Git Bash)
+if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]] || [[ -n "$WINDIR" ]]; then
+    # Windows: convert to Docker-compatible path
+    OUTPUT_PATH="$(cd output && pwd -W 2>/dev/null || pwd)"
+else
+    OUTPUT_PATH="$(cd output && pwd)"
+fi
+
+# Build Docker image (compiles the code)
+echo "[1/2] Building Docker image (compiling code)..."
 docker build -t "$IMAGE_NAME" .
 
-# Run container to compile
-echo "Compiling..."
-docker run --rm -v "$(pwd)/output:/output" "$IMAGE_NAME"
+# Run container (executes simulation and copies outputs)
+echo "[2/2] Running simulation..."
+# MSYS_NO_PATHCONV prevents Git Bash from mangling the volume mount path
+MSYS_NO_PATHCONV=1 docker run --rm -v "$OUTPUT_PATH:/output" "$IMAGE_NAME"
 
-echo "=== Build Complete ==="
-echo "Executable: output/simulation"
+echo ""
+echo "=== Complete ==="
+echo "Output files:"
 ls -la output/
+
+# Show first/last few lines of results if CSV exists
+if [ -f output/results.csv ]; then
+    echo ""
+    echo "=== Results Preview (first 5 lines) ==="
+    head -n 5 output/results.csv
+    echo "..."
+    echo "=== Results Preview (last 5 lines) ==="
+    tail -n 5 output/results.csv
+fi
+'''
+
+    def _generate_run_script(self, config: Any) -> str:
+        """Generate run script that executes inside Docker container."""
+        return f'''#!/bin/bash
+# Run script for {config.project_name}
+# This script runs inside the Docker container
+# Generated by LibreSim Coder
+
+set -e
+
+echo "Running simulation..."
+
+# Run the simulation (generates results.csv in current directory)
+cd /build/build
+./simulation
+
+echo ""
+echo "Simulation complete."
+
+# Copy outputs to mounted volume
+if [ -d "/output" ]; then
+    echo "Copying outputs to /output..."
+    cp -f simulation /output/ 2>/dev/null || true
+    cp -f results.csv /output/ 2>/dev/null || true
+    echo "Done."
+else
+    echo "Warning: /output not mounted, results not copied."
+fi
 '''

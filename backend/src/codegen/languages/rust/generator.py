@@ -41,9 +41,10 @@ class RustCodeGenerator(LanguageGenerator):
         project.add_file("Cargo.toml", self._generate_cargo(config))
         project.add_file("README.md", self._generate_readme(model_info, config))
 
-        # Generate Dockerfile and build script
+        # Generate Dockerfile and build/run scripts
         project.add_file("Dockerfile", self._generate_dockerfile(config))
         project.add_file("build.sh", self._generate_build_script(config))
+        project.add_file("run.sh", self._generate_run_script(config))
 
         return project
 
@@ -61,6 +62,56 @@ class RustCodeGenerator(LanguageGenerator):
         """Generate integration method code."""
         return IntegrationCodeGenerator.generate_rust()
 
+    def _generate_output_recording(self, model_info: CompiledModelInfo) -> dict:
+        """Generate output recording code for all sink blocks."""
+        output_names = []  # List of column names
+        record_code_lines = []  # Code to record each output
+
+        for block_id in model_info.sink_blocks:
+            block = next((b for b in model_info.blocks if b.id == block_id), None)
+            if block:
+                var_name = f"block_{self.sanitize_identifier(block.id)}"
+                signal_name = self.sanitize_identifier(block.name or block.id)
+
+                # For multi-input scopes, record each input separately
+                num_inputs = block.parameters.get("numInputs", 1)
+                if block.type == "scope" and num_inputs > 1:
+                    # Build a map of port index -> source name
+                    port_names = {}
+                    for conn in block.input_connections:
+                        source_id, source_port, target_port = self.parse_connection(conn)
+                        source_block = next(
+                            (b for b in model_info.blocks if b.id == source_id), None
+                        )
+                        if source_block:
+                            source_name = self.sanitize_identifier(
+                                source_block.name or source_block.id
+                            )
+                            port_idx = target_port if target_port is not None else 0
+                            port_names[port_idx] = source_name
+
+                    for i in range(num_inputs):
+                        # Use source block name if available, otherwise use index
+                        if i in port_names:
+                            port_name = port_names[i]
+                        else:
+                            port_name = f"{signal_name}_{i}"
+                        output_names.append(port_name)
+                        record_code_lines.append(
+                            f"                output_data.push(model.{var_name}.get_output({i}));"
+                        )
+                else:
+                    output_names.append(signal_name)
+                    record_code_lines.append(
+                        f"                output_data.push(model.{var_name}.get_output(0));"
+                    )
+
+        return {
+            'names': output_names,
+            'n_outputs': len(output_names),
+            'record_code': "\n".join(record_code_lines) if record_code_lines else "                // No outputs to record",
+        }
+
     def generate_main_code(
         self,
         model_info: CompiledModelInfo,
@@ -69,16 +120,39 @@ class RustCodeGenerator(LanguageGenerator):
         """Generate main entry point code."""
         project_name = config.project_name.replace('-', '_')
 
+        # Get output recording info
+        output_info = self._generate_output_recording(model_info)
+        n_outputs = output_info['n_outputs'] or 1
+        output_names = output_info['names']
+        record_code = output_info['record_code']
+
+        # Build CSV header with column names
+        csv_header_parts = ['time'] + output_names
+        csv_header = ','.join(csv_header_parts)
+
         csv_code = ""
         if config.include_csv_output:
-            csv_code = '''
+            # Build write format string and args for all outputs
+            format_parts = ['{:.6}']  # time
+            for i in range(n_outputs):
+                format_parts.append(',{:.6}')
+            format_string = ''.join(format_parts)
+
+            write_args = ['t']
+            for i in range(n_outputs):
+                write_args.append(f'output_data[i * {n_outputs} + {i}]')
+            write_args_str = ', '.join(write_args)
+
+            csv_code = f'''
     // Write results to CSV
     let mut csv_file = std::fs::File::create("results.csv").expect("Could not create file");
     use std::io::Write;
-    writeln!(csv_file, "time,output0").unwrap();
-    for (t, y) in time_data.iter().zip(output_data.iter()) {
-        writeln!(csv_file, "{},{}", t, y).unwrap();
-    }
+    writeln!(csv_file, "{csv_header}").unwrap();
+    let n_outputs = {n_outputs};
+    for i in 0..time_data.len() {{
+        let t = time_data[i];
+        writeln!(csv_file, "{format_string}", {write_args_str}).unwrap();
+    }}
     println!("Results written to results.csv");
 '''
 
@@ -98,8 +172,9 @@ fn main() {{
 
     // Allocate output storage
     let n_samples = ((t_end - t) / dt) as usize + 2;
+    let n_outputs = {n_outputs};  // Number of output signals
     let mut time_data: Vec<f64> = Vec::with_capacity(n_samples);
-    let mut output_data: Vec<f64> = Vec::with_capacity(n_samples);
+    let mut output_data: Vec<f64> = Vec::with_capacity(n_samples * n_outputs);
 
     println!("Running simulation...");
 
@@ -108,14 +183,18 @@ fn main() {{
 
     while t <= t_end {{
         // Integration passes
+        // OSK records outputs after update() but BEFORE propagation for kpass=0
         for kpass in 0..num_passes {{
             model.step(t, dt, kpass);
+
+            // Record outputs after kpass=0 update, before propagation (matches OSK)
+            if kpass == 0 {{
+                time_data.push(t);
+{record_code}
+            }}
+
             model.propagate_integrators(dt, kpass, method);
         }}
-
-        // Record data after stepping (matches backend behavior)
-        time_data.push(t);
-        output_data.push(model.get_output(0));
 
         t += dt;
     }}
@@ -242,6 +321,8 @@ impl Default for Model {{
 #![allow(dead_code)]
 #![allow(clippy::needless_return)]
 
+use crate::integration::{IntegrationMethod, propagate_integrator};
+
 '''
         # Generate struct declarations for each block
         structs = []
@@ -286,15 +367,19 @@ impl Default for Model {{
 
         return "\n".join(lines) if lines else "        // No connections"
 
+    # Block types that use propagate_states method for multi-state integration
+    MULTI_STATE_BLOCKS = {"transfer_function", "state_space", "second_order", "pid_controller"}
+
     def _generate_integrator_propagation(self, model_info: CompiledModelInfo) -> str:
         """Generate integrator propagation code for RK methods."""
         lines = []
         for block_id in model_info.integrator_blocks:
             block = next((b for b in model_info.blocks if b.id == block_id), None)
-            if block and block.type == "integrator":
+            if block:
                 var_name = f"block_{self.sanitize_identifier(block.id)}"
-                # Get derivative first to avoid borrow conflicts
-                lines.append(f'''        // Integrator: {block.name}
+                if block.type == "integrator":
+                    # Get derivative first to avoid borrow conflicts
+                    lines.append(f'''        // Integrator: {block.name}
         let deriv_{self.sanitize_identifier(block.id)} = self.{var_name}.get_derivative();
         integration::propagate_integrator(
             &mut self.{var_name}.state,
@@ -305,6 +390,9 @@ impl Default for Model {{
             deriv_{self.sanitize_identifier(block.id)},
             dt, kpass, method
         );''')
+                elif block.type in self.MULTI_STATE_BLOCKS:
+                    lines.append(f'''        // {block.type}: {block.name}
+        self.{var_name}.propagate_states(dt, kpass, method);''')
 
         return "\n".join(lines) if lines else "        // No integrators to propagate"
 
@@ -428,8 +516,8 @@ The executable will be created in the `output/` directory.
 '''
 
     def _generate_dockerfile(self, config: Any) -> str:
-        """Generate Dockerfile for compilation."""
-        return f'''# Dockerfile for compiling {config.project_name}
+        """Generate Dockerfile for compilation and execution."""
+        return f'''# Dockerfile for compiling and running {config.project_name}
 # Generated by LibreSim Coder
 
 FROM rust:1.75-bookworm
@@ -443,38 +531,95 @@ WORKDIR /build
 # Copy project files
 COPY . /build/
 
+# Make scripts executable
+RUN chmod +x /build/run.sh
+
 # Build the project in release mode
 RUN cargo build --release
 
-# Default command copies the executable to mounted output
-CMD ["cp", "target/release/simulation", "/output/"]
+# Default command runs the simulation and copies outputs
+CMD ["/build/run.sh"]
 '''
 
     def _generate_build_script(self, config: Any) -> str:
         """Generate build script."""
         return f'''#!/bin/bash
-# Build script for {config.project_name}
+# Build and run script for {config.project_name}
 # Generated by LibreSim Coder
+#
+# This script:
+# 1. Builds a Docker image with the compiled simulation
+# 2. Runs the simulation inside the container
+# 3. Copies the executable and results to ./output/
 
 set -e
 
 PROJECT_NAME="{config.project_name}"
 IMAGE_NAME="${{PROJECT_NAME}}-builder"
 
-echo "=== Building $PROJECT_NAME (Rust) ==="
+echo "=== Building and Running $PROJECT_NAME (Rust) ==="
 
 # Create output directory
 mkdir -p output
 
-# Build Docker image
-echo "Building Docker image..."
+# Get absolute path (works on both Linux/Mac and Windows Git Bash)
+if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]] || [[ -n "$WINDIR" ]]; then
+    # Windows: convert to Docker-compatible path
+    OUTPUT_PATH="$(cd output && pwd -W 2>/dev/null || pwd)"
+else
+    OUTPUT_PATH="$(cd output && pwd)"
+fi
+
+# Build Docker image (compiles the code)
+echo "[1/2] Building Docker image (compiling code)..."
 docker build -t "$IMAGE_NAME" .
 
-# Run container to compile
-echo "Compiling..."
-docker run --rm -v "$(pwd)/output:/output" "$IMAGE_NAME"
+# Run container (executes simulation and copies outputs)
+echo "[2/2] Running simulation..."
+# MSYS_NO_PATHCONV prevents Git Bash from mangling the volume mount path
+MSYS_NO_PATHCONV=1 docker run --rm -v "$OUTPUT_PATH:/output" "$IMAGE_NAME"
 
-echo "=== Build Complete ==="
-echo "Executable: output/simulation"
+echo ""
+echo "=== Complete ==="
+echo "Output files:"
 ls -la output/
+
+# Show first/last few lines of results if CSV exists
+if [ -f output/results.csv ]; then
+    echo ""
+    echo "=== Results Preview (first 5 lines) ==="
+    head -n 5 output/results.csv
+    echo "..."
+    echo "=== Results Preview (last 5 lines) ==="
+    tail -n 5 output/results.csv
+fi
+'''
+
+    def _generate_run_script(self, config: Any) -> str:
+        """Generate run script that executes inside Docker container."""
+        return f'''#!/bin/bash
+# Run script for {config.project_name}
+# This script runs inside the Docker container
+# Generated by LibreSim Coder
+
+set -e
+
+echo "Running simulation..."
+
+# Run the simulation (generates results.csv in current directory)
+cd /build/target/release
+./simulation
+
+echo ""
+echo "Simulation complete."
+
+# Copy outputs to mounted volume
+if [ -d "/output" ]; then
+    echo "Copying outputs to /output..."
+    cp -f simulation /output/ 2>/dev/null || true
+    cp -f results.csv /output/ 2>/dev/null || true
+    echo "Done."
+else
+    echo "Warning: /output not mounted, results not copied."
+fi
 '''

@@ -259,6 +259,57 @@ The toolbar supports:
 
 ## Recent Changes Log
 
+### Session 2026-01-02 (Multi-Language Codegen Accuracy Fixes - Part 2)
+- **Fixed Transfer Function templates for C, C++, Rust** (all now produce stable, accurate dynamics):
+  - **Problem**: Transfer function output was exploding to astronomical values (1e+100+) in generated C/C++/Rust code
+  - **Root Cause 1**: Wrong state indexing - Python uses `state[order - j]` (reverse indexing from controllable canonical form) but C/C++/Rust used `state[i]` (forward indexing)
+  - **Root Cause 2**: Wrong output computation - Always added direct feedthrough `num[0] * input`, but strictly proper systems (num_len <= order) should have NO feedthrough
+  - **Root Cause 3**: Missing `propagate_states()` method with RK4 integration
+  - **Solution**: Fixed all three languages to match Python implementation exactly:
+    - Derivative: `derivatives[order-1] -= den[j] * state[order - j]` (reverse indexing)
+    - Output: `output += num[num_len - 1 - i] * state[i]` (correct coefficient ordering)
+    - Feedthrough: Only when `num_len > order` (improper transfer function)
+    - Added `propagate_states()` with inline RK4 integration
+  - **Files Modified**:
+    - `backend/src/codegen/languages/cpp/blocks/continuous.py` - template_transfer_function
+    - `backend/src/codegen/languages/c/blocks/continuous.py` - template_transfer_function
+    - `backend/src/codegen/languages/rust/blocks/continuous.py` - template_transfer_function
+  - **Verification**: C++ generated code compiles and runs correctly, producing stable plant output (~0.9377 at t=10)
+
+### Session 2026-01-02 (Multi-Language Codegen Accuracy Fixes - Part 1)
+- **Fixed simulation loop timing for all code generators** (C, C++, Rust):
+  - **Problem**: All generators recorded outputs AFTER all RK4 passes, not matching OSK behavior
+  - **Root Cause**: Output recording was placed after the kpass loop instead of inside at kpass=0
+  - **Solution**: Moved output recording inside the kpass loop, after update() but before propagation
+  - **Files Modified**: `c/generator.py`, `cpp/generator.py`, `rust/generator.py`
+
+- **Fixed PID controller integration for all code generators** (C, C++, Rust):
+  - **Problem**: PID controller has TWO internal integrators (integral term + derivative filter) but only integral was propagated
+  - **Solution**: Added `propagate_states()` method to PID templates in all languages
+  - **Files Modified**:
+    - `c/blocks/control_design.py` - Added `propagate_states()` that calls `propagate_integrator()` for both states
+    - `cpp/blocks/control_design.py` - Added `propagate_states()` method to PID class
+    - `rust/blocks/control_design.py` - Added `propagate_states()` method with correct Rust syntax
+    - Added `#include "integration.h/hpp"` to blocks headers
+    - Added `use crate::integration::{IntegrationMethod, propagate_integrator};` to Rust blocks.rs
+
+- **Added integrator propagation to C generator**:
+  - **Problem**: C generator had no integrator propagation at all (misleading comment said "handled in model_step")
+  - **Solution**: Added `model_propagate_integrators()` function and `_generate_integrator_propagation()` method
+  - **Files Modified**: `c/generator.py` - Added propagation to simulation.h/.c and main.c
+
+- **Updated all generators to call PID propagate_states()**:
+  - C: `{struct_name}_propagate_states(&model->{var_name}, dt, kpass, method);`
+  - C++: `{var_name}.propagate_states(dt, kpass, method);`
+  - Rust: `self.{var_name}.propagate_states(dt, kpass, method);`
+
+- **Python accuracy tests all pass** (5/5):
+  - test_01_sine_wave_basic
+  - test_02_first_order_step_response
+  - test_03_pid_controller
+  - test_04_mass_spring_damper
+  - test_09_second_order_damping
+
 ### Session 2026-01-01 (Python Codegen Multi-State Integration Fix)
 - **Fixed Python code generation for multi-state blocks**:
   - **Problem**: Transfer functions, state-space, and second-order blocks produce incorrect outputs (always 0)
@@ -632,7 +683,8 @@ The toolbar supports:
 - Simulation now runs successfully
 
 ## Known Issues / TODO
-- C/C++/Rust code generators need multi-state integration support (like Python fix below)
+- Multi-language accuracy tests (C/C++/Rust) need Docker-based end-to-end testing framework
+- Python codegen accuracy tests pass (5/5), C++ tested manually in Docker and verified working
 
 ## Development Environment
 

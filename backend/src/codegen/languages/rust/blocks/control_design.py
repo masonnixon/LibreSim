@@ -88,6 +88,29 @@ impl {struct_name} {{
     pub fn get_output(&self, _port: i32) -> f64 {{
         self.output
     }}
+
+    pub fn propagate_states(&mut self, dt: f64, kpass: usize, method: IntegrationMethod) {{
+        // Propagate integrator state
+        propagate_integrator(
+            &mut self.integrator[0],
+            &mut self.xd0_int,
+            &mut self.xd1_int,
+            &mut self.xd2_int,
+            &mut self.xd3_int,
+            self.integrator[1],
+            dt, kpass, method,
+        );
+        // Propagate derivative filter state
+        propagate_integrator(
+            &mut self.deriv_state[0],
+            &mut self.xd0_der,
+            &mut self.xd1_der,
+            &mut self.xd2_der,
+            &mut self.xd3_der,
+            self.deriv_state[1],
+            dt, kpass, method,
+        );
+    }}
 }}
 """
 

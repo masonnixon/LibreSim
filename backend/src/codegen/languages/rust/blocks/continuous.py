@@ -126,6 +126,7 @@ def template_transfer_function(block: BlockInfo, struct_name: str) -> str:
     """Generate Rust code for Transfer Function block.
 
     Implements as a chain of integrators in controllable canonical form.
+    Matches Python implementation exactly for numerical accuracy.
     """
     numerator = block.parameters.get("numerator", [1.0])
     denominator = block.parameters.get("denominator", [1.0, 1.0])
@@ -144,9 +145,11 @@ def template_transfer_function(block: BlockInfo, struct_name: str) -> str:
     if a0 == 0:
         a0 = 1.0
 
-    # Coefficients as strings
+    # Coefficients as strings (normalized)
     a_coeffs = ", ".join([f"{d / a0}_f64" for d in denominator])
     b_coeffs = ", ".join([f"{n / a0}_f64" for n in numerator])
+
+    num_len = len(numerator)
 
     return f"""
 /// {block.name} - Transfer Function (order {order})
@@ -155,6 +158,8 @@ pub struct {struct_name} {{
     pub input: f64,
     pub output: f64,
     pub state: [f64; {order}],
+    pub derivatives: [f64; {order}],
+    pub x0: [f64; {order}],
     pub xd0: [f64; {order}],
     pub xd1: [f64; {order}],
     pub xd2: [f64; {order}],
@@ -169,12 +174,15 @@ impl Default for {struct_name} {{
 
 impl {struct_name} {{
     pub const ORDER: usize = {order};
+    pub const NUM_LEN: usize = {num_len};
 
     pub fn new() -> Self {{
         Self {{
             input: 0.0,
             output: 0.0,
             state: [0.0; {order}],
+            derivatives: [0.0; {order}],
+            x0: [0.0; {order}],
             xd0: [0.0; {order}],
             xd1: [0.0; {order}],
             xd2: [0.0; {order}],
@@ -186,6 +194,8 @@ impl {struct_name} {{
         self.input = 0.0;
         self.output = 0.0;
         self.state = [0.0; {order}];
+        self.derivatives = [0.0; {order}];
+        self.x0 = [0.0; {order}];
         self.xd0 = [0.0; {order}];
         self.xd1 = [0.0; {order}];
         self.xd2 = [0.0; {order}];
@@ -193,28 +203,67 @@ impl {struct_name} {{
     }}
 
     pub fn update(&mut self, _t: f64) {{
-        // Compute output from state (controllable canonical form)
-        let a: [f64; {len(denominator)}] = [{a_coeffs}];
-        let bcoef: [f64; {len(numerator)}] = [{b_coeffs}];
+        // Normalized coefficients
+        let den: [f64; {len(denominator)}] = [{a_coeffs}];
+        let num: [f64; {num_len}] = [{b_coeffs}];
 
-        // State space output
-        self.output = 0.0;
-
-        // Direct feedthrough term
-        if !bcoef.is_empty() && !a.is_empty() {{
-            self.output = bcoef[0] * self.input;
+        // Compute derivatives (controllable canonical form)
+        // x_i' = x_(i+1) for i < order-1
+        // x_(order-1)' = input - sum(a[j] * state[order-j])
+        for i in 0..Self::ORDER {{
+            if i < Self::ORDER - 1 {{
+                self.derivatives[i] = self.state[i + 1];
+            }} else {{
+                self.derivatives[i] = self.input;
+                for j in 1..den.len() {{
+                    let idx = Self::ORDER.saturating_sub(j);
+                    if idx < Self::ORDER {{
+                        self.derivatives[i] -= den[j] * self.state[idx];
+                    }}
+                }}
+            }}
         }}
 
-        // State contribution
-        for i in 0..Self::ORDER.min(bcoef.len().saturating_sub(1)) {{
-            if i + 1 < bcoef.len() {{
-                self.output += bcoef[i + 1] * self.state[i];
-            }}
+        // Compute output: y = sum(num[len-1-i] * state[i]) + feedthrough
+        self.output = 0.0;
+        for i in 0..Self::ORDER.min(Self::NUM_LEN) {{
+            self.output += num[Self::NUM_LEN - 1 - i] * self.state[i];
+        }}
+
+        // Direct feedthrough only if numerator degree > order (improper)
+        if Self::NUM_LEN > Self::ORDER {{
+            self.output += num[0] * self.input;
         }}
     }}
 
     pub fn get_output(&self, _port: usize) -> f64 {{
         self.output
+    }}
+
+    pub fn propagate_states(&mut self, dt: f64, kpass: usize, _method: IntegrationMethod) {{
+        // RK4 integration for all states
+        for i in 0..Self::ORDER {{
+            match kpass {{
+                0 => {{
+                    self.x0[i] = self.state[i];
+                    self.xd0[i] = self.derivatives[i];
+                    self.state[i] = self.x0[i] + dt / 2.0 * self.xd0[i];
+                }}
+                1 => {{
+                    self.xd1[i] = self.derivatives[i];
+                    self.state[i] = self.x0[i] + dt / 2.0 * self.xd1[i];
+                }}
+                2 => {{
+                    self.xd2[i] = self.derivatives[i];
+                    self.state[i] = self.x0[i] + dt * self.xd2[i];
+                }}
+                3 => {{
+                    self.xd3[i] = self.derivatives[i];
+                    self.state[i] = self.x0[i] + dt / 6.0 * (self.xd0[i] + 2.0 * self.xd1[i] + 2.0 * self.xd2[i] + self.xd3[i]);
+                }}
+                _ => {{}}
+            }}
+        }}
     }}
 }}
 """

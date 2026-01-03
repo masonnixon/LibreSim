@@ -56,6 +56,23 @@ public:
         (void)port;
         return output;
     }}
+
+    void propagate_states(double dt, int kpass, const std::string& method) {{
+        // Propagate integrator state
+        propagate_integrator(
+            integrator[0],
+            xd0_int, xd1_int, xd2_int, xd3_int,
+            integrator[1],
+            dt, kpass, method
+        );
+        // Propagate derivative filter state
+        propagate_integrator(
+            deriv_state[0],
+            xd0_der, xd1_der, xd2_der, xd3_der,
+            deriv_state[1],
+            dt, kpass, method
+        );
+    }}
 }};
 """
 

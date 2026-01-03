@@ -60,6 +60,23 @@ double {struct_name}_get_output({struct_name}* b, int port) {{
     (void)port;
     return b->output;
 }}
+
+void {struct_name}_propagate_states({struct_name}* b, double dt, int kpass, const char* method) {{
+    // Propagate integrator state
+    propagate_integrator(
+        &b->integrator[0],
+        &b->xd0_int, &b->xd1_int, &b->xd2_int, &b->xd3_int,
+        b->integrator[1],
+        dt, kpass, method
+    );
+    // Propagate derivative filter state
+    propagate_integrator(
+        &b->deriv_state[0],
+        &b->xd0_der, &b->xd1_der, &b->xd2_der, &b->xd3_der,
+        b->deriv_state[1],
+        dt, kpass, method
+    );
+}}
 """
 
 
