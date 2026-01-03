@@ -6,7 +6,54 @@ from ....models import BlockInfo
 def template_constant(block: BlockInfo, struct_name: str) -> str:
     """Generate Rust code for Constant block."""
     value = block.parameters.get("value", 1.0)
-    return f"""
+
+    # Handle array values
+    if isinstance(value, (list, tuple)):
+        array_size = len(value)
+        values_str = ", ".join(f"{v}_f64" for v in value)
+        return f"""
+/// {block.name} - Constant source (vector)
+#[derive(Clone)]
+pub struct {struct_name} {{
+    pub output: [f64; {array_size}],
+    pub value: [f64; {array_size}],
+}}
+
+impl {struct_name} {{
+    pub const SIZE: usize = {array_size};
+
+    pub fn new() -> Self {{
+        Self {{
+            value: [{values_str}],
+            output: [{values_str}],
+        }}
+    }}
+
+    pub fn init(&mut self) {{
+        self.output = self.value;
+    }}
+
+    pub fn update(&mut self, _t: f64) {{
+        self.output = self.value;
+    }}
+
+    pub fn get_output(&self, port: usize) -> f64 {{
+        if port < {array_size} {{ self.output[port] }} else {{ 0.0 }}
+    }}
+
+    pub fn get_output_vector(&self) -> &[f64; {array_size}] {{
+        &self.output
+    }}
+}}
+
+impl Default for {struct_name} {{
+    fn default() -> Self {{
+        Self::new()
+    }}
+}}
+"""
+    else:
+        return f"""
 /// {block.name} - Constant source
 #[derive(Clone, Default)]
 pub struct {struct_name} {{
@@ -39,9 +86,9 @@ impl {struct_name} {{
 
 def template_step(block: BlockInfo, struct_name: str) -> str:
     """Generate Rust code for Step block."""
-    step_time = block.parameters.get("step_time", 1.0)
-    initial_value = block.parameters.get("initial_value", 0.0)
-    final_value = block.parameters.get("final_value", 1.0)
+    step_time = block.parameters.get("step_time", block.parameters.get("stepTime", 1.0))
+    initial_value = block.parameters.get("initial_value", block.parameters.get("initialValue", 0.0))
+    final_value = block.parameters.get("final_value", block.parameters.get("finalValue", 1.0))
     return f"""
 /// {block.name} - Step source
 #[derive(Clone, Default)]
@@ -286,7 +333,10 @@ impl {struct_name} {{
 def template_white_noise(block: BlockInfo, struct_name: str) -> str:
     """Generate Rust code for White Noise block."""
     power = block.parameters.get("power", 1.0)
-    sample_time = block.parameters.get("sampleTime", 0.1)
+    sample_time = block.parameters.get("sampleTime", block.parameters.get("sample_time", 0.1))
+    # Ensure sample_time is positive to avoid division by zero
+    if sample_time <= 0:
+        sample_time = 0.01  # Default to 100Hz sampling
     seed = block.parameters.get("seed", 0)
 
     return f"""

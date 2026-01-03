@@ -6,7 +6,41 @@ from ....models import BlockInfo
 def template_constant(block: BlockInfo, struct_name: str) -> str:
     """Generate C code for Constant block."""
     value = block.parameters.get("value", 1.0)
-    return f"""
+
+    # Handle array values
+    if isinstance(value, (list, tuple)):
+        array_size = len(value)
+        values_str = ", ".join(str(v) for v in value)
+        return f"""
+// {block.name} - Constant source (vector)
+#define {struct_name.upper()}_SIZE {array_size}
+typedef struct {{
+    double output[{array_size}];
+    double value[{array_size}];
+}} {struct_name};
+
+void {struct_name}_init({struct_name}* b) {{
+    double init_vals[{array_size}] = {{{values_str}}};
+    for (int i = 0; i < {array_size}; i++) {{
+        b->value[i] = init_vals[i];
+        b->output[i] = b->value[i];
+    }}
+}}
+
+void {struct_name}_update({struct_name}* b, double t) {{
+    (void)t;
+    for (int i = 0; i < {array_size}; i++) {{
+        b->output[i] = b->value[i];
+    }}
+}}
+
+double {struct_name}_get_output({struct_name}* b, int port) {{
+    if (port >= 0 && port < {array_size}) return b->output[port];
+    return 0.0;
+}}
+"""
+    else:
+        return f"""
 // {block.name} - Constant source
 typedef struct {{
     double output;
@@ -32,9 +66,9 @@ double {struct_name}_get_output({struct_name}* b, int port) {{
 
 def template_step(block: BlockInfo, struct_name: str) -> str:
     """Generate C code for Step block."""
-    step_time = block.parameters.get("step_time", 1.0)
-    initial_value = block.parameters.get("initial_value", 0.0)
-    final_value = block.parameters.get("final_value", 1.0)
+    step_time = block.parameters.get("step_time", block.parameters.get("stepTime", 1.0))
+    initial_value = block.parameters.get("initial_value", block.parameters.get("initialValue", 0.0))
+    final_value = block.parameters.get("final_value", block.parameters.get("finalValue", 1.0))
     return f"""
 // {block.name} - Step source
 typedef struct {{
@@ -224,7 +258,10 @@ double {struct_name}_get_output({struct_name}* b, int port) {{
 def template_white_noise(block: BlockInfo, struct_name: str) -> str:
     """Generate C code for White Noise block."""
     power = block.parameters.get("power", 1.0)
-    sample_time = block.parameters.get("sampleTime", 0.1)
+    sample_time = block.parameters.get("sampleTime", block.parameters.get("sample_time", 0.1))
+    # Ensure sample_time is positive to avoid division by zero
+    if sample_time <= 0:
+        sample_time = 0.01  # Default to 100Hz sampling
     seed = block.parameters.get("seed", 0)
 
     return f"""

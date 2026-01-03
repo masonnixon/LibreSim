@@ -6,7 +6,42 @@ from ....models import BlockInfo
 def template_constant(block: BlockInfo, class_name: str) -> str:
     """Generate C++ code for Constant block."""
     value = block.parameters.get("value", 1.0)
-    return f"""
+
+    # Handle array values
+    if isinstance(value, (list, tuple)):
+        array_size = len(value)
+        values_str = ", ".join(str(v) for v in value)
+        return f"""
+// {block.name} - Constant source (vector)
+class {class_name} {{
+public:
+    static constexpr int SIZE = {array_size};
+    std::array<double, {array_size}> value = {{{{{values_str}}}}};
+
+    void init() {{
+        output_ = value;
+    }}
+
+    void update(double t) {{
+        (void)t;
+        output_ = value;
+    }}
+
+    double get_output(int port = 0) const {{
+        if (port >= 0 && port < SIZE) return output_[port];
+        return 0.0;
+    }}
+
+    const std::array<double, {array_size}>& getOutputVector() const {{
+        return output_;
+    }}
+
+private:
+    std::array<double, {array_size}> output_ = {{}};
+}};
+"""
+    else:
+        return f"""
 // {block.name} - Constant source
 class {class_name} {{
 public:
@@ -34,9 +69,9 @@ private:
 
 def template_step(block: BlockInfo, class_name: str) -> str:
     """Generate C++ code for Step block."""
-    step_time = block.parameters.get("step_time", 1.0)
-    initial_value = block.parameters.get("initial_value", 0.0)
-    final_value = block.parameters.get("final_value", 1.0)
+    step_time = block.parameters.get("step_time", block.parameters.get("stepTime", 1.0))
+    initial_value = block.parameters.get("initial_value", block.parameters.get("initialValue", 0.0))
+    final_value = block.parameters.get("final_value", block.parameters.get("finalValue", 1.0))
     return f"""
 // {block.name} - Step source
 class {class_name} {{
@@ -228,7 +263,10 @@ private:
 def template_white_noise(block: BlockInfo, class_name: str) -> str:
     """Generate C++ code for White Noise block."""
     power = block.parameters.get("power", 1.0)
-    sample_time = block.parameters.get("sampleTime", 0.1)
+    sample_time = block.parameters.get("sampleTime", block.parameters.get("sample_time", 0.1))
+    # Ensure sample_time is positive to avoid division by zero
+    if sample_time <= 0:
+        sample_time = 0.01  # Default to 100Hz sampling
     seed = block.parameters.get("seed", 0)
 
     return f"""

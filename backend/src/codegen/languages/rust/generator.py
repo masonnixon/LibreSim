@@ -119,6 +119,9 @@ class RustCodeGenerator(LanguageGenerator):
     ) -> str:
         """Generate main entry point code."""
         project_name = config.project_name.replace('-', '_')
+        # Rust package names cannot start with a digit - prefix with underscore if needed
+        if project_name and project_name[0].isdigit():
+            project_name = '_' + project_name
 
         # Get output recording info
         output_info = self._generate_output_recording(model_info)
@@ -399,29 +402,53 @@ use crate::integration::{IntegrationMethod, propagate_integrator};
 
     def _generate_passthrough_block(self, block: BlockInfo, struct_name: str) -> str:
         """Generate a passthrough block for unsupported types."""
+        # Determine number of inputs from connections
+        num_inputs = 1
+        for conn in block.input_connections:
+            _, _, target_port = self.parse_connection(conn)
+            if target_port is not None:
+                num_inputs = max(num_inputs, target_port + 1)
+
+        # Generate input declarations
+        input_decls = []
+        for i in range(num_inputs):
+            if i == 0:
+                input_decls.append("    pub input: f64,")
+            else:
+                input_decls.append(f"    pub input{i}: f64,")
+        input_decls_str = "\n".join(input_decls)
+
+        # Generate new() initializers
+        new_inits = []
+        for i in range(num_inputs):
+            if i == 0:
+                new_inits.append("            input: 0.0,")
+            else:
+                new_inits.append(f"            input{i}: 0.0,")
+        new_inits_str = "\n".join(new_inits)
+
         return f"""
 /// {block.name} - Passthrough (type: {block.type})
 #[derive(Clone, Default)]
 pub struct {struct_name} {{
-    pub input: f64,
+{input_decls_str}
     pub output: f64,
 }}
 
 impl {struct_name} {{
     pub fn new() -> Self {{
         Self {{
-            input: 0.0,
+{new_inits_str}
             output: 0.0,
         }}
     }}
 
     pub fn init(&mut self) {{
-        self.input = 0.0;
         self.output = 0.0;
     }}
 
     pub fn update(&mut self, _t: f64) {{
-        self.output = self.input;
+        self.output = self.input;  // Uses first input as passthrough
     }}
 
     pub fn get_output(&self, _port: usize) -> f64 {{
@@ -433,6 +460,9 @@ impl {struct_name} {{
     def _generate_cargo(self, config: Any) -> str:
         """Generate Cargo.toml."""
         project_name = config.project_name.replace('-', '_')
+        # Rust package names cannot start with a digit - prefix with underscore if needed
+        if project_name and project_name[0].isdigit():
+            project_name = '_' + project_name
         return f'''[package]
 name = "{project_name}"
 version = "0.1.0"

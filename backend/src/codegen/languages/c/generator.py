@@ -475,10 +475,26 @@ void model_propagate_integrators(Model* model, double dt, int kpass, const char*
 
     def _generate_passthrough_block(self, block: BlockInfo, struct_name: str) -> str:
         """Generate a passthrough block for unsupported types."""
+        # Determine number of inputs from connections
+        num_inputs = 1
+        for conn in block.input_connections:
+            _, _, target_port = self.parse_connection(conn)
+            if target_port is not None:
+                num_inputs = max(num_inputs, target_port + 1)
+
+        # Generate input declarations
+        input_decls = []
+        for i in range(num_inputs):
+            if i == 0:
+                input_decls.append("    double input;")
+            else:
+                input_decls.append(f"    double input{i};")
+        input_decls_str = "\n".join(input_decls)
+
         return f"""
 // {block.name} - Passthrough (type: {block.type})
 typedef struct {{
-    double input;
+{input_decls_str}
     double output;
 }} {struct_name};
 
@@ -489,7 +505,7 @@ void {struct_name}_init({struct_name}* b) {{
 
 void {struct_name}_update({struct_name}* b, double t) {{
     (void)t;
-    b->output = b->input;
+    b->output = b->input;  // Uses first input as passthrough
 }}
 
 double {struct_name}_get_output({struct_name}* b, int port) {{

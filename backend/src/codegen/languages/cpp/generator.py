@@ -227,6 +227,7 @@ int main() {{
 #include <string>
 #include <algorithm>
 #include <limits>
+#include <random>
 #include "integration.hpp"
 
 #ifndef M_PI
@@ -453,21 +454,36 @@ void Model::propagate_integrators(double dt, int kpass, const std::string& metho
 
     def _generate_passthrough_block(self, block: BlockInfo, class_name: str) -> str:
         """Generate a passthrough block for unsupported types."""
+        # Determine number of inputs from connections
+        num_inputs = 1
+        for conn in block.input_connections:
+            _, _, target_port = self.parse_connection(conn)
+            if target_port is not None:
+                num_inputs = max(num_inputs, target_port + 1)
+
+        # Generate input declarations
+        input_decls = []
+        for i in range(num_inputs):
+            if i == 0:
+                input_decls.append("    double input = 0.0;")
+            else:
+                input_decls.append(f"    double input{i} = 0.0;")
+        input_decls_str = "\n".join(input_decls)
+
         return f"""
 // {block.name} - Passthrough (type: {block.type})
 class {class_name} {{
 public:
-    double input = 0.0;
+{input_decls_str}
     double output = 0.0;
 
     void init() {{
-        input = 0.0;
         output = 0.0;
     }}
 
     void update(double t) {{
         (void)t;
-        output = input;
+        output = input;  // Uses first input as passthrough
     }}
 
     double get_output(int port) const {{
