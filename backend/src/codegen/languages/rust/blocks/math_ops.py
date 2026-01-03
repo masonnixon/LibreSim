@@ -55,10 +55,69 @@ impl {struct_name} {{
 
 
 def template_gain(block: BlockInfo, struct_name: str) -> str:
-    """Generate Rust code for Gain block."""
+    """Generate Rust code for Gain block.
+
+    Supports both scalar and vector inputs - applies element-wise gain.
+    """
     gain = block.parameters.get("gain", 1.0)
-    return f"""
-/// {block.name} - Gain block
+
+    # Check if this block expects vector input from its port dimensions
+    expects_vector = False
+    if hasattr(block, 'input_dimensions') and block.input_dimensions:
+        dims = block.input_dimensions[0] if block.input_dimensions else [1]
+        expects_vector = len(dims) > 0 and dims[0] > 1
+
+    if expects_vector:
+        # Vector version
+        vec_size = block.input_dimensions[0][0] if block.input_dimensions else 3
+        return f"""
+/// {block.name} - Gain block (vector mode, size={vec_size})
+#[derive(Clone)]
+pub struct {struct_name} {{
+    pub input: [f64; {vec_size}],
+    pub output: [f64; {vec_size}],
+    pub gain: f64,
+}}
+
+impl {struct_name} {{
+    pub fn new() -> Self {{
+        Self {{
+            input: [0.0; {vec_size}],
+            output: [0.0; {vec_size}],
+            gain: {gain}_f64,
+        }}
+    }}
+
+    pub fn init(&mut self) {{
+        self.input = [0.0; {vec_size}];
+        self.output = [0.0; {vec_size}];
+    }}
+
+    pub fn update(&mut self, _t: f64) {{
+        for i in 0..{vec_size} {{
+            self.output[i] = self.gain * self.input[i];
+        }}
+    }}
+
+    pub fn get_output(&self, port: usize) -> f64 {{
+        if port < {vec_size} {{ self.output[port] }} else {{ 0.0 }}
+    }}
+
+    pub fn get_output_vector(&self) -> &[f64; {vec_size}] {{
+        &self.output
+    }}
+}}
+
+impl Default for {struct_name} {{
+    fn default() -> Self {{
+        Self::new()
+    }}
+}}
+"""
+    else:
+        # Scalar version
+        return f"""
+/// {block.name} - Gain block (scalar mode)
 #[derive(Clone, Default)]
 pub struct {struct_name} {{
     pub input: f64,

@@ -43,10 +43,57 @@ private:
 
 
 def template_gain(block: BlockInfo, class_name: str) -> str:
-    """Generate C++ code for Gain block."""
+    """Generate C++ code for Gain block.
+
+    Supports both scalar and vector inputs - applies element-wise gain.
+    Uses std::variant to handle both types dynamically.
+    """
     gain = block.parameters.get("gain", 1.0)
-    return f"""
-// {block.name} - Gain block
+
+    # Check if this block expects vector input from its port dimensions
+    expects_vector = False
+    if hasattr(block, 'input_dimensions') and block.input_dimensions:
+        dims = block.input_dimensions[0] if block.input_dimensions else [1]
+        expects_vector = len(dims) > 0 and dims[0] > 1
+
+    if expects_vector:
+        # Vector version - determine size from input dimensions
+        vec_size = block.input_dimensions[0][0] if block.input_dimensions else 3
+        return f"""
+// {block.name} - Gain block (vector mode, size={vec_size})
+class {class_name} {{
+public:
+    std::array<double, {vec_size}> input = {{}};
+    double gain = {gain};
+
+    void init() {{
+        output_.fill(0.0);
+    }}
+
+    void update(double t) {{
+        (void)t;
+        for (int i = 0; i < {vec_size}; i++) {{
+            output_[i] = gain * input[i];
+        }}
+    }}
+
+    double get_output(int port = 0) const {{
+        if (port >= 0 && port < {vec_size}) return output_[port];
+        return 0.0;
+    }}
+
+    const std::array<double, {vec_size}>& getOutputVector() const {{
+        return output_;
+    }}
+
+private:
+    std::array<double, {vec_size}> output_ = {{}};
+}};
+"""
+    else:
+        # Scalar version
+        return f"""
+// {block.name} - Gain block (scalar mode)
 class {class_name} {{
 public:
     double input = 0.0;

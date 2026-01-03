@@ -395,6 +395,45 @@ def run_simulation(
     # Block types that use indexed inputs (input0, input1, etc.)
     MULTI_INPUT_BLOCKS = {"sum", "product", "mux", "switch"}
 
+    # Block types that output vectors and have get_output_vector() method
+    VECTOR_OUTPUT_BLOCKS = {"mux", "constant", "gain"}
+
+    # Block types that expect vector inputs (not via indexed ports)
+    VECTOR_INPUT_BLOCKS = {"demux", "gain"}
+
+    def _is_vector_output(self, block: BlockInfo, port: int = 0) -> bool:
+        """Check if a block's output port produces a vector (not scalar)."""
+        # Check output dimensions from model
+        if block.output_dimensions and port < len(block.output_dimensions):
+            dims = block.output_dimensions[port]
+            # [1] is scalar, anything else is vector
+            if len(dims) > 0 and dims[0] > 1:
+                return True
+        # Also check if block type is known to output vectors
+        if block.type in self.VECTOR_OUTPUT_BLOCKS:
+            # For mux, always outputs vector
+            if block.type == "mux":
+                return True
+            # For constant, check if value is a list
+            if block.type == "constant":
+                value = block.parameters.get("value", 0.0)
+                return isinstance(value, (list, tuple))
+            # Gain outputs vector if input dimensions say so
+            # (handled by output_dimensions check above)
+        return False
+
+    def _expects_vector_input(self, block: BlockInfo, port: int = 0) -> bool:
+        """Check if a block expects a vector input (not scalar) at given port."""
+        # Check input dimensions from model
+        if block.input_dimensions and port < len(block.input_dimensions):
+            dims = block.input_dimensions[port]
+            if len(dims) > 0 and dims[0] > 1:
+                return True
+        # Demux always expects vector input
+        if block.type == "demux":
+            return True
+        return False
+
     def _generate_connection_code(self, model_info: CompiledModelInfo) -> str:
         """Generate connection wiring code."""
         lines = []
@@ -407,12 +446,25 @@ def run_simulation(
                 )
                 if source_block:
                     source_var = self.get_block_var_name(source_block)
-                    # Multi-input blocks use input0, input1, etc.
+
+                    # Determine target port index
+                    port_idx = target_port if target_port is not None else 0
+
+                    # Check if this is a vector-to-vector connection
+                    source_is_vector = self._is_vector_output(source_block, source_port)
+                    target_expects_vector = self._expects_vector_input(block, port_idx)
+
+                    # Multi-input blocks use input0, input1, etc. for scalar inputs
                     if block.type in self.MULTI_INPUT_BLOCKS:
-                        port_idx = target_port if target_port is not None else 0
                         lines.append(
                             f"        self.{var_name}.input{port_idx} = "
                             f"self.{source_var}.get_output({source_port})"
+                        )
+                    elif source_is_vector and target_expects_vector:
+                        # Vector-to-vector: use get_output_vector()
+                        lines.append(
+                            f"        self.{var_name}.input = "
+                            f"self.{source_var}.get_output_vector()"
                         )
                     elif target_port is not None and target_port > 0:
                         lines.append(
@@ -444,12 +496,25 @@ def run_simulation(
                 )
                 if source_block:
                     source_var = self.get_block_var_name(source_block)
+
+                    # Determine target port index
+                    port_idx = target_port if target_port is not None else 0
+
+                    # Check if this is a vector-to-vector connection
+                    source_is_vector = self._is_vector_output(source_block, source_port)
+                    target_expects_vector = self._expects_vector_input(block, port_idx)
+
                     # Multi-input blocks use input0, input1, etc.
                     if block.type in self.MULTI_INPUT_BLOCKS:
-                        port_idx = target_port if target_port is not None else 0
                         block_lines.append(
                             f"        self.{var_name}.input{port_idx} = "
                             f"self.{source_var}.get_output({source_port})"
+                        )
+                    elif source_is_vector and target_expects_vector:
+                        # Vector-to-vector: use get_output_vector()
+                        block_lines.append(
+                            f"        self.{var_name}.input = "
+                            f"self.{source_var}.get_output_vector()"
                         )
                     elif target_port is not None and target_port > 0:
                         block_lines.append(

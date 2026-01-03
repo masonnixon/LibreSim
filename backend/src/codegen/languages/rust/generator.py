@@ -353,6 +353,36 @@ use crate::integration::{IntegrationMethod, propagate_integrator};
     # Block types that use indexed inputs (input0, input1, etc.)
     MULTI_INPUT_BLOCKS = {"sum", "product", "mux", "switch"}
 
+    # Block types that output vectors and have get_output_vector() method
+    VECTOR_OUTPUT_BLOCKS = {"mux", "constant", "gain"}
+
+    # Block types that expect vector inputs (not via indexed ports)
+    VECTOR_INPUT_BLOCKS = {"demux", "gain"}
+
+    def _is_vector_output(self, block: "BlockInfo", port: int = 0) -> bool:
+        """Check if a block's output port produces a vector (not scalar)."""
+        if block.output_dimensions and port < len(block.output_dimensions):
+            dims = block.output_dimensions[port]
+            if len(dims) > 0 and dims[0] > 1:
+                return True
+        if block.type in self.VECTOR_OUTPUT_BLOCKS:
+            if block.type == "mux":
+                return True
+            if block.type == "constant":
+                value = block.parameters.get("value", 0.0)
+                return isinstance(value, (list, tuple))
+        return False
+
+    def _expects_vector_input(self, block: "BlockInfo", port: int = 0) -> bool:
+        """Check if a block expects a vector input (not scalar) at given port."""
+        if block.input_dimensions and port < len(block.input_dimensions):
+            dims = block.input_dimensions[port]
+            if len(dims) > 0 and dims[0] > 1:
+                return True
+        if block.type == "demux":
+            return True
+        return False
+
     def _generate_connection_code(self, model_info: CompiledModelInfo) -> str:
         """Generate connection wiring code."""
         lines = []
@@ -365,12 +395,23 @@ use crate::integration::{IntegrationMethod, propagate_integrator};
                 )
                 if source_block:
                     source_var = f"block_{self.sanitize_identifier(source_block.id)}"
+                    port_idx = target_port if target_port is not None else 0
+
+                    # Check if this is a vector-to-vector connection
+                    source_is_vector = self._is_vector_output(source_block, source_port)
+                    target_expects_vector = self._expects_vector_input(block, port_idx)
+
                     # Multi-input blocks use input0, input1, etc.
                     if block.type in self.MULTI_INPUT_BLOCKS:
-                        port_idx = target_port if target_port is not None else 0
                         lines.append(
                             f"        self.{var_name}.input{port_idx} = "
                             f"self.{source_var}.get_output({source_port});"
+                        )
+                    elif source_is_vector and target_expects_vector:
+                        # Vector-to-vector: clone the array
+                        lines.append(
+                            f"        self.{var_name}.input = "
+                            f"self.{source_var}.get_output_vector().clone();"
                         )
                     elif target_port is not None and target_port > 0:
                         lines.append(

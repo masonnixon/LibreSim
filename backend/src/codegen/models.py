@@ -104,6 +104,10 @@ class BlockInfo:
     input_connections: list[str]  # ["source_id:port@target_port", ...]
     output_connections: list[str]  # ["target_id:port", ...]
     execution_order: int
+    # Port dimensions for vector signal handling
+    # Each entry is dimensions list e.g. [1] for scalar, [3] for 3-vector, [4] for quaternion
+    input_dimensions: list[list[int]] = field(default_factory=list)
+    output_dimensions: list[list[int]] = field(default_factory=list)
     # Resolved signal types
     input_signals: list[SignalInfo] = field(default_factory=list)
     output_signals: list[SignalInfo] = field(default_factory=list)

@@ -191,6 +191,17 @@ class CodeGenerator:
             # Get original block data for parameters
             original_block = block_map.get(block_id, {})
 
+            # Extract port dimensions from original block definition
+            input_dimensions = []
+            for port in original_block.get("inputPorts", []):
+                dims = port.get("dimensions", [1])
+                input_dimensions.append(dims)
+
+            output_dimensions = []
+            for port in original_block.get("outputPorts", []):
+                dims = port.get("dimensions", [1])
+                output_dimensions.append(dims)
+
             block_info = BlockInfo(
                 id=block_id,
                 type=compiled_block.type,
@@ -199,6 +210,8 @@ class CodeGenerator:
                 input_connections=compiled_block.input_connections,
                 output_connections=compiled_block.output_connections,
                 execution_order=i,
+                input_dimensions=input_dimensions,
+                output_dimensions=output_dimensions,
             )
             blocks.append(block_info)
 

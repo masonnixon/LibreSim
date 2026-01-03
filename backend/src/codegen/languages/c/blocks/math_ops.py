@@ -41,10 +41,57 @@ double {struct_name}_get_output({struct_name}* b, int port) {{
 
 
 def template_gain(block: BlockInfo, struct_name: str) -> str:
-    """Generate C code for Gain block."""
+    """Generate C code for Gain block.
+
+    Supports both scalar and vector inputs - applies element-wise gain.
+    """
     gain = block.parameters.get("gain", 1.0)
-    return f"""
-// {block.name} - Gain block
+
+    # Check if this block expects vector input from its port dimensions
+    expects_vector = False
+    if hasattr(block, 'input_dimensions') and block.input_dimensions:
+        dims = block.input_dimensions[0] if block.input_dimensions else [1]
+        expects_vector = len(dims) > 0 and dims[0] > 1
+
+    if expects_vector:
+        # Vector version
+        vec_size = block.input_dimensions[0][0] if block.input_dimensions else 3
+        return f"""
+// {block.name} - Gain block (vector mode, size={vec_size})
+typedef struct {{
+    double input[{vec_size}];
+    double output[{vec_size}];
+    double gain;
+}} {struct_name};
+
+void {struct_name}_init({struct_name}* b) {{
+    for (int i = 0; i < {vec_size}; i++) {{
+        b->input[i] = 0.0;
+        b->output[i] = 0.0;
+    }}
+    b->gain = {gain};
+}}
+
+void {struct_name}_update({struct_name}* b, double t) {{
+    (void)t;
+    for (int i = 0; i < {vec_size}; i++) {{
+        b->output[i] = b->gain * b->input[i];
+    }}
+}}
+
+double {struct_name}_get_output({struct_name}* b, int port) {{
+    if (port >= 0 && port < {vec_size}) return b->output[port];
+    return 0.0;
+}}
+
+double* {struct_name}_get_output_vector({struct_name}* b) {{
+    return b->output;
+}}
+"""
+    else:
+        # Scalar version
+        return f"""
+// {block.name} - Gain block (scalar mode)
 typedef struct {{
     double input;
     double output;
@@ -401,6 +448,10 @@ void {struct_name}_update({struct_name}* b, double t) {{
 double {struct_name}_get_output({struct_name}* b, int port) {{
     if (port >= 0 && port < b->num_inputs) return b->output[port];
     return 0.0;
+}}
+
+double* {struct_name}_get_output_vector({struct_name}* b) {{
+    return b->output;
 }}
 """
 

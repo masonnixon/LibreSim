@@ -47,25 +47,42 @@ class {class_name}:
 
 
 def gain_template(block: BlockInfo, class_name: str) -> str:
-    """Generate Gain block code."""
+    """Generate Gain block code.
+
+    Supports both scalar and vector inputs - applies element-wise gain.
+    """
     gain = block.parameters.get("gain", 1.0)
     return f'''
 class {class_name}:
-    """Gain block: {block.name}"""
+    """Gain block: {block.name} - supports scalar and vector inputs"""
 
     def __init__(self):
         self.gain = {gain}
-        self.input = 0.0
+        self.input = 0.0  # Can be scalar or list/vector
         self.output = 0.0
 
     def init(self):
         self.output = 0.0
 
     def update(self, t: float):
-        self.output = self.gain * self.input
+        if isinstance(self.input, (list, tuple)):
+            # Vector input: apply gain to each element
+            self.output = [self.gain * x for x in self.input]
+        else:
+            # Scalar input
+            self.output = self.gain * self.input
 
     def get_output(self, port: int = 0) -> float:
+        if isinstance(self.output, (list, tuple)):
+            if port < len(self.output):
+                return self.output[port]
+            return 0.0
         return self.output
+
+    def get_output_vector(self) -> list:
+        if isinstance(self.output, (list, tuple)):
+            return list(self.output)
+        return [self.output]
 '''
 
 
