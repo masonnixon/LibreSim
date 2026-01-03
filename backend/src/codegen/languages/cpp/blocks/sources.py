@@ -268,12 +268,17 @@ def template_white_noise(block: BlockInfo, class_name: str) -> str:
     if sample_time <= 0:
         sample_time = 0.01  # Default to 100Hz sampling
     seed = block.parameters.get("seed", 0)
+    # Use a deterministic seed (based on block name hash) for reproducible simulations
+    # std::random_device can throw in some Docker environments
+    if not seed:
+        # Generate a deterministic seed from block name
+        seed = abs(hash(block.name)) % (2**31)
 
     return f"""
 // {block.name} - White Noise source
 class {class_name} {{
 public:
-    {class_name}() : gen_({seed if seed else 'std::random_device{{}}()'}),
+    {class_name}() : gen_({seed}),
                      dist_(0.0, std::sqrt({power} / {sample_time})) {{}}
 
     void init() {{
