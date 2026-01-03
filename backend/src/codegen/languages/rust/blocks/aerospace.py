@@ -7,6 +7,7 @@ def quaternion_normalize_template(block: BlockInfo, struct_name: str) -> str:
     """Generate QuaternionNormalize block code."""
     return f"""
 /// {block.name} - Quaternion Normalize
+#[derive(Clone)]
 pub struct {struct_name} {{
     pub input: [f64; 4],   // [w, x, y, z]
     pub output: [f64; 4],
@@ -51,6 +52,7 @@ def quaternion_multiply_template(block: BlockInfo, struct_name: str) -> str:
     """Generate QuaternionMultiply block code."""
     return f"""
 /// {block.name} - Quaternion Multiply (Hamilton product)
+#[derive(Clone)]
 pub struct {struct_name} {{
     pub q1: [f64; 4],      // First quaternion [w, x, y, z]
     pub q2: [f64; 4],      // Second quaternion
@@ -97,6 +99,7 @@ def quaternion_conjugate_template(block: BlockInfo, struct_name: str) -> str:
     """Generate QuaternionConjugate block code."""
     return f"""
 /// {block.name} - Quaternion Conjugate
+#[derive(Clone)]
 pub struct {struct_name} {{
     pub input: [f64; 4],   // [w, x, y, z]
     pub output: [f64; 4],
@@ -136,6 +139,7 @@ def quaternion_to_euler_template(block: BlockInfo, struct_name: str) -> str:
     """Generate QuaternionToEuler block code."""
     return f"""
 /// {block.name} - Quaternion to Euler (ZYX rotation order)
+#[derive(Clone)]
 pub struct {struct_name} {{
     pub input: [f64; 4],   // [w, x, y, z]
     pub output: [f64; 3],  // [roll, pitch, yaw]
@@ -190,6 +194,7 @@ def euler_to_quaternion_template(block: BlockInfo, struct_name: str) -> str:
     """Generate EulerToQuaternion block code."""
     return f"""
 /// {block.name} - Euler to Quaternion (ZYX rotation order)
+#[derive(Clone)]
 pub struct {struct_name} {{
     pub input: [f64; 3],   // [roll, pitch, yaw]
     pub output: [f64; 4],  // [w, x, y, z]
@@ -235,6 +240,7 @@ def quaternion_rotate_vector_template(block: BlockInfo, struct_name: str) -> str
     """Generate QuaternionRotateVector block code."""
     return f"""
 /// {block.name} - Quaternion Rotate Vector
+#[derive(Clone)]
 pub struct {struct_name} {{
     pub quaternion: [f64; 4],  // [w, x, y, z]
     pub vector: [f64; 3],
@@ -291,6 +297,7 @@ def dcm_to_quaternion_template(block: BlockInfo, struct_name: str) -> str:
     """Generate DCMToQuaternion block code."""
     return f"""
 /// {block.name} - DCM to Quaternion
+#[derive(Clone)]
 pub struct {struct_name} {{
     pub input: [f64; 9],   // 3x3 DCM row-major
     pub output: [f64; 4],  // [w, x, y, z]
@@ -360,6 +367,7 @@ def quaternion_to_dcm_template(block: BlockInfo, struct_name: str) -> str:
     """Generate QuaternionToDCM block code."""
     return f"""
 /// {block.name} - Quaternion to DCM
+#[derive(Clone)]
 pub struct {struct_name} {{
     pub input: [f64; 4],   // [w, x, y, z]
     pub output: [f64; 9],  // 3x3 DCM row-major
@@ -406,6 +414,7 @@ def isa_atmosphere_template(block: BlockInfo, struct_name: str) -> str:
     """Generate ISAAtmosphere block code."""
     return f"""
 /// {block.name} - ISA Atmosphere Model
+#[derive(Clone)]
 pub struct {struct_name} {{
     pub input: f64,        // Altitude (m)
     pub output: [f64; 4],  // [T, P, rho, a]
@@ -467,6 +476,7 @@ def flat_earth_gravity_template(block: BlockInfo, struct_name: str) -> str:
     g = block.parameters.get("g", 9.80665)
     return f"""
 /// {block.name} - Flat Earth Gravity
+#[derive(Clone)]
 pub struct {struct_name} {{
     pub g: f64,
     pub output: [f64; 3],
@@ -505,6 +515,7 @@ def wgs84_gravity_template(block: BlockInfo, struct_name: str) -> str:
     """Generate WGS84Gravity block code."""
     return f"""
 /// {block.name} - WGS84 Gravity Model
+#[derive(Clone)]
 pub struct {struct_name} {{
     pub input: [f64; 2],  // [latitude, altitude]
     pub output: f64,
@@ -552,6 +563,7 @@ def six_dof_euler_template(block: BlockInfo, struct_name: str) -> str:
     ixz = block.parameters.get("Ixz", 0.0)
     return f"""
 /// {block.name} - 6-DOF Euler Equations of Motion
+#[derive(Clone)]
 pub struct {struct_name} {{
     pub mass: f64,
     pub ixx: f64,

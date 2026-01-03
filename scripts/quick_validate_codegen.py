@@ -50,7 +50,14 @@ async def run_headless_async(example_name: str) -> dict:
         model_data = json.load(f)
 
     model = Model.model_validate(model_data)
-    config = SimulationConfig(stop_time=10.0, step_size=0.01)
+
+    # Extract simulation config from model if present
+    sim_config = model_data.get("simulationConfig", {})
+    step_size = sim_config.get("stepSize", 0.01)
+    stop_time = sim_config.get("stopTime", 10.0)
+    start_time = sim_config.get("startTime", 0.0)
+
+    config = SimulationConfig(stop_time=stop_time, step_size=step_size, start_time=start_time)
     runner = SimulationRunner(model, config)
     await runner.run()
 

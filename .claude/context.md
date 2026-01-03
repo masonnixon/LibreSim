@@ -259,6 +259,40 @@ The toolbar supports:
 
 ## Recent Changes Log
 
+### Session 2026-01-02 (Codegen Verification and Fixes)
+- **Verified codegen outputs across all 4 languages** for 38 examples:
+  - Generated 152 zip files (38 examples × 4 languages)
+  - Tested builds using Docker-based ./build.sh scripts
+  - Python, C++, C examples largely successful
+  - Rust examples need package name fix
+
+- **Fixed critical step block parameter mapping bug**:
+  - **Problem**: C++, C, and Rust codegen used snake_case parameter names (`step_time`, `initial_value`, `final_value`) but JSON examples use camelCase (`stepTime`, `initialValue`, `finalValue`)
+  - **Impact**: Step blocks defaulted to wrong values (step_time=1.0, final_value=1.0 instead of actual parameters)
+  - **Example**: Mass-spring-damper C++ settled at 0.001 instead of 1.0 because force was 1.0 instead of 1000.0
+  - **Fix**: Added fallback parameter lookup in all three languages:
+    - `block.parameters.get("step_time", block.parameters.get("stepTime", 1.0))`
+  - **Files Modified**:
+    - `backend/src/codegen/languages/cpp/blocks/sources.py`
+    - `backend/src/codegen/languages/c/blocks/sources.py`
+    - `backend/src/codegen/languages/rust/blocks/sources.py`
+
+- **Fixed Rust package name starting with digit**:
+  - **Problem**: Examples like `01_sine_wave_basic_rust` fail because Rust package names cannot start with a digit
+  - **Fix**: Added underscore prefix when package name starts with digit
+  - **File Modified**: `backend/src/codegen/languages/rust/generator.py`
+  - Code: `if project_name and project_name[0].isdigit(): project_name = '_' + project_name`
+
+- **Identified remaining codegen issues** (not yet fixed):
+  1. **Random source blocks** (white_noise): `dist_` not declared in generated code - missing include or initialization
+  2. **Vector block wiring**: Array inputs assigned from scalar outputs (e.g., `std::array<double, 3> input` assigned from `double get_output()`)
+  3. **Kalman filter stub**: Missing `input1` field in passthrough template
+  4. **Constant array syntax**: C++ constant block generates `value = [37.0, -122.0]` which is invalid C++ syntax
+
+- **Verified output accuracy** after step block fix:
+  - Mass-spring-damper C++ now settles at Position=1.0 (matching Python)
+  - PID controller C++ converges to 0.999996 (correct)
+
 ### Session 2026-01-02 (Multi-Language Codegen Accuracy Fixes - Part 2)
 - **Fixed Transfer Function templates for C, C++, Rust** (all now produce stable, accurate dynamics):
   - **Problem**: Transfer function output was exploding to astronomical values (1e+100+) in generated C/C++/Rust code
@@ -683,8 +717,18 @@ The toolbar supports:
 - Simulation now runs successfully
 
 ## Known Issues / TODO
-- Multi-language accuracy tests (C/C++/Rust) need Docker-based end-to-end testing framework
-- Python codegen accuracy tests pass (5/5), C++ tested manually in Docker and verified working
+- **Vector input wiring**: Blocks expecting array inputs (Demux, quaternion blocks) get scalar outputs wired - need architectural fix in code generator
+- **Thermostat relay**: Initial state/hysteresis behavior differs between headless and codegen
+- **C++ random_device**: Throws in Docker container - need deterministic seed fallback
+- **Mass-spring-damper**: Small velocity differences in C++/C/Rust for critically/underdamped systems
+
+## Code Generation Validation Status (as of 2026-01-03)
+- **Overall**: 104/152 tests passing (68.4%)
+- **Python**: 30/38 (78.9%)
+- **C++**: 24/38 (63.2%)
+- **C**: 25/38 (65.8%)
+- **Rust**: 25/38 (65.8%)
+- Full report: `docs/codegen-validation-report.md`
 
 ## Development Environment
 

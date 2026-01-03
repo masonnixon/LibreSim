@@ -414,13 +414,20 @@ def lqr_controller_template(block: BlockInfo, struct_name: str) -> str:
     num_states = block.parameters.get("num_states", 1)
     num_inputs = block.parameters.get("num_inputs", 1)
 
+    # Helper to format values as Rust f64 literals
+    def to_rust_float(val):
+        s = str(val)
+        if '.' not in s and 'e' not in s.lower():
+            return s + ".0_f64"
+        return s + "_f64"
+
     # Format K matrix initialization
     k_rows = []
     for i in range(num_inputs):
         row_vals = []
         for j in range(num_states):
             val = K[i][j] if i < len(K) and j < len(K[i]) else 0.0
-            row_vals.append(str(val))
+            row_vals.append(to_rust_float(val))
         k_rows.append("[" + ", ".join(row_vals) + "]")
     k_init = "[" + ", ".join(k_rows) + "]"
 
@@ -476,8 +483,13 @@ def pole_placement_template(block: BlockInfo, struct_name: str) -> str:
     K = block.parameters.get("K", [1.0])
     num_states = block.parameters.get("num_states", 1)
 
-    # Format K vector initialization
-    k_vals = [str(K[i]) if i < len(K) else "0.0" for i in range(num_states)]
+    # Format K vector initialization with _f64 suffix for Rust
+    def to_rust_float(val):
+        s = str(val)
+        if '.' not in s and 'e' not in s.lower():
+            return s + ".0_f64"
+        return s + "_f64"
+    k_vals = [to_rust_float(K[i]) if i < len(K) else "0.0_f64" for i in range(num_states)]
     k_init = "[" + ", ".join(k_vals) + "]"
 
     return f"""

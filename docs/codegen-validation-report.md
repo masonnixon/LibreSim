@@ -25,88 +25,102 @@ This document summarizes the validation of the LibreSim code generation feature.
 | Metric | Count |
 |--------|-------|
 | Total Examples | 38 |
-| Total Tests (38 × 4 languages) | 152 |
-| **Tests Passed** | **96** |
-| **Pass Rate** | **63.2%** |
+| Total Tests (38 x 4 languages) | 152 |
+| **Tests Passed** | **104** |
+| **Pass Rate** | **68.4%** |
 
 ### Results by Language
 
 | Language | Passed | Failed | Pass Rate |
 |----------|--------|--------|-----------|
 | Python   | 30     | 8      | 78.9%     |
-| C++      | 25     | 13     | 65.8%     |
-| C        | 26     | 12     | 68.4%     |
-| Rust     | 15     | 23     | 39.5%     |
+| C++      | 24     | 14     | 63.2%     |
+| C        | 25     | 13     | 65.8%     |
+| Rust     | 25     | 13     | 65.8%     |
 
 ## Detailed Results
 
 ### Passing Examples (All 4 Languages)
 
-The following 15 examples pass validation in ALL four languages:
+The following 19 examples pass validation in ALL four languages:
 
 | # | Example | Description |
 |---|---------|-------------|
 | 1 | 01_sine_wave_basic | Basic sine wave generation |
 | 2 | 02_first_order_step_response | 1/(s+1) transfer function |
 | 3 | 03_pid_controller | PID controller with plant |
-| 4 | 04_mass_spring_damper | Critically damped system |
-| 5 | 06_kalman_filter_estimation | Kalman filter basics |
-| 6 | 08_lookup_table_nonlinear | Lookup table interpolation |
-| 7 | 09_second_order_damping | Multiple damping ratios |
-| 8 | 31_discrete_pid_sampled_control | Discrete PID controller |
-| 9 | 33_lead_lag_compensator | Lead-lag compensator |
-| 10 | 34_anti_windup_pid | PID with anti-windup |
-| 11 | 35_pi_pd_controllers | PI and PD controllers |
-| 12 | 36_model_reference_control | Model reference adaptive |
-| 13 | 40_dsp_fft_spectrum | FFT spectrum analysis |
-| 14 | 42_rf_receiver_chain | RF signal processing |
-| 15 | 43_rf_am_modulation | AM modulation |
+| 4 | 05a_moving_average_filter | Moving average filter |
+| 5 | 05b_lowpass_filter | Low-pass filter variations |
+| 6 | 06_kalman_filter_estimation | Kalman filter basics |
+| 7 | 07a_bode_plot_analysis | Bode plot (analysis block) |
+| 8 | 07b_nyquist_plot_analysis | Nyquist plot (analysis block) |
+| 9 | 07c_pole_zero_map | Pole-zero mapping |
+| 10 | 07d_step_response_info | Step response analysis |
+| 11 | 08_lookup_table_nonlinear | Lookup table interpolation |
+| 12 | 09_second_order_damping | Multiple damping ratios |
+| 13 | 21_isa_atmosphere_model | ISA atmosphere model |
+| 14 | 31_discrete_pid_sampled_control | Discrete PID controller |
+| 15 | 32_lqr_state_feedback | LQR state feedback |
+| 16 | 33_lead_lag_compensator | Lead-lag compensator |
+| 17 | 34_anti_windup_pid | PID with anti-windup |
+| 18 | 35_pi_pd_controllers | PI and PD controllers |
+| 19 | 36_model_reference_control | Model reference adaptive |
+| 20 | 37_pole_placement_control | Pole placement control |
+| 21 | 40_dsp_fft_spectrum | FFT spectrum analysis |
+| 22 | 42_rf_receiver_chain | RF signal processing |
+| 23 | 43_rf_am_modulation | AM modulation |
+| 24 | 44_nav_coordinate_transform | Coordinate transforms |
 
-### Partially Passing Examples
+### Python-Only Passing Examples
 
-| Example | Python | C++ | C | Rust | Notes |
-|---------|--------|-----|---|------|-------|
-| 05a_moving_average_filter | PASS | PASS | PASS | FAIL | Rust Clone trait |
-| 05b_lowpass_filter | PASS | PASS | PASS | FAIL | Rust Clone trait |
-| 21_isa_atmosphere_model | PASS | PASS | PASS | FAIL | Rust Clone trait |
-| 44_nav_coordinate_transform | PASS | PASS | PASS | FAIL | Rust Clone trait |
+| Example | Notes |
+|---------|-------|
+| 04_mass_spring_damper | C++/C/Rust have small velocity differences |
+| 04b_mass_spring_damper_underdamped | C++/C/Rust have velocity differences |
+| 06b_kalman_position_velocity | C++/C/Rust need vector input wiring |
+| 10_rate_limiting_quantization | C++/C/Rust rate limiter behavior differs |
+| 11_vector_signal_processing | C++/C/Rust need vector input wiring |
+| 46_sensor_fusion_tracking | C++ random_device issue; otherwise passes |
 
 ### Known Failures
 
-#### Build Failures (Unsupported Blocks)
+#### Build Failures (Vector Input Wiring)
 
-These examples use blocks that don't have full codegen implementations:
-
-| Example | Issue |
-|---------|-------|
-| 06b_kalman_position_velocity | Kalman filter stub issues |
-| 11_vector_signal_processing | Vector operations not fully supported |
-| 20_quaternion_attitude_propagation | Quaternion blocks not fully implemented |
-| 22_gravity_models_comparison | Gravity model blocks not implemented |
-| 23_dcm_quaternion_conversion | DCM conversion blocks not implemented |
-| 24_quaternion_vector_rotation | Quaternion rotation blocks not implemented |
-| 45_sensor_fusion_ahrs | AHRS sensor fusion blocks not implemented |
-
-#### Rust-Specific Issues
-
-Rust has additional failures due to:
-- **Clone trait requirements**: White noise blocks need manual Clone implementation
-- **Bode/Nyquist analysis blocks**: Control design blocks not Rust-compatible
-- **State feedback blocks**: LQR and pole placement need refinement
-
-#### Value Mismatches
-
-These examples have numerical differences between headless and generated code:
+These examples use blocks that expect vector/array inputs, but the code generator wires them with scalar outputs:
 
 | Example | Issue |
 |---------|-------|
-| 04b_mass_spring_damper_underdamped | Second-order system parameter handling |
-| 07_thermostat_relay_control | Relay block behavior differences |
-| 10_rate_limiting_quantization | Rate limiter/quantizer differences |
-| 30_pid_speed_control | PID gain parameter handling |
-| 41_dsp_fir_lowpass | FIR filter coefficient handling |
+| 06b_kalman_position_velocity | Demux expects array input |
+| 11_vector_signal_processing | Demux expects array input |
+| 20_quaternion_attitude_propagation | Quaternion blocks expect 4-element arrays |
+| 22_gravity_models_comparison | WGS84 gravity expects [lat, alt] array |
+| 23_dcm_quaternion_conversion | Quaternion blocks expect arrays |
+| 24_quaternion_vector_rotation | Quaternion blocks expect arrays |
+| 45_sensor_fusion_ahrs | Demux and quaternion blocks expect arrays |
 
-## Validated Examples - Detailed Results
+These require an architectural fix in the code generator to use `get_output_vector()` instead of `get_output(0)` when wiring to blocks that expect array inputs.
+
+#### Behavior Mismatches
+
+| Example | Issue |
+|---------|-------|
+| 04_mass_spring_damper | Small numerical differences in critically damped system |
+| 04b_mass_spring_damper_underdamped | ~19% velocity difference in underdamped system |
+| 07_thermostat_relay_control | Relay initial state/hysteresis behavior differs |
+| 10_rate_limiting_quantization | Rate limiter parameter mapping (`rising_limit`) |
+| 30_pid_speed_control | PID gain parameter handling issue |
+| 41_dsp_fir_lowpass | White noise block behavior with random seeds |
+
+#### C++ Specific Issues
+
+| Example | Issue |
+|---------|-------|
+| 41_dsp_fir_lowpass | `random_device` throws in Docker container |
+| 46_sensor_fusion_tracking | `random_device` throws in Docker container |
+
+The C++ `std::random_device` doesn't work properly in the Docker environment. Would need to fall back to a deterministic seed.
+
+## Validated Examples - Sample Results
 
 ### Example 01: Sine Wave Basic
 
@@ -118,45 +132,25 @@ These examples have numerical differences between headless and generated code:
 | C        | -0.0628     | 0.0000%   | PASS   |
 | Rust     | -0.0628     | 0.0000%   | PASS   |
 
-### Example 02: First Order Step Response
-
-| Language | Step Input | Transfer Function | Max Error | Status |
-|----------|------------|-------------------|-----------|--------|
-| Headless | 1.0        | 0.99988           | -         | -      |
-| Python   | 1.0        | 0.99988           | 0.0000%   | PASS   |
-| C++      | 1.0        | 0.99988           | 0.0000%   | PASS   |
-| C        | 1.0        | 0.99988           | 0.0000%   | PASS   |
-| Rust     | 1.0        | 0.99988           | 0.0000%   | PASS   |
-
 ### Example 03: PID Controller
 
 | Language | Reference | Plant Output | Max Error | Status |
 |----------|-----------|--------------|-----------|--------|
-| Headless | 1.0       | 0.99952      | -         | -      |
-| Python   | 1.0       | 0.99973      | 0.0219%   | PASS   |
-| C++      | 1.0       | 0.99994      | 0.0424%   | PASS   |
-| C        | 1.0       | 0.99994      | 0.0424%   | PASS   |
-| Rust     | 1.0       | 0.99994      | 0.0424%   | PASS   |
-
-### Example 04: Mass-Spring-Damper (Critically Damped)
-
-| Language | Velocity | Position | Max Error | Status |
-|----------|----------|----------|-----------|--------|
-| Headless | 5.1e-15  | 1.0000   | -         | -      |
-| Python   | 5.1e-15  | 1.0000   | 0.0000%   | PASS   |
-| C++      | 3.1e-15  | 1.0000   | 0.0000%   | PASS   |
-| C        | 3.1e-15  | 1.0000   | 0.0000%   | PASS   |
-| Rust     | 0.0      | 1.0000   | 0.0000%   | PASS   |
+| Headless | 1.0       | 0.99997      | -         | -      |
+| Python   | 1.0       | 0.99998      | 0.0014%   | PASS   |
+| C++      | 1.0       | 0.99999      | 0.0027%   | PASS   |
+| C        | 1.0       | 0.99999      | 0.0027%   | PASS   |
+| Rust     | 1.0       | 0.99999      | 0.0027%   | PASS   |
 
 ### Example 09: Second Order Damping Comparison
 
 | Language | Underdamped | Critical | Overdamped | Max Error | Status |
 |----------|-------------|----------|------------|-----------|--------|
-| Headless | 1.11657     | 0.99877  | 0.90339    | -         | -      |
-| Python   | 1.11657     | 0.99877  | 0.90339    | 0.0000%   | PASS   |
-| C++      | 1.11641     | 0.99876  | 0.90334    | 0.0144%   | PASS   |
-| C        | 1.11641     | 0.99876  | 0.90334    | 0.0144%   | PASS   |
-| Rust     | 1.11641     | 0.99876  | 0.90334    | 0.0143%   | PASS   |
+| Headless | 0.97935     | 1.00000  | 0.99335    | -         | -      |
+| Python   | 0.97935     | 1.00000  | 0.99335    | 0.0000%   | PASS   |
+| C++      | 0.97936     | 1.00000  | 0.99335    | 0.0009%   | PASS   |
+| C        | 0.97936     | 1.00000  | 0.99335    | 0.0009%   | PASS   |
+| Rust     | 0.97936     | 1.00000  | 0.99335    | 0.0009%   | PASS   |
 
 ## Fixes Applied During Validation
 
@@ -182,31 +176,46 @@ These examples have numerical differences between headless and generated code:
 - Added `#include <random>` to blocks.hpp
 - Default sample_time to 0.01 when <= 0 (all languages)
 
-### 4. Constant Block Array Support
+### 4. Rust Clone Trait
 
-**Issue**: Array values weren't properly handled.
+**Issue**: Several blocks missing Clone trait required by Model struct.
 
-**Fix**: Detect array values and generate proper array/vector code for each language.
+**Fix**: Added `#[derive(Clone)]` to:
+- White noise block (manual impl due to RNG state)
+- Mux/Demux blocks
+- All aerospace blocks (quaternion, gravity, etc.)
 
-### 5. Passthrough Block Multi-Input
+### 5. Rust Empty Outputs
 
-**Issue**: Kalman filter stub only had one input declaration.
+**Issue**: Examples without scope blocks (Bode/Nyquist) caused panic on CSV write.
 
-**Fix**: Dynamically generate input declarations based on actual connections.
+**Fix**: Handle zero outputs case - write time-only CSV instead.
+
+### 6. Rust Integer Literals
+
+**Issue**: Pole placement K values like `4` rejected by Rust (expects `4.0_f64`).
+
+**Fix**: Added `_f64` suffix to all numeric literals in LQR and pole placement templates.
+
+### 7. Simulation Config
+
+**Issue**: Hardcoded step_size=0.01, stop_time=10.0 didn't match model settings.
+
+**Fix**: Read `simulationConfig` from model JSON for both regeneration and validation.
 
 ## Recommendations
 
 ### High Priority
 
-1. **Fix underdamped system handling** - Investigate 04b parameter differences
-2. **Implement Clone for Rust white noise** - Add manual Clone implementation
-3. **Fix rate limiter/quantizer** - Review 10_rate_limiting_quantization differences
+1. **Fix vector input wiring** - Architectural change to detect blocks expecting array inputs
+2. **Fix thermostat relay** - Review relay initial state and hysteresis behavior
+3. **Fix C++ random_device** - Use deterministic seed fallback in Docker
 
 ### Medium Priority
 
-1. **Complete quaternion block implementations** - Enable aerospace examples
-2. **Improve relay block behavior** - Match headless relay logic
-3. **Add vector operation support** - Enable 11_vector_signal_processing
+1. **Fix rate limiter parameters** - Map `rising_limit`/`falling_limit` correctly
+2. **Fix PID speed control** - Investigate gain parameter handling
+3. **Investigate mass-spring-damper** - Small numerical differences in C++/C/Rust
 
 ### Low Priority
 
@@ -215,12 +224,12 @@ These examples have numerical differences between headless and generated code:
 
 ## Conclusion
 
-The code generation feature produces numerically accurate simulations for the majority of standard control system examples. The core functionality (integrators, transfer functions, PID controllers, filters) works correctly across all four target languages.
+The code generation feature produces numerically accurate simulations for the majority of standard control system examples. The core functionality (integrators, transfer functions, PID controllers, filters, state-space, lead-lag compensators) works correctly across all four target languages.
 
-The primary gaps are in specialized blocks (quaternions, vector operations, advanced sensor fusion) that need additional implementation work.
+The primary gap is in vector/array signal routing - blocks that expect multi-element inputs (quaternion operations, demux blocks) need architectural changes in the code generator to properly wire vector outputs.
 
 ---
 
-*Report generated: 2026-01-02*
+*Report generated: 2026-01-03*
 *Test environment: Windows 11, Docker Desktop with gcc:13 and rust:1.75 images*
 *Validation script: scripts/quick_validate_codegen.py*

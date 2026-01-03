@@ -486,6 +486,7 @@ def template_mux(block: BlockInfo, struct_name: str) -> str:
 
     return f"""
 /// {block.name} - Mux block
+#[derive(Clone)]
 pub struct {struct_name} {{
     {input_fields}
     pub output: [f64; {num_inputs}],
@@ -536,6 +537,7 @@ def template_demux(block: BlockInfo, struct_name: str) -> str:
 
     return f"""
 /// {block.name} - Demux block
+#[derive(Clone)]
 pub struct {struct_name} {{
     pub input: [f64; {num_outputs}],
     outputs: [f64; {num_outputs}],

@@ -413,6 +413,21 @@ impl Default for {struct_name} {{
         Self::new()
     }}
 }}
+
+impl Clone for {struct_name} {{
+    fn clone(&self) -> Self {{
+        Self {{
+            output: self.output,
+            power: self.power,
+            sample_time: self.sample_time,
+            std_dev: self.std_dev,
+            last_sample_time: self.last_sample_time,
+            seed: self.seed,
+            spare: self.spare,
+            has_spare: self.has_spare,
+        }}
+    }}
+}}
 """
 
 

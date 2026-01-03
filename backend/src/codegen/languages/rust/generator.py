@@ -125,7 +125,8 @@ class RustCodeGenerator(LanguageGenerator):
 
         # Get output recording info
         output_info = self._generate_output_recording(model_info)
-        n_outputs = output_info['n_outputs'] or 1
+        actual_n_outputs = output_info['n_outputs']
+        n_outputs = actual_n_outputs or 1  # Use 1 for array sizing if no outputs
         output_names = output_info['names']
         record_code = output_info['record_code']
 
@@ -134,7 +135,8 @@ class RustCodeGenerator(LanguageGenerator):
         csv_header = ','.join(csv_header_parts)
 
         csv_code = ""
-        if config.include_csv_output:
+        # Only generate CSV code if there are actual outputs to record
+        if config.include_csv_output and actual_n_outputs > 0:
             # Build write format string and args for all outputs
             format_parts = ['{:.6}']  # time
             for i in range(n_outputs):
@@ -156,6 +158,19 @@ class RustCodeGenerator(LanguageGenerator):
         let t = time_data[i];
         writeln!(csv_file, "{format_string}", {write_args_str}).unwrap();
     }}
+    println!("Results written to results.csv");
+'''
+        elif config.include_csv_output:
+            # No outputs - write time-only CSV
+            csv_code = '''
+    // Write results to CSV (time only - no output signals)
+    let mut csv_file = std::fs::File::create("results.csv").expect("Could not create file");
+    use std::io::Write;
+    writeln!(csv_file, "time").unwrap();
+    for i in 0..time_data.len() {
+        let t = time_data[i];
+        writeln!(csv_file, "{:.6}", t).unwrap();
+    }
     println!("Results written to results.csv");
 '''
 

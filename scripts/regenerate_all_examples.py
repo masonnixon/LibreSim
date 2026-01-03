@@ -44,6 +44,12 @@ def regenerate_all():
                 results["failed"].append((f"{name}_{lang.value}", f"Load error: {e}"))
             continue
 
+        # Extract simulation config from model if present
+        sim_config = model_data.get("simulationConfig", {})
+        step_size = sim_config.get("stepSize", 0.01)
+        stop_time = sim_config.get("stopTime", 10.0)
+        start_time = sim_config.get("startTime", 0.0)
+
         for lang in LANGUAGES:
             output_name = f"{name}_{lang.value}.zip"
             output_path = OUTPUT_DIR / output_name
@@ -55,9 +61,9 @@ def regenerate_all():
                     language=lang,
                     project_name=name,
                     integration_method=IntegrationMethod.RK4,
-                    step_size=0.01,
-                    stop_time=10.0,
-                    start_time=0.0,
+                    step_size=step_size,
+                    stop_time=stop_time,
+                    start_time=start_time,
                     include_csv_output=True,
                     include_main=True,
                 )
