@@ -54,6 +54,8 @@ def kalman_filter_template(block: BlockInfo, class_name: str) -> str:
 
     return f"""
 // {block.name} - Kalman Filter
+#include <array>
+
 class {class_name} {{
 public:
     static constexpr int N_STATES = {n_states};
@@ -65,7 +67,7 @@ public:
     double input1 = 0.0;  // Measurement input (port 1)
 
     // State estimate output
-    double x[N_STATES] = {{0.0}};
+    std::array<double, N_STATES> x = {{}};
 
     // System matrices
     double A[N_STATES][N_STATES];
@@ -240,7 +242,7 @@ public:
         return 0.0;
     }}
 
-    const double* getOutputVector() const {{
+    const std::array<double, N_STATES>& getOutputVector() const {{
         return x;
     }}
 }};
@@ -285,6 +287,8 @@ def luenberger_observer_template(block: BlockInfo, class_name: str) -> str:
 
     return f"""
 // {block.name} - Luenberger Observer
+#include <array>
+
 class {class_name} {{
 public:
     static constexpr int N_STATES = {n_states};
@@ -297,6 +301,7 @@ public:
 
     // State estimate [value, derivative] for each state
     double x[N_STATES][2] = {{{{0.0}}}};
+    std::array<double, N_STATES> x_out = {{}};  // Output array for getOutputVector
     double x0[N_STATES] = {{0.0}};
     double xd0[N_STATES] = {{0.0}}, xd1[N_STATES] = {{0.0}};
     double xd2[N_STATES] = {{0.0}}, xd3[N_STATES] = {{0.0}};
@@ -357,12 +362,11 @@ public:
         return 0.0;
     }}
 
-    const double* getOutputVector() const {{
-        static double out[N_STATES];
+    const std::array<double, N_STATES>& getOutputVector() {{
         for (int i = 0; i < N_STATES; i++) {{
-            out[i] = x[i][0];
+            x_out[i] = x[i][0];
         }}
-        return out;
+        return x_out;
     }}
 
     void propagate_states(double dt, int kpass, const std::string& method) {{

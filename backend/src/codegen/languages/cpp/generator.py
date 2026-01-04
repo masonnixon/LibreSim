@@ -454,8 +454,10 @@ void Model::propagate_integrators(double dt, int kpass, const std::string& metho
                         )
                     elif source_is_vector and target_expects_vector:
                         # Vector-to-vector: use getOutputVector()
+                        # For port 0 use 'input', for port 1+ use 'input1', 'input2', etc.
+                        input_field = "input" if port_idx == 0 else f"input{port_idx}"
                         lines.append(
-                            f"    {var_name}.input = "
+                            f"    {var_name}.{input_field} = "
                             f"{source_var}.getOutputVector();"
                         )
                     elif target_port is not None and target_port > 0:

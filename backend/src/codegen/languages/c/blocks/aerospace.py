@@ -635,16 +635,14 @@ def lla_to_ecef_template(block: BlockInfo, struct_name: str) -> str:
 #define {struct_name.upper()}_E2 (2*{struct_name.upper()}_F - {struct_name.upper()}_F*{struct_name.upper()}_F)
 
 typedef struct {{
-    double input;   // Latitude (rad) - port 0
-    double input1;  // Longitude (rad) - port 1
-    double input2;  // Altitude (m) - port 2
+    double input[3];   // [lat, lon, alt] - port 0
     double output[3];  // [X, Y, Z] ECEF
 }} {struct_name};
 
 void {struct_name}_init({struct_name}* b) {{
-    b->input = 0.0;
-    b->input1 = 0.0;
-    b->input2 = 0.0;
+    b->input[0] = 0.0;
+    b->input[1] = 0.0;
+    b->input[2] = 0.0;
     b->output[0] = 0.0;
     b->output[1] = 0.0;
     b->output[2] = 0.0;
@@ -652,7 +650,7 @@ void {struct_name}_init({struct_name}* b) {{
 
 void {struct_name}_update({struct_name}* b, double t) {{
     (void)t;
-    double lat = b->input, lon = b->input1, alt = b->input2;
+    double lat = b->input[0], lon = b->input[1], alt = b->input[2];
     double sin_lat = sin(lat), cos_lat = cos(lat);
     double sin_lon = sin(lon), cos_lon = cos(lon);
 
@@ -676,6 +674,14 @@ static inline double* {struct_name}_get_output_vector({struct_name}* b) {{
 
 def ecef_to_ned_template(block: BlockInfo, struct_name: str) -> str:
     """Generate ECEF to NED conversion block code."""
+    # Get reference point from parameters (in degrees, convert to radians)
+    ref_lat_deg = block.parameters.get("referenceLat", 0.0)
+    ref_lon_deg = block.parameters.get("referenceLon", 0.0)
+    ref_alt = block.parameters.get("referenceAlt", 0.0)
+    # Convert degrees to radians
+    ref_lat_rad = ref_lat_deg * 3.14159265358979323846 / 180.0
+    ref_lon_rad = ref_lon_deg * 3.14159265358979323846 / 180.0
+
     return f"""
 // {block.name} - ECEF to NED Conversion
 #include <math.h>
@@ -683,26 +689,25 @@ def ecef_to_ned_template(block: BlockInfo, struct_name: str) -> str:
 #define {struct_name.upper()}_A 6378137.0
 #define {struct_name.upper()}_F (1.0 / 298.257223563)
 #define {struct_name.upper()}_E2 (2*{struct_name.upper()}_F - {struct_name.upper()}_F*{struct_name.upper()}_F)
+#define {struct_name.upper()}_LAT_REF {ref_lat_rad}
+#define {struct_name.upper()}_LON_REF {ref_lon_rad}
+#define {struct_name.upper()}_ALT_REF {ref_alt}
 
 typedef struct {{
     double input[3];  // ECEF position vector - port 0
-    double input1;    // Reference latitude (rad) - port 1
-    double input2;    // Reference longitude (rad) - port 2
-    double input3;    // Reference altitude (m) - port 3
     double output[3]; // [N, E, D]
 }} {struct_name};
 
 void {struct_name}_init({struct_name}* b) {{
     b->input[0] = 0.0; b->input[1] = 0.0; b->input[2] = 0.0;
-    b->input1 = 0.0;
-    b->input2 = 0.0;
-    b->input3 = 0.0;
     b->output[0] = 0.0; b->output[1] = 0.0; b->output[2] = 0.0;
 }}
 
 void {struct_name}_update({struct_name}* b, double t) {{
     (void)t;
-    double lat_ref = b->input1, lon_ref = b->input2, alt_ref = b->input3;
+    double lat_ref = {struct_name.upper()}_LAT_REF;
+    double lon_ref = {struct_name.upper()}_LON_REF;
+    double alt_ref = {struct_name.upper()}_ALT_REF;
     double sin_lat = sin(lat_ref), cos_lat = cos(lat_ref);
     double sin_lon = sin(lon_ref), cos_lon = cos(lon_ref);
 
@@ -743,25 +748,23 @@ def great_circle_distance_template(block: BlockInfo, struct_name: str) -> str:
 #define {struct_name.upper()}_R 6371000.0
 
 typedef struct {{
-    double input;   // Latitude 1 (rad) - port 0
-    double input1;  // Longitude 1 (rad) - port 1
-    double input2;  // Latitude 2 (rad) - port 2
-    double input3;  // Longitude 2 (rad) - port 3
+    double input[2];   // [lat1, lon1] - point 1 (port 0)
+    double input1[2];  // [lat2, lon2] - point 2 (port 1)
     double output;  // Distance (m)
 }} {struct_name};
 
 void {struct_name}_init({struct_name}* b) {{
-    b->input = 0.0;
-    b->input1 = 0.0;
-    b->input2 = 0.0;
-    b->input3 = 0.0;
+    b->input[0] = 0.0;
+    b->input[1] = 0.0;
+    b->input1[0] = 0.0;
+    b->input1[1] = 0.0;
     b->output = 0.0;
 }}
 
 void {struct_name}_update({struct_name}* b, double t) {{
     (void)t;
-    double lat1 = b->input, lon1 = b->input1;
-    double lat2 = b->input2, lon2 = b->input3;
+    double lat1 = b->input[0], lon1 = b->input[1];
+    double lat2 = b->input1[0], lon2 = b->input1[1];
 
     double dlat = lat2 - lat1;
     double dlon = lon2 - lon1;

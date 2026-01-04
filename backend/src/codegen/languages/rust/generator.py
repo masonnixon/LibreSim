@@ -409,8 +409,10 @@ use crate::integration::{IntegrationMethod, propagate_integrator};
                         )
                     elif source_is_vector and target_expects_vector:
                         # Vector-to-vector: clone the array
+                        # For port 0 use 'input', for port 1+ use 'input1', 'input2', etc.
+                        input_field = "input" if port_idx == 0 else f"input{port_idx}"
                         lines.append(
-                            f"        self.{var_name}.input = "
+                            f"        self.{var_name}.{input_field} = "
                             f"self.{source_var}.get_output_vector().clone();"
                         )
                     elif target_port is not None and target_port > 0:

@@ -753,9 +753,7 @@ def lla_to_ecef_template(block: BlockInfo, struct_name: str) -> str:
 /// {block.name} - LLA to ECEF Conversion
 #[derive(Clone)]
 pub struct {struct_name} {{
-    pub input: f64,    // Latitude (rad) - port 0
-    pub input1: f64,   // Longitude (rad) - port 1
-    pub input2: f64,   // Altitude (m) - port 2
+    pub input: [f64; 3],   // [lat, lon, alt] - port 0
     pub output: [f64; 3],  // [X, Y, Z] ECEF
 }}
 
@@ -766,19 +764,18 @@ impl {struct_name} {{
 
     pub fn new() -> Self {{
         Self {{
-            input: 0.0,
-            input1: 0.0,
-            input2: 0.0,
+            input: [0.0, 0.0, 0.0],
             output: [0.0, 0.0, 0.0],
         }}
     }}
 
     pub fn init(&mut self) {{
+        self.input = [0.0, 0.0, 0.0];
         self.output = [0.0, 0.0, 0.0];
     }}
 
     pub fn update(&mut self, _t: f64) {{
-        let (lat, lon, alt) = (self.input, self.input1, self.input2);
+        let (lat, lon, alt) = (self.input[0], self.input[1], self.input[2]);
         let (sin_lat, cos_lat) = (lat.sin(), lat.cos());
         let (sin_lon, cos_lon) = (lon.sin(), lon.cos());
 
@@ -806,14 +803,19 @@ impl {struct_name} {{
 
 def ecef_to_ned_template(block: BlockInfo, struct_name: str) -> str:
     """Generate ECEF to NED conversion block code."""
+    # Get reference point from parameters (in degrees, convert to radians)
+    ref_lat_deg = block.parameters.get("referenceLat", 0.0)
+    ref_lon_deg = block.parameters.get("referenceLon", 0.0)
+    ref_alt = block.parameters.get("referenceAlt", 0.0)
+    # Convert degrees to radians
+    ref_lat_rad = ref_lat_deg * 3.14159265358979323846 / 180.0
+    ref_lon_rad = ref_lon_deg * 3.14159265358979323846 / 180.0
+
     return f"""
 /// {block.name} - ECEF to NED Conversion
 #[derive(Clone)]
 pub struct {struct_name} {{
     pub input: [f64; 3],  // ECEF position vector - port 0
-    pub input1: f64,      // Reference latitude (rad) - port 1
-    pub input2: f64,      // Reference longitude (rad) - port 2
-    pub input3: f64,      // Reference altitude (m) - port 3
     pub output: [f64; 3], // [N, E, D]
 }}
 
@@ -821,23 +823,24 @@ impl {struct_name} {{
     const A: f64 = 6378137.0;
     const F: f64 = 1.0 / 298.257223563;
     const E2: f64 = 2.0 * Self::F - Self::F * Self::F;
+    const LAT_REF: f64 = {ref_lat_rad}_f64;
+    const LON_REF: f64 = {ref_lon_rad}_f64;
+    const ALT_REF: f64 = {ref_alt}_f64;
 
     pub fn new() -> Self {{
         Self {{
             input: [0.0, 0.0, 0.0],
-            input1: 0.0,
-            input2: 0.0,
-            input3: 0.0,
             output: [0.0, 0.0, 0.0],
         }}
     }}
 
     pub fn init(&mut self) {{
+        self.input = [0.0, 0.0, 0.0];
         self.output = [0.0, 0.0, 0.0];
     }}
 
     pub fn update(&mut self, _t: f64) {{
-        let (lat_ref, lon_ref, alt_ref) = (self.input1, self.input2, self.input3);
+        let (lat_ref, lon_ref, alt_ref) = (Self::LAT_REF, Self::LON_REF, Self::ALT_REF);
         let (sin_lat, cos_lat) = (lat_ref.sin(), lat_ref.cos());
         let (sin_lon, cos_lon) = (lon_ref.sin(), lon_ref.cos());
 
@@ -879,10 +882,8 @@ def great_circle_distance_template(block: BlockInfo, struct_name: str) -> str:
 /// {block.name} - Great Circle Distance (Haversine)
 #[derive(Clone)]
 pub struct {struct_name} {{
-    pub input: f64,   // Latitude 1 (rad) - port 0
-    pub input1: f64,  // Longitude 1 (rad) - port 1
-    pub input2: f64,  // Latitude 2 (rad) - port 2
-    pub input3: f64,  // Longitude 2 (rad) - port 3
+    pub input: [f64; 2],   // [lat1, lon1] - point 1 (port 0)
+    pub input1: [f64; 2],  // [lat2, lon2] - point 2 (port 1)
     pub output: f64,  // Distance (m)
 }}
 
@@ -891,21 +892,21 @@ impl {struct_name} {{
 
     pub fn new() -> Self {{
         Self {{
-            input: 0.0,
-            input1: 0.0,
-            input2: 0.0,
-            input3: 0.0,
+            input: [0.0, 0.0],
+            input1: [0.0, 0.0],
             output: 0.0,
         }}
     }}
 
     pub fn init(&mut self) {{
+        self.input = [0.0, 0.0];
+        self.input1 = [0.0, 0.0];
         self.output = 0.0;
     }}
 
     pub fn update(&mut self, _t: f64) {{
-        let (lat1, lon1) = (self.input, self.input1);
-        let (lat2, lon2) = (self.input2, self.input3);
+        let (lat1, lon1) = (self.input[0], self.input[1]);
+        let (lat2, lon2) = (self.input1[0], self.input1[1]);
 
         let dlat = lat2 - lat1;
         let dlon = lon2 - lon1;

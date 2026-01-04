@@ -469,36 +469,91 @@ private:
 def template_demux(block: BlockInfo, class_name: str) -> str:
     """Generate C++ code for Demux block."""
     num_outputs = block.parameters.get("numOutputs", 2)
+    output_widths = block.parameters.get("outputWidths", None)
+
+    # If outputWidths not specified, assume uniform scalar outputs
+    if output_widths is None:
+        output_widths = [1] * num_outputs
+
+    total_width = sum(output_widths)
+
+    # Generate output array declarations
+    output_decls = []
+    for i, width in enumerate(output_widths):
+        if width == 1:
+            output_decls.append(f"    double output{i} = 0.0;")
+        else:
+            output_decls.append(f"    std::array<double, {width}> output{i} = {{}};")
+
+    output_decls_str = "\n".join(output_decls)
+
+    # Generate init code
+    init_lines = []
+    for i, width in enumerate(output_widths):
+        if width == 1:
+            init_lines.append(f"        output{i} = 0.0;")
+        else:
+            init_lines.append(f"        output{i}.fill(0.0);")
+
+    init_str = "\n".join(init_lines)
+
+    # Generate update code
+    update_lines = []
+    offset = 0
+    for i, width in enumerate(output_widths):
+        if width == 1:
+            update_lines.append(f"        output{i} = input[{offset}];")
+        else:
+            for j in range(width):
+                update_lines.append(f"        output{i}[{j}] = input[{offset + j}];")
+        offset += width
+
+    update_str = "\n".join(update_lines)
+
+    # Generate get_output that returns scalars based on port
+    get_output_lines = ["        int offset = 0;"]
+    for i, width in enumerate(output_widths):
+        if width == 1:
+            get_output_lines.append(f"        if (port == {i}) return output{i};")
+        else:
+            get_output_lines.append(f"        if (port >= {i} && port < {i + width}) return output{i}[port - {i}];")
+
+    get_output_str = "\n".join(get_output_lines)
 
     return f"""
 // {block.name} - Demux block
 class {class_name} {{
 public:
-    std::array<double, {num_outputs}> input = {{}};
+    std::array<double, {total_width}> input = {{}};  // Total input size: {total_width}
     static constexpr int NUM_OUTPUTS = {num_outputs};
 
+{output_decls_str}
+
     void init() {{
-        outputs_.fill(0.0);
+        input.fill(0.0);
+{init_str}
     }}
 
     void update(double t) {{
         (void)t;
-        for (int i = 0; i < NUM_OUTPUTS; i++) {{
-            outputs_[i] = input[i];
-        }}
+{update_str}
     }}
 
     double get_output(int port = 0) const {{
-        if (port >= 0 && port < NUM_OUTPUTS) return outputs_[port];
+        // Return element based on port index
+        if (port >= 0 && port < {total_width}) return input[port];
         return 0.0;
     }}
 
-    const std::array<double, NUM_OUTPUTS>& getOutputVector() const {{
-        return outputs_;
+    // For port 0, return first output
+    const std::array<double, {output_widths[0]}>& getOutputVector() const {{
+        return output0;
     }}
 
-private:
-    std::array<double, {num_outputs}> outputs_ = {{}};
+    // For port 1, return second output
+    const std::array<double, {output_widths[1] if len(output_widths) > 1 else output_widths[0]}>& getOutputVector1() const {{
+        return output1;
+    }}
 }};
 """
 

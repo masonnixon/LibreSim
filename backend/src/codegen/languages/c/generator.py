@@ -478,8 +478,10 @@ void model_propagate_integrators(Model* model, double dt, int kpass, const char*
                             dims = source_block.output_dimensions[source_port]
                             if len(dims) > 0:
                                 vec_size = dims[0]
+                        # For port 0 use 'input', for port 1+ use 'input1', 'input2', etc.
+                        input_field = "input" if port_idx == 0 else f"input{port_idx}"
                         lines.append(
-                            f"    memcpy(model->{var_name}.input, "
+                            f"    memcpy(model->{var_name}.{input_field}, "
                             f"{source_struct}_get_output_vector(&model->{source_var}), "
                             f"{vec_size} * sizeof(double));"
                         )

@@ -411,8 +411,9 @@ impl {struct_name} {{
 def lqr_controller_template(block: BlockInfo, struct_name: str) -> str:
     """Generate LQR controller block code."""
     K = block.parameters.get("K", [[1.0]])
-    num_states = block.parameters.get("num_states", 1)
-    num_inputs = block.parameters.get("num_inputs", 1)
+    # Infer dimensions from K matrix if not explicitly provided
+    num_inputs = block.parameters.get("num_inputs", len(K))
+    num_states = block.parameters.get("num_states", len(K[0]) if K else 1)
 
     # Helper to format values as Rust f64 literals
     def to_rust_float(val):
@@ -479,7 +480,8 @@ impl {struct_name} {{
 def pole_placement_template(block: BlockInfo, struct_name: str) -> str:
     """Generate Pole Placement controller block code."""
     K = block.parameters.get("K", [1.0])
-    num_states = block.parameters.get("num_states", 1)
+    # Infer dimensions from K vector if not explicitly provided
+    num_states = block.parameters.get("num_states", len(K) if isinstance(K, list) else 1)
 
     # Format K vector initialization with _f64 suffix for Rust
     def to_rust_float(val):

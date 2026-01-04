@@ -624,10 +624,8 @@ def lla_to_ecef_template(block: BlockInfo, class_name: str) -> str:
 
 class {class_name} {{
 public:
-    double input = 0.0;   // Latitude (rad) - port 0
-    double input1 = 0.0;  // Longitude (rad) - port 1
-    double input2 = 0.0;  // Altitude (m) - port 2
-    std::array<double, 3> output = {{0.0, 0.0, 0.0}};  // [X, Y, Z] ECEF
+    std::array<double, 3> input = {{0.0, 0.0, 0.0}};  // [lat, lon, alt] - port 0
+    std::array<double, 3> output = {{0.0, 0.0, 0.0}}; // [X, Y, Z] ECEF
 
     // WGS84 constants
     static constexpr double a = 6378137.0;           // Semi-major axis
@@ -635,12 +633,13 @@ public:
     static constexpr double e2 = 2*f - f*f;          // Eccentricity squared
 
     void init() {{
+        input = {{0.0, 0.0, 0.0}};
         output = {{0.0, 0.0, 0.0}};
     }}
 
     void update(double t) {{
         (void)t;
-        double lat = input, lon = input1, alt = input2;
+        double lat = input[0], lon = input[1], alt = input[2];
         double sin_lat = std::sin(lat), cos_lat = std::cos(lat);
         double sin_lon = std::sin(lon), cos_lon = std::cos(lon);
 
@@ -665,6 +664,14 @@ public:
 
 def ecef_to_ned_template(block: BlockInfo, class_name: str) -> str:
     """Generate ECEF to NED conversion block code."""
+    # Get reference point from parameters (in degrees, convert to radians)
+    ref_lat_deg = block.parameters.get("referenceLat", 0.0)
+    ref_lon_deg = block.parameters.get("referenceLon", 0.0)
+    ref_alt = block.parameters.get("referenceAlt", 0.0)
+    # Convert degrees to radians
+    ref_lat_rad = ref_lat_deg * 3.14159265358979323846 / 180.0
+    ref_lon_rad = ref_lon_deg * 3.14159265358979323846 / 180.0
+
     return f"""
 // {block.name} - ECEF to NED Conversion
 #include <cmath>
@@ -674,11 +681,12 @@ class {class_name} {{
 public:
     // ECEF position vector (port 0) - 3 elements
     std::array<double, 3> input = {{0.0, 0.0, 0.0}};
-    // Reference point: lat (port 1), lon (port 2), alt (port 3)
-    double input1 = 0.0;  // Reference latitude (rad)
-    double input2 = 0.0;  // Reference longitude (rad)
-    double input3 = 0.0;  // Reference altitude (m)
     std::array<double, 3> output = {{0.0, 0.0, 0.0}};  // [N, E, D]
+
+    // Reference point (from parameters, converted to radians)
+    static constexpr double lat_ref = {ref_lat_rad};
+    static constexpr double lon_ref = {ref_lon_rad};
+    static constexpr double alt_ref = {ref_alt};
 
     // WGS84 constants
     static constexpr double a = 6378137.0;
@@ -686,12 +694,12 @@ public:
     static constexpr double e2 = 2*f - f*f;
 
     void init() {{
+        input = {{0.0, 0.0, 0.0}};
         output = {{0.0, 0.0, 0.0}};
     }}
 
     void update(double t) {{
         (void)t;
-        double lat_ref = input1, lon_ref = input2, alt_ref = input3;
         double sin_lat = std::sin(lat_ref), cos_lat = std::cos(lat_ref);
         double sin_lon = std::sin(lon_ref), cos_lon = std::cos(lon_ref);
 
@@ -729,25 +737,26 @@ def great_circle_distance_template(block: BlockInfo, class_name: str) -> str:
     return f"""
 // {block.name} - Great Circle Distance (Haversine)
 #include <cmath>
+#include <array>
 
 class {class_name} {{
 public:
-    double input = 0.0;   // Latitude 1 (rad) - port 0
-    double input1 = 0.0;  // Longitude 1 (rad) - port 1
-    double input2 = 0.0;  // Latitude 2 (rad) - port 2
-    double input3 = 0.0;  // Longitude 2 (rad) - port 3
+    std::array<double, 2> input = {{0.0, 0.0}};   // [lat1, lon1] - point 1 (port 0)
+    std::array<double, 2> input1 = {{0.0, 0.0}};  // [lat2, lon2] - point 2 (port 1)
     double output = 0.0;  // Distance (m)
 
     static constexpr double R = 6371000.0;  // Earth mean radius (m)
 
     void init() {{
+        input = {{0.0, 0.0}};
+        input1 = {{0.0, 0.0}};
         output = 0.0;
     }}
 
     void update(double t) {{
         (void)t;
-        double lat1 = input, lon1 = input1;
-        double lat2 = input2, lon2 = input3;
+        double lat1 = input[0], lon1 = input[1];
+        double lat2 = input1[0], lon2 = input1[1];
 
         double dlat = lat2 - lat1;
         double dlon = lon2 - lon1;
