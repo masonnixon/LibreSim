@@ -35,7 +35,7 @@ public:
         return 0.0;
     }}
 
-    const std::array<double, 4>& get_output_vector() const {{
+    const std::array<double, 4>& getOutputVector() const {{
         return output;
     }}
 }};
@@ -75,7 +75,7 @@ public:
         return 0.0;
     }}
 
-    const std::array<double, 4>& get_output_vector() const {{
+    const std::array<double, 4>& getOutputVector() const {{
         return output;
     }}
 }};
@@ -110,7 +110,7 @@ public:
         return 0.0;
     }}
 
-    const std::array<double, 4>& get_output_vector() const {{
+    const std::array<double, 4>& getOutputVector() const {{
         return output;
     }}
 }};
@@ -161,7 +161,7 @@ public:
         return 0.0;
     }}
 
-    const std::array<double, 3>& get_output_vector() const {{
+    const std::array<double, 3>& getOutputVector() const {{
         return output;
     }}
 }};
@@ -203,7 +203,7 @@ public:
         return 0.0;
     }}
 
-    const std::array<double, 4>& get_output_vector() const {{
+    const std::array<double, 4>& getOutputVector() const {{
         return output;
     }}
 }};
@@ -253,7 +253,7 @@ public:
         return 0.0;
     }}
 
-    const std::array<double, 3>& get_output_vector() const {{
+    const std::array<double, 3>& getOutputVector() const {{
         return output;
     }}
 }};
@@ -319,7 +319,7 @@ public:
         return 0.0;
     }}
 
-    const std::array<double, 4>& get_output_vector() const {{
+    const std::array<double, 4>& getOutputVector() const {{
         return output;
     }}
 }};
@@ -361,7 +361,7 @@ public:
         return 0.0;
     }}
 
-    const std::array<double, 9>& get_output_vector() const {{
+    const std::array<double, 9>& getOutputVector() const {{
         return output;
     }}
 }};
@@ -419,7 +419,7 @@ public:
         return 0.0;
     }}
 
-    const std::array<double, 4>& get_output_vector() const {{
+    const std::array<double, 4>& getOutputVector() const {{
         return output;
     }}
 }};
@@ -453,7 +453,7 @@ public:
         return 0.0;
     }}
 
-    const std::array<double, 3>& get_output_vector() const {{
+    const std::array<double, 3>& getOutputVector() const {{
         return output;
     }}
 }};
@@ -495,7 +495,7 @@ public:
         return output;
     }}
 
-    double get_output_vector() const {{
+    double getOutputVector() const {{
         return output;
     }}
 }};
@@ -604,7 +604,7 @@ public:
         return 0.0;
     }}
 
-    const std::array<double, 12>& get_output_vector() const {{
+    const std::array<double, 12>& getOutputVector() const {{
         return output;
     }}
 }};

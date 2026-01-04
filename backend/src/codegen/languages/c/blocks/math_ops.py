@@ -84,7 +84,7 @@ double {struct_name}_get_output({struct_name}* b, int port) {{
     return 0.0;
 }}
 
-double* {struct_name}_get_output_vector({struct_name}* b) {{
+static inline double* {struct_name}_get_output_vector({struct_name}* b) {{
     return b->output;
 }}
 """
@@ -450,7 +450,7 @@ double {struct_name}_get_output({struct_name}* b, int port) {{
     return 0.0;
 }}
 
-double* {struct_name}_get_output_vector({struct_name}* b) {{
+static inline double* {struct_name}_get_output_vector({struct_name}* b) {{
     return b->output;
 }}
 """
@@ -488,7 +488,7 @@ double {struct_name}_get_output({struct_name}* b, int port) {{
     return 0.0;
 }}
 
-double* {struct_name}_get_output_vector({struct_name}* b) {{
+static inline double* {struct_name}_get_output_vector({struct_name}* b) {{
     return b->outputs;
 }}
 """

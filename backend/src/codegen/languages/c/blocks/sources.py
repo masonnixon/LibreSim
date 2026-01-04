@@ -39,9 +39,8 @@ double {struct_name}_get_output({struct_name}* b, int port) {{
     return 0.0;
 }}
 
-void {struct_name}_get_output_vector({struct_name}* b, double* out, int size) {{
-    int n = size < {array_size} ? size : {array_size};
-    for (int i = 0; i < n; i++) out[i] = b->output[i];
+static inline double* {struct_name}_get_output_vector({struct_name}* b) {{
+    return b->output;
 }}
 """
     else:
