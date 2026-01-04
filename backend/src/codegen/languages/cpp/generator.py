@@ -332,15 +332,23 @@ public:
             var_name = f"block_{self.sanitize_identifier(block.id)}"
             init_calls.append(f"    {var_name}.init();")
 
-        # Build update calls in execution order
+        # Build per-block wiring for inline wiring during step
+        block_wiring = self._generate_per_block_wiring(model_info)
+
+        # Build update calls in execution order with inline wiring
+        # Each block gets its inputs wired from upstream outputs, then updates
         update_calls = []
         for block_id in model_info.execution_order:
             block = next((b for b in model_info.blocks if b.id == block_id), None)
             if block:
                 var_name = f"block_{self.sanitize_identifier(block.id)}"
+                # Add wiring for this block's inputs (if any)
+                if block_id in block_wiring:
+                    for wire_line in block_wiring[block_id]:
+                        update_calls.append(wire_line)
                 update_calls.append(f"    {var_name}.update(t);")
 
-        # Build connection wiring
+        # Build connection wiring (for wire_connections method - kept for compatibility)
         connection_code = self._generate_connection_code(model_info)
 
         # Build output getter (use first sink block if available)
@@ -377,10 +385,7 @@ void Model::step(double t, double dt, int kpass) {{
     (void)kpass;
     time = t;
 
-    // Wire connections
-    wire_connections();
-
-    // Update all blocks in execution order
+    // Update all blocks in execution order (with inline wiring)
 {chr(10).join(update_calls)}
 }}
 
@@ -392,6 +397,56 @@ void Model::propagate_integrators(double dt, int kpass, const std::string& metho
 {integrator_code}
 }}
 '''
+
+    def _generate_per_block_wiring(self, model_info: CompiledModelInfo) -> dict:
+        """Generate per-block wiring code for inline wiring during step.
+
+        Returns:
+            Dictionary mapping block_id to list of wiring code lines
+        """
+        wiring: dict[str, list[str]] = {}
+        for block in model_info.blocks:
+            var_name = f"block_{self.sanitize_identifier(block.id)}"
+            block_lines = []
+            for conn in block.input_connections:
+                source_id, source_port, target_port = self.parse_connection(conn)
+                source_block = next(
+                    (b for b in model_info.blocks if b.id == source_id), None
+                )
+                if source_block:
+                    source_var = f"block_{self.sanitize_identifier(source_block.id)}"
+                    port_idx = target_port if target_port is not None else 0
+
+                    # Check if this is a vector-to-vector connection
+                    source_is_vector = self._is_vector_output(source_block, source_port)
+                    target_expects_vector = self._expects_vector_input(block, port_idx)
+
+                    # Multi-input blocks use input0, input1, etc.
+                    if block.type in self.MULTI_INPUT_BLOCKS:
+                        block_lines.append(
+                            f"    {var_name}.input{port_idx} = "
+                            f"{source_var}.get_output({source_port});"
+                        )
+                    elif source_is_vector and target_expects_vector:
+                        # Vector-to-vector: use getOutputVector()
+                        input_field = "input" if port_idx == 0 else f"input{port_idx}"
+                        block_lines.append(
+                            f"    {var_name}.{input_field} = "
+                            f"{source_var}.getOutputVector();"
+                        )
+                    elif target_port is not None and target_port > 0:
+                        block_lines.append(
+                            f"    {var_name}.input{target_port} = "
+                            f"{source_var}.get_output({source_port});"
+                        )
+                    else:
+                        block_lines.append(
+                            f"    {var_name}.input = "
+                            f"{source_var}.get_output({source_port});"
+                        )
+            if block_lines:
+                wiring[block.id] = block_lines
+        return wiring
 
     # Block types that use indexed inputs (input0, input1, etc.)
     MULTI_INPUT_BLOCKS = {"sum", "product", "mux", "switch"}

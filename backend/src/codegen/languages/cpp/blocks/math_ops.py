@@ -520,6 +520,17 @@ def template_demux(block: BlockInfo, class_name: str) -> str:
 
     get_output_str = "\n".join(get_output_lines)
 
+    # Generate getOutputVector methods for vector outputs only
+    vector_methods = []
+    for i, width in enumerate(output_widths):
+        if width > 1:
+            suffix = "" if i == 0 else str(i)
+            vector_methods.append(f"""    const std::array<double, {width}>& getOutputVector{suffix}() const {{
+        return output{i};
+    }}""")
+
+    vector_methods_str = "\n\n".join(vector_methods) if vector_methods else ""
+
     return f"""
 // {block.name} - Demux block
 class {class_name} {{
@@ -545,15 +556,7 @@ public:
         return 0.0;
     }}
 
-    // For port 0, return first output
-    const std::array<double, {output_widths[0]}>& getOutputVector() const {{
-        return output0;
-    }}
-
-    // For port 1, return second output
-    const std::array<double, {output_widths[1] if len(output_widths) > 1 else output_widths[0]}>& getOutputVector1() const {{
-        return output1;
-    }}
+{vector_methods_str}
 }};
 """
 
