@@ -34,12 +34,10 @@ OUTPUT_DIR = REPO_ROOT / "codegen_verification" / "validation_results"
 
 LANGUAGES = ["python", "cpp", "c", "rust"]
 
-# Examples with stochastic blocks (white_noise, uniform_noise, etc.) that cannot be
-# deterministically compared between headless simulation and codegen due to different
-# random number generator implementations
-STOCHASTIC_EXAMPLES = {
-    "41_dsp_fir_lowpass",  # Uses white_noise block
-}
+# Examples with stochastic blocks that should still be validated since codegen now
+# uses the same Mersenne Twister RNG as Python's random.Random for reproducibility.
+# Keep this set for any examples that still have known RNG differences.
+STOCHASTIC_EXAMPLES: set[str] = set()  # Empty - all examples should now match
 
 
 @dataclass

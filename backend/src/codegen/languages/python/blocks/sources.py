@@ -203,34 +203,101 @@ class {class_name}:
 
 
 def white_noise_template(block: BlockInfo, class_name: str) -> str:
-    """Generate WhiteNoise block code."""
-    power = block.parameters.get("power", 1.0)
-    sample_time = block.parameters.get("sampleTime", block.parameters.get("sample_time", 0.1))
-    # Avoid division by zero - use reasonable default if sample_time is 0
-    if sample_time <= 0:
-        sample_time = 0.01  # Default to 100Hz sampling
-    seed = block.parameters.get("seed", 0)
+    """Generate WhiteNoise block code.
+
+    Matches OSK WhiteNoise block exactly:
+    - Uses variance parameter (power maps to variance)
+    - std_dev = sqrt(variance)
+    - Uses Python's random.Random for reproducible sequences
+    """
+    # Support both 'variance' and 'power' (they map to the same thing)
+    variance = block.parameters.get("variance", block.parameters.get("power", 1.0))
+    mean = block.parameters.get("mean", 0.0)
+    seed = block.parameters.get("seed", None)
+    sample_time = block.parameters.get("sampleTime", block.parameters.get("sample_time", 0.0))
+
+    # Format seed for Python code
+    seed_str = str(seed) if seed is not None else 'None'
+
     return f'''
 class {class_name}:
-    """White noise source: {block.name}"""
+    """White noise source: {block.name}
+
+    Matches OSK WhiteNoise block exactly.
+    """
 
     def __init__(self):
         import random
-        self.power = {power}
+        self.mean = {mean}
+        self.variance = {variance}
+        self.std_dev = math.sqrt(abs(self.variance))
         self.sample_time = {sample_time}
-        self.rng = random.Random({seed if seed else 'None'})
+        self.rng = random.Random({seed_str})
         self.output = 0.0
-        self.last_sample_time = -float('inf')
-        self.std_dev = math.sqrt(self.power / self.sample_time)
+        self._last_sample_time = -float('inf')
 
     def init(self):
-        self.output = 0.0
-        self.last_sample_time = -float('inf')
+        # Generate initial noise sample (matches OSK init)
+        self.output = self.rng.gauss(self.mean, self.std_dev)
+        self._last_sample_time = 0.0
 
     def update(self, t: float):
-        if t - self.last_sample_time >= self.sample_time - 1e-10:
-            self.output = self.rng.gauss(0.0, self.std_dev)
-            self.last_sample_time = t
+        # If sample_time is 0, generate new noise every step
+        # Otherwise, only generate new noise at sample intervals
+        if self.sample_time <= 0:
+            self.output = self.rng.gauss(self.mean, self.std_dev)
+        else:
+            if t >= self._last_sample_time + self.sample_time:
+                self.output = self.rng.gauss(self.mean, self.std_dev)
+                self._last_sample_time = t
+
+    def get_output(self, port: int = 0) -> float:
+        return self.output
+'''
+
+
+def band_limited_white_noise_template(block: BlockInfo, class_name: str) -> str:
+    """Generate BandLimitedWhiteNoise block code.
+
+    Matches OSK BandLimitedWhiteNoise block exactly:
+    - Uses noise_power and sample_time parameters
+    - std_dev = sqrt(noise_power / sample_time)
+    """
+    noise_power = block.parameters.get("noisePower", block.parameters.get("noise_power", 0.1))
+    sample_time = block.parameters.get("sampleTime", block.parameters.get("sample_time", 0.1))
+    seed = block.parameters.get("seed", None)
+
+    # Ensure non-zero sample time
+    if sample_time <= 0:
+        sample_time = 1e-6
+
+    seed_str = str(seed) if seed is not None else 'None'
+
+    return f'''
+class {class_name}:
+    """Band-limited white noise source: {block.name}
+
+    Matches OSK BandLimitedWhiteNoise block exactly.
+    """
+
+    def __init__(self):
+        import random
+        self.noise_power = {noise_power}
+        self.sample_time = max({sample_time}, 1e-6)
+        self.rng = random.Random({seed_str})
+        self.output = 0.0
+        self._last_sample_time = -float('inf')
+        # Variance = Noise_Power / Sample_Time
+        self._std_dev = math.sqrt(self.noise_power / self.sample_time)
+
+    def init(self):
+        self.output = self.rng.gauss(0.0, self._std_dev)
+        self._last_sample_time = 0.0
+
+    def update(self, t: float):
+        if t >= self._last_sample_time + self.sample_time - 1e-10:
+            self.output = self.rng.gauss(0.0, self._std_dev)
+            self._last_sample_time = t
 
     def get_output(self, port: int = 0) -> float:
         return self.output
@@ -266,5 +333,6 @@ SOURCE_TEMPLATES = {
     "pulse": pulse_template,
     "clock": clock_template,
     "white_noise": white_noise_template,
+    "band_limited_white_noise": band_limited_white_noise_template,
     "ground": ground_template,
 }

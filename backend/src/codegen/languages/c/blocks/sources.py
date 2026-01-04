@@ -260,63 +260,249 @@ double {struct_name}_get_output({struct_name}* b, int port) {{
 
 
 def template_white_noise(block: BlockInfo, struct_name: str) -> str:
-    """Generate C code for White Noise block."""
-    power = block.parameters.get("power", 1.0)
-    sample_time = block.parameters.get("sampleTime", block.parameters.get("sample_time", 0.1))
-    # Ensure sample_time is positive to avoid division by zero
-    if sample_time <= 0:
-        sample_time = 0.01  # Default to 100Hz sampling
-    seed = block.parameters.get("seed", 0)
+    """Generate C code for White Noise block.
+
+    Matches OSK WhiteNoise block exactly:
+    - Uses variance parameter (power maps to variance)
+    - std_dev = sqrt(variance)
+    - Uses Mersenne Twister for reproducible sequences matching Python's random.Random
+    """
+    # Support both 'variance' and 'power' (they map to the same thing)
+    variance = block.parameters.get("variance", block.parameters.get("power", 1.0))
+    mean = block.parameters.get("mean", 0.0)
+    seed = block.parameters.get("seed", None)
+    sample_time = block.parameters.get("sampleTime", block.parameters.get("sample_time", 0.0))
+
+    # Use a deterministic seed if none provided
+    seed_value = seed if seed is not None else 12345
 
     return f"""
-// {block.name} - White Noise source
+// {block.name} - White Noise source (matches OSK WhiteNoise exactly)
+// Uses Mersenne Twister PRNG for Python compatibility
+
+#define {struct_name.upper()}_MT_N 624
+#define {struct_name.upper()}_MT_M 397
+
 typedef struct {{
-    double power;
+    double mean;
+    double variance;
+    double std_dev;
     double sample_time;
     double output;
-    double last_sample_time;
-    double std_dev;
-    unsigned int seed;
+    double _last_sample_time;
+    // Mersenne Twister state
+    unsigned long mt[{struct_name.upper()}_MT_N];
+    int mti;
+    // Gauss state for Box-Muller
+    int have_spare;
+    double spare;
 }} {struct_name};
 
-// Simple Box-Muller transform for Gaussian random numbers
-static double {struct_name}_randn({struct_name}* b) {{
-    static int have_spare = 0;
-    static double spare;
+// Mersenne Twister initialization (matches Python's random.Random)
+static void {struct_name}_mt_init({struct_name}* b, unsigned long seed) {{
+    b->mt[0] = seed & 0xffffffffUL;
+    for (b->mti = 1; b->mti < {struct_name.upper()}_MT_N; b->mti++) {{
+        b->mt[b->mti] = (1812433253UL * (b->mt[b->mti-1] ^ (b->mt[b->mti-1] >> 30)) + b->mti);
+        b->mt[b->mti] &= 0xffffffffUL;
+    }}
+}}
 
-    if (have_spare) {{
-        have_spare = 0;
-        return spare * b->std_dev;
+// Mersenne Twister generate (matches Python's random.Random)
+static unsigned long {struct_name}_mt_genrand({struct_name}* b) {{
+    unsigned long y;
+    static unsigned long mag01[2] = {{0x0UL, 0x9908b0dfUL}};
+
+    if (b->mti >= {struct_name.upper()}_MT_N) {{
+        int kk;
+        for (kk = 0; kk < {struct_name.upper()}_MT_N - {struct_name.upper()}_MT_M; kk++) {{
+            y = (b->mt[kk] & 0x80000000UL) | (b->mt[kk+1] & 0x7fffffffUL);
+            b->mt[kk] = b->mt[kk + {struct_name.upper()}_MT_M] ^ (y >> 1) ^ mag01[y & 0x1UL];
+        }}
+        for (; kk < {struct_name.upper()}_MT_N - 1; kk++) {{
+            y = (b->mt[kk] & 0x80000000UL) | (b->mt[kk+1] & 0x7fffffffUL);
+            b->mt[kk] = b->mt[kk + ({struct_name.upper()}_MT_M - {struct_name.upper()}_MT_N)] ^ (y >> 1) ^ mag01[y & 0x1UL];
+        }}
+        y = (b->mt[{struct_name.upper()}_MT_N-1] & 0x80000000UL) | (b->mt[0] & 0x7fffffffUL);
+        b->mt[{struct_name.upper()}_MT_N-1] = b->mt[{struct_name.upper()}_MT_M-1] ^ (y >> 1) ^ mag01[y & 0x1UL];
+        b->mti = 0;
     }}
 
-    double u, v, s;
-    do {{
-        b->seed = b->seed * 1103515245 + 12345;
-        u = ((double)(b->seed % 65536) / 32768.0) - 1.0;
-        b->seed = b->seed * 1103515245 + 12345;
-        v = ((double)(b->seed % 65536) / 32768.0) - 1.0;
-        s = u * u + v * v;
-    }} while (s >= 1.0 || s == 0.0);
+    y = b->mt[b->mti++];
+    y ^= (y >> 11);
+    y ^= (y << 7) & 0x9d2c5680UL;
+    y ^= (y << 15) & 0xefc60000UL;
+    y ^= (y >> 18);
 
-    double mul = sqrt(-2.0 * log(s) / s);
-    spare = v * mul;
-    have_spare = 1;
-    return u * mul * b->std_dev;
+    return y;
+}}
+
+// Generate uniform [0, 1) matching Python's random.random()
+static double {struct_name}_random({struct_name}* b) {{
+    unsigned long a = {struct_name}_mt_genrand(b) >> 5;
+    unsigned long bb = {struct_name}_mt_genrand(b) >> 6;
+    return (a * 67108864.0 + bb) * (1.0 / 9007199254740992.0);
+}}
+
+// Polar Box-Muller with trig (matches Python's random.gauss() exactly)
+// Python uses: cos(2*pi*x) * sqrt(-2*log(1-y)) where x,y are uniform [0,1)
+static double {struct_name}_gauss({struct_name}* b, double mu, double sigma) {{
+    if (b->have_spare) {{
+        b->have_spare = 0;
+        return mu + sigma * b->spare;
+    }}
+
+    double x2pi = {struct_name}_random(b) * 6.283185307179586;  // 2*pi
+    double g2rad = sqrt(-2.0 * log(1.0 - {struct_name}_random(b)));
+    double z = cos(x2pi) * g2rad;
+    b->spare = sin(x2pi) * g2rad;
+    b->have_spare = 1;
+    return mu + sigma * z;
 }}
 
 void {struct_name}_init({struct_name}* b) {{
-    b->power = {power};
+    b->mean = {mean};
+    b->variance = {variance};
+    b->std_dev = sqrt(fabs(b->variance));
     b->sample_time = {sample_time};
-    b->output = 0.0;
-    b->last_sample_time = -1e308;
-    b->std_dev = sqrt(b->power / b->sample_time);
-    b->seed = {seed if seed else 12345};
+    b->_last_sample_time = -1e308;
+    b->have_spare = 0;
+    b->spare = 0.0;
+    {struct_name}_mt_init(b, {seed_value}UL);
+    // Generate initial noise sample (matches OSK init)
+    b->output = {struct_name}_gauss(b, b->mean, b->std_dev);
+    b->_last_sample_time = 0.0;
 }}
 
 void {struct_name}_update({struct_name}* b, double t) {{
-    if (t - b->last_sample_time >= b->sample_time - 1e-10) {{
-        b->output = {struct_name}_randn(b);
-        b->last_sample_time = t;
+    // If sample_time is 0, generate new noise every step
+    // Otherwise, only generate new noise at sample intervals
+    if (b->sample_time <= 0) {{
+        b->output = {struct_name}_gauss(b, b->mean, b->std_dev);
+    }} else {{
+        if (t >= b->_last_sample_time + b->sample_time) {{
+            b->output = {struct_name}_gauss(b, b->mean, b->std_dev);
+            b->_last_sample_time = t;
+        }}
+    }}
+}}
+
+double {struct_name}_get_output({struct_name}* b, int port) {{
+    (void)port;
+    return b->output;
+}}
+"""
+
+
+def template_band_limited_white_noise(block: BlockInfo, struct_name: str) -> str:
+    """Generate C code for Band-Limited White Noise block.
+
+    Matches OSK BandLimitedWhiteNoise block exactly:
+    - Uses noise_power and sample_time parameters
+    - std_dev = sqrt(noise_power / sample_time)
+    """
+    noise_power = block.parameters.get("noisePower", block.parameters.get("noise_power", 0.1))
+    sample_time = block.parameters.get("sampleTime", block.parameters.get("sample_time", 0.1))
+    seed = block.parameters.get("seed", None)
+
+    # Ensure non-zero sample time
+    if sample_time <= 0:
+        sample_time = 1e-6
+
+    seed_value = seed if seed is not None else 12345
+
+    return f"""
+// {block.name} - Band-Limited White Noise source (matches OSK BandLimitedWhiteNoise exactly)
+
+#define {struct_name.upper()}_MT_N 624
+#define {struct_name.upper()}_MT_M 397
+
+typedef struct {{
+    double noise_power;
+    double sample_time;
+    double output;
+    double _last_sample_time;
+    double _std_dev;
+    // Mersenne Twister state
+    unsigned long mt[{struct_name.upper()}_MT_N];
+    int mti;
+    // Gauss state
+    int have_spare;
+    double spare;
+}} {struct_name};
+
+static void {struct_name}_mt_init({struct_name}* b, unsigned long seed) {{
+    b->mt[0] = seed & 0xffffffffUL;
+    for (b->mti = 1; b->mti < {struct_name.upper()}_MT_N; b->mti++) {{
+        b->mt[b->mti] = (1812433253UL * (b->mt[b->mti-1] ^ (b->mt[b->mti-1] >> 30)) + b->mti);
+        b->mt[b->mti] &= 0xffffffffUL;
+    }}
+}}
+
+static unsigned long {struct_name}_mt_genrand({struct_name}* b) {{
+    unsigned long y;
+    static unsigned long mag01[2] = {{0x0UL, 0x9908b0dfUL}};
+
+    if (b->mti >= {struct_name.upper()}_MT_N) {{
+        int kk;
+        for (kk = 0; kk < {struct_name.upper()}_MT_N - {struct_name.upper()}_MT_M; kk++) {{
+            y = (b->mt[kk] & 0x80000000UL) | (b->mt[kk+1] & 0x7fffffffUL);
+            b->mt[kk] = b->mt[kk + {struct_name.upper()}_MT_M] ^ (y >> 1) ^ mag01[y & 0x1UL];
+        }}
+        for (; kk < {struct_name.upper()}_MT_N - 1; kk++) {{
+            y = (b->mt[kk] & 0x80000000UL) | (b->mt[kk+1] & 0x7fffffffUL);
+            b->mt[kk] = b->mt[kk + ({struct_name.upper()}_MT_M - {struct_name.upper()}_MT_N)] ^ (y >> 1) ^ mag01[y & 0x1UL];
+        }}
+        y = (b->mt[{struct_name.upper()}_MT_N-1] & 0x80000000UL) | (b->mt[0] & 0x7fffffffUL);
+        b->mt[{struct_name.upper()}_MT_N-1] = b->mt[{struct_name.upper()}_MT_M-1] ^ (y >> 1) ^ mag01[y & 0x1UL];
+        b->mti = 0;
+    }}
+
+    y = b->mt[b->mti++];
+    y ^= (y >> 11);
+    y ^= (y << 7) & 0x9d2c5680UL;
+    y ^= (y << 15) & 0xefc60000UL;
+    y ^= (y >> 18);
+
+    return y;
+}}
+
+static double {struct_name}_random({struct_name}* b) {{
+    unsigned long a = {struct_name}_mt_genrand(b) >> 5;
+    unsigned long bb = {struct_name}_mt_genrand(b) >> 6;
+    return (a * 67108864.0 + bb) * (1.0 / 9007199254740992.0);
+}}
+
+static double {struct_name}_gauss({struct_name}* b, double mu, double sigma) {{
+    if (b->have_spare) {{
+        b->have_spare = 0;
+        return mu + sigma * b->spare;
+    }}
+
+    double x2pi = {struct_name}_random(b) * 6.283185307179586;
+    double g2rad = sqrt(-2.0 * log(1.0 - {struct_name}_random(b)));
+    double z = cos(x2pi) * g2rad;
+    b->spare = sin(x2pi) * g2rad;
+    b->have_spare = 1;
+    return mu + sigma * z;
+}}
+
+void {struct_name}_init({struct_name}* b) {{
+    b->noise_power = {noise_power};
+    b->sample_time = {sample_time};
+    if (b->sample_time < 1e-6) b->sample_time = 1e-6;
+    b->_std_dev = sqrt(b->noise_power / b->sample_time);
+    b->_last_sample_time = -1e308;
+    b->have_spare = 0;
+    b->spare = 0.0;
+    {struct_name}_mt_init(b, {seed_value}UL);
+    b->output = {struct_name}_gauss(b, 0.0, b->_std_dev);
+    b->_last_sample_time = 0.0;
+}}
+
+void {struct_name}_update({struct_name}* b, double t) {{
+    if (t >= b->_last_sample_time + b->sample_time - 1e-10) {{
+        b->output = {struct_name}_gauss(b, 0.0, b->_std_dev);
+        b->_last_sample_time = t;
     }}
 }}
 
@@ -336,4 +522,5 @@ SOURCE_TEMPLATES = {
     "clock": template_clock,
     "ground": template_ground,
     "white_noise": template_white_noise,
+    "band_limited_white_noise": template_band_limited_white_noise,
 }

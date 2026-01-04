@@ -261,34 +261,107 @@ private:
 
 
 def template_white_noise(block: BlockInfo, class_name: str) -> str:
-    """Generate C++ code for White Noise block."""
-    power = block.parameters.get("power", 1.0)
-    sample_time = block.parameters.get("sampleTime", block.parameters.get("sample_time", 0.1))
-    # Ensure sample_time is positive to avoid division by zero
-    if sample_time <= 0:
-        sample_time = 0.01  # Default to 100Hz sampling
-    seed = block.parameters.get("seed", 0)
-    # Use a deterministic seed (based on block name hash) for reproducible simulations
-    # std::random_device can throw in some Docker environments
-    if not seed:
-        # Generate a deterministic seed from block name
-        seed = abs(hash(block.name)) % (2**31)
+    """Generate C++ code for White Noise block.
+
+    Matches OSK WhiteNoise block exactly:
+    - Uses variance parameter (power maps to variance)
+    - std_dev = sqrt(variance)
+    - Uses std::mt19937 with same seed for reproducibility
+    """
+    # Support both 'variance' and 'power' (they map to the same thing)
+    variance = block.parameters.get("variance", block.parameters.get("power", 1.0))
+    mean = block.parameters.get("mean", 0.0)
+    seed = block.parameters.get("seed", None)
+    sample_time = block.parameters.get("sampleTime", block.parameters.get("sample_time", 0.0))
+
+    # Use a deterministic seed if none provided
+    if seed is None:
+        seed = 12345
 
     return f"""
-// {block.name} - White Noise source
+// {block.name} - White Noise source (matches OSK WhiteNoise exactly)
 class {class_name} {{
 public:
-    {class_name}() : gen_({seed}),
-                     dist_(0.0, std::sqrt({power} / {sample_time})) {{}}
+    {class_name}() : mean_({mean}),
+                     variance_({variance}),
+                     std_dev_(std::sqrt(std::abs({variance}))),
+                     sample_time_({sample_time}),
+                     gen_({seed}),
+                     dist_(0.0, 1.0) {{}}
 
     void init() {{
-        output_ = 0.0;
-        last_sample_time_ = -std::numeric_limits<double>::infinity();
+        // Generate initial noise sample (matches OSK init)
+        output_ = mean_ + std_dev_ * dist_(gen_);
+        last_sample_time_ = 0.0;
     }}
 
     void update(double t) {{
-        if (t - last_sample_time_ >= {sample_time} - 1e-10) {{
-            output_ = dist_(gen_);
+        // If sample_time is 0, generate new noise every step
+        // Otherwise, only generate new noise at sample intervals
+        if (sample_time_ <= 0) {{
+            output_ = mean_ + std_dev_ * dist_(gen_);
+        }} else {{
+            if (t >= last_sample_time_ + sample_time_) {{
+                output_ = mean_ + std_dev_ * dist_(gen_);
+                last_sample_time_ = t;
+            }}
+        }}
+    }}
+
+    double get_output(int port = 0) const {{
+        (void)port;
+        return output_;
+    }}
+
+private:
+    double mean_;
+    double variance_;
+    double std_dev_;
+    double sample_time_;
+    std::mt19937 gen_;
+    std::normal_distribution<double> dist_;
+    double output_ = 0.0;
+    double last_sample_time_ = -std::numeric_limits<double>::infinity();
+}};
+"""
+
+
+def template_band_limited_white_noise(block: BlockInfo, class_name: str) -> str:
+    """Generate C++ code for Band-Limited White Noise block.
+
+    Matches OSK BandLimitedWhiteNoise block exactly:
+    - Uses noise_power and sample_time parameters
+    - std_dev = sqrt(noise_power / sample_time)
+    """
+    noise_power = block.parameters.get("noisePower", block.parameters.get("noise_power", 0.1))
+    sample_time = block.parameters.get("sampleTime", block.parameters.get("sample_time", 0.1))
+    seed = block.parameters.get("seed", None)
+
+    # Ensure non-zero sample time
+    if sample_time <= 0:
+        sample_time = 1e-6
+
+    if seed is None:
+        seed = 12345
+
+    return f"""
+// {block.name} - Band-Limited White Noise source (matches OSK BandLimitedWhiteNoise exactly)
+class {class_name} {{
+public:
+    {class_name}() : noise_power_({noise_power}),
+                     sample_time_(std::max({sample_time}, 1e-6)),
+                     std_dev_(std::sqrt({noise_power} / std::max({sample_time}, 1e-6))),
+                     gen_({seed}),
+                     dist_(0.0, 1.0) {{}}
+
+    void init() {{
+        output_ = std_dev_ * dist_(gen_);
+        last_sample_time_ = 0.0;
+    }}
+
+    void update(double t) {{
+        if (t >= last_sample_time_ + sample_time_ - 1e-10) {{
+            output_ = std_dev_ * dist_(gen_);
             last_sample_time_ = t;
         }}
     }}
@@ -299,6 +372,9 @@ public:
     }}
 
 private:
+    double noise_power_;
+    double sample_time_;
+    double std_dev_;
     std::mt19937 gen_;
     std::normal_distribution<double> dist_;
     double output_ = 0.0;
@@ -316,4 +392,5 @@ SOURCE_TEMPLATES = {
     "clock": template_clock,
     "ground": template_ground,
     "white_noise": template_white_noise,
+    "band_limited_white_noise": template_band_limited_white_noise,
 }

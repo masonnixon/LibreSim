@@ -23,7 +23,7 @@
       "type": "white_noise",
       "name": "White Noise",
       "position": { "x": 50, "y": 200 },
-      "parameters": { "power": 0.1, "sampleTime": 0.001 },
+      "parameters": { "power": 0.1, "sampleTime": 0.001, "seed": 12345 },
       "inputPorts": [],
       "outputPorts": [{ "id": "noise-out", "name": "out", "dataType": "double", "dimensions": [1] }]
     },
