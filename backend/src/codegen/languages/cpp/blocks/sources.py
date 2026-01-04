@@ -32,7 +32,7 @@ public:
         return 0.0;
     }}
 
-    const std::array<double, {array_size}>& getOutputVector() const {{
+    const std::array<double, {array_size}>& get_output_vector() const {{
         return output_;
     }}
 

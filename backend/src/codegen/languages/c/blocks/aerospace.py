@@ -35,6 +35,11 @@ double {struct_name}_get_output({struct_name}* b, int port) {{
     if (port >= 0 && port < 4) return b->output[port];
     return 0.0;
 }}
+
+void {struct_name}_get_output_vector({struct_name}* b, double* out, int size) {{
+    int n = size < 4 ? size : 4;
+    for (int i = 0; i < n; i++) out[i] = b->output[i];
+}}
 """
 
 
@@ -71,6 +76,11 @@ double {struct_name}_get_output({struct_name}* b, int port) {{
     if (port >= 0 && port < 4) return b->output[port];
     return 0.0;
 }}
+
+void {struct_name}_get_output_vector({struct_name}* b, double* out, int size) {{
+    int n = size < 4 ? size : 4;
+    for (int i = 0; i < n; i++) out[i] = b->output[i];
+}}
 """
 
 
@@ -99,6 +109,11 @@ void {struct_name}_update({struct_name}* b, double t) {{
 double {struct_name}_get_output({struct_name}* b, int port) {{
     if (port >= 0 && port < 4) return b->output[port];
     return 0.0;
+}}
+
+void {struct_name}_get_output_vector({struct_name}* b, double* out, int size) {{
+    int n = size < 4 ? size : 4;
+    for (int i = 0; i < n; i++) out[i] = b->output[i];
 }}
 """
 
@@ -146,6 +161,11 @@ double {struct_name}_get_output({struct_name}* b, int port) {{
     if (port >= 0 && port < 3) return b->output[port];
     return 0.0;
 }}
+
+void {struct_name}_get_output_vector({struct_name}* b, double* out, int size) {{
+    int n = size < 3 ? size : 3;
+    for (int i = 0; i < n; i++) out[i] = b->output[i];
+}}
 """
 
 
@@ -182,6 +202,11 @@ void {struct_name}_update({struct_name}* b, double t) {{
 double {struct_name}_get_output({struct_name}* b, int port) {{
     if (port >= 0 && port < 4) return b->output[port];
     return 0.0;
+}}
+
+void {struct_name}_get_output_vector({struct_name}* b, double* out, int size) {{
+    int n = size < 4 ? size : 4;
+    for (int i = 0; i < n; i++) out[i] = b->output[i];
 }}
 """
 
@@ -229,6 +254,11 @@ void {struct_name}_update({struct_name}* b, double t) {{
 double {struct_name}_get_output({struct_name}* b, int port) {{
     if (port >= 0 && port < 3) return b->output[port];
     return 0.0;
+}}
+
+void {struct_name}_get_output_vector({struct_name}* b, double* out, int size) {{
+    int n = size < 3 ? size : 3;
+    for (int i = 0; i < n; i++) out[i] = b->output[i];
 }}
 """
 
@@ -294,6 +324,11 @@ double {struct_name}_get_output({struct_name}* b, int port) {{
     if (port >= 0 && port < 4) return b->output[port];
     return 0.0;
 }}
+
+void {struct_name}_get_output_vector({struct_name}* b, double* out, int size) {{
+    int n = size < 4 ? size : 4;
+    for (int i = 0; i < n; i++) out[i] = b->output[i];
+}}
 """
 
 
@@ -332,6 +367,11 @@ void {struct_name}_update({struct_name}* b, double t) {{
 double {struct_name}_get_output({struct_name}* b, int port) {{
     if (port >= 0 && port < 9) return b->output[port];
     return 0.0;
+}}
+
+void {struct_name}_get_output_vector({struct_name}* b, double* out, int size) {{
+    int n = size < 9 ? size : 9;
+    for (int i = 0; i < n; i++) out[i] = b->output[i];
 }}
 """
 
@@ -392,6 +432,11 @@ double {struct_name}_get_output({struct_name}* b, int port) {{
     if (port >= 0 && port < 4) return b->output[port];
     return 0.0;
 }}
+
+void {struct_name}_get_output_vector({struct_name}* b, double* out, int size) {{
+    int n = size < 4 ? size : 4;
+    for (int i = 0; i < n; i++) out[i] = b->output[i];
+}}
 """
 
 
@@ -424,6 +469,11 @@ void {struct_name}_update({struct_name}* b, double t) {{
 double {struct_name}_get_output({struct_name}* b, int port) {{
     if (port >= 0 && port < 3) return b->output[port];
     return 0.0;
+}}
+
+void {struct_name}_get_output_vector({struct_name}* b, double* out, int size) {{
+    int n = size < 3 ? size : 3;
+    for (int i = 0; i < n; i++) out[i] = b->output[i];
 }}
 """
 
@@ -461,6 +511,10 @@ void {struct_name}_update({struct_name}* b, double t) {{
 
 double {struct_name}_get_output({struct_name}* b, int port) {{
     (void)port;
+    return b->output;
+}}
+
+double {struct_name}_get_output_vector({struct_name}* b) {{
     return b->output;
 }}
 """
@@ -573,6 +627,11 @@ void {struct_name}_update({struct_name}* b, double t) {{
 double {struct_name}_get_output({struct_name}* b, int port) {{
     if (port >= 0 && port < 12) return b->output[port];
     return 0.0;
+}}
+
+void {struct_name}_get_output_vector({struct_name}* b, double* out, int size) {{
+    int n = size < 12 ? size : 12;
+    for (int i = 0; i < n; i++) out[i] = b->output[i];
 }}
 """
 

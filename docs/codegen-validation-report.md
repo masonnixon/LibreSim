@@ -1,235 +1,428 @@
-# Code Generation Validation Report
-
-## Overview
-
-This document summarizes the validation of the LibreSim code generation feature. Generated code for Python, C++, C, and Rust was compared against the headless simulation engine to verify numerical accuracy.
-
-## Test Methodology
-
-### Validation Process
-
-1. **Headless Simulation**: Run simulation using LibreSim's headless backend
-2. **Code Generation**: Generate standalone code for each target language
-3. **Build & Execute**: Compile and run generated code in Docker containers
-4. **Comparison**: Compare final output values between headless and generated code
-
-### Acceptance Criteria
-
-- Maximum relative error tolerance: 1%
-- All key signal outputs must match within tolerance
-
-## Test Results Summary
-
-### Overall Statistics
-
-| Metric | Count |
-|--------|-------|
-| Total Examples | 38 |
-| Total Tests (38 x 4 languages) | 152 |
-| **Tests Passed** | **104** |
-| **Pass Rate** | **68.4%** |
-
-### Results by Language
-
-| Language | Passed | Failed | Pass Rate |
-|----------|--------|--------|-----------|
-| Python   | 30     | 8      | 78.9%     |
-| C++      | 24     | 14     | 63.2%     |
-| C        | 25     | 13     | 65.8%     |
-| Rust     | 25     | 13     | 65.8%     |
-
-## Detailed Results
-
-### Passing Examples (All 4 Languages)
-
-The following 19 examples pass validation in ALL four languages:
-
-| # | Example | Description |
-|---|---------|-------------|
-| 1 | 01_sine_wave_basic | Basic sine wave generation |
-| 2 | 02_first_order_step_response | 1/(s+1) transfer function |
-| 3 | 03_pid_controller | PID controller with plant |
-| 4 | 05a_moving_average_filter | Moving average filter |
-| 5 | 05b_lowpass_filter | Low-pass filter variations |
-| 6 | 06_kalman_filter_estimation | Kalman filter basics |
-| 7 | 07a_bode_plot_analysis | Bode plot (analysis block) |
-| 8 | 07b_nyquist_plot_analysis | Nyquist plot (analysis block) |
-| 9 | 07c_pole_zero_map | Pole-zero mapping |
-| 10 | 07d_step_response_info | Step response analysis |
-| 11 | 08_lookup_table_nonlinear | Lookup table interpolation |
-| 12 | 09_second_order_damping | Multiple damping ratios |
-| 13 | 21_isa_atmosphere_model | ISA atmosphere model |
-| 14 | 31_discrete_pid_sampled_control | Discrete PID controller |
-| 15 | 32_lqr_state_feedback | LQR state feedback |
-| 16 | 33_lead_lag_compensator | Lead-lag compensator |
-| 17 | 34_anti_windup_pid | PID with anti-windup |
-| 18 | 35_pi_pd_controllers | PI and PD controllers |
-| 19 | 36_model_reference_control | Model reference adaptive |
-| 20 | 37_pole_placement_control | Pole placement control |
-| 21 | 40_dsp_fft_spectrum | FFT spectrum analysis |
-| 22 | 42_rf_receiver_chain | RF signal processing |
-| 23 | 43_rf_am_modulation | AM modulation |
-| 24 | 44_nav_coordinate_transform | Coordinate transforms |
+# Codegen Validation Report
+
+This report compares the outputs of generated code against the headless simulation.
+
+## Summary
+
+| Example | Python | C++ | C | Rust |
+|---------|--------|-----|---|------|
+| 01_sine_wave_basic | PASS | PASS | PASS | PASS |
+| 02_first_order_step_response | PASS | PASS | PASS | PASS |
+| 03_pid_controller | PASS | PASS | PASS | PASS |
+| 04_mass_spring_damper | PASS | DIFF (3.84%) | DIFF (3.84%) | DIFF (100.00%) |
+| 04b_mass_spring_damper_underdamped | PASS | DIFF (19.06%) | DIFF (19.06%) | DIFF (19.06%) |
+| 05a_moving_average_filter | PASS | PASS | PASS | PASS |
+| 05b_lowpass_filter | PASS | PASS | PASS | PASS |
+| 06_kalman_filter_estimation | PASS | PASS | PASS | PASS |
+| 06b_kalman_position_velocity | PASS | BUILD FAIL | BUILD FAIL | BUILD FAIL |
+| 07_thermostat_relay_control | PASS | PASS | PASS | PASS |
+| 07a_bode_plot_analysis | PASS | PASS | PASS | PASS |
+| 07b_nyquist_plot_analysis | PASS | PASS | PASS | PASS |
+| 07c_pole_zero_map | PASS | PASS | PASS | PASS |
+| 07d_step_response_info | PASS | PASS | PASS | PASS |
+| 08_lookup_table_nonlinear | PASS | PASS | PASS | PASS |
+| 09_second_order_damping | PASS | PASS | PASS | PASS |
+| 10_rate_limiting_quantization | PASS | DIFF (6.28%) | DIFF (6.28%) | DIFF (6.28%) |
+| 11_vector_signal_processing | PASS | PASS | BUILD FAIL | PASS |
+| 20_quaternion_attitude_propagation | PASS | BUILD FAIL | BUILD FAIL | PASS |
+| 21_isa_atmosphere_model | PASS | PASS | BUILD FAIL | PASS |
+| 22_gravity_models_comparison | PASS | BUILD FAIL | BUILD FAIL | BUILD FAIL |
+| 23_dcm_quaternion_conversion | PASS | BUILD FAIL | BUILD FAIL | PASS |
+| 24_quaternion_vector_rotation | PASS | BUILD FAIL | BUILD FAIL | BUILD FAIL |
+| 30_pid_speed_control | DIFF (19.94%) | DIFF (126010.09%) | DIFF (126010.09%) | DIFF (126010.09%) |
+| 31_discrete_pid_sampled_control | PASS | PASS | PASS | PASS |
+| 32_lqr_state_feedback | PASS | BUILD FAIL | BUILD FAIL | BUILD FAIL |
+| 33_lead_lag_compensator | PASS | PASS | PASS | PASS |
+| 34_anti_windup_pid | PASS | PASS | PASS | PASS |
+| 35_pi_pd_controllers | PASS | PASS | PASS | PASS |
+| 36_model_reference_control | PASS | PASS | PASS | PASS |
+| 37_pole_placement_control | PASS | BUILD FAIL | BUILD FAIL | BUILD FAIL |
+| 40_dsp_fft_spectrum | PASS | PASS | PASS | PASS |
+| 41_dsp_fir_lowpass | DIFF (932.21%) | DIFF (1103.47%) | DIFF (949.68%) | DIFF (949.68%) |
+| 42_rf_receiver_chain | PASS | PASS | PASS | PASS |
+| 43_rf_am_modulation | PASS | PASS | PASS | PASS |
+| 44_nav_coordinate_transform | PASS | BUILD FAIL | BUILD FAIL | BUILD FAIL |
+| 45_sensor_fusion_ahrs | PASS | BUILD FAIL | BUILD FAIL | BUILD FAIL |
+| 46_sensor_fusion_tracking | PASS | PASS | PASS | PASS |
 
-### Python-Only Passing Examples
+## Statistics
 
-| Example | Notes |
-|---------|-------|
-| 04_mass_spring_damper | C++/C/Rust have small velocity differences |
-| 04b_mass_spring_damper_underdamped | C++/C/Rust have velocity differences |
-| 06b_kalman_position_velocity | C++/C/Rust need vector input wiring |
-| 10_rate_limiting_quantization | C++/C/Rust rate limiter behavior differs |
-| 11_vector_signal_processing | C++/C/Rust need vector input wiring |
-| 46_sensor_fusion_tracking | C++ random_device issue; otherwise passes |
+- Total tests: 152
+- Passed: 108 (71.1%)
+- Build failures: 27
+- Run failures: 0
+- Value mismatches: 17
 
-### Known Failures
+## Detailed Failures
 
-#### Build Failures (Vector Input Wiring)
+### 04_mass_spring_damper (cpp)
 
-These examples use blocks that expect vector/array inputs, but the code generator wires them with scalar outputs:
+- Max relative error: 3.8413%
+- Headless final values: {'Velocity': 2.0978867972592176e-09, 'Position': 0.9999999998138548}
+- Codegen final values: {'Velocity': 2.0173e-09, 'Position': 1.0}
 
-| Example | Issue |
-|---------|-------|
-| 06b_kalman_position_velocity | Demux expects array input |
-| 11_vector_signal_processing | Demux expects array input |
-| 20_quaternion_attitude_propagation | Quaternion blocks expect 4-element arrays |
-| 22_gravity_models_comparison | WGS84 gravity expects [lat, alt] array |
-| 23_dcm_quaternion_conversion | Quaternion blocks expect arrays |
-| 24_quaternion_vector_rotation | Quaternion blocks expect arrays |
-| 45_sensor_fusion_ahrs | Demux and quaternion blocks expect arrays |
+### 04_mass_spring_damper (c)
 
-These require an architectural fix in the code generator to use `get_output_vector()` instead of `get_output(0)` when wiring to blocks that expect array inputs.
+- Max relative error: 3.8413%
+- Headless final values: {'Velocity': 2.0978867972592176e-09, 'Position': 0.9999999998138548}
+- Codegen final values: {'Velocity': 2.0173e-09, 'Position': 1.0}
 
-#### Behavior Mismatches
+### 04_mass_spring_damper (rust)
 
-| Example | Issue |
-|---------|-------|
-| 04_mass_spring_damper | Small numerical differences in critically damped system |
-| 04b_mass_spring_damper_underdamped | ~19% velocity difference in underdamped system |
-| 07_thermostat_relay_control | Relay initial state/hysteresis behavior differs |
-| 10_rate_limiting_quantization | Rate limiter parameter mapping (`rising_limit`) |
-| 30_pid_speed_control | PID gain parameter handling issue |
-| 41_dsp_fir_lowpass | White noise block behavior with random seeds |
+- Max relative error: 100.0000%
+- Headless final values: {'Velocity': 2.0978867972592176e-09, 'Position': 0.9999999998138548}
+- Codegen final values: {'Velocity': 0.0, 'Position': 1.0}
 
-#### C++ Specific Issues
+### 04b_mass_spring_damper_underdamped (cpp)
 
-| Example | Issue |
-|---------|-------|
-| 41_dsp_fir_lowpass | `random_device` throws in Docker container |
-| 46_sensor_fusion_tracking | `random_device` throws in Docker container |
+- Max relative error: 19.0593%
+- Headless final values: {'Velocity': -0.034037745582229564, 'Position': 0.9945076254268891}
+- Codegen final values: {'Velocity': -0.0405251, 'Position': 0.992182}
 
-The C++ `std::random_device` doesn't work properly in the Docker environment. Would need to fall back to a deterministic seed.
+### 04b_mass_spring_damper_underdamped (c)
 
-## Validated Examples - Sample Results
+- Max relative error: 19.0593%
+- Headless final values: {'Velocity': -0.034037745582229564, 'Position': 0.9945076254268891}
+- Codegen final values: {'Velocity': -0.0405251, 'Position': 0.992182}
 
-### Example 01: Sine Wave Basic
+### 04b_mass_spring_damper_underdamped (rust)
 
-| Language | Final Value | Max Error | Status |
-|----------|-------------|-----------|--------|
-| Headless | -1.06e-12   | -         | -      |
-| Python   | -1.06e-12   | 0.0000%   | PASS   |
-| C++      | -0.0628     | 0.0000%   | PASS   |
-| C        | -0.0628     | 0.0000%   | PASS   |
-| Rust     | -0.0628     | 0.0000%   | PASS   |
+- Max relative error: 19.0590%
+- Headless final values: {'Velocity': -0.034037745582229564, 'Position': 0.9945076254268891}
+- Codegen final values: {'Velocity': -0.040525, 'Position': 0.992182}
 
-### Example 03: PID Controller
+### 06b_kalman_position_velocity (cpp)
 
-| Language | Reference | Plant Output | Max Error | Status |
-|----------|-----------|--------------|-----------|--------|
-| Headless | 1.0       | 0.99997      | -         | -      |
-| Python   | 1.0       | 0.99998      | 0.0014%   | PASS   |
-| C++      | 1.0       | 0.99999      | 0.0027%   | PASS   |
-| C        | 1.0       | 0.99999      | 0.0027%   | PASS   |
-| Rust     | 1.0       | 0.99999      | 0.0027%   | PASS   |
+- Build failed: #0 building with "default" instance using docker driver
 
-### Example 09: Second Order Damping Comparison
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 746B 0.0s done
+#1 DONE 0.0s
 
-| Language | Underdamped | Critical | Overdamped | Max Error | Status |
-|----------|-------------|----------|------------|-----------|--------|
-| Headless | 0.97935     | 1.00000  | 0.99335    | -         | -      |
-| Python   | 0.97935     | 1.00000  | 0.99335    | 0.0000%   | PASS   |
-| C++      | 0.97936     | 1.00000  | 0.99335    | 0.0009%   | PASS   |
-| C        | 0.97936     | 1.00000  | 0.99335    | 0.0009%   | PASS   |
-| Rust     | 0.97936     | 1.00000  | 0.99335    | 0.0009%   | PASS   |
+#2 [internal] load metadata for do
 
-## Fixes Applied During Validation
+### 06b_kalman_position_velocity (c)
 
-### 1. Step Block Parameter Mapping
+- Build failed: #0 building with "default" instance using docker driver
 
-**Issue**: JSON models use camelCase (`stepTime`, `initialValue`, `finalValue`) but code generators expected snake_case.
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 722B 0.0s done
+#1 DONE 0.0s
 
-**Fix**: Added fallback parameter lookups in all languages.
+#2 [internal] load metadata for do
 
-### 2. Rust Package Naming
+### 06b_kalman_position_velocity (rust)
 
-**Issue**: Rust package names cannot start with a digit.
+- Build failed: #0 building with "default" instance using docker driver
 
-**Fix**: Prefix with underscore when package name starts with a digit.
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 542B 0.0s done
+#1 DONE 0.0s
 
-### 3. White Noise Block
+#2 [internal] load metadata for do
 
-**Issues**:
-- C++ missing `<random>` header
-- Division by zero when `sample_time=0`
+### 10_rate_limiting_quantization (cpp)
 
-**Fixes**:
-- Added `#include <random>` to blocks.hpp
-- Default sample_time to 0.01 when <= 0 (all languages)
+- Max relative error: 6.2830%
+- Headless final values: {'Command': -1.3791876954540827e-11, 'Rate Limiter': -1.3791876954540827e-11, 'Quantizer': 0.0, 'Then Quant': 0.0}
+- Codegen final values: {'Command': -0.0628302, 'Rate_Limiter': -1.10257, 'Quantizer': -0.0, 'Then_Quant': -1.0}
 
-### 4. Rust Clone Trait
+### 10_rate_limiting_quantization (c)
 
-**Issue**: Several blocks missing Clone trait required by Model struct.
+- Max relative error: 6.2830%
+- Headless final values: {'Command': -1.3791876954540827e-11, 'Rate Limiter': -1.3791876954540827e-11, 'Quantizer': 0.0, 'Then Quant': 0.0}
+- Codegen final values: {'Command': -0.0628302, 'Rate_Limiter': -1.10257, 'Quantizer': -0.0, 'Then_Quant': -1.0}
 
-**Fix**: Added `#[derive(Clone)]` to:
-- White noise block (manual impl due to RNG state)
-- Mux/Demux blocks
-- All aerospace blocks (quaternion, gravity, etc.)
+### 10_rate_limiting_quantization (rust)
 
-### 5. Rust Empty Outputs
+- Max relative error: 6.2830%
+- Headless final values: {'Command': -1.3791876954540827e-11, 'Rate Limiter': -1.3791876954540827e-11, 'Quantizer': 0.0, 'Then Quant': 0.0}
+- Codegen final values: {'Command': -0.06283, 'Rate_Limiter': -1.102566, 'Quantizer': -0.0, 'Then_Quant': -1.0}
 
-**Issue**: Examples without scope blocks (Bode/Nyquist) caused panic on CSV write.
+### 11_vector_signal_processing (c)
 
-**Fix**: Handle zero outputs case - write time-only CSV instead.
+- Build failed: #0 building with "default" instance using docker driver
 
-### 6. Rust Integer Literals
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 720B 0.0s done
+#1 DONE 0.0s
 
-**Issue**: Pole placement K values like `4` rejected by Rust (expects `4.0_f64`).
+#2 [internal] load metadata for do
 
-**Fix**: Added `_f64` suffix to all numeric literals in LQR and pole placement templates.
+### 20_quaternion_attitude_propagation (cpp)
 
-### 7. Simulation Config
+- Build failed: #0 building with "default" instance using docker driver
 
-**Issue**: Hardcoded step_size=0.01, stop_time=10.0 didn't match model settings.
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 758B 0.0s done
+#1 DONE 0.0s
 
-**Fix**: Read `simulationConfig` from model JSON for both regeneration and validation.
+#2 [internal] load metadata for do
 
-## Recommendations
+### 20_quaternion_attitude_propagation (c)
 
-### High Priority
+- Build failed: #0 building with "default" instance using docker driver
 
-1. **Fix vector input wiring** - Architectural change to detect blocks expecting array inputs
-2. **Fix thermostat relay** - Review relay initial state and hysteresis behavior
-3. **Fix C++ random_device** - Use deterministic seed fallback in Docker
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 734B 0.0s done
+#1 DONE 0.1s
 
-### Medium Priority
+#2 [internal] load metadata for do
 
-1. **Fix rate limiter parameters** - Map `rising_limit`/`falling_limit` correctly
-2. **Fix PID speed control** - Investigate gain parameter handling
-3. **Investigate mass-spring-damper** - Small numerical differences in C++/C/Rust
+### 21_isa_atmosphere_model (c)
 
-### Low Priority
+- Build failed: #0 building with "default" instance using docker driver
 
-1. **Continuous validation** - Run validation script in CI/CD
-2. **Performance benchmarks** - Compare execution times between languages
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 712B 0.0s done
+#1 DONE 0.0s
 
-## Conclusion
+#2 [internal] load metadata for do
 
-The code generation feature produces numerically accurate simulations for the majority of standard control system examples. The core functionality (integrators, transfer functions, PID controllers, filters, state-space, lead-lag compensators) works correctly across all four target languages.
+### 22_gravity_models_comparison (cpp)
 
-The primary gap is in vector/array signal routing - blocks that expect multi-element inputs (quaternion operations, demux blocks) need architectural changes in the code generator to properly wire vector outputs.
+- Build failed: #0 building with "default" instance using docker driver
 
----
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 746B 0.0s done
+#1 DONE 0.0s
 
-*Report generated: 2026-01-03*
-*Test environment: Windows 11, Docker Desktop with gcc:13 and rust:1.75 images*
-*Validation script: scripts/quick_validate_codegen.py*
+#2 [internal] load metadata for do
+
+### 22_gravity_models_comparison (c)
+
+- Build failed: #0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 722B 0.0s done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for do
+
+### 22_gravity_models_comparison (rust)
+
+- Build failed: #0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 542B 0.0s done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for do
+
+### 23_dcm_quaternion_conversion (cpp)
+
+- Build failed: #0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 746B 0.0s done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for do
+
+### 23_dcm_quaternion_conversion (c)
+
+- Build failed: #0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 722B 0.0s done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for do
+
+### 24_quaternion_vector_rotation (cpp)
+
+- Build failed: #0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 748B 0.0s done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for do
+
+### 24_quaternion_vector_rotation (c)
+
+- Build failed: #0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 724B 0.0s done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for do
+
+### 24_quaternion_vector_rotation (rust)
+
+- Build failed: #0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 544B 0.0s done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for do
+
+### 30_pid_speed_control (python)
+
+- Max relative error: 19.9362%
+- Headless final values: {'Speed Setpoint': 100.0, 'DC Motor': 99.92466899212954, 'Actuator Limits': 19.990832132866167, 'Error': 0.0753310078704601}
+- Codegen final values: {'Speed_Setpoint': 100.0, 'DC_Motor': 99.90965082892927, 'Control_Signal': 20.00107666518958, 'Error': 0.09034917107072715}
+
+### 30_pid_speed_control (cpp)
+
+- Max relative error: 126010.0876%
+- Headless final values: {'Speed Setpoint': 100.0, 'DC Motor': 99.92466899212954, 'Actuator Limits': 19.990832132866167, 'Error': 0.0753310078704601}
+- Codegen final values: {'Speed_Setpoint': 100.0, 'DC_Motor': 5.0, 'Control_Signal': 1.0, 'Error': 95.0}
+
+### 30_pid_speed_control (c)
+
+- Max relative error: 126010.0876%
+- Headless final values: {'Speed Setpoint': 100.0, 'DC Motor': 99.92466899212954, 'Actuator Limits': 19.990832132866167, 'Error': 0.0753310078704601}
+- Codegen final values: {'Speed_Setpoint': 100.0, 'DC_Motor': 5.0, 'Control_Signal': 1.0, 'Error': 95.0}
+
+### 30_pid_speed_control (rust)
+
+- Max relative error: 126010.0876%
+- Headless final values: {'Speed Setpoint': 100.0, 'DC Motor': 99.92466899212954, 'Actuator Limits': 19.990832132866167, 'Error': 0.0753310078704601}
+- Codegen final values: {'Speed_Setpoint': 100.0, 'DC_Motor': 5.0, 'Control_Signal': 1.0, 'Error': 95.0}
+
+### 32_lqr_state_feedback (cpp)
+
+- Build failed: #0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 732B 0.0s done
+#1 DONE 0.1s
+
+#2 [internal] load metadata for do
+
+### 32_lqr_state_feedback (c)
+
+- Build failed: #0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 708B 0.0s done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for do
+
+### 32_lqr_state_feedback (rust)
+
+- Build failed: #0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 528B 0.0s done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for do
+
+### 37_pole_placement_control (cpp)
+
+- Build failed: #0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 740B 0.0s done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for do
+
+### 37_pole_placement_control (c)
+
+- Build failed: #0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 716B 0.0s done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for do
+
+### 37_pole_placement_control (rust)
+
+- Build failed: #0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 536B 0.0s done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for do
+
+### 41_dsp_fir_lowpass (python)
+
+- Max relative error: 932.2064%
+- Headless final values: {'Add Noise': 0.0, 'FIR Lowpass': 0.0, 'Running Mean': 0.0, 'RMS': 0.0}
+- Codegen final values: {'Add_Noise': 2.128108618607289, 'FIR_Lowpass': 2.886308684714437, 'Running_Mean': 2.6130676055002247, 'RMS': 9.322064119265251}
+
+### 41_dsp_fir_lowpass (cpp)
+
+- Max relative error: 1103.4700%
+- Headless final values: {'Add Noise': 0.0, 'FIR Lowpass': 0.0, 'Running Mean': 0.0, 'RMS': 0.0}
+- Codegen final values: {'Add_Noise': 15.8876, 'FIR_Lowpass': 9.2384, 'Running_Mean': 7.49331, 'RMS': 11.0347}
+
+### 41_dsp_fir_lowpass (c)
+
+- Max relative error: 949.6790%
+- Headless final values: {'Add Noise': 0.0, 'FIR Lowpass': 0.0, 'Running Mean': 0.0, 'RMS': 0.0}
+- Codegen final values: {'Add_Noise': -4.08612, 'FIR_Lowpass': -5.54126, 'Running_Mean': 2.05292, 'RMS': 9.49679}
+
+### 41_dsp_fir_lowpass (rust)
+
+- Max relative error: 949.6792%
+- Headless final values: {'Add Noise': 0.0, 'FIR Lowpass': 0.0, 'Running Mean': 0.0, 'RMS': 0.0}
+- Codegen final values: {'Add_Noise': -4.086119, 'FIR_Lowpass': -5.541262, 'Running_Mean': 2.052916, 'RMS': 9.496792}
+
+### 44_nav_coordinate_transform (cpp)
+
+- Build failed: #0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 744B 0.0s done
+#1 DONE 0.1s
+
+#2 [internal] load metadata for do
+
+### 44_nav_coordinate_transform (c)
+
+- Build failed: #0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 720B 0.0s done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for do
+
+### 44_nav_coordinate_transform (rust)
+
+- Build failed: #0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 540B 0.0s done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for do
+
+### 45_sensor_fusion_ahrs (cpp)
+
+- Build failed: #0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 732B 0.0s done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for do
+
+### 45_sensor_fusion_ahrs (c)
+
+- Build failed: #0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 708B 0.0s done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for do
+
+### 45_sensor_fusion_ahrs (rust)
+
+- Build failed: #0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 528B 0.0s done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for do

@@ -435,6 +435,9 @@ class {class_name}:
         if port < len(self.outputs):
             return self.outputs[port]
         return 0.0
+
+    def get_output_vector(self) -> list:
+        return list(self.outputs)
 '''
 
 

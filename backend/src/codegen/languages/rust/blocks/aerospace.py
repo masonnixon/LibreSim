@@ -44,6 +44,10 @@ impl {struct_name} {{
             0.0
         }}
     }}
+
+    pub fn get_output_vector(&self) -> &[f64; 4] {{
+        &self.output
+    }}
 }}
 """
 
@@ -91,6 +95,10 @@ impl {struct_name} {{
             0.0
         }}
     }}
+
+    pub fn get_output_vector(&self) -> &[f64; 4] {{
+        &self.output
+    }}
 }}
 """
 
@@ -130,6 +138,10 @@ impl {struct_name} {{
         }} else {{
             0.0
         }}
+    }}
+
+    pub fn get_output_vector(&self) -> &[f64; 4] {{
+        &self.output
     }}
 }}
 """
@@ -186,6 +198,10 @@ impl {struct_name} {{
             0.0
         }}
     }}
+
+    pub fn get_output_vector(&self) -> &[f64; 3] {{
+        &self.output
+    }}
 }}
 """
 
@@ -231,6 +247,10 @@ impl {struct_name} {{
         }} else {{
             0.0
         }}
+    }}
+
+    pub fn get_output_vector(&self) -> &[f64; 4] {{
+        &self.output
     }}
 }}
 """
@@ -288,6 +308,10 @@ impl {struct_name} {{
         }} else {{
             0.0
         }}
+    }}
+
+    pub fn get_output_vector(&self) -> &[f64; 3] {{
+        &self.output
     }}
 }}
 """
@@ -359,6 +383,10 @@ impl {struct_name} {{
             0.0
         }}
     }}
+
+    pub fn get_output_vector(&self) -> &[f64; 4] {{
+        &self.output
+    }}
 }}
 """
 
@@ -405,6 +433,10 @@ impl {struct_name} {{
         }} else {{
             0.0
         }}
+    }}
+
+    pub fn get_output_vector(&self) -> &[f64; 9] {{
+        &self.output
     }}
 }}
 """
@@ -467,6 +499,10 @@ impl {struct_name} {{
             0.0
         }}
     }}
+
+    pub fn get_output_vector(&self) -> &[f64; 4] {{
+        &self.output
+    }}
 }}
 """
 
@@ -506,6 +542,10 @@ impl {struct_name} {{
         }} else {{
             0.0
         }}
+    }}
+
+    pub fn get_output_vector(&self) -> &[f64; 3] {{
+        &self.output
     }}
 }}
 """
@@ -696,6 +736,10 @@ impl {struct_name} {{
         }} else {{
             0.0
         }}
+    }}
+
+    pub fn get_output_vector(&self) -> &[f64; 12] {{
+        &self.output
     }}
 }}
 """

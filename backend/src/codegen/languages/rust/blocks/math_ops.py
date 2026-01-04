@@ -629,6 +629,10 @@ impl {struct_name} {{
             0.0
         }}
     }}
+
+    pub fn get_output_vector(&self) -> &[f64; {num_outputs}] {{
+        &self.outputs
+    }}
 }}
 
 impl Default for {struct_name} {{

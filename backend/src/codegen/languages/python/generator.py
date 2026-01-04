@@ -217,7 +217,52 @@ except ImportError:
     def _generate_passthrough_block(self, block: BlockInfo) -> str:
         """Generate a passthrough block (for unsupported types)."""
         class_name = f"Block_{self.sanitize_identifier(block.id)}"
-        return f'''
+        # Check if block has vector output dimensions
+        has_vector_output = (
+            block.output_dimensions
+            and len(block.output_dimensions) > 0
+            and len(block.output_dimensions[0]) > 0
+            and block.output_dimensions[0][0] > 1
+        )
+        has_vector_input = (
+            block.input_dimensions
+            and len(block.input_dimensions) > 0
+            and len(block.input_dimensions[0]) > 0
+            and block.input_dimensions[0][0] > 1
+        )
+
+        if has_vector_output or has_vector_input:
+            output_size = block.output_dimensions[0][0] if has_vector_output else (block.input_dimensions[0][0] if has_vector_input else 1)
+            input_size = block.input_dimensions[0][0] if has_vector_input else 1
+            return f'''
+class {class_name}:
+    """Passthrough block (vector): {block.name} (type: {block.type})"""
+
+    def __init__(self):
+        self.input = [0.0] * {input_size}
+        self.output = [0.0] * {output_size}
+
+    def init(self):
+        self.output = [0.0] * {output_size}
+
+    def update(self, t: float):
+        # Passthrough: copy input to output (truncate/pad if sizes differ)
+        if isinstance(self.input, (list, tuple)):
+            for i in range(min(len(self.input), len(self.output))):
+                self.output[i] = self.input[i]
+        else:
+            self.output[0] = self.input
+
+    def get_output(self, port: int = 0) -> float:
+        if port < len(self.output):
+            return self.output[port]
+        return 0.0
+
+    def get_output_vector(self) -> list:
+        return list(self.output)
+'''
+        else:
+            return f'''
 class {class_name}:
     """Passthrough block: {block.name} (type: {block.type})"""
 
@@ -233,6 +278,11 @@ class {class_name}:
 
     def get_output(self, port: int = 0) -> float:
         return self.output
+
+    def get_output_vector(self) -> list:
+        if isinstance(self.output, (list, tuple)):
+            return list(self.output)
+        return [self.output]
 '''
 
     def _generate_simulation_file(

@@ -157,9 +157,10 @@ class LanguageGenerator(ABC):
         Returns:
             Variable name string
         """
-        # Use sanitized name or ID
-        name = self.sanitize_identifier(block.name or block.id)
-        return f"block_{name}"
+        # Always use block ID to ensure uniqueness (names can be duplicated)
+        # Sanitize the ID to make it a valid identifier
+        sanitized_id = self.sanitize_identifier(block.id)
+        return f"block_{sanitized_id}"
 
     def parse_connection(self, conn_str: str) -> tuple[str, int, int | None]:
         """Parse a connection string.

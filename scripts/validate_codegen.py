@@ -8,6 +8,7 @@ This script:
 3. Compares results and generates a validation report
 """
 
+import asyncio
 import json
 import os
 import shutil
@@ -25,6 +26,7 @@ sys.path.insert(0, str(REPO_ROOT / "backend"))
 
 from src.simulation.runner import SimulationRunner
 from src.models.model import Model
+from src.models.simulation import SimulationConfig
 
 EXAMPLES_DIR = REPO_ROOT / "examples"
 CODEGEN_DIR = REPO_ROOT / "codegen_verification"
@@ -50,38 +52,60 @@ class ValidationResult:
     notes: str = ""
 
 
-def run_headless_simulation(example_path: Path) -> dict[str, Any]:
+async def run_headless_simulation_async(example_path: Path) -> dict[str, Any]:
     """Run headless simulation and return final values."""
     with open(example_path) as f:
         model_data = json.load(f)
 
     model = Model.model_validate(model_data)
-    runner = SimulationRunner(model)
 
     # Run with the model's specified settings or defaults
     step_size = 0.01
     stop_time = 10.0
 
-    # Check if model has simulation settings
-    if "simulationSettings" in model_data:
-        settings = model_data["simulationSettings"]
-        step_size = settings.get("stepSize", step_size)
-        stop_time = settings.get("stopTime", stop_time)
+    # Check if model has simulation settings (can be either simulationConfig or simulationSettings)
+    settings = model_data.get("simulationConfig") or model_data.get("simulationSettings") or {}
+    step_size = settings.get("stepSize", step_size)
+    stop_time = settings.get("stopTime", stop_time)
 
-    results = runner.run(stop_time=stop_time, step_size=step_size)
+    config = SimulationConfig(stop_time=stop_time, step_size=step_size)
+    runner = SimulationRunner(model, config)
 
-    # Get final values for each output
+    await runner.run()
+
+    # Check if simulation completed successfully
+    if runner.status.value == "error":
+        raise RuntimeError(runner.error_message or "Simulation failed")
+
+    results = runner.get_results()
+
+    # Get final values for each output signal
     final_values = {}
-    if results.outputs:
-        for output_name, time_series in results.outputs.items():
-            if time_series:
-                final_values[output_name] = time_series[-1]
+    if results.get("signals"):
+        for signal in results["signals"]:
+            name = signal.get("name", "")
+            values = signal.get("values", [])
+            if values:
+                # Handle both single-trace and multi-trace cases
+                if isinstance(values[0], list):
+                    # Multi-trace: get last value from first trace
+                    for i, input_name in enumerate(signal.get("inputNames", [])):
+                        if values[i]:
+                            final_values[input_name] = values[i][-1]
+                else:
+                    # Single-trace: get last value
+                    final_values[name] = values[-1]
 
     return {
         "success": True,
         "final_values": final_values,
-        "num_steps": len(results.time) if results.time else 0,
+        "num_steps": results.get("statistics", {}).get("totalSteps", 0),
     }
+
+
+def run_headless_simulation(example_path: Path) -> dict[str, Any]:
+    """Sync wrapper for async headless simulation."""
+    return asyncio.run(run_headless_simulation_async(example_path))
 
 
 def build_and_run_codegen(zip_path: Path, language: str) -> dict[str, Any]:
@@ -94,7 +118,8 @@ def build_and_run_codegen(zip_path: Path, language: str) -> dict[str, Any]:
         "final_values": {},
     }
 
-    with tempfile.TemporaryDirectory() as tmpdir:
+    # Use ignore_cleanup_errors=True on Windows to handle locked files
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmpdir:
         tmpdir_path = Path(tmpdir)
 
         # Extract zip
@@ -118,43 +143,38 @@ def build_and_run_codegen(zip_path: Path, language: str) -> dict[str, Any]:
             result["build_error"] = "No build.sh found"
             return result
 
-        # Run with Docker for compiled languages
+        # For compiled languages (cpp, c, rust), build.sh handles Docker internally
+        # So we just run build.sh directly using bash
         if language in ["cpp", "c", "rust"]:
-            # Convert to Unix path for Docker
-            unix_path = str(project_dir).replace("\\", "/").replace("C:", "/c")
-
-            # Different Docker images for each language
-            if language == "cpp":
-                docker_image = "gcc:13"
-                build_cmd = f"cd /project && chmod +x build.sh && ./build.sh"
-            elif language == "c":
-                docker_image = "gcc:13"
-                build_cmd = f"cd /project && chmod +x build.sh && ./build.sh"
-            elif language == "rust":
-                docker_image = "rust:1.75"
-                build_cmd = f"cd /project && chmod +x build.sh && ./build.sh"
-
-            cmd = [
-                "docker", "run", "--rm",
-                "-v", f"{unix_path}:/project",
-                docker_image,
-                "bash", "-c", build_cmd
-            ]
-
             try:
-                build_result = subprocess.run(
-                    cmd,
-                    capture_output=True,
-                    text=True,
-                    timeout=120,
-                    cwd=str(REPO_ROOT)
-                )
+                # Run build.sh directly - it handles Docker build/run internally
+                # Use shell=True on Windows to get proper path handling
+                import platform
+                if platform.system() == "Windows":
+                    # On Windows, run bash with the script in cwd
+                    build_result = subprocess.run(
+                        ["bash", "build.sh"],
+                        capture_output=True,
+                        text=True,
+                        timeout=300,  # 5 minutes for Docker build + run
+                        cwd=str(project_dir),
+                    )
+                else:
+                    build_result = subprocess.run(
+                        ["bash", str(build_script)],
+                        capture_output=True,
+                        text=True,
+                        timeout=300,
+                        cwd=str(project_dir),
+                    )
                 if build_result.returncode != 0:
-                    result["build_error"] = build_result.stderr[:500] if build_result.stderr else "Unknown error"
+                    # Include both stdout and stderr for better diagnostics
+                    error_msg = build_result.stderr or build_result.stdout or "Unknown error"
+                    result["build_error"] = error_msg[:500]
                     return result
                 result["build_success"] = True
             except subprocess.TimeoutExpired:
-                result["build_error"] = "Build timeout"
+                result["build_error"] = "Build timeout (5 min)"
                 return result
             except Exception as e:
                 result["build_error"] = str(e)

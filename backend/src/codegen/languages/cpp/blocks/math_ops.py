@@ -493,6 +493,10 @@ public:
         return 0.0;
     }}
 
+    const std::array<double, NUM_OUTPUTS>& getOutputVector() const {{
+        return outputs_;
+    }}
+
 private:
     std::array<double, {num_outputs}> outputs_ = {{}};
 }};

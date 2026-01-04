@@ -34,6 +34,10 @@ public:
         if (port >= 0 && port < 4) return output[port];
         return 0.0;
     }}
+
+    const std::array<double, 4>& get_output_vector() const {{
+        return output;
+    }}
 }};
 """
 
@@ -70,6 +74,10 @@ public:
         if (port >= 0 && port < 4) return output[port];
         return 0.0;
     }}
+
+    const std::array<double, 4>& get_output_vector() const {{
+        return output;
+    }}
 }};
 """
 
@@ -100,6 +108,10 @@ public:
     double get_output(int port = 0) const {{
         if (port >= 0 && port < 4) return output[port];
         return 0.0;
+    }}
+
+    const std::array<double, 4>& get_output_vector() const {{
+        return output;
     }}
 }};
 """
@@ -148,6 +160,10 @@ public:
         if (port >= 0 && port < 3) return output[port];
         return 0.0;
     }}
+
+    const std::array<double, 3>& get_output_vector() const {{
+        return output;
+    }}
 }};
 """
 
@@ -185,6 +201,10 @@ public:
     double get_output(int port = 0) const {{
         if (port >= 0 && port < 4) return output[port];
         return 0.0;
+    }}
+
+    const std::array<double, 4>& get_output_vector() const {{
+        return output;
     }}
 }};
 """
@@ -231,6 +251,10 @@ public:
     double get_output(int port = 0) const {{
         if (port >= 0 && port < 3) return output[port];
         return 0.0;
+    }}
+
+    const std::array<double, 3>& get_output_vector() const {{
+        return output;
     }}
 }};
 """
@@ -294,6 +318,10 @@ public:
         if (port >= 0 && port < 4) return output[port];
         return 0.0;
     }}
+
+    const std::array<double, 4>& get_output_vector() const {{
+        return output;
+    }}
 }};
 """
 
@@ -331,6 +359,10 @@ public:
     double get_output(int port = 0) const {{
         if (port >= 0 && port < 9) return output[port];
         return 0.0;
+    }}
+
+    const std::array<double, 9>& get_output_vector() const {{
+        return output;
     }}
 }};
 """
@@ -386,6 +418,10 @@ public:
         if (port >= 0 && port < 4) return output[port];
         return 0.0;
     }}
+
+    const std::array<double, 4>& get_output_vector() const {{
+        return output;
+    }}
 }};
 """
 
@@ -415,6 +451,10 @@ public:
     double get_output(int port = 0) const {{
         if (port >= 0 && port < 3) return output[port];
         return 0.0;
+    }}
+
+    const std::array<double, 3>& get_output_vector() const {{
+        return output;
     }}
 }};
 """
@@ -452,6 +492,10 @@ public:
 
     double get_output(int port = 0) const {{
         (void)port;
+        return output;
+    }}
+
+    double get_output_vector() const {{
         return output;
     }}
 }};
@@ -558,6 +602,10 @@ public:
     double get_output(int port = 0) const {{
         if (port >= 0 && port < 12) return output[port];
         return 0.0;
+    }}
+
+    const std::array<double, 12>& get_output_vector() const {{
+        return output;
     }}
 }};
 """

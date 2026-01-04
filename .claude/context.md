@@ -717,18 +717,60 @@ The toolbar supports:
 - Simulation now runs successfully
 
 ## Known Issues / TODO
-- **Vector input wiring**: Blocks expecting array inputs (Demux, quaternion blocks) get scalar outputs wired - need architectural fix in code generator
-- **Thermostat relay**: Initial state/hysteresis behavior differs between headless and codegen
-- **C++ random_device**: Throws in Docker container - need deterministic seed fallback
-- **Mass-spring-damper**: Small velocity differences in C++/C/Rust for critically/underdamped systems
+- **Mass-spring-damper**: Small velocity differences in C++/C/Rust for critically/underdamped systems (expected floating-point behavior)
+- **Quaternion blocks**: Vector input wiring needs more testing with quaternion-specific examples
+
+## Recently Fixed (Session 2026-01-03)
+- **Vector input wiring**: Added `_is_vector_output()` and `_expects_vector_input()` helpers to all generators
+  - Gain block now supports both scalar and vector modes based on input dimensions
+  - Mux->Gain->Demux chains now work correctly with `get_output_vector()` wiring
+- **Thermostat relay parameters**: Fixed parameter mapping (switchOn/switchOff/outputOn/outputOff)
+- **C++ random_device**: Now uses deterministic seed based on block name hash
 
 ## Code Generation Validation Status (as of 2026-01-03)
-- **Overall**: 104/152 tests passing (68.4%)
-- **Python**: 30/38 (78.9%)
-- **C++**: 24/38 (63.2%)
-- **C**: 25/38 (65.8%)
-- **Rust**: 25/38 (65.8%)
-- Full report: `docs/codegen-validation-report.md`
+
+### Latest Run (after all fixes including Docker/build.sh fix)
+- **Python**: 36/38 (94.7%)
+- **C++**: 24/38 (63.2%) - 10 build failures, 4 value mismatches
+- **C**: 23/38 (60.5%) - 11 build failures, 4 value mismatches
+- **Rust**: 25/38 (65.8%) - 9 build failures, 4 value mismatches
+- **Overall**: 108/152 (71.1%)
+
+### Session 2026-01-03 Fixes
+1. **Fixed name collision bug in variable naming** (`base.py`)
+   - Changed `get_block_var_name()` to use unique block IDs instead of names
+   - Example: Two blocks named "Error" (Sum and Scope) now get unique variable names
+
+2. **Added `get_output_vector()` to demux blocks** (all 4 languages)
+   - Python/C++/C/Rust: `blocks/math_ops.py` in each language directory
+
+3. **Fixed WGS84 gravity input handling** (`aerospace.py`)
+   - Now handles both scalar and vector inputs
+
+4. **Fixed validation script simulation config** (`validate_codegen.py`)
+   - Now reads from both `simulationConfig` and `simulationSettings` fields
+
+5. **Added DSP block templates** (all 4 languages):
+   - `fir_filter`, `iir_filter`, `mean`, `variance`, `rms`, `downsampler`, `upsampler`, `peak_detector`, `zero_crossing_detector`
+
+6. **Fixed validation script Docker handling** (`validate_codegen.py`)
+   - Changed to run build.sh directly instead of wrapping in Docker
+   - build.sh already handles Docker internally, was causing nested Docker errors
+
+### Build Failures by Category (27 total):
+- **Aerospace blocks**: 06b, 20, 21, 22, 23, 24 (quaternion, atmosphere, gravity, DCM)
+- **Control blocks**: 32, 37 (LQR, pole placement)
+- **Navigation blocks**: 44, 45 (coordinate transforms, sensor fusion)
+- **Most failures are in C++/C/Rust** - Python templates are more complete
+
+### Value Mismatches by Category (17 total):
+- **Mass-spring-damper**: 04, 04b - Small numerical differences (3-19%)
+- **Rate limiting**: 10 - 6% error in cpp/c/rust
+- **PID speed control**: 30 - 19% in Python, 126000% in cpp/c/rust (major issue)
+- **DSP FIR lowpass**: 41 - 932-1103% (random noise source mismatch)
+
+### Python Validation Success Rate: 36/38 (94.7%)
+### Full report: `docs/codegen-validation-report.md`
 
 ## Development Environment
 

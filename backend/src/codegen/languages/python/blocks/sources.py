@@ -7,7 +7,35 @@ from ....models import BlockInfo
 def constant_template(block: BlockInfo, class_name: str) -> str:
     """Generate Constant block code."""
     value = block.parameters.get("value", 0.0)
-    return f'''
+    is_vector = isinstance(value, (list, tuple))
+
+    if is_vector:
+        return f'''
+class {class_name}:
+    """Constant source (vector): {block.name}"""
+
+    def __init__(self):
+        self.value = {value}
+        self.output = list({value})
+
+    def init(self):
+        self.output = list(self.value)
+
+    def update(self, t: float):
+        pass  # Constant doesn't change
+
+    def get_output(self, port: int = 0) -> float:
+        if isinstance(self.output, (list, tuple)) and port < len(self.output):
+            return self.output[port]
+        return self.output if not isinstance(self.output, (list, tuple)) else 0.0
+
+    def get_output_vector(self) -> list:
+        if isinstance(self.output, (list, tuple)):
+            return list(self.output)
+        return [self.output]
+'''
+    else:
+        return f'''
 class {class_name}:
     """Constant source: {block.name}"""
 
@@ -19,10 +47,13 @@ class {class_name}:
         self.output = self.value
 
     def update(self, t: float):
-        self.output = self.value
+        pass  # Constant doesn't change
 
     def get_output(self, port: int = 0) -> float:
         return self.output
+
+    def get_output_vector(self) -> list:
+        return [self.output]
 '''
 
 

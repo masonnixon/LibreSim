@@ -487,6 +487,10 @@ double {struct_name}_get_output({struct_name}* b, int port) {{
     if (port >= 0 && port < b->num_outputs) return b->outputs[port];
     return 0.0;
 }}
+
+double* {struct_name}_get_output_vector({struct_name}* b) {{
+    return b->outputs;
+}}
 """
 
 

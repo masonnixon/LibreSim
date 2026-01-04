@@ -29,6 +29,9 @@ class {class_name}:
         if port < 4:
             return self.output[port]
         return 0.0
+
+    def get_output_vector(self) -> list:
+        return list(self.output)
 '''
 
 
@@ -66,6 +69,9 @@ class {class_name}:
         if port < 4:
             return self.output[port]
         return 0.0
+
+    def get_output_vector(self) -> list:
+        return list(self.output)
 '''
 
 
@@ -89,6 +95,9 @@ class {class_name}:
         if port < 4:
             return self.output[port]
         return 0.0
+
+    def get_output_vector(self) -> list:
+        return list(self.output)
 '''
 
 
@@ -137,6 +146,9 @@ class {class_name}:
         if port < 3:
             return self.output[port]
         return 0.0
+
+    def get_output_vector(self) -> list:
+        return list(self.output)
 '''
 
 
@@ -181,6 +193,9 @@ class {class_name}:
         if port < 4:
             return self.output[port]
         return 0.0
+
+    def get_output_vector(self) -> list:
+        return list(self.output)
 '''
 
 
@@ -227,6 +242,9 @@ class {class_name}:
         if port < 3:
             return self.output[port]
         return 0.0
+
+    def get_output_vector(self) -> list:
+        return list(self.output)
 '''
 
 
@@ -285,6 +303,9 @@ class {class_name}:
         if port < 4:
             return self.output[port]
         return 0.0
+
+    def get_output_vector(self) -> list:
+        return list(self.output)
 '''
 
 
@@ -318,6 +339,9 @@ class {class_name}:
         if port < 9:
             return self.output[port]
         return 0.0
+
+    def get_output_vector(self) -> list:
+        return list(self.output)
 '''
 
 
@@ -371,6 +395,9 @@ class {class_name}:
         if port < 4:
             return self.output[port]
         return 0.0
+
+    def get_output_vector(self) -> list:
+        return list(self.output)
 '''
 
 
@@ -399,6 +426,9 @@ class {class_name}:
         if port < 3:
             return self.output[port]
         return 0.0
+
+    def get_output_vector(self) -> list:
+        return list(self.output)
 '''
 
 
@@ -411,7 +441,7 @@ class {class_name}:
     """WGS84 Gravity block: {block.name}
 
     Computes gravity based on latitude and altitude.
-    Input: [latitude (rad), altitude (m)]
+    Input: [latitude (rad), altitude (m)] or scalar (latitude only)
     """
 
     def __init__(self):
@@ -426,7 +456,13 @@ class {class_name}:
         self.output = 9.80665
 
     def update(self, t: float):
-        lat, h = self.input[0], self.input[1] if len(self.input) > 1 else 0
+        # Handle both scalar and vector inputs
+        if isinstance(self.input, (list, tuple)):
+            lat = self.input[0] if len(self.input) > 0 else 0.0
+            h = self.input[1] if len(self.input) > 1 else 0.0
+        else:
+            lat = self.input
+            h = 0.0
         sin_lat2 = math.sin(lat) ** 2
 
         # Somigliana formula
@@ -564,6 +600,9 @@ class {class_name}:
         if port < 12:
             return self.output[port]
         return 0.0
+
+    def get_output_vector(self) -> list:
+        return list(self.output)
 '''
 
 

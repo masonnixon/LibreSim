@@ -38,6 +38,11 @@ double {struct_name}_get_output({struct_name}* b, int port) {{
     if (port >= 0 && port < {array_size}) return b->output[port];
     return 0.0;
 }}
+
+void {struct_name}_get_output_vector({struct_name}* b, double* out, int size) {{
+    int n = size < {array_size} ? size : {array_size};
+    for (int i = 0; i < n; i++) out[i] = b->output[i];
+}}
 """
     else:
         return f"""

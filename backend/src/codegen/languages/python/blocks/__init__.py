@@ -14,6 +14,7 @@ from .signal_processing import SIGNAL_PROCESSING_TEMPLATES
 from .nonlinear import NONLINEAR_TEMPLATES
 from .control_design import CONTROL_DESIGN_TEMPLATES
 from .aerospace import AEROSPACE_TEMPLATES
+from .dsp import DSP_TEMPLATES
 
 # Combine all templates
 BLOCK_TEMPLATES: dict[str, Callable[[BlockInfo, str], str]] = {
@@ -27,6 +28,7 @@ BLOCK_TEMPLATES: dict[str, Callable[[BlockInfo, str], str]] = {
     **NONLINEAR_TEMPLATES,
     **CONTROL_DESIGN_TEMPLATES,
     **AEROSPACE_TEMPLATES,
+    **DSP_TEMPLATES,
 }
 
 
