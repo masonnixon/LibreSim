@@ -718,7 +718,66 @@ The toolbar supports:
 
 ## Known Issues / TODO
 - **Mass-spring-damper**: Small velocity differences in C++/C/Rust for critically/underdamped systems (expected floating-point behavior)
-- **Quaternion blocks**: Vector input wiring needs more testing with quaternion-specific examples
+- **Value mismatches**: Some examples show numerical differences between Python and C++/C/Rust (DSP blocks with random noise, etc.)
+
+## Session 2026-01-03 (Block Template Fixes and Additions)
+
+### Fixed Multi-Input Block Templates (C++/C/Rust)
+All multi-input blocks now use the generator's input wiring convention: port 0 → `input`, port 1 → `input1`, port 2 → `input2`, etc.
+
+1. **Kalman filter** (`estimation.py` - new file in all 3 languages):
+   - Created complete discrete-time Kalman filter with predict/update cycle
+   - Uses `input` (control input u) and `input1` (measurement y)
+   - Also added `luenberger_observer` template
+
+2. **LQR controller** (`control_design.py`):
+   - Fixed to use `input` as state vector array instead of separate `state[]` member
+   - Generates `u = -K * x` control law
+
+3. **Pole placement** (`control_design.py`):
+   - Fixed to use `input` as state vector array instead of separate `state[]` member
+
+4. **Quaternion rotate vector** (`aerospace.py`):
+   - Fixed to use `input` (4-element quaternion) and `input1` (3-element vector)
+   - Previously used `quaternion` and `vector` member names
+
+5. **WGS84 gravity** (`aerospace.py`):
+   - Fixed to use `input` (latitude scalar) and `input1` (altitude scalar)
+   - Previously used combined `input[2]` array but example has two separate ports
+
+### Added Navigation Block Templates (C++/C/Rust)
+Added to `aerospace.py` in all three languages:
+
+1. **lla_to_ecef**: Converts Latitude/Longitude/Altitude to ECEF (X,Y,Z) coordinates
+   - Uses WGS84 ellipsoid parameters
+   - Inputs: `input` (lat), `input1` (lon), `input2` (alt)
+
+2. **ecef_to_ned**: Converts ECEF position to North-East-Down relative to a reference point
+   - Inputs: `input` (ECEF array), `input1` (ref lat), `input2` (ref lon), `input3` (ref alt)
+
+3. **great_circle_distance**: Haversine formula for geodesic distance
+   - Inputs: `input` (lat1), `input1` (lon1), `input2` (lat2), `input3` (lon2)
+
+### Added Sensor Fusion Block Templates (C++/C/Rust)
+Added to `aerospace.py` in all three languages:
+
+1. **imu_sensor**: IMU sensor model with noise and bias
+   - Inputs: `input` (true acceleration 3-vector), `input1` (true angular rate 3-vector)
+   - Output: 6-element vector [ax, ay, az, gx, gy, gz]
+   - Parameters: accel_noise, gyro_noise, accel_bias, gyro_bias
+
+2. **madgwick_filter**: Madgwick AHRS attitude estimation filter
+   - Inputs: `input` (gyroscope 3-vector), `input1` (accelerometer 3-vector)
+   - Output: quaternion [w, x, y, z]
+   - Uses gradient descent algorithm for accelerometer correction
+
+3. **complementary_filter**: Simple complementary filter for attitude
+   - Inputs: `input` (gyroscope 3-vector), `input1` (accelerometer 3-vector)
+   - Output: [roll, pitch, yaw] in radians
+   - Parameter: alpha (filter coefficient)
+
+### Updated Block `__init__.py` Files
+- Added ESTIMATION_TEMPLATES import and merge to C++/C/Rust block registries
 
 ## Recently Fixed (Session 2026-01-03)
 - **Vector input wiring**: Added `_is_vector_output()` and `_expects_vector_input()` helpers to all generators

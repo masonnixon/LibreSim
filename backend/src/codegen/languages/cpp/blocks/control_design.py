@@ -297,19 +297,20 @@ def lqr_controller_template(block: BlockInfo, class_name: str) -> str:
 
     return f"""
 // {block.name} - LQR Controller: u = -K*x
+#include <array>
+
 class {class_name} {{
 public:
     static constexpr int NUM_STATES = {num_states};
     static constexpr int NUM_INPUTS = {num_inputs};
 
-    double input = 0.0;
-    double output[NUM_INPUTS] = {{0.0}};
-    double state[NUM_STATES] = {{0.0}};
+    std::array<double, NUM_STATES> input = {{}};  // State vector input
+    std::array<double, NUM_INPUTS> output = {{}};
     double K[NUM_INPUTS][NUM_STATES] = {k_init};
 
     void init() {{
-        for (int i = 0; i < NUM_STATES; i++) state[i] = 0.0;
-        for (int i = 0; i < NUM_INPUTS; i++) output[i] = 0.0;
+        input.fill(0.0);
+        output.fill(0.0);
     }}
 
     void update(double t) {{
@@ -318,7 +319,7 @@ public:
         for (int i = 0; i < NUM_INPUTS; i++) {{
             double u = 0.0;
             for (int j = 0; j < NUM_STATES; j++) {{
-                u -= K[i][j] * state[j];
+                u -= K[i][j] * input[j];
             }}
             output[i] = u;
         }}
@@ -345,17 +346,18 @@ def pole_placement_template(block: BlockInfo, class_name: str) -> str:
 
     return f"""
 // {block.name} - Pole Placement Controller: u = -K*x
+#include <array>
+
 class {class_name} {{
 public:
     static constexpr int NUM_STATES = {num_states};
 
-    double input = 0.0;
+    std::array<double, NUM_STATES> input = {{}};  // State vector input
     double output = 0.0;
-    double state[NUM_STATES] = {{0.0}};
     double K[NUM_STATES] = {k_init};
 
     void init() {{
-        for (int i = 0; i < NUM_STATES; i++) state[i] = 0.0;
+        input.fill(0.0);
         output = 0.0;
     }}
 
@@ -364,7 +366,7 @@ public:
         // u = -K * x (SISO)
         double u = 0.0;
         for (int i = 0; i < NUM_STATES; i++) {{
-            u -= K[i] * state[i];
+            u -= K[i] * input[i];
         }}
         output = u;
     }}

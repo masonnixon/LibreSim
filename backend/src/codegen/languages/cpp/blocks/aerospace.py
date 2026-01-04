@@ -218,20 +218,23 @@ def quaternion_rotate_vector_template(block: BlockInfo, class_name: str) -> str:
 
 class {class_name} {{
 public:
-    std::array<double, 4> quaternion = {{1.0, 0.0, 0.0, 0.0}};
-    std::array<double, 3> vector = {{0.0, 0.0, 0.0}};
+    // Input: quaternion (port 0) - use 'input' pointer for vector assignment
+    std::array<double, 4> input = {{1.0, 0.0, 0.0, 0.0}};
+    // Input: vector (port 1)
+    std::array<double, 3> input1 = {{0.0, 0.0, 0.0}};
     std::array<double, 3> output = {{0.0, 0.0, 0.0}};
-    double input = 0.0;
 
     void init() {{
+        input = {{1.0, 0.0, 0.0, 0.0}};
+        input1 = {{0.0, 0.0, 0.0}};
         output = {{0.0, 0.0, 0.0}};
     }}
 
     void update(double t) {{
         (void)t;
-        double w = quaternion[0], x = quaternion[1];
-        double y = quaternion[2], z = quaternion[3];
-        double vx = vector[0], vy = vector[1], vz = vector[2];
+        double w = input[0], x = input[1];
+        double y = input[2], z = input[3];
+        double vx = input1[0], vy = input1[1], vz = input1[2];
 
         // q_v x v
         double cx1 = y * vz - z * vy;
@@ -469,7 +472,8 @@ def wgs84_gravity_template(block: BlockInfo, class_name: str) -> str:
 
 class {class_name} {{
 public:
-    std::array<double, 2> input = {{0.0, 0.0}};  // [latitude, altitude]
+    double input = 0.0;   // Latitude (rad) - port 0
+    double input1 = 0.0;  // Altitude (m) - port 1
     double output = 9.80665;
 
     static constexpr double a = 6378137.0;
@@ -481,7 +485,7 @@ public:
 
     void update(double t) {{
         (void)t;
-        double lat = input[0], h = input[1];
+        double lat = input, h = input1;
         double sin_lat2 = std::sin(lat) * std::sin(lat);
 
         double g0 = ge * (1 + 0.00193185265241 * sin_lat2) /
@@ -611,6 +615,374 @@ public:
 """
 
 
+def lla_to_ecef_template(block: BlockInfo, class_name: str) -> str:
+    """Generate LLA to ECEF conversion block code."""
+    return f"""
+// {block.name} - LLA to ECEF Conversion
+#include <cmath>
+#include <array>
+
+class {class_name} {{
+public:
+    double input = 0.0;   // Latitude (rad) - port 0
+    double input1 = 0.0;  // Longitude (rad) - port 1
+    double input2 = 0.0;  // Altitude (m) - port 2
+    std::array<double, 3> output = {{0.0, 0.0, 0.0}};  // [X, Y, Z] ECEF
+
+    // WGS84 constants
+    static constexpr double a = 6378137.0;           // Semi-major axis
+    static constexpr double f = 1.0 / 298.257223563; // Flattening
+    static constexpr double e2 = 2*f - f*f;          // Eccentricity squared
+
+    void init() {{
+        output = {{0.0, 0.0, 0.0}};
+    }}
+
+    void update(double t) {{
+        (void)t;
+        double lat = input, lon = input1, alt = input2;
+        double sin_lat = std::sin(lat), cos_lat = std::cos(lat);
+        double sin_lon = std::sin(lon), cos_lon = std::cos(lon);
+
+        double N = a / std::sqrt(1.0 - e2 * sin_lat * sin_lat);
+
+        output[0] = (N + alt) * cos_lat * cos_lon;
+        output[1] = (N + alt) * cos_lat * sin_lon;
+        output[2] = (N * (1.0 - e2) + alt) * sin_lat;
+    }}
+
+    double get_output(int port = 0) const {{
+        if (port >= 0 && port < 3) return output[port];
+        return 0.0;
+    }}
+
+    const std::array<double, 3>& getOutputVector() const {{
+        return output;
+    }}
+}};
+"""
+
+
+def ecef_to_ned_template(block: BlockInfo, class_name: str) -> str:
+    """Generate ECEF to NED conversion block code."""
+    return f"""
+// {block.name} - ECEF to NED Conversion
+#include <cmath>
+#include <array>
+
+class {class_name} {{
+public:
+    // ECEF position vector (port 0) - 3 elements
+    std::array<double, 3> input = {{0.0, 0.0, 0.0}};
+    // Reference point: lat (port 1), lon (port 2), alt (port 3)
+    double input1 = 0.0;  // Reference latitude (rad)
+    double input2 = 0.0;  // Reference longitude (rad)
+    double input3 = 0.0;  // Reference altitude (m)
+    std::array<double, 3> output = {{0.0, 0.0, 0.0}};  // [N, E, D]
+
+    // WGS84 constants
+    static constexpr double a = 6378137.0;
+    static constexpr double f = 1.0 / 298.257223563;
+    static constexpr double e2 = 2*f - f*f;
+
+    void init() {{
+        output = {{0.0, 0.0, 0.0}};
+    }}
+
+    void update(double t) {{
+        (void)t;
+        double lat_ref = input1, lon_ref = input2, alt_ref = input3;
+        double sin_lat = std::sin(lat_ref), cos_lat = std::cos(lat_ref);
+        double sin_lon = std::sin(lon_ref), cos_lon = std::cos(lon_ref);
+
+        // Reference ECEF position
+        double N_ref = a / std::sqrt(1.0 - e2 * sin_lat * sin_lat);
+        double x_ref = (N_ref + alt_ref) * cos_lat * cos_lon;
+        double y_ref = (N_ref + alt_ref) * cos_lat * sin_lon;
+        double z_ref = (N_ref * (1.0 - e2) + alt_ref) * sin_lat;
+
+        // Delta ECEF
+        double dx = input[0] - x_ref;
+        double dy = input[1] - y_ref;
+        double dz = input[2] - z_ref;
+
+        // Rotation matrix ECEF->NED
+        output[0] = -sin_lat * cos_lon * dx - sin_lat * sin_lon * dy + cos_lat * dz;  // N
+        output[1] = -sin_lon * dx + cos_lon * dy;  // E
+        output[2] = -cos_lat * cos_lon * dx - cos_lat * sin_lon * dy - sin_lat * dz;  // D
+    }}
+
+    double get_output(int port = 0) const {{
+        if (port >= 0 && port < 3) return output[port];
+        return 0.0;
+    }}
+
+    const std::array<double, 3>& getOutputVector() const {{
+        return output;
+    }}
+}};
+"""
+
+
+def great_circle_distance_template(block: BlockInfo, class_name: str) -> str:
+    """Generate Great Circle Distance block code."""
+    return f"""
+// {block.name} - Great Circle Distance (Haversine)
+#include <cmath>
+
+class {class_name} {{
+public:
+    double input = 0.0;   // Latitude 1 (rad) - port 0
+    double input1 = 0.0;  // Longitude 1 (rad) - port 1
+    double input2 = 0.0;  // Latitude 2 (rad) - port 2
+    double input3 = 0.0;  // Longitude 2 (rad) - port 3
+    double output = 0.0;  // Distance (m)
+
+    static constexpr double R = 6371000.0;  // Earth mean radius (m)
+
+    void init() {{
+        output = 0.0;
+    }}
+
+    void update(double t) {{
+        (void)t;
+        double lat1 = input, lon1 = input1;
+        double lat2 = input2, lon2 = input3;
+
+        double dlat = lat2 - lat1;
+        double dlon = lon2 - lon1;
+
+        double a = std::sin(dlat / 2) * std::sin(dlat / 2) +
+                   std::cos(lat1) * std::cos(lat2) *
+                   std::sin(dlon / 2) * std::sin(dlon / 2);
+        double c = 2 * std::atan2(std::sqrt(a), std::sqrt(1 - a));
+
+        output = R * c;
+    }}
+
+    double get_output(int port = 0) const {{
+        (void)port;
+        return output;
+    }}
+
+    double getOutputVector() const {{
+        return output;
+    }}
+}};
+"""
+
+
+def imu_sensor_template(block: BlockInfo, class_name: str) -> str:
+    """Generate IMU sensor model block code."""
+    accel_noise = block.parameters.get("accel_noise", 0.01)
+    gyro_noise = block.parameters.get("gyro_noise", 0.001)
+    accel_bias = block.parameters.get("accel_bias", 0.0)
+    gyro_bias = block.parameters.get("gyro_bias", 0.0)
+    return f"""
+// {block.name} - IMU Sensor Model
+#include <cmath>
+#include <array>
+#include <random>
+
+class {class_name} {{
+public:
+    // Input: true acceleration (port 0) - 3 elements
+    std::array<double, 3> input = {{0.0, 0.0, 0.0}};
+    // Input: true angular rate (port 1) - 3 elements
+    std::array<double, 3> input1 = {{0.0, 0.0, 0.0}};
+    // Output: [ax, ay, az, gx, gy, gz] - measured with noise
+    std::array<double, 6> output = {{0.0, 0.0, 0.0, 0.0, 0.0, 0.0}};
+
+    double accel_noise = {accel_noise};
+    double gyro_noise = {gyro_noise};
+    double accel_bias = {accel_bias};
+    double gyro_bias = {gyro_bias};
+
+    std::mt19937 gen{{42}};
+    std::normal_distribution<double> accel_dist{{0.0, accel_noise}};
+    std::normal_distribution<double> gyro_dist{{0.0, gyro_noise}};
+
+    void init() {{
+        output = {{0.0, 0.0, 0.0, 0.0, 0.0, 0.0}};
+    }}
+
+    void update(double t) {{
+        (void)t;
+        // Add noise and bias to accelerometer
+        for (int i = 0; i < 3; i++) {{
+            output[i] = input[i] + accel_bias + accel_dist(gen);
+        }}
+        // Add noise and bias to gyroscope
+        for (int i = 0; i < 3; i++) {{
+            output[3 + i] = input1[i] + gyro_bias + gyro_dist(gen);
+        }}
+    }}
+
+    double get_output(int port = 0) const {{
+        if (port >= 0 && port < 6) return output[port];
+        return 0.0;
+    }}
+
+    const std::array<double, 6>& getOutputVector() const {{
+        return output;
+    }}
+}};
+"""
+
+
+def madgwick_filter_template(block: BlockInfo, class_name: str) -> str:
+    """Generate Madgwick AHRS filter block code."""
+    beta = block.parameters.get("beta", 0.1)
+    return f"""
+// {block.name} - Madgwick AHRS Filter
+#include <cmath>
+#include <array>
+
+class {class_name} {{
+public:
+    // Input: gyroscope [gx, gy, gz] (rad/s) - port 0
+    std::array<double, 3> input = {{0.0, 0.0, 0.0}};
+    // Input: accelerometer [ax, ay, az] (m/s^2) - port 1
+    std::array<double, 3> input1 = {{0.0, 0.0, 9.81}};
+    // Output: quaternion [w, x, y, z]
+    std::array<double, 4> output = {{1.0, 0.0, 0.0, 0.0}};
+
+    double beta = {beta};  // Filter gain
+    double q0 = 1.0, q1 = 0.0, q2 = 0.0, q3 = 0.0;  // Internal quaternion state
+    double sample_period = 0.01;  // Default sample period
+
+    void init() {{
+        q0 = 1.0; q1 = 0.0; q2 = 0.0; q3 = 0.0;
+        output = {{1.0, 0.0, 0.0, 0.0}};
+    }}
+
+    void update(double t) {{
+        (void)t;
+        double gx = input[0], gy = input[1], gz = input[2];
+        double ax = input1[0], ay = input1[1], az = input1[2];
+
+        // Normalize accelerometer
+        double norm = std::sqrt(ax*ax + ay*ay + az*az);
+        if (norm > 1e-10) {{
+            ax /= norm; ay /= norm; az /= norm;
+        }}
+
+        // Gradient descent algorithm
+        double f1 = 2.0*(q1*q3 - q0*q2) - ax;
+        double f2 = 2.0*(q0*q1 + q2*q3) - ay;
+        double f3 = 2.0*(0.5 - q1*q1 - q2*q2) - az;
+
+        double J11 = -2.0*q2, J12 = 2.0*q3, J13 = -2.0*q0, J14 = 2.0*q1;
+        double J21 = 2.0*q1, J22 = 2.0*q0, J23 = 2.0*q3, J24 = 2.0*q2;
+        double J31 = 0.0, J32 = -4.0*q1, J33 = -4.0*q2, J34 = 0.0;
+
+        double grad0 = J11*f1 + J21*f2 + J31*f3;
+        double grad1 = J12*f1 + J22*f2 + J32*f3;
+        double grad2 = J13*f1 + J23*f2 + J33*f3;
+        double grad3 = J14*f1 + J24*f2 + J34*f3;
+
+        norm = std::sqrt(grad0*grad0 + grad1*grad1 + grad2*grad2 + grad3*grad3);
+        if (norm > 1e-10) {{
+            grad0 /= norm; grad1 /= norm; grad2 /= norm; grad3 /= norm;
+        }}
+
+        // Quaternion rate from gyroscope
+        double qDot0 = 0.5*(-q1*gx - q2*gy - q3*gz);
+        double qDot1 = 0.5*(q0*gx + q2*gz - q3*gy);
+        double qDot2 = 0.5*(q0*gy - q1*gz + q3*gx);
+        double qDot3 = 0.5*(q0*gz + q1*gy - q2*gx);
+
+        // Apply gradient descent correction
+        qDot0 -= beta * grad0;
+        qDot1 -= beta * grad1;
+        qDot2 -= beta * grad2;
+        qDot3 -= beta * grad3;
+
+        // Integrate
+        q0 += qDot0 * sample_period;
+        q1 += qDot1 * sample_period;
+        q2 += qDot2 * sample_period;
+        q3 += qDot3 * sample_period;
+
+        // Normalize quaternion
+        norm = std::sqrt(q0*q0 + q1*q1 + q2*q2 + q3*q3);
+        q0 /= norm; q1 /= norm; q2 /= norm; q3 /= norm;
+
+        output = {{q0, q1, q2, q3}};
+    }}
+
+    double get_output(int port = 0) const {{
+        if (port >= 0 && port < 4) return output[port];
+        return 0.0;
+    }}
+
+    const std::array<double, 4>& getOutputVector() const {{
+        return output;
+    }}
+}};
+"""
+
+
+def complementary_filter_template(block: BlockInfo, class_name: str) -> str:
+    """Generate Complementary filter block code."""
+    alpha = block.parameters.get("alpha", 0.98)
+    return f"""
+// {block.name} - Complementary Filter
+#include <cmath>
+#include <array>
+
+class {class_name} {{
+public:
+    // Input: gyroscope [gx, gy, gz] (rad/s) - port 0
+    std::array<double, 3> input = {{0.0, 0.0, 0.0}};
+    // Input: accelerometer [ax, ay, az] (m/s^2) - port 1
+    std::array<double, 3> input1 = {{0.0, 0.0, 9.81}};
+    // Output: [roll, pitch, yaw] (rad)
+    std::array<double, 3> output = {{0.0, 0.0, 0.0}};
+
+    double alpha = {alpha};  // Filter coefficient (high = trust gyro more)
+    double roll = 0.0, pitch = 0.0, yaw = 0.0;
+    double sample_period = 0.01;
+
+    void init() {{
+        roll = 0.0; pitch = 0.0; yaw = 0.0;
+        output = {{0.0, 0.0, 0.0}};
+    }}
+
+    void update(double t) {{
+        (void)t;
+        double gx = input[0], gy = input[1], gz = input[2];
+        double ax = input1[0], ay = input1[1], az = input1[2];
+
+        // Gyroscope integration
+        roll += gx * sample_period;
+        pitch += gy * sample_period;
+        yaw += gz * sample_period;
+
+        // Accelerometer angles
+        double accel_roll = std::atan2(ay, az);
+        double accel_pitch = std::atan2(-ax, std::sqrt(ay*ay + az*az));
+
+        // Complementary filter
+        roll = alpha * roll + (1.0 - alpha) * accel_roll;
+        pitch = alpha * pitch + (1.0 - alpha) * accel_pitch;
+        // Yaw has no accelerometer correction (needs magnetometer)
+
+        output = {{roll, pitch, yaw}};
+    }}
+
+    double get_output(int port = 0) const {{
+        if (port >= 0 && port < 3) return output[port];
+        return 0.0;
+    }}
+
+    const std::array<double, 3>& getOutputVector() const {{
+        return output;
+    }}
+}};
+"""
+
+
 # Template registry for aerospace blocks
 AEROSPACE_TEMPLATES = {
     "quaternion_normalize": quaternion_normalize_template,
@@ -625,4 +997,10 @@ AEROSPACE_TEMPLATES = {
     "flat_earth_gravity": flat_earth_gravity_template,
     "wgs84_gravity": wgs84_gravity_template,
     "six_dof_euler": six_dof_euler_template,
+    "lla_to_ecef": lla_to_ecef_template,
+    "ecef_to_ned": ecef_to_ned_template,
+    "great_circle_distance": great_circle_distance_template,
+    "imu_sensor": imu_sensor_template,
+    "madgwick_filter": madgwick_filter_template,
+    "complementary_filter": complementary_filter_template,
 }

@@ -211,25 +211,23 @@ def quaternion_rotate_vector_template(block: BlockInfo, struct_name: str) -> str
     return f"""
 // {block.name} - Quaternion Rotate Vector
 typedef struct {{
-    double quaternion[4];  // [w, x, y, z]
-    double vector[3];
+    double input[4];   // Quaternion [w, x, y, z] (port 0)
+    double input1[3];  // Vector (port 1)
     double output[3];
-    double input;
 }} {struct_name};
 
 void {struct_name}_init({struct_name}* b) {{
-    b->quaternion[0] = 1.0; b->quaternion[1] = 0.0;
-    b->quaternion[2] = 0.0; b->quaternion[3] = 0.0;
-    b->vector[0] = 0.0; b->vector[1] = 0.0; b->vector[2] = 0.0;
+    b->input[0] = 1.0; b->input[1] = 0.0;
+    b->input[2] = 0.0; b->input[3] = 0.0;
+    b->input1[0] = 0.0; b->input1[1] = 0.0; b->input1[2] = 0.0;
     b->output[0] = 0.0; b->output[1] = 0.0; b->output[2] = 0.0;
-    b->input = 0.0;
 }}
 
 void {struct_name}_update({struct_name}* b, double t) {{
     (void)t;
-    double w = b->quaternion[0], x = b->quaternion[1];
-    double y = b->quaternion[2], z = b->quaternion[3];
-    double vx = b->vector[0], vy = b->vector[1], vz = b->vector[2];
+    double w = b->input[0], x = b->input[1];
+    double y = b->input[2], z = b->input[3];
+    double vx = b->input1[0], vy = b->input1[1], vz = b->input1[2];
 
     // q_v x v
     double cx1 = y * vz - z * vy;
@@ -475,14 +473,15 @@ def wgs84_gravity_template(block: BlockInfo, struct_name: str) -> str:
 #include <math.h>
 
 typedef struct {{
-    double input[2];  // [latitude, altitude]
+    double input;   // Latitude (rad) - port 0
+    double input1;  // Altitude (m) - port 1
     double output;
     double a, ge;
 }} {struct_name};
 
 void {struct_name}_init({struct_name}* b) {{
-    b->input[0] = 0.0;
-    b->input[1] = 0.0;
+    b->input = 0.0;
+    b->input1 = 0.0;
     b->output = 9.80665;
     b->a = 6378137.0;
     b->ge = 9.7803253359;
@@ -490,7 +489,7 @@ void {struct_name}_init({struct_name}* b) {{
 
 void {struct_name}_update({struct_name}* b, double t) {{
     (void)t;
-    double lat = b->input[0], h = b->input[1];
+    double lat = b->input, h = b->input1;
     double sin_lat2 = sin(lat) * sin(lat);
 
     double g0 = b->ge * (1 + 0.00193185265241 * sin_lat2) /
@@ -625,6 +624,351 @@ static inline double* {struct_name}_get_output_vector({struct_name}* b) {{
 """
 
 
+def lla_to_ecef_template(block: BlockInfo, struct_name: str) -> str:
+    """Generate LLA to ECEF conversion block code."""
+    return f"""
+// {block.name} - LLA to ECEF Conversion
+#include <math.h>
+
+#define {struct_name.upper()}_A 6378137.0
+#define {struct_name.upper()}_F (1.0 / 298.257223563)
+#define {struct_name.upper()}_E2 (2*{struct_name.upper()}_F - {struct_name.upper()}_F*{struct_name.upper()}_F)
+
+typedef struct {{
+    double input;   // Latitude (rad) - port 0
+    double input1;  // Longitude (rad) - port 1
+    double input2;  // Altitude (m) - port 2
+    double output[3];  // [X, Y, Z] ECEF
+}} {struct_name};
+
+void {struct_name}_init({struct_name}* b) {{
+    b->input = 0.0;
+    b->input1 = 0.0;
+    b->input2 = 0.0;
+    b->output[0] = 0.0;
+    b->output[1] = 0.0;
+    b->output[2] = 0.0;
+}}
+
+void {struct_name}_update({struct_name}* b, double t) {{
+    (void)t;
+    double lat = b->input, lon = b->input1, alt = b->input2;
+    double sin_lat = sin(lat), cos_lat = cos(lat);
+    double sin_lon = sin(lon), cos_lon = cos(lon);
+
+    double N = {struct_name.upper()}_A / sqrt(1.0 - {struct_name.upper()}_E2 * sin_lat * sin_lat);
+
+    b->output[0] = (N + alt) * cos_lat * cos_lon;
+    b->output[1] = (N + alt) * cos_lat * sin_lon;
+    b->output[2] = (N * (1.0 - {struct_name.upper()}_E2) + alt) * sin_lat;
+}}
+
+double {struct_name}_get_output({struct_name}* b, int port) {{
+    if (port >= 0 && port < 3) return b->output[port];
+    return 0.0;
+}}
+
+static inline double* {struct_name}_get_output_vector({struct_name}* b) {{
+    return b->output;
+}}
+"""
+
+
+def ecef_to_ned_template(block: BlockInfo, struct_name: str) -> str:
+    """Generate ECEF to NED conversion block code."""
+    return f"""
+// {block.name} - ECEF to NED Conversion
+#include <math.h>
+
+#define {struct_name.upper()}_A 6378137.0
+#define {struct_name.upper()}_F (1.0 / 298.257223563)
+#define {struct_name.upper()}_E2 (2*{struct_name.upper()}_F - {struct_name.upper()}_F*{struct_name.upper()}_F)
+
+typedef struct {{
+    double input[3];  // ECEF position vector - port 0
+    double input1;    // Reference latitude (rad) - port 1
+    double input2;    // Reference longitude (rad) - port 2
+    double input3;    // Reference altitude (m) - port 3
+    double output[3]; // [N, E, D]
+}} {struct_name};
+
+void {struct_name}_init({struct_name}* b) {{
+    b->input[0] = 0.0; b->input[1] = 0.0; b->input[2] = 0.0;
+    b->input1 = 0.0;
+    b->input2 = 0.0;
+    b->input3 = 0.0;
+    b->output[0] = 0.0; b->output[1] = 0.0; b->output[2] = 0.0;
+}}
+
+void {struct_name}_update({struct_name}* b, double t) {{
+    (void)t;
+    double lat_ref = b->input1, lon_ref = b->input2, alt_ref = b->input3;
+    double sin_lat = sin(lat_ref), cos_lat = cos(lat_ref);
+    double sin_lon = sin(lon_ref), cos_lon = cos(lon_ref);
+
+    // Reference ECEF position
+    double N_ref = {struct_name.upper()}_A / sqrt(1.0 - {struct_name.upper()}_E2 * sin_lat * sin_lat);
+    double x_ref = (N_ref + alt_ref) * cos_lat * cos_lon;
+    double y_ref = (N_ref + alt_ref) * cos_lat * sin_lon;
+    double z_ref = (N_ref * (1.0 - {struct_name.upper()}_E2) + alt_ref) * sin_lat;
+
+    // Delta ECEF
+    double dx = b->input[0] - x_ref;
+    double dy = b->input[1] - y_ref;
+    double dz = b->input[2] - z_ref;
+
+    // Rotation matrix ECEF->NED
+    b->output[0] = -sin_lat * cos_lon * dx - sin_lat * sin_lon * dy + cos_lat * dz;  // N
+    b->output[1] = -sin_lon * dx + cos_lon * dy;  // E
+    b->output[2] = -cos_lat * cos_lon * dx - cos_lat * sin_lon * dy - sin_lat * dz;  // D
+}}
+
+double {struct_name}_get_output({struct_name}* b, int port) {{
+    if (port >= 0 && port < 3) return b->output[port];
+    return 0.0;
+}}
+
+static inline double* {struct_name}_get_output_vector({struct_name}* b) {{
+    return b->output;
+}}
+"""
+
+
+def great_circle_distance_template(block: BlockInfo, struct_name: str) -> str:
+    """Generate Great Circle Distance block code."""
+    return f"""
+// {block.name} - Great Circle Distance (Haversine)
+#include <math.h>
+
+#define {struct_name.upper()}_R 6371000.0
+
+typedef struct {{
+    double input;   // Latitude 1 (rad) - port 0
+    double input1;  // Longitude 1 (rad) - port 1
+    double input2;  // Latitude 2 (rad) - port 2
+    double input3;  // Longitude 2 (rad) - port 3
+    double output;  // Distance (m)
+}} {struct_name};
+
+void {struct_name}_init({struct_name}* b) {{
+    b->input = 0.0;
+    b->input1 = 0.0;
+    b->input2 = 0.0;
+    b->input3 = 0.0;
+    b->output = 0.0;
+}}
+
+void {struct_name}_update({struct_name}* b, double t) {{
+    (void)t;
+    double lat1 = b->input, lon1 = b->input1;
+    double lat2 = b->input2, lon2 = b->input3;
+
+    double dlat = lat2 - lat1;
+    double dlon = lon2 - lon1;
+
+    double a = sin(dlat / 2) * sin(dlat / 2) +
+               cos(lat1) * cos(lat2) *
+               sin(dlon / 2) * sin(dlon / 2);
+    double c = 2 * atan2(sqrt(a), sqrt(1 - a));
+
+    b->output = {struct_name.upper()}_R * c;
+}}
+
+double {struct_name}_get_output({struct_name}* b, int port) {{
+    (void)port;
+    return b->output;
+}}
+
+double {struct_name}_get_output_vector({struct_name}* b) {{
+    return b->output;
+}}
+"""
+
+
+def imu_sensor_template(block: BlockInfo, struct_name: str) -> str:
+    """Generate IMU sensor model block code."""
+    accel_noise = block.parameters.get("accel_noise", 0.01)
+    gyro_noise = block.parameters.get("gyro_noise", 0.001)
+    accel_bias = block.parameters.get("accel_bias", 0.0)
+    gyro_bias = block.parameters.get("gyro_bias", 0.0)
+    return f"""
+// {block.name} - IMU Sensor Model
+#include <math.h>
+#include <stdlib.h>
+
+typedef struct {{
+    double input[3];   // True acceleration (port 0)
+    double input1[3];  // True angular rate (port 1)
+    double output[6];  // [ax, ay, az, gx, gy, gz]
+    double accel_noise, gyro_noise, accel_bias, gyro_bias;
+}} {struct_name};
+
+static double {struct_name}_randn(void) {{
+    // Box-Muller transform for Gaussian noise
+    double u1 = ((double)rand() + 1.0) / ((double)RAND_MAX + 2.0);
+    double u2 = ((double)rand() + 1.0) / ((double)RAND_MAX + 2.0);
+    return sqrt(-2.0 * log(u1)) * cos(2.0 * M_PI * u2);
+}}
+
+void {struct_name}_init({struct_name}* b) {{
+    for (int i = 0; i < 3; i++) {{ b->input[i] = 0.0; b->input1[i] = 0.0; }}
+    for (int i = 0; i < 6; i++) b->output[i] = 0.0;
+    b->accel_noise = {accel_noise};
+    b->gyro_noise = {gyro_noise};
+    b->accel_bias = {accel_bias};
+    b->gyro_bias = {gyro_bias};
+}}
+
+void {struct_name}_update({struct_name}* b, double t) {{
+    (void)t;
+    for (int i = 0; i < 3; i++) {{
+        b->output[i] = b->input[i] + b->accel_bias + b->accel_noise * {struct_name}_randn();
+    }}
+    for (int i = 0; i < 3; i++) {{
+        b->output[3 + i] = b->input1[i] + b->gyro_bias + b->gyro_noise * {struct_name}_randn();
+    }}
+}}
+
+double {struct_name}_get_output({struct_name}* b, int port) {{
+    if (port >= 0 && port < 6) return b->output[port];
+    return 0.0;
+}}
+
+static inline double* {struct_name}_get_output_vector({struct_name}* b) {{
+    return b->output;
+}}
+"""
+
+
+def madgwick_filter_template(block: BlockInfo, struct_name: str) -> str:
+    """Generate Madgwick AHRS filter block code."""
+    beta = block.parameters.get("beta", 0.1)
+    return f"""
+// {block.name} - Madgwick AHRS Filter
+#include <math.h>
+
+typedef struct {{
+    double input[3];   // Gyroscope [gx, gy, gz] (rad/s) - port 0
+    double input1[3];  // Accelerometer [ax, ay, az] (m/s^2) - port 1
+    double output[4];  // Quaternion [w, x, y, z]
+    double beta;
+    double q0, q1, q2, q3;  // Internal quaternion state
+    double sample_period;
+}} {struct_name};
+
+void {struct_name}_init({struct_name}* b) {{
+    for (int i = 0; i < 3; i++) {{ b->input[i] = 0.0; }}
+    b->input1[0] = 0.0; b->input1[1] = 0.0; b->input1[2] = 9.81;
+    b->output[0] = 1.0; b->output[1] = 0.0; b->output[2] = 0.0; b->output[3] = 0.0;
+    b->beta = {beta};
+    b->q0 = 1.0; b->q1 = 0.0; b->q2 = 0.0; b->q3 = 0.0;
+    b->sample_period = 0.01;
+}}
+
+void {struct_name}_update({struct_name}* b, double t) {{
+    (void)t;
+    double gx = b->input[0], gy = b->input[1], gz = b->input[2];
+    double ax = b->input1[0], ay = b->input1[1], az = b->input1[2];
+
+    double norm = sqrt(ax*ax + ay*ay + az*az);
+    if (norm > 1e-10) {{ ax /= norm; ay /= norm; az /= norm; }}
+
+    double f1 = 2.0*(b->q1*b->q3 - b->q0*b->q2) - ax;
+    double f2 = 2.0*(b->q0*b->q1 + b->q2*b->q3) - ay;
+    double f3 = 2.0*(0.5 - b->q1*b->q1 - b->q2*b->q2) - az;
+
+    double J11 = -2.0*b->q2, J12 = 2.0*b->q3, J13 = -2.0*b->q0, J14 = 2.0*b->q1;
+    double J21 = 2.0*b->q1, J22 = 2.0*b->q0, J23 = 2.0*b->q3, J24 = 2.0*b->q2;
+    double J32 = -4.0*b->q1, J33 = -4.0*b->q2;
+
+    double grad0 = J11*f1 + J21*f2;
+    double grad1 = J12*f1 + J22*f2 + J32*f3;
+    double grad2 = J13*f1 + J23*f2 + J33*f3;
+    double grad3 = J14*f1 + J24*f2;
+
+    norm = sqrt(grad0*grad0 + grad1*grad1 + grad2*grad2 + grad3*grad3);
+    if (norm > 1e-10) {{ grad0 /= norm; grad1 /= norm; grad2 /= norm; grad3 /= norm; }}
+
+    double qDot0 = 0.5*(-b->q1*gx - b->q2*gy - b->q3*gz) - b->beta * grad0;
+    double qDot1 = 0.5*(b->q0*gx + b->q2*gz - b->q3*gy) - b->beta * grad1;
+    double qDot2 = 0.5*(b->q0*gy - b->q1*gz + b->q3*gx) - b->beta * grad2;
+    double qDot3 = 0.5*(b->q0*gz + b->q1*gy - b->q2*gx) - b->beta * grad3;
+
+    b->q0 += qDot0 * b->sample_period;
+    b->q1 += qDot1 * b->sample_period;
+    b->q2 += qDot2 * b->sample_period;
+    b->q3 += qDot3 * b->sample_period;
+
+    norm = sqrt(b->q0*b->q0 + b->q1*b->q1 + b->q2*b->q2 + b->q3*b->q3);
+    b->q0 /= norm; b->q1 /= norm; b->q2 /= norm; b->q3 /= norm;
+
+    b->output[0] = b->q0; b->output[1] = b->q1; b->output[2] = b->q2; b->output[3] = b->q3;
+}}
+
+double {struct_name}_get_output({struct_name}* b, int port) {{
+    if (port >= 0 && port < 4) return b->output[port];
+    return 0.0;
+}}
+
+static inline double* {struct_name}_get_output_vector({struct_name}* b) {{
+    return b->output;
+}}
+"""
+
+
+def complementary_filter_template(block: BlockInfo, struct_name: str) -> str:
+    """Generate Complementary filter block code."""
+    alpha = block.parameters.get("alpha", 0.98)
+    return f"""
+// {block.name} - Complementary Filter
+#include <math.h>
+
+typedef struct {{
+    double input[3];   // Gyroscope [gx, gy, gz] (rad/s) - port 0
+    double input1[3];  // Accelerometer [ax, ay, az] (m/s^2) - port 1
+    double output[3];  // [roll, pitch, yaw] (rad)
+    double alpha;
+    double roll, pitch, yaw;
+    double sample_period;
+}} {struct_name};
+
+void {struct_name}_init({struct_name}* b) {{
+    for (int i = 0; i < 3; i++) {{ b->input[i] = 0.0; b->output[i] = 0.0; }}
+    b->input1[0] = 0.0; b->input1[1] = 0.0; b->input1[2] = 9.81;
+    b->alpha = {alpha};
+    b->roll = 0.0; b->pitch = 0.0; b->yaw = 0.0;
+    b->sample_period = 0.01;
+}}
+
+void {struct_name}_update({struct_name}* b, double t) {{
+    (void)t;
+    double gx = b->input[0], gy = b->input[1], gz = b->input[2];
+    double ax = b->input1[0], ay = b->input1[1], az = b->input1[2];
+
+    b->roll += gx * b->sample_period;
+    b->pitch += gy * b->sample_period;
+    b->yaw += gz * b->sample_period;
+
+    double accel_roll = atan2(ay, az);
+    double accel_pitch = atan2(-ax, sqrt(ay*ay + az*az));
+
+    b->roll = b->alpha * b->roll + (1.0 - b->alpha) * accel_roll;
+    b->pitch = b->alpha * b->pitch + (1.0 - b->alpha) * accel_pitch;
+
+    b->output[0] = b->roll; b->output[1] = b->pitch; b->output[2] = b->yaw;
+}}
+
+double {struct_name}_get_output({struct_name}* b, int port) {{
+    if (port >= 0 && port < 3) return b->output[port];
+    return 0.0;
+}}
+
+static inline double* {struct_name}_get_output_vector({struct_name}* b) {{
+    return b->output;
+}}
+"""
+
+
 # Template registry for aerospace blocks
 AEROSPACE_TEMPLATES = {
     "quaternion_normalize": quaternion_normalize_template,
@@ -639,4 +983,10 @@ AEROSPACE_TEMPLATES = {
     "flat_earth_gravity": flat_earth_gravity_template,
     "wgs84_gravity": wgs84_gravity_template,
     "six_dof_euler": six_dof_euler_template,
+    "lla_to_ecef": lla_to_ecef_template,
+    "ecef_to_ned": ecef_to_ned_template,
+    "great_circle_distance": great_circle_distance_template,
+    "imu_sensor": imu_sensor_template,
+    "madgwick_filter": madgwick_filter_template,
+    "complementary_filter": complementary_filter_template,
 }

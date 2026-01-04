@@ -314,19 +314,17 @@ def lqr_controller_template(block: BlockInfo, struct_name: str) -> str:
 #define {struct_name.upper()}_NUM_INPUTS {num_inputs}
 
 typedef struct {{
-    double input;
+    double input[{struct_name.upper()}_NUM_STATES];  // State vector input
     double output[{struct_name.upper()}_NUM_INPUTS];
-    double state[{struct_name.upper()}_NUM_STATES];
     double K[{struct_name.upper()}_NUM_INPUTS][{struct_name.upper()}_NUM_STATES];
     int num_states;
     int num_inputs;
 }} {struct_name};
 
 void {struct_name}_init({struct_name}* b) {{
-    b->input = 0.0;
     b->num_states = {num_states};
     b->num_inputs = {num_inputs};
-    for (int i = 0; i < {num_states}; i++) b->state[i] = 0.0;
+    for (int i = 0; i < {num_states}; i++) b->input[i] = 0.0;
     for (int i = 0; i < {num_inputs}; i++) b->output[i] = 0.0;
 {k_init}}}
 
@@ -336,7 +334,7 @@ void {struct_name}_update({struct_name}* b, double t) {{
     for (int i = 0; i < b->num_inputs; i++) {{
         double u = 0.0;
         for (int j = 0; j < b->num_states; j++) {{
-            u -= b->K[i][j] * b->state[j];
+            u -= b->K[i][j] * b->input[j];
         }}
         b->output[i] = u;
     }}
@@ -367,18 +365,16 @@ def pole_placement_template(block: BlockInfo, struct_name: str) -> str:
 #define {struct_name.upper()}_NUM_STATES {num_states}
 
 typedef struct {{
-    double input;
+    double input[{struct_name.upper()}_NUM_STATES];  // State vector input
     double output;
-    double state[{struct_name.upper()}_NUM_STATES];
     double K[{struct_name.upper()}_NUM_STATES];
     int num_states;
 }} {struct_name};
 
 void {struct_name}_init({struct_name}* b) {{
-    b->input = 0.0;
     b->output = 0.0;
     b->num_states = {num_states};
-    for (int i = 0; i < {num_states}; i++) b->state[i] = 0.0;
+    for (int i = 0; i < {num_states}; i++) b->input[i] = 0.0;
 {k_init}}}
 
 void {struct_name}_update({struct_name}* b, double t) {{
@@ -386,7 +382,7 @@ void {struct_name}_update({struct_name}* b, double t) {{
     // u = -K * x (SISO)
     double u = 0.0;
     for (int i = 0; i < b->num_states; i++) {{
-        u -= b->K[i] * b->state[i];
+        u -= b->K[i] * b->input[i];
     }}
     b->output = u;
 }}

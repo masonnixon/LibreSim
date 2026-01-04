@@ -435,24 +435,22 @@ def lqr_controller_template(block: BlockInfo, struct_name: str) -> str:
 /// {block.name} - LQR Controller: u = -K*x
 #[derive(Clone)]
 pub struct {struct_name} {{
-    pub input: f64,
+    pub input: [f64; {num_states}],  // State vector input
     pub output: [f64; {num_inputs}],
-    pub state: [f64; {num_states}],
     pub k: [[f64; {num_states}]; {num_inputs}],
 }}
 
 impl {struct_name} {{
     pub fn new() -> Self {{
         Self {{
-            input: 0.0,
+            input: [0.0; {num_states}],
             output: [0.0; {num_inputs}],
-            state: [0.0; {num_states}],
             k: {k_init},
         }}
     }}
 
     pub fn init(&mut self) {{
-        self.state = [0.0; {num_states}];
+        self.input = [0.0; {num_states}];
         self.output = [0.0; {num_inputs}];
     }}
 
@@ -461,7 +459,7 @@ impl {struct_name} {{
         for i in 0..{num_inputs} {{
             let mut u = 0.0;
             for j in 0..{num_states} {{
-                u -= self.k[i][j] * self.state[j];
+                u -= self.k[i][j] * self.input[j];
             }}
             self.output[i] = u;
         }}
@@ -496,24 +494,22 @@ def pole_placement_template(block: BlockInfo, struct_name: str) -> str:
 /// {block.name} - Pole Placement Controller: u = -K*x
 #[derive(Clone)]
 pub struct {struct_name} {{
-    pub input: f64,
+    pub input: [f64; {num_states}],  // State vector input
     pub output: f64,
-    pub state: [f64; {num_states}],
     pub k: [f64; {num_states}],
 }}
 
 impl {struct_name} {{
     pub fn new() -> Self {{
         Self {{
-            input: 0.0,
+            input: [0.0; {num_states}],
             output: 0.0,
-            state: [0.0; {num_states}],
             k: {k_init},
         }}
     }}
 
     pub fn init(&mut self) {{
-        self.state = [0.0; {num_states}];
+        self.input = [0.0; {num_states}];
         self.output = 0.0;
     }}
 
@@ -521,7 +517,7 @@ impl {struct_name} {{
         // u = -K * x (SISO)
         let mut u = 0.0;
         for i in 0..{num_states} {{
-            u -= self.k[i] * self.state[i];
+            u -= self.k[i] * self.input[i];
         }}
         self.output = u;
     }}
