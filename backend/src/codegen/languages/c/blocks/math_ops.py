@@ -460,38 +460,84 @@ static inline double* {struct_name}_get_output_vector({struct_name}* b) {{
 def template_demux(block: BlockInfo, struct_name: str) -> str:
     """Generate C code for Demux block."""
     num_outputs = block.parameters.get("numOutputs", 2)
+    output_widths = block.parameters.get("outputWidths", None)
+
+    # If outputWidths not specified, assume uniform scalar outputs
+    if output_widths is None:
+        output_widths = [1] * num_outputs
+
+    total_width = sum(output_widths)
+
+    # Generate output array declarations
+    output_decls = []
+    for i, width in enumerate(output_widths):
+        output_decls.append(f"    double output{i}[{width}];")
+
+    output_decls_str = "\n".join(output_decls)
+
+    # Generate init code
+    init_lines = []
+    for i, width in enumerate(output_widths):
+        init_lines.append(f"    for (int i = 0; i < {width}; i++) b->output{i}[i] = 0.0;")
+
+    init_str = "\n".join(init_lines)
+
+    # Generate update code
+    update_lines = []
+    offset = 0
+    for i, width in enumerate(output_widths):
+        for j in range(width):
+            update_lines.append(f"    b->output{i}[{j}] = b->input[{offset + j}];")
+        offset += width
+
+    update_str = "\n".join(update_lines)
+
+    # Generate get_output that returns scalars based on port and sub-index
+    get_output_lines = []
+    for i, width in enumerate(output_widths):
+        if width == 1:
+            get_output_lines.append(f"    if (port == {i}) return b->output{i}[0];")
+        else:
+            # For vector outputs, port returns first element
+            get_output_lines.append(f"    if (port == {i}) return b->output{i}[0];")
+
+    get_output_str = "\n".join(get_output_lines)
+
+    # Generate getOutputVector functions for each output
+    vector_funcs = []
+    for i, width in enumerate(output_widths):
+        suffix = "" if i == 0 else str(i)
+        vector_funcs.append(f"""static inline double* {struct_name}_get_output_vector{suffix}({struct_name}* b) {{
+    return b->output{i};
+}}""")
+
+    vector_funcs_str = "\n\n".join(vector_funcs)
 
     return f"""
 // {block.name} - Demux block
 typedef struct {{
-    double input[{num_outputs}];
-    double outputs[{num_outputs}];
+    double input[{total_width}];
+{output_decls_str}
     int num_outputs;
 }} {struct_name};
 
 void {struct_name}_init({struct_name}* b) {{
-    for (int i = 0; i < {num_outputs}; i++) {{
-        b->input[i] = 0.0;
-        b->outputs[i] = 0.0;
-    }}
+    for (int i = 0; i < {total_width}; i++) b->input[i] = 0.0;
+{init_str}
     b->num_outputs = {num_outputs};
 }}
 
 void {struct_name}_update({struct_name}* b, double t) {{
     (void)t;
-    for (int i = 0; i < b->num_outputs; i++) {{
-        b->outputs[i] = b->input[i];
-    }}
+{update_str}
 }}
 
 double {struct_name}_get_output({struct_name}* b, int port) {{
-    if (port >= 0 && port < b->num_outputs) return b->outputs[port];
+{get_output_str}
     return 0.0;
 }}
 
-static inline double* {struct_name}_get_output_vector({struct_name}* b) {{
-    return b->outputs;
-}}
+{vector_funcs_str}
 """
 
 

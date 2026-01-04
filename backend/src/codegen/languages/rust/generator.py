@@ -367,9 +367,11 @@ impl Default for Model {{
                     elif source_is_vector and target_expects_vector:
                         # Vector-to-vector: clone the array
                         input_field = "input" if port_idx == 0 else f"input{port_idx}"
+                        # For demux outputs, use port-specific get_output_vector{n}
+                        vector_suffix = "" if source_port == 0 else str(source_port)
                         block_lines.append(
                             f"        self.{var_name}.{input_field} = "
-                            f"*self.{source_var}.get_output_vector();"
+                            f"*self.{source_var}.get_output_vector{vector_suffix}();"
                         )
                     elif target_port is not None and target_port > 0:
                         block_lines.append(
@@ -408,7 +410,7 @@ use crate::integration::{IntegrationMethod, propagate_integrator};
     MULTI_INPUT_BLOCKS = {"sum", "product", "mux", "switch"}
 
     # Block types that output vectors and have get_output_vector() method
-    VECTOR_OUTPUT_BLOCKS = {"mux", "constant", "gain"}
+    VECTOR_OUTPUT_BLOCKS = {"mux", "constant", "gain", "demux"}
 
     # Block types that expect vector inputs (not via indexed ports)
     VECTOR_INPUT_BLOCKS = {"demux", "gain"}

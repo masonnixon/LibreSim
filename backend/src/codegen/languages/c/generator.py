@@ -455,9 +455,11 @@ void model_propagate_integrators(Model* model, double dt, int kpass, const char*
                             if len(dims) > 0:
                                 vec_size = dims[0]
                         input_field = "input" if port_idx == 0 else f"input{port_idx}"
+                        # For demux outputs, use port-specific get_output_vector{n}
+                        vector_suffix = "" if source_port == 0 else str(source_port)
                         block_lines.append(
                             f"    memcpy(model->{var_name}.{input_field}, "
-                            f"{source_struct}_get_output_vector(&model->{source_var}), "
+                            f"{source_struct}_get_output_vector{vector_suffix}(&model->{source_var}), "
                             f"{vec_size} * sizeof(double));"
                         )
                     elif target_port is not None and target_port > 0:
@@ -478,7 +480,7 @@ void model_propagate_integrators(Model* model, double dt, int kpass, const char*
     MULTI_INPUT_BLOCKS = {"sum", "product", "mux", "switch"}
 
     # Block types that output vectors and have get_output_vector function
-    VECTOR_OUTPUT_BLOCKS = {"mux", "constant", "gain"}
+    VECTOR_OUTPUT_BLOCKS = {"mux", "constant", "gain", "demux"}
 
     # Block types that expect vector inputs (not via indexed ports)
     VECTOR_INPUT_BLOCKS = {"demux", "gain"}

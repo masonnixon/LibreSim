@@ -430,9 +430,11 @@ void Model::propagate_integrators(double dt, int kpass, const std::string& metho
                     elif source_is_vector and target_expects_vector:
                         # Vector-to-vector: use getOutputVector()
                         input_field = "input" if port_idx == 0 else f"input{port_idx}"
+                        # For demux outputs, use port-specific getOutputVector{n}
+                        vector_suffix = "" if source_port == 0 else str(source_port)
                         block_lines.append(
                             f"    {var_name}.{input_field} = "
-                            f"{source_var}.getOutputVector();"
+                            f"{source_var}.getOutputVector{vector_suffix}();"
                         )
                     elif target_port is not None and target_port > 0:
                         block_lines.append(
@@ -452,7 +454,7 @@ void Model::propagate_integrators(double dt, int kpass, const std::string& metho
     MULTI_INPUT_BLOCKS = {"sum", "product", "mux", "switch"}
 
     # Block types that output vectors and have getOutputVector() method
-    VECTOR_OUTPUT_BLOCKS = {"mux", "constant", "gain"}
+    VECTOR_OUTPUT_BLOCKS = {"mux", "constant", "gain", "demux"}
 
     # Block types that expect vector inputs (not via indexed ports)
     VECTOR_INPUT_BLOCKS = {"demux", "gain"}

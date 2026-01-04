@@ -830,9 +830,19 @@ Added to `aerospace.py` in all three languages:
 
 ## Code Generation Validation Status (as of 2026-01-04)
 
-### Latest Run (after inline wiring fix)
-- **Overall**: 135/152 passed (88.8%)
-- Major improvements from inline wiring fix
+### Latest Run (after parameter mapping fixes)
+- **Overall**: 144/148 passed (97.3%)
+- 37 examples validated (1 stochastic example skipped)
+- Remaining 4 failures: 30_pid_speed_control (user said ignore)
+
+### Session 2026-01-04 Fixes
+1. **WhiteNoise power→variance mapping**: Added `"power": "variance"` in osk_adapter PARAM_MAP
+2. **Sum inputs→signs mapping**: Added `"inputs": "signs"` for Sum blocks
+3. **Parameter filtering**: Modified `_map_parameters()` to only pass explicitly mapped parameters
+4. **Demux getOutputVector()**: Added method to Demux class for downstream vector readers
+5. **Stochastic example skip**: Added STOCHASTIC_EXAMPLES set to validation script
+
+### Previous Status (88.8%)
 
 ### Key Fix: Inline Wiring
 Changed all generators (C++/C/Rust) to wire inputs inline with updates:

@@ -438,7 +438,7 @@ PARAM_MAP: dict[str, dict[str, str]] = {
     "ramp": {"slope": "slope", "startTime": "start_time", "initialOutput": "initial_output"},
     "sine_wave": {"amplitude": "amplitude", "frequency": "frequency", "phase": "phase", "bias": "bias"},
     "pulse_generator": {"amplitude": "amplitude", "period": "period", "dutyCycle": "duty_cycle", "phaseDelay": "phase_delay"},
-    "white_noise": {"mean": "mean", "variance": "variance", "seed": "seed", "sampleTime": "sample_time"},
+    "white_noise": {"mean": "mean", "variance": "variance", "power": "variance", "seed": "seed", "sampleTime": "sample_time"},
     "uniform_noise": {"minimum": "minimum", "maximum": "maximum", "seed": "seed", "sampleTime": "sample_time"},
     "scope": {"numInputs": "num_inputs", "num_input_ports": "num_inputs"},
     "to_workspace": {"variableName": "variable_name"},
@@ -456,7 +456,7 @@ PARAM_MAP: dict[str, dict[str, str]] = {
     "discrete_integrator": {"method": "method", "sampleTime": "sample_time", "initialCondition": "initial_condition"},
     "discrete_derivative": {"sampleTime": "sample_time", "initialCondition": "initial_condition"},
     "discrete_transfer_function": {"numerator": "numerator", "denominator": "denominator", "sampleTime": "sample_time"},
-    "sum": {"signs": "signs"},
+    "sum": {"signs": "signs", "inputs": "signs"},
     "gain": {"gain": "gain"},
     "product": {"operations": "operations"},
     "bias": {"bias": "bias"},
@@ -715,13 +715,20 @@ class OSKAdapter:
             self._osk_blocks[compiled_block.id] = Gain(gain=1.0)
 
     def _map_parameters(self, block_type: str, params: dict[str, Any]) -> dict[str, Any]:
-        """Map LibreSim parameter names to OSK constructor arguments."""
+        """Map LibreSim parameter names to OSK constructor arguments.
+
+        Only parameters that are explicitly mapped will be passed to the block constructor.
+        Unknown parameters are filtered out to avoid constructor errors.
+        """
         param_mapping = PARAM_MAP.get(block_type, {})
         osk_params = {}
 
         for libresim_name, value in params.items():
-            osk_name = param_mapping.get(libresim_name, libresim_name)
-            osk_params[osk_name] = value
+            if libresim_name in param_mapping:
+                # Only include explicitly mapped parameters
+                osk_name = param_mapping[libresim_name]
+                osk_params[osk_name] = value
+            # Skip unknown parameters - they likely aren't supported by the OSK block
 
         # Special handling for Product block operations
         # The frontend may pass a numeric string like "2" instead of "**"

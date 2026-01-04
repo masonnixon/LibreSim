@@ -34,6 +34,13 @@ OUTPUT_DIR = REPO_ROOT / "codegen_verification" / "validation_results"
 
 LANGUAGES = ["python", "cpp", "c", "rust"]
 
+# Examples with stochastic blocks (white_noise, uniform_noise, etc.) that cannot be
+# deterministically compared between headless simulation and codegen due to different
+# random number generator implementations
+STOCHASTIC_EXAMPLES = {
+    "41_dsp_fir_lowpass",  # Uses white_noise block
+}
+
 
 @dataclass
 class ValidationResult:
@@ -416,8 +423,14 @@ def main():
     """Run validation for all examples."""
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    examples = sorted([p.stem for p in EXAMPLES_DIR.glob("*.json")])
-    print(f"Found {len(examples)} examples to validate")
+    all_examples = sorted([p.stem for p in EXAMPLES_DIR.glob("*.json")])
+    # Filter out stochastic examples that can't be deterministically compared
+    examples = [e for e in all_examples if e not in STOCHASTIC_EXAMPLES]
+    skipped = [e for e in all_examples if e in STOCHASTIC_EXAMPLES]
+
+    print(f"Found {len(all_examples)} examples, validating {len(examples)} (skipping {len(skipped)} stochastic)")
+    if skipped:
+        print(f"  Skipped: {', '.join(skipped)}")
 
     all_results = []
 

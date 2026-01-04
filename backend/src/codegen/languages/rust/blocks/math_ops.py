@@ -594,46 +594,98 @@ impl Default for {struct_name} {{
 def template_demux(block: BlockInfo, struct_name: str) -> str:
     """Generate Rust code for Demux block."""
     num_outputs = block.parameters.get("numOutputs", 2)
+    output_widths = block.parameters.get("outputWidths", None)
+
+    # If outputWidths not specified, assume uniform scalar outputs
+    if output_widths is None:
+        output_widths = [1] * num_outputs
+
+    total_width = sum(output_widths)
+
+    # Generate output field declarations
+    output_decls = []
+    for i, width in enumerate(output_widths):
+        output_decls.append(f"    pub output{i}: [f64; {width}],")
+
+    output_decls_str = "\n".join(output_decls)
+
+    # Generate output field initializers
+    output_inits = []
+    for i, width in enumerate(output_widths):
+        output_inits.append(f"            output{i}: [0.0; {width}],")
+
+    output_inits_str = "\n".join(output_inits)
+
+    # Generate init code
+    init_lines = []
+    for i, width in enumerate(output_widths):
+        init_lines.append(f"        self.output{i} = [0.0; {width}];")
+
+    init_str = "\n".join(init_lines)
+
+    # Generate update code
+    update_lines = []
+    offset = 0
+    for i, width in enumerate(output_widths):
+        for j in range(width):
+            update_lines.append(f"        self.output{i}[{j}] = self.input[{offset + j}];")
+        offset += width
+
+    update_str = "\n".join(update_lines)
+
+    # Generate get_output match arms
+    get_output_arms = []
+    for i, width in enumerate(output_widths):
+        get_output_arms.append(f"            {i} => self.output{i}[0],")
+
+    get_output_str = "\n".join(get_output_arms)
+
+    # Generate getOutputVector methods
+    vector_methods = []
+    for i, width in enumerate(output_widths):
+        suffix = "" if i == 0 else str(i)
+        vector_methods.append(f"""    pub fn get_output_vector{suffix}(&self) -> &[f64; {width}] {{
+        &self.output{i}
+    }}""")
+
+    vector_methods_str = "\n\n".join(vector_methods)
 
     return f"""
 /// {block.name} - Demux block
 #[derive(Clone)]
 pub struct {struct_name} {{
-    pub input: [f64; {num_outputs}],
-    outputs: [f64; {num_outputs}],
+    pub input: [f64; {total_width}],
+{output_decls_str}
 }}
 
 impl {struct_name} {{
     pub const NUM_OUTPUTS: usize = {num_outputs};
+    pub const TOTAL_WIDTH: usize = {total_width};
 
     pub fn new() -> Self {{
         Self {{
-            input: [0.0; {num_outputs}],
-            outputs: [0.0; {num_outputs}],
+            input: [0.0; {total_width}],
+{output_inits_str}
         }}
     }}
 
     pub fn init(&mut self) {{
-        self.outputs = [0.0; {num_outputs}];
+        self.input = [0.0; {total_width}];
+{init_str}
     }}
 
     pub fn update(&mut self, _t: f64) {{
-        for i in 0..Self::NUM_OUTPUTS {{
-            self.outputs[i] = self.input[i];
-        }}
+{update_str}
     }}
 
     pub fn get_output(&self, port: usize) -> f64 {{
-        if port < Self::NUM_OUTPUTS {{
-            self.outputs[port]
-        }} else {{
-            0.0
+        match port {{
+{get_output_str}
+            _ => 0.0,
         }}
     }}
 
-    pub fn get_output_vector(&self) -> &[f64; {num_outputs}] {{
-        &self.outputs
-    }}
+{vector_methods_str}
 }}
 
 impl Default for {struct_name} {{

@@ -970,6 +970,14 @@ class Demux(Block):
             return self.outputs[port]
         return 0.0
 
+    def getOutputVector(self):
+        """Get all outputs as a vector.
+
+        This allows downstream blocks that expect vector input to read
+        from the Demux outputs as if it were a single vector signal.
+        """
+        return self.outputs.copy()
+
 
 class Bias(Block):
     """Bias block - adds a constant bias value to the input.

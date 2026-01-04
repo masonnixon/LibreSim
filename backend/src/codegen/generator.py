@@ -202,12 +202,21 @@ class CodeGenerator:
                 dims = port.get("dimensions", [1])
                 output_dimensions.append(dims)
 
+            # Resolve port IDs to port indices in input_connections
+            # Connection format: "source_block_id:source_port_id@target_port_id"
+            resolved_input_connections = []
+            for conn in compiled_block.input_connections:
+                resolved_conn = self._resolve_port_ids_in_connection(
+                    conn, original_block, block_map
+                )
+                resolved_input_connections.append(resolved_conn)
+
             block_info = BlockInfo(
                 id=block_id,
                 type=compiled_block.type,
                 name=compiled_block.name,
                 parameters=original_block.get("parameters", {}),
-                input_connections=compiled_block.input_connections,
+                input_connections=resolved_input_connections,
                 output_connections=compiled_block.output_connections,
                 execution_order=i,
                 input_dimensions=input_dimensions,
@@ -237,6 +246,69 @@ class CodeGenerator:
             stop_time=config.stop_time or sim_config.get("stopTime", 10.0),
             start_time=config.start_time or sim_config.get("startTime", 0.0),
         )
+
+    def _resolve_port_ids_in_connection(
+        self,
+        conn_str: str,
+        target_block: dict[str, Any],
+        block_map: dict[str, dict[str, Any]],
+    ) -> str:
+        """Resolve port ID strings to port indices in a connection string.
+
+        Converts "source_id:source_port_id@target_port_id" to use numeric indices
+        instead of port ID strings, ensuring proper port mapping.
+
+        Args:
+            conn_str: Connection string like "source_id:source_port_id@target_port_id"
+            target_block: The target block's original JSON data
+            block_map: Map of block ID to block JSON data
+
+        Returns:
+            Connection string with port IDs replaced by numeric indices
+        """
+        import re
+
+        if "@" not in conn_str:
+            return conn_str
+
+        # Parse the connection string
+        parts = conn_str.split("@")
+        target_port_id = parts[1]
+        source_parts = parts[0].rsplit(":", 1)
+        source_id = source_parts[0]
+        source_port_id = source_parts[1] if len(source_parts) > 1 else "out"
+
+        # Resolve source port index
+        source_port_idx = 0
+        source_block = block_map.get(source_id, {})
+        output_ports = source_block.get("outputPorts", [])
+        for i, port in enumerate(output_ports):
+            if port.get("id") == source_port_id:
+                source_port_idx = i
+                break
+        else:
+            # Fallback: try to extract number from port ID
+            match = re.search(r'(\d+)$', source_port_id)
+            if match:
+                port_num = int(match.group(1))
+                source_port_idx = port_num if port_num == 0 else port_num - 1
+
+        # Resolve target port index
+        target_port_idx = 0
+        input_ports = target_block.get("inputPorts", [])
+        for i, port in enumerate(input_ports):
+            if port.get("id") == target_port_id:
+                target_port_idx = i
+                break
+        else:
+            # Fallback: try to extract number from port ID
+            match = re.search(r'(\d+)$', target_port_id)
+            if match:
+                port_num = int(match.group(1))
+                target_port_idx = port_num if port_num == 0 else port_num - 1
+
+        # Return connection string with numeric indices
+        return f"{source_id}:{source_port_idx}@{target_port_idx}"
 
     def get_supported_blocks(self) -> list[str]:
         """Get list of block types supported for code generation."""
