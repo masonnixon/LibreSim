@@ -130,21 +130,17 @@ void {struct_name}_init({struct_name}* b) {{
 
 void {struct_name}_update({struct_name}* b, double t) {{
     (void)t;
+    // Hysteresis logic - strict < and > comparisons match OSK behavior
     if (b->state) {{
-        if (b->input <= b->off_point) {{
+        if (b->input < b->off_point) {{
             b->state = 0;
-            b->output = b->off_output;
-        }} else {{
-            b->output = b->on_output;
         }}
     }} else {{
-        if (b->input >= b->on_point) {{
+        if (b->input > b->on_point) {{
             b->state = 1;
-            b->output = b->on_output;
-        }} else {{
-            b->output = b->off_output;
         }}
     }}
+    b->output = b->state ? b->on_output : b->off_output;
 }}
 
 double {struct_name}_get_output({struct_name}* b, int port) {{

@@ -152,21 +152,17 @@ impl {struct_name} {{
     }}
 
     pub fn update(&mut self, _t: f64) {{
+        // Hysteresis logic - strict < and > comparisons match OSK behavior
         if self.state {{
-            if self.input <= self.off_point {{
+            if self.input < self.off_point {{
                 self.state = false;
-                self.output = self.off_output;
-            }} else {{
-                self.output = self.on_output;
             }}
         }} else {{
-            if self.input >= self.on_point {{
+            if self.input > self.on_point {{
                 self.state = true;
-                self.output = self.on_output;
-            }} else {{
-                self.output = self.off_output;
             }}
         }}
+        self.output = if self.state {{ self.on_output }} else {{ self.off_output }};
     }}
 
     pub fn get_output(&self, _port: usize) -> f64 {{

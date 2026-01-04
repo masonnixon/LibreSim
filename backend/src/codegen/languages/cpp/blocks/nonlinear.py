@@ -114,21 +114,17 @@ public:
 
     void update(double t) {{
         (void)t;
+        // Hysteresis logic - strict < and > comparisons match OSK behavior
         if (state) {{
-            if (input <= off_point) {{
+            if (input < off_point) {{
                 state = false;
-                output = off_output;
-            }} else {{
-                output = on_output;
             }}
         }} else {{
-            if (input >= on_point) {{
+            if (input > on_point) {{
                 state = true;
-                output = on_output;
-            }} else {{
-                output = off_output;
             }}
         }}
+        output = state ? on_output : off_output;
     }}
 
     double get_output(int port) const {{

@@ -176,8 +176,9 @@ def anti_windup_pid_template(block: BlockInfo, class_name: str) -> str:
     ki = block.parameters.get("Ki", 1.0)
     kd = block.parameters.get("Kd", 0.0)
     n = block.parameters.get("N", 100.0)
-    upper = block.parameters.get("upper_limit", "float('inf')")
-    lower = block.parameters.get("lower_limit", "float('-inf')")
+    # Support both camelCase (JSON) and snake_case parameter names
+    upper = block.parameters.get("upperLimit", block.parameters.get("upper_limit", "float('inf')"))
+    lower = block.parameters.get("lowerLimit", block.parameters.get("lower_limit", "float('-inf')"))
     kb = block.parameters.get("Kb", 1.0)
     return f'''
 class {class_name}:

@@ -5,7 +5,8 @@ from ....models import BlockInfo
 
 def template_integrator(block: BlockInfo, struct_name: str) -> str:
     """Generate Rust code for Integrator block."""
-    initial_condition = block.parameters.get("initial_condition", 0.0)
+    # Support both camelCase (JSON) and snake_case parameter names
+    initial_condition = block.parameters.get("initialCondition", block.parameters.get("initial_condition", 0.0))
     return f"""
 /// {block.name} - Integrator
 #[derive(Clone, Default)]

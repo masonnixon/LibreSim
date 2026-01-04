@@ -242,8 +242,9 @@ double {struct_name}_get_output({struct_name}* b, int port) {{
 
 def template_saturation(block: BlockInfo, struct_name: str) -> str:
     """Generate C code for Saturation block."""
-    upper = block.parameters.get("upper_limit", 1.0)
-    lower = block.parameters.get("lower_limit", -1.0)
+    # Support both camelCase (JSON) and snake_case parameter names
+    upper = block.parameters.get("upperLimit", block.parameters.get("upper_limit", 1.0))
+    lower = block.parameters.get("lowerLimit", block.parameters.get("lower_limit", -1.0))
     return f"""
 // {block.name} - Saturation (clamp)
 typedef struct {{
