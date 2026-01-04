@@ -44,6 +44,17 @@ repos:
         args: [-c, backend/pyproject.toml, -r]
         files: ^backend/src/
 
+  # Pytest - Run unit tests on code changes
+  - repo: local
+    hooks:
+      - id: pytest-backend
+        name: pytest (backend tests)
+        entry: bash -c 'cd backend && python -m pytest tests/ -x -q --tb=line'
+        language: system
+        files: ^backend/
+        pass_filenames: false
+        stages: [pre-push]  # Only run on push, not every commit
+
   # ==========================================================================
   # FRONTEND (TypeScript/JavaScript) HOOKS
   # ==========================================================================
