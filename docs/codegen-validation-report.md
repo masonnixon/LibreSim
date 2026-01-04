@@ -23,11 +23,11 @@ This report compares the outputs of generated code against the headless simulati
 | 08_lookup_table_nonlinear | PASS | PASS | PASS | PASS |
 | 09_second_order_damping | PASS | PASS | PASS | PASS |
 | 10_rate_limiting_quantization | PASS | DIFF (6.28%) | DIFF (6.28%) | DIFF (6.28%) |
-| 11_vector_signal_processing | PASS | PASS | BUILD FAIL | PASS |
-| 20_quaternion_attitude_propagation | PASS | BUILD FAIL | BUILD FAIL | PASS |
-| 21_isa_atmosphere_model | PASS | PASS | BUILD FAIL | PASS |
+| 11_vector_signal_processing | PASS | PASS | PASS | PASS |
+| 20_quaternion_attitude_propagation | PASS | PASS | PASS | PASS |
+| 21_isa_atmosphere_model | PASS | PASS | PASS | PASS |
 | 22_gravity_models_comparison | PASS | BUILD FAIL | BUILD FAIL | BUILD FAIL |
-| 23_dcm_quaternion_conversion | PASS | BUILD FAIL | BUILD FAIL | PASS |
+| 23_dcm_quaternion_conversion | PASS | PASS | PASS | PASS |
 | 24_quaternion_vector_rotation | PASS | BUILD FAIL | BUILD FAIL | BUILD FAIL |
 | 30_pid_speed_control | DIFF (19.94%) | DIFF (126010.09%) | DIFF (126010.09%) | DIFF (126010.09%) |
 | 31_discrete_pid_sampled_control | PASS | PASS | PASS | PASS |
@@ -38,7 +38,7 @@ This report compares the outputs of generated code against the headless simulati
 | 36_model_reference_control | PASS | PASS | PASS | PASS |
 | 37_pole_placement_control | PASS | BUILD FAIL | BUILD FAIL | BUILD FAIL |
 | 40_dsp_fft_spectrum | PASS | PASS | PASS | PASS |
-| 41_dsp_fir_lowpass | DIFF (932.21%) | DIFF (1103.47%) | DIFF (949.68%) | DIFF (949.68%) |
+| 41_dsp_fir_lowpass | DIFF (725.68%) | DIFF (1035.04%) | DIFF (949.68%) | DIFF (949.68%) |
 | 42_rf_receiver_chain | PASS | PASS | PASS | PASS |
 | 43_rf_am_modulation | PASS | PASS | PASS | PASS |
 | 44_nav_coordinate_transform | PASS | BUILD FAIL | BUILD FAIL | BUILD FAIL |
@@ -48,8 +48,8 @@ This report compares the outputs of generated code against the headless simulati
 ## Statistics
 
 - Total tests: 152
-- Passed: 108 (71.1%)
-- Build failures: 27
+- Passed: 114 (75.0%)
+- Build failures: 21
 - Run failures: 0
 - Value mismatches: 17
 
@@ -139,46 +139,6 @@ This report compares the outputs of generated code against the headless simulati
 - Headless final values: {'Command': -1.3791876954540827e-11, 'Rate Limiter': -1.3791876954540827e-11, 'Quantizer': 0.0, 'Then Quant': 0.0}
 - Codegen final values: {'Command': -0.06283, 'Rate_Limiter': -1.102566, 'Quantizer': -0.0, 'Then_Quant': -1.0}
 
-### 11_vector_signal_processing (c)
-
-- Build failed: #0 building with "default" instance using docker driver
-
-#1 [internal] load build definition from Dockerfile
-#1 transferring dockerfile: 720B 0.0s done
-#1 DONE 0.0s
-
-#2 [internal] load metadata for do
-
-### 20_quaternion_attitude_propagation (cpp)
-
-- Build failed: #0 building with "default" instance using docker driver
-
-#1 [internal] load build definition from Dockerfile
-#1 transferring dockerfile: 758B 0.0s done
-#1 DONE 0.0s
-
-#2 [internal] load metadata for do
-
-### 20_quaternion_attitude_propagation (c)
-
-- Build failed: #0 building with "default" instance using docker driver
-
-#1 [internal] load build definition from Dockerfile
-#1 transferring dockerfile: 734B 0.0s done
-#1 DONE 0.1s
-
-#2 [internal] load metadata for do
-
-### 21_isa_atmosphere_model (c)
-
-- Build failed: #0 building with "default" instance using docker driver
-
-#1 [internal] load build definition from Dockerfile
-#1 transferring dockerfile: 712B 0.0s done
-#1 DONE 0.0s
-
-#2 [internal] load metadata for do
-
 ### 22_gravity_models_comparison (cpp)
 
 - Build failed: #0 building with "default" instance using docker driver
@@ -205,26 +165,6 @@ This report compares the outputs of generated code against the headless simulati
 
 #1 [internal] load build definition from Dockerfile
 #1 transferring dockerfile: 542B 0.0s done
-#1 DONE 0.0s
-
-#2 [internal] load metadata for do
-
-### 23_dcm_quaternion_conversion (cpp)
-
-- Build failed: #0 building with "default" instance using docker driver
-
-#1 [internal] load build definition from Dockerfile
-#1 transferring dockerfile: 746B 0.0s done
-#1 DONE 0.0s
-
-#2 [internal] load metadata for do
-
-### 23_dcm_quaternion_conversion (c)
-
-- Build failed: #0 building with "default" instance using docker driver
-
-#1 [internal] load build definition from Dockerfile
-#1 transferring dockerfile: 722B 0.0s done
 #1 DONE 0.0s
 
 #2 [internal] load metadata for do
@@ -289,7 +229,7 @@ This report compares the outputs of generated code against the headless simulati
 
 #1 [internal] load build definition from Dockerfile
 #1 transferring dockerfile: 732B 0.0s done
-#1 DONE 0.1s
+#1 DONE 0.0s
 
 #2 [internal] load metadata for do
 
@@ -345,15 +285,15 @@ This report compares the outputs of generated code against the headless simulati
 
 ### 41_dsp_fir_lowpass (python)
 
-- Max relative error: 932.2064%
+- Max relative error: 725.6766%
 - Headless final values: {'Add Noise': 0.0, 'FIR Lowpass': 0.0, 'Running Mean': 0.0, 'RMS': 0.0}
-- Codegen final values: {'Add_Noise': 2.128108618607289, 'FIR_Lowpass': 2.886308684714437, 'Running_Mean': 2.6130676055002247, 'RMS': 9.322064119265251}
+- Codegen final values: {'Add_Noise': -10.47574445724693, 'FIR_Lowpass': 2.529173827296244, 'Running_Mean': -2.676777972355227, 'RMS': 7.256765649722918}
 
 ### 41_dsp_fir_lowpass (cpp)
 
-- Max relative error: 1103.4700%
+- Max relative error: 1035.0400%
 - Headless final values: {'Add Noise': 0.0, 'FIR Lowpass': 0.0, 'Running Mean': 0.0, 'RMS': 0.0}
-- Codegen final values: {'Add_Noise': 15.8876, 'FIR_Lowpass': 9.2384, 'Running_Mean': 7.49331, 'RMS': 11.0347}
+- Codegen final values: {'Add_Noise': 10.8822, 'FIR_Lowpass': 12.3047, 'Running_Mean': 3.2493, 'RMS': 10.3504}
 
 ### 41_dsp_fir_lowpass (c)
 
