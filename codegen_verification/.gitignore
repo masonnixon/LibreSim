@@ -5,13 +5,13 @@
 # KEEP IN GIT (tracked):
 # =============================================================================
 # - *.zip files (generated code packages)
+# - builds/*/output/results.csv (simulation results) - force added with git add -f
 
 # =============================================================================
 # IGNORE (not tracked):
 # =============================================================================
 
-# Entire builds directory (extracted zips, binaries, results CSVs)
-# These can all be regenerated from the zip files
+# Entire builds directory (source is redundant with zips, binaries are compiled)
 builds/
 
 # Temporary/test directories (debugging artifacts)
