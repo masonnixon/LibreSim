@@ -5,34 +5,14 @@
 # KEEP IN GIT (tracked):
 # =============================================================================
 # - *.zip files (generated code packages)
-# - validation_results/*.md (validation reports)
-# - builds/*/output/results.csv (simulation results)
 
 # =============================================================================
 # IGNORE (not tracked):
 # =============================================================================
 
-# Compiled binaries (these are rebuilt from source)
-builds/*/output/simulation
-builds/*/output/simulation.exe
-builds/*/target/
-
-# Build artifacts
-builds/*/*.o
-builds/*/*.obj
-builds/*/*.a
-builds/*/*.lib
-builds/*/*.dll
-builds/*/*.so
-builds/*/*.dylib
-
-# Rust build directories
-builds/*/target/
-
-# Python bytecode
-builds/*/__pycache__/
-builds/*/*.pyc
-builds/*/*.pyo
+# Entire builds directory (extracted zips, binaries, results CSVs)
+# These can all be regenerated from the zip files
+builds/
 
 # Temporary/test directories (debugging artifacts)
 *_temp/
