@@ -85,12 +85,12 @@ jobs:
       - name: Run codegen validation
         run: |
           python scripts/validate_codegen.py
-          cat codegen_verification/validation_results/validation_report.md
+          cat docs/codegen-validation-report.md
 
       - name: Check validation passed
         run: |
           # Extract pass rate and ensure it's above 90%
-          PASS_RATE=$(grep -oP '\d+\.\d+%' codegen_verification/validation_results/validation_report.md | head -1)
+          PASS_RATE=$(grep -oP '\d+\.\d+%' docs/codegen-validation-report.md | head -1)
           echo "Pass rate: $PASS_RATE"
           # This is a soft check - validation report is for informational purposes
 

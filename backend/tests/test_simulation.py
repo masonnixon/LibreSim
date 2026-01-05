@@ -361,10 +361,12 @@ class TestOSKAdapter:
         assert result == {"gain": 2.5}
 
     def test_map_parameters_unknown_block(self):
-        """Test parameter mapping for unknown block type."""
+        """Test parameter mapping for unknown block type filters params."""
         params = {"someParam": "value"}
         result = self.adapter._map_parameters("unknown_type", params)
-        assert result == {"someParam": "value"}
+        # Unknown block types have no param mapping, so all params are filtered out
+        # This is intentional to avoid passing invalid kwargs to OSK constructors
+        assert result == {}
 
     def test_block_type_map_coverage(self):
         """Test that BLOCK_TYPE_MAP covers major block types."""

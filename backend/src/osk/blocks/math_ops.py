@@ -147,8 +147,13 @@ class Gain(Block):
 
     def update(self):
         if self.input_block is not None:
-            # Check for vector output
-            if hasattr(self.input_block, 'getOutputVector'):
+            # If source_port > 0, we're selecting a specific port - use scalar mode
+            if self.input_source_port > 0:
+                self._is_vector = False
+                self._input_vector = None
+                self.input = self.input_block.getOutput(self.input_source_port)
+            # Check for vector output (only when source_port == 0)
+            elif hasattr(self.input_block, 'getOutputVector'):
                 vec = self.input_block.getOutputVector()
                 if vec is not None:
                     self._is_vector = True

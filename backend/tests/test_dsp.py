@@ -44,11 +44,13 @@ class TestFFT:
     def test_symmetry(self):
         """FFT of real signal should be conjugate symmetric."""
         fft = FFT(n_points=8)
-        fft.setInput([1.0, 2.0, 3.0, 4.0, 4.0, 3.0, 2.0, 1.0])
+        # Use an even-symmetric signal: x[n] = x[N-n] for n=1,...,N-1
+        # For N=8: x[1]=x[7], x[2]=x[6], x[3]=x[5] (x[0] and x[4] can be anything)
+        fft.setInput([1.0, 2.0, 3.0, 4.0, 5.0, 4.0, 3.0, 2.0])
         fft.update()
 
         output = fft.getOutputVector()
-        # All imaginary parts should be 0 for symmetric input
+        # For an even-symmetric input, imaginary parts should be ~0
         for i in range(8):
             assert abs(output[2*i + 1]) < 1e-10
 
