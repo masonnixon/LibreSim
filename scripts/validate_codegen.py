@@ -30,7 +30,7 @@ from src.models.simulation import SimulationConfig
 
 EXAMPLES_DIR = REPO_ROOT / "examples"
 CODEGEN_DIR = REPO_ROOT / "codegen_verification"
-OUTPUT_DIR = REPO_ROOT / "codegen_verification" / "validation_results"
+OUTPUT_DIR = REPO_ROOT / "docs"
 
 LANGUAGES = ["python", "cpp", "c", "rust"]
 
@@ -451,7 +451,7 @@ def main():
 
     # Generate report
     report = generate_report(all_results)
-    report_path = OUTPUT_DIR / "validation_report.md"
+    report_path = OUTPUT_DIR / "codegen-validation-report.md"
     with open(report_path, "w") as f:
         f.write(report)
 

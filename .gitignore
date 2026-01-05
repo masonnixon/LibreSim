@@ -92,3 +92,10 @@ temp/
 
 # Claude Code
 .claude/
+
+# Simulink library files (reference only, not tracked)
+quaternionLib.mdl
+dualQuaternionLib.mdl
+
+# Coverage reports (generated)
+coverage.xml
