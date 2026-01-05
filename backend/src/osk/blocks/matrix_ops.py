@@ -5,6 +5,7 @@ Matrix Operations blocks.
 """
 
 import math
+from typing import Any
 
 from ..block import Block
 
@@ -300,9 +301,9 @@ class Concatenate(Block):
         super().__init__()
         self.num_inputs = num_inputs
         self.mode = mode  # 'vector' or 'matrix'
-        self.inputs = [[] for _ in range(num_inputs)]
-        self.output = []
-        self.input_blocks = [None] * num_inputs
+        self.inputs: list[Any] = [[] for _ in range(num_inputs)]
+        self.output: list[Any] = []
+        self.input_blocks: list[Any] = [None] * num_inputs
 
     def init(self):
         self.output = []

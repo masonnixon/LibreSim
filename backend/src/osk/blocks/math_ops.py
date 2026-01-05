@@ -1,6 +1,7 @@
 """Math operation blocks for OSK-based simulation."""
 
 import math
+from typing import Any
 
 from ..block import Block
 from ..state import State
@@ -17,14 +18,14 @@ class Sum(Block):
         super().__init__()
         self.signs = signs
         self.num_inputs = len(signs)
-        self.inputs = [0.0] * self.num_inputs
-        self.input_blocks = [None] * self.num_inputs
-        self.output = 0.0
-        self._is_vector = False
-        self._output_vector = None
-        self._input_vectors = [None] * self.num_inputs
+        self.inputs: list[float] = [0.0] * self.num_inputs
+        self.input_blocks: list[Any] = [None] * self.num_inputs
+        self.output: float = 0.0
+        self._is_vector: bool = False
+        self._output_vector: list[float] | None = None
+        self._input_vectors: list[list[float] | None] = [None] * self.num_inputs
 
-    def init(self):
+    def init(self) -> None:
         self.inputs = [0.0] * self.num_inputs
         self.output = 0.0
         self._is_vector = False
@@ -200,14 +201,14 @@ class Product(Block):
         super().__init__()
         self.operations = operations
         self.num_inputs = len(operations)
-        self.inputs = [1.0] * self.num_inputs
-        self.input_blocks = [None] * self.num_inputs
-        self.output = 0.0
-        self._is_vector = False
-        self._output_vector = None
-        self._input_vectors = [None] * self.num_inputs
+        self.inputs: list[float] = [1.0] * self.num_inputs
+        self.input_blocks: list[Any] = [None] * self.num_inputs
+        self.output: float = 0.0
+        self._is_vector: bool = False
+        self._output_vector: list[float] | None = None
+        self._input_vectors: list[list[float] | None] = [None] * self.num_inputs
 
-    def init(self):
+    def init(self) -> None:
         self.inputs = [1.0] * self.num_inputs
         self.output = 0.0
         self._is_vector = False
@@ -1632,21 +1633,21 @@ class CrossProduct(Block):
 
     def __init__(self):
         super().__init__()
-        self.inputs = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
-        self.input_blocks = [None, None]
-        self.input_source_ports = [0, 0]
-        self._input_vectors = [None, None]
+        self.inputs: list[list[float]] = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
+        self.input_blocks: list[Any] = [None, None]
+        self.input_source_ports: list[int] = [0, 0]
+        self._input_vectors: list[list[float] | None] = [None, None]
+        self._output_vector: list[float] = [0.0, 0.0, 0.0]
+
+    def init(self) -> None:
         self._output_vector = [0.0, 0.0, 0.0]
 
-    def init(self):
-        self._output_vector = [0.0, 0.0, 0.0]
-
-    def setInput(self, value, port=0):
+    def setInput(self, value: Any, port: int = 0) -> None:
         if port < 2:
             if isinstance(value, (list, tuple)):
                 self._input_vectors[port] = list(value)
             else:
-                self._input_vectors[port] = [value, 0.0, 0.0]
+                self._input_vectors[port] = [float(value), 0.0, 0.0]
 
     def connectInput(self, block, port=0, source_port=0):
         if port < 2:

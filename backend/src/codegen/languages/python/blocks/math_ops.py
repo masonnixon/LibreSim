@@ -39,7 +39,7 @@ class {class_name}:
         self.output = 0.0
 
     def update(self, t: float):
-        self.output = {' + '.join(sum_terms) if sum_terms else '0.0'}
+        self.output = {" + ".join(sum_terms) if sum_terms else "0.0"}
 
     def get_output(self, port: int = 0) -> float:
         return self.output
@@ -397,7 +397,7 @@ class {class_name}:
         self.output = [0.0] * self.num_inputs
 
     def update(self, t: float):
-        self.output = [{', '.join(output_list)}]
+        self.output = [{", ".join(output_list)}]
 
     def get_output(self, port: int = 0) -> float:
         if port < len(self.output):

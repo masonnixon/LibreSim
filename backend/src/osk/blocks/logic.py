@@ -1,5 +1,7 @@
 """Logic and comparison blocks for OSK-based simulation."""
 
+from typing import Any
+
 from ..block import Block
 
 
@@ -327,10 +329,10 @@ class BitOperator(Block):
     def __init__(self, operator="AND"):
         super().__init__()
         self.operator = operator.upper()  # 'AND', 'OR', 'XOR', 'NOT', 'NAND', 'NOR'
-        self.inputs = [0.0, 0.0]
-        self.input_blocks = [None, None]
-        self.input_source_ports = [0, 0]
-        self.output = 0.0
+        self.inputs: list[float] = [0.0, 0.0]
+        self.input_blocks: list[Any] = [None, None]
+        self.input_source_ports: list[int] = [0, 0]
+        self.output: float = 0.0
 
     def init(self):
         self.output = 0.0

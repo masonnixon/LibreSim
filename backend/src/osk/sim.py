@@ -4,6 +4,8 @@ Based on H.R. Sells' OSK implementation (updated 210129).
 Manages the execution of simulation blocks through stages.
 """
 
+from typing import Any
+
 from .state import State
 
 
@@ -35,14 +37,14 @@ class Sim:
         sim.run()
     """
 
-    stop0 = 0  # Previous stop flag
-    stop = 0  # Current stop flag (set by blocks to terminate)
-    dts = []  # Time steps for each stage
-    dt = 0  # Current time step
-    tmax = 0  # Maximum simulation time
-    vObj = []  # (unused, kept for compatibility)
-    vStage = []  # Vector of stages (each stage is a list of blocks)
-    clock = None  # Clock State object
+    stop0: int = 0  # Previous stop flag
+    stop: int = 0  # Current stop flag (set by blocks to terminate)
+    dts: list[float] = []  # Time steps for each stage
+    dt: float = 0  # Current time step
+    tmax: float = 0  # Maximum simulation time
+    vObj: list[Any] = []  # (unused, kept for compatibility)
+    vStage: list[list[Any]] = []  # Vector of stages (each stage is a list of blocks)
+    clock: State | None = None  # Clock State object
 
     def __init__(self, dts, tmax, vStage):
         """Initialize the simulation.
@@ -81,9 +83,10 @@ class Sim:
         Returns:
             Dictionary with simulation results
         """
-        results = {"times": [], "outputs": {}}
+        results: dict[str, Any] = {"times": [], "outputs": {}}
 
-        Sim.clock.set()
+        if Sim.clock is not None:
+            Sim.clock.set()
         Sim.stop = Sim.stop0 = 0
 
         # Reset init counters
@@ -100,7 +103,8 @@ class Sim:
             stage = Sim.vStage[ii]
             dt = Sim.dts[ii] if ii < len(Sim.dts) else Sim.dts[-1]
 
-            Sim.clock.reset(dt)
+            if Sim.clock is not None:
+                Sim.clock.reset(dt)
             State.tickfirst = 1
             State.ready = 1
 
@@ -111,7 +115,8 @@ class Sim:
 
             # Main simulation loop
             while True:
-                Sim.clock.sample(State.EVENT, Sim.tmax)
+                if Sim.clock is not None:
+                    Sim.clock.sample(State.EVENT, Sim.tmax)
 
                 # Update all blocks
                 for obj in stage:
@@ -148,7 +153,8 @@ class Sim:
                     obj.propagateStates()
 
                 # Advance clock
-                Sim.clock.updateclock()
+                if Sim.clock is not None:
+                    Sim.clock.updateclock()
 
             # Check if simulation should terminate
             if Sim.stop < 0:

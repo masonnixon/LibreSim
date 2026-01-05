@@ -6,7 +6,7 @@ control systems and signal processing applications.
 
 import math
 from collections import deque
-from typing import Literal
+from typing import Any, Literal
 
 from ..block import Block
 from ..state import State
@@ -83,11 +83,11 @@ class MovingAverage(Block):
         self.output = 0.0
         self.input_block = None
         self.input_source_port = 0
-        self.buffer = deque(maxlen=self.window_size)
+        self.buffer: deque[Any] = deque(maxlen=self.window_size)
 
-    def init(self):
+    def init(self) -> None:
         self.output = 0.0
-        self.buffer = deque(maxlen=self.window_size)
+        self.buffer.clear()
 
     def setInput(self, value, port=0):
         self.input = value

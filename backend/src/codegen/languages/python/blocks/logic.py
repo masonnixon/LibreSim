@@ -143,7 +143,7 @@ class {class_name}:
         self.output = 0.0
 
     def update(self, t: float):
-        inputs = [{', '.join(input_list)}]
+        inputs = [{", ".join(input_list)}]
         bool_inputs = [x != 0 for x in inputs]
 
         if self.operator == "AND":

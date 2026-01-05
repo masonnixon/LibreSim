@@ -339,11 +339,11 @@ public:
 
         # Build update calls in execution order with inline wiring
         # Each block gets its inputs wired from upstream outputs, then updates
-        update_calls = []
+        update_calls: list[str] = []
         for block_id in model_info.execution_order:
-            block = next((b for b in model_info.blocks if b.id == block_id), None)
-            if block:
-                var_name = f"block_{self.sanitize_identifier(block.id)}"
+            block_match = next((b for b in model_info.blocks if b.id == block_id), None)
+            if block_match is not None:
+                var_name = f"block_{self.sanitize_identifier(block_match.id)}"
                 # Add wiring for this block's inputs (if any)
                 if block_id in block_wiring:
                     for wire_line in block_wiring[block_id]:

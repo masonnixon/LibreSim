@@ -81,8 +81,8 @@ class ModelService:
         - No algebraic loops (basic check)
         - Valid block parameters
         """
-        errors = []
-        warnings = []
+        errors: list[str] = []
+        warnings: list[str] = []
 
         # Check for empty model
         if not model.blocks:

@@ -4,6 +4,8 @@ These blocks implement control system design functions similar to
 MATLAB Control System Toolbox.
 """
 
+from typing import Any
+
 from ..block import Block
 
 
@@ -14,50 +16,50 @@ class LQRController(Block):
     where K is the LQR gain matrix.
     """
 
-    def __init__(self, K=None, num_states=1, num_inputs=1):
+    def __init__(self, K: Any = None, num_states: int = 1, num_inputs: int = 1):
         super().__init__()
         # K is the feedback gain matrix (num_inputs x num_states)
-        self.K = K if K else [[1.0] * num_states for _ in range(num_inputs)]
+        self.K: list[list[float]] = K if K else [[1.0] * num_states for _ in range(num_inputs)]
         self.num_states = num_states
         self.num_inputs = num_inputs
-        self.state = [0.0] * num_states
-        self.output = [0.0] * num_inputs
-        self.input_block = None
+        self._x_state: list[float] = [0.0] * num_states
+        self._output: list[float] = [0.0] * num_inputs
+        self.input_block: Any = None
         self._is_vector = num_inputs > 1
 
-    def init(self):
-        self.output = [0.0] * self.num_inputs
+    def init(self) -> None:
+        self._output = [0.0] * self.num_inputs
 
-    def setInput(self, value, port=0):
+    def setInput(self, value: Any, port: int = 0) -> None:
         if port < self.num_states:
-            self.state[port] = value
+            self._x_state[port] = value
 
-    def connectInput(self, block, port=0, source_port=0):
+    def connectInput(self, block: Any, port: int = 0, source_port: int = 0) -> None:
         self.input_block = block
 
-    def update(self):
+    def update(self) -> None:
         if self.input_block is not None:
             vec = self.input_block.getOutputVector()
             if vec is not None:
                 for i in range(min(len(vec), self.num_states)):
-                    self.state[i] = vec[i]
+                    self._x_state[i] = vec[i]
             else:
-                self.state[0] = self.input_block.getOutput()
+                self._x_state[0] = self.input_block.getOutput()
 
         # u = -K * x
         for i in range(self.num_inputs):
             u = 0.0
             for j in range(self.num_states):
-                u -= self.K[i][j] * self.state[j]
-            self.output[i] = u
+                u -= self.K[i][j] * self._x_state[j]
+            self._output[i] = u
 
-    def getOutput(self, port=0):
-        if port < len(self.output):
-            return self.output[port]
+    def getOutput(self, port: int = 0) -> float:
+        if port < len(self._output):
+            return self._output[port]
         return 0.0
 
-    def getOutputVector(self):
-        return self.output if self._is_vector else None
+    def getOutputVector(self) -> list[float] | None:
+        return self._output if self._is_vector else None
 
 
 class PolePlacement(Block):
@@ -67,38 +69,38 @@ class PolePlacement(Block):
     at desired locations (Ackermann's formula for SISO).
     """
 
-    def __init__(self, K=None, num_states=1):
+    def __init__(self, K: Any = None, num_states: int = 1):
         super().__init__()
-        self.K = K if K else [1.0] * num_states
+        self.K: list[float] = K if K else [1.0] * num_states
         self.num_states = num_states
-        self.state = [0.0] * num_states
-        self.output = 0.0
-        self.input_block = None
+        self._x_state: list[float] = [0.0] * num_states
+        self._output: float = 0.0
+        self.input_block: Any = None
 
-    def init(self):
-        self.output = 0.0
+    def init(self) -> None:
+        self._output = 0.0
 
-    def setInput(self, value, port=0):
+    def setInput(self, value: Any, port: int = 0) -> None:
         if port < self.num_states:
-            self.state[port] = value
+            self._x_state[port] = value
 
-    def connectInput(self, block, port=0, source_port=0):
+    def connectInput(self, block: Any, port: int = 0, source_port: int = 0) -> None:
         self.input_block = block
 
-    def update(self):
+    def update(self) -> None:
         if self.input_block is not None:
             vec = self.input_block.getOutputVector()
             if vec is not None:
                 for i in range(min(len(vec), self.num_states)):
-                    self.state[i] = vec[i]
+                    self._x_state[i] = vec[i]
             else:
-                self.state[0] = self.input_block.getOutput()
+                self._x_state[0] = self.input_block.getOutput()
 
         # u = -K * x (SISO case)
-        self.output = -sum(k * x for k, x in zip(self.K, self.state, strict=False))
+        self._output = -sum(k * x for k, x in zip(self.K, self._x_state, strict=False))
 
-    def getOutput(self, port=0):
-        return self.output
+    def getOutput(self, port: int = 0) -> float:
+        return self._output
 
 
 class LeadLagCompensator(Block):

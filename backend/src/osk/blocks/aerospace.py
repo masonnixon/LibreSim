@@ -427,11 +427,11 @@ class QuaternionToDCM(Block):
     def __init__(self):
         super().__init__()
         self.input = [1.0, 0.0, 0.0, 0.0]
-        self.output = [1, 0, 0, 0, 1, 0, 0, 0, 1]  # Identity
+        self.output = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]  # Identity
         self.input_block = None
 
     def init(self):
-        self.output = [1, 0, 0, 0, 1, 0, 0, 0, 1]
+        self.output = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
 
     def setInput(self, value, port=0):
         if isinstance(value, list) and len(value) >= 4:

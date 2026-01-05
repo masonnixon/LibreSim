@@ -1,5 +1,7 @@
 """Discrete-time blocks for OSK-based simulation."""
 
+from typing import Any
+
 from ..block import Block
 from ..state import State
 
@@ -290,62 +292,70 @@ class DiscreteStateSpace(Block):
     Implements: x[k+1] = A*x[k] + B*u[k], y[k] = C*x[k] + D*u[k]
     """
 
-    def __init__(self, A=None, B=None, C=None, D=None, initial_state=None, sample_time=0.1):
+    def __init__(
+        self,
+        A: Any = None,
+        B: Any = None,
+        C: Any = None,
+        D: Any = None,
+        initial_state: Any = None,
+        sample_time: float = 0.1,
+    ):
         super().__init__()
-        self.A = A if A else [[1.0]]
-        self.B = B if B else [[1.0]]
-        self.C = C if C else [[1.0]]
-        self.D = D if D else [[0.0]]
+        self.A: list[list[float]] = A if A else [[1.0]]
+        self.B: list[list[float]] = B if B else [[1.0]]
+        self.C: list[list[float]] = C if C else [[1.0]]
+        self.D: list[list[float]] = D if D else [[0.0]]
         self.sample_time = sample_time
 
         self.n = len(self.A)  # Number of states
-        self.initial_state = initial_state if initial_state else [0.0] * self.n
+        self.initial_state: list[float] = initial_state if initial_state else [0.0] * self.n
 
-        self.input = 0.0
-        self.input_block = None
-        self.input_source_port = 0
-        self.output = 0.0
-        self.last_sample_time = -sample_time
+        self.input: float = 0.0
+        self.input_block: Any = None
+        self.input_source_port: int = 0
+        self._output: float = 0.0
+        self.last_sample_time: float = -sample_time
 
-        # State vector
-        self.state = list(self.initial_state)
+        # State vector (renamed from 'state' to avoid shadowing base class method)
+        self._x_state: list[float] = list(self.initial_state)
 
-    def init(self):
-        self.state = list(self.initial_state)
-        self.output = 0.0
+    def init(self) -> None:
+        self._x_state = list(self.initial_state)
+        self._output = 0.0
         self.last_sample_time = -self.sample_time
 
-    def setInput(self, value, port=0):
+    def setInput(self, value: Any, port: int = 0) -> None:
         self.input = value
 
-    def connectInput(self, block, port=0, source_port=0):
+    def connectInput(self, block: Any, port: int = 0, source_port: int = 0) -> None:
         self.input_block = block
         self.input_source_port = source_port
 
-    def update(self):
+    def update(self) -> None:
         if self.input_block is not None:
             self.input = self.input_block.getOutput(self.input_source_port)
 
         # Check if it's time to update
         if State.t - self.last_sample_time >= self.sample_time - State.EPS:
             # Compute output: y = C*x + D*u
-            self.output = 0.0
+            self._output = 0.0
             for i in range(self.n):
-                self.output += self.C[0][i] * self.state[i]
-            self.output += self.D[0][0] * self.input
+                self._output += self.C[0][i] * self._x_state[i]
+            self._output += self.D[0][0] * self.input
 
             # Compute next state: x[k+1] = A*x[k] + B*u[k]
-            new_state = [0.0] * self.n
+            new_state: list[float] = [0.0] * self.n
             for i in range(self.n):
                 for j in range(self.n):
-                    new_state[i] += self.A[i][j] * self.state[j]
+                    new_state[i] += self.A[i][j] * self._x_state[j]
                 new_state[i] += self.B[i][0] * self.input
 
-            self.state = new_state
+            self._x_state = new_state
             self.last_sample_time = State.t
 
-    def getOutput(self, port=0):
-        return self.output
+    def getOutput(self, port: int = 0) -> float:
+        return self._output
 
 
 class FirstOrderHold(Block):

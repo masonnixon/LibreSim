@@ -354,12 +354,12 @@ void model_propagate_integrators(Model* model, double dt, int kpass, const char*
         block_wiring = self._generate_per_block_wiring(model_info)
 
         # Build update calls in execution order with inline wiring
-        update_calls = []
+        update_calls: list[str] = []
         for block_id in model_info.execution_order:
-            block = next((b for b in model_info.blocks if b.id == block_id), None)
-            if block:
-                struct_name = f"Block_{self.sanitize_identifier(block.id)}"
-                var_name = f"block_{self.sanitize_identifier(block.id)}"
+            block_match = next((b for b in model_info.blocks if b.id == block_id), None)
+            if block_match is not None:
+                struct_name = f"Block_{self.sanitize_identifier(block_match.id)}"
+                var_name = f"block_{self.sanitize_identifier(block_match.id)}"
                 # Add wiring for this block's inputs (if any)
                 if block_id in block_wiring:
                     for wire_line in block_wiring[block_id]:

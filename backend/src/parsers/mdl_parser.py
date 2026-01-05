@@ -166,19 +166,19 @@ class MDLParser:
             # Check if value is a nested block or a simple value
             if self._content[self._pos] == "{":
                 self._pos += 1
-                value = self._parse_block()
+                block_value = self._parse_block()
 
                 # Handle multiple blocks with same key (e.g., multiple Block entries)
                 if key in result:
                     if isinstance(result[key], list):
-                        result[key].append(value)
+                        result[key].append(block_value)
                     else:
-                        result[key] = [result[key], value]
+                        result[key] = [result[key], block_value]
                 else:
-                    result[key] = value
+                    result[key] = block_value
             else:
-                value = self._parse_value()
-                result[key] = value
+                str_value = self._parse_value()
+                result[key] = str_value
 
         return result
 
@@ -272,16 +272,18 @@ class MDLParser:
             else:
                 break
 
-    def _get_value(self, data: dict, key: str, default: str = "") -> str:
+    def _get_value(self, data: dict[str, Any], key: str, default: str = "") -> str:
         """Get a value from parsed data, with default."""
-        return data.get(key, default)
+        val = data.get(key, default)
+        return str(val) if val is not None else default
 
-    def _find_system(self, model_data: dict) -> dict:
+    def _find_system(self, model_data: dict[str, Any]) -> dict[str, Any]:
         """Find the main System block in the model."""
         system = model_data.get("System", {})
         if isinstance(system, list):
-            return system[0] if system else {}
-        return system
+            result = system[0] if system else {}
+            return result if isinstance(result, dict) else {}
+        return system if isinstance(system, dict) else {}
 
     def _parse_blocks(self, system_data: dict) -> list[Block]:
         """Parse all blocks from the system."""
@@ -583,10 +585,10 @@ class MDLParser:
 
         return Connection(
             id=str(uuid.uuid4()),
-            sourceBlockId=src_block.id,
-            sourcePortId=src_port_id,
-            targetBlockId=dst_block.id,
-            targetPortId=dst_port_id,
+            source_block_id=src_block.id,
+            source_port_id=src_port_id,
+            target_block_id=dst_block.id,
+            target_port_id=dst_port_id,
         )
 
     def _parse_simulation_config(self, model_data: dict) -> SimulationConfig:

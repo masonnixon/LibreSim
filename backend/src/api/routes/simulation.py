@@ -154,7 +154,7 @@ async def debug_simulation(request: dict[str, Any]) -> dict[str, Any]:
     model_data = request.get("model")
     config_data = request.get("config", {})
 
-    result = {
+    result: dict[str, Any] = {
         "model_received": model_data is not None,
         "config_received": config_data is not None,
     }

@@ -287,7 +287,7 @@ async def get_example(example_id: str) -> dict[str, Any]:
 
     try:
         with open(json_path, encoding="utf-8") as f:
-            model = json.load(f)
+            model: dict[str, Any] = json.load(f)
         return model
     except json.JSONDecodeError as e:
         raise HTTPException(status_code=500, detail=f"Invalid JSON in example file: {e}")

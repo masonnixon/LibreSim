@@ -5,6 +5,7 @@ similar to MATLAB Navigation Toolbox.
 """
 
 import math
+from typing import Any
 
 from ..block import Block
 
@@ -74,14 +75,14 @@ class CoordinateTransformationConversion(Block):
         self.euler_sequence = euler_sequence.upper()
 
         # Pre-compute reference ECEF for NED/ENU conversions
-        self._ref_ecef = None
-        self._ref_rotation = None
+        self._ref_ecef: list[float] | None = None
+        self._ref_rotation: list[list[float]] | None = None
         if self.input_type in ["ned", "enu"] or self.output_type in ["ned", "enu"]:
             self._compute_reference()
 
-        self.input = []
-        self.output = []
-        self.input_block = None
+        self.input: list[Any] = []
+        self.output: list[Any] = []
+        self.input_block: Any = None
 
     def _compute_reference(self):
         """Pre-compute reference frame transformation."""
@@ -201,7 +202,7 @@ class CoordinateTransformationConversion(Block):
 
     def _ecef_to_ned(self, ecef: list) -> list:
         """Convert ECEF position to NED relative to reference."""
-        if self._ref_ecef is None:
+        if self._ref_ecef is None or self._ref_rotation is None:
             return ecef
 
         # Difference in ECEF
@@ -224,9 +225,9 @@ class CoordinateTransformationConversion(Block):
 
         return ned
 
-    def _ned_to_ecef(self, ned: list) -> list:
+    def _ned_to_ecef(self, ned: list[float]) -> list[float]:
         """Convert NED position to ECEF using reference."""
-        if self._ref_ecef is None:
+        if self._ref_ecef is None or self._ref_rotation is None:
             return ned
 
         # Transpose rotation (NED to ECEF)

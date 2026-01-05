@@ -4,6 +4,7 @@ These blocks implement DSP functions similar to MATLAB DSP System Toolbox.
 """
 
 import math
+from typing import Any
 
 from ..block import Block
 
@@ -535,23 +536,23 @@ class Mean(Block):
     def __init__(self, window_size: int = 10):
         super().__init__()
         self.window_size = max(1, window_size)
+        self.buffer: list[float] = []
+        self.output = 0.0
+        self.input_block: Any = None
+
+    def init(self) -> None:
         self.buffer = []
         self.output = 0.0
-        self.input_block = None
 
-    def init(self):
-        self.buffer = []
-        self.output = 0.0
-
-    def setInput(self, value, port=0):
+    def setInput(self, value: Any, port: int = 0) -> None:
         self.buffer.append(float(value))
         if len(self.buffer) > self.window_size:
             self.buffer.pop(0)
 
-    def connectInput(self, block, port=0, source_port=0):
+    def connectInput(self, block: Any, port: int = 0, source_port: int = 0) -> None:
         self.input_block = block
 
-    def update(self):
+    def update(self) -> None:
         if self.input_block is not None:
             self.buffer.append(self.input_block.getOutput())
             if len(self.buffer) > self.window_size:
@@ -562,7 +563,7 @@ class Mean(Block):
         else:
             self.output = 0.0
 
-    def getOutput(self, port=0):
+    def getOutput(self, port: int = 0) -> float:
         return self.output
 
 
@@ -572,23 +573,23 @@ class Variance(Block):
     def __init__(self, window_size: int = 10):
         super().__init__()
         self.window_size = max(1, window_size)
+        self.buffer: list[float] = []
+        self.output = 0.0
+        self.input_block: Any = None
+
+    def init(self) -> None:
         self.buffer = []
         self.output = 0.0
-        self.input_block = None
 
-    def init(self):
-        self.buffer = []
-        self.output = 0.0
-
-    def setInput(self, value, port=0):
+    def setInput(self, value: Any, port: int = 0) -> None:
         self.buffer.append(float(value))
         if len(self.buffer) > self.window_size:
             self.buffer.pop(0)
 
-    def connectInput(self, block, port=0, source_port=0):
+    def connectInput(self, block: Any, port: int = 0, source_port: int = 0) -> None:
         self.input_block = block
 
-    def update(self):
+    def update(self) -> None:
         if self.input_block is not None:
             self.buffer.append(self.input_block.getOutput())
             if len(self.buffer) > self.window_size:
@@ -600,7 +601,7 @@ class Variance(Block):
         else:
             self.output = 0.0
 
-    def getOutput(self, port=0):
+    def getOutput(self, port: int = 0) -> float:
         return self.output
 
 
@@ -610,11 +611,11 @@ class RMS(Block):
     def __init__(self, window_size: int = 10):
         super().__init__()
         self.window_size = max(1, window_size)
-        self.buffer = []
+        self.buffer: list[float] = []
         self.output = 0.0
-        self.input_block = None
+        self.input_block: Any = None
 
-    def init(self):
+    def init(self) -> None:
         self.buffer = []
         self.output = 0.0
 

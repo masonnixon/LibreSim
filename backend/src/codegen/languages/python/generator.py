@@ -94,17 +94,14 @@ class PythonCodeGenerator(LanguageGenerator):
 
     def generate_block_code(self, block: BlockInfo) -> str:
         """Generate code for a single block."""
-        template = get_block_template(block.type)
-        if template is None:
+        template_fn = get_block_template(block.type)
+        if template_fn is None:
             # Fallback to passthrough
             return self._generate_passthrough_block(block)
 
-        # Fill in template with block-specific values
-        return template.format(
-            id=self.sanitize_identifier(block.id),
-            name=block.name,
-            **block.parameters,
-        )
+        # Call template function with block and class name
+        class_name = f"Block_{self.sanitize_identifier(block.id)}"
+        return template_fn(block, class_name)
 
     def generate_integration_code(self, method: IntegrationMethod) -> str:
         """Generate integration method code."""
@@ -310,11 +307,11 @@ class {class_name}:
 
         # Build update order code (8 spaces - inside method body)
         # Each block has its inputs wired from upstream outputs, then updates
-        update_calls = []
+        update_calls: list[str] = []
         for block_id in model_info.execution_order:
-            block = next((b for b in model_info.blocks if b.id == block_id), None)
-            if block:
-                var_name = self.get_block_var_name(block)
+            block_match = next((b for b in model_info.blocks if b.id == block_id), None)
+            if block_match is not None:
+                var_name = self.get_block_var_name(block_match)
                 # Add wiring for this block's inputs (if any)
                 if block_id in block_wiring:
                     for wire_line in block_wiring[block_id]:
@@ -322,15 +319,15 @@ class {class_name}:
                 update_calls.append(f"        self.{var_name}.update(t)")
 
         # Build integrator list for state propagation
-        integrator_list = []
-        multi_state_list = []  # Blocks with propagate_states method
+        integrator_list: list[str] = []
+        multi_state_list: list[str] = []  # Blocks with propagate_states method
         for block_id in model_info.integrator_blocks:
-            block = next((b for b in model_info.blocks if b.id == block_id), None)
-            if block:
-                var_name = self.get_block_var_name(block)
+            block_match = next((b for b in model_info.blocks if b.id == block_id), None)
+            if block_match is not None:
+                var_name = self.get_block_var_name(block_match)
                 integrator_list.append(f"self.{var_name}")
                 # Multi-state blocks need additional propagation
-                if block.type in (
+                if block_match.type in (
                     "transfer_function",
                     "state_space",
                     "second_order",

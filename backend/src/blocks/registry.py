@@ -2,6 +2,9 @@
 
 from typing import Any
 
+# Type alias for block definition
+BlockDefinition = dict[str, Any]
+
 
 class BlockRegistry:
     """Registry of all available block definitions."""
@@ -19,9 +22,9 @@ class BlockRegistry:
         self._register_math()
         self._register_routing()
 
-    def _register_sources(self):
+    def _register_sources(self) -> None:
         """Register source blocks."""
-        blocks = [
+        blocks: list[BlockDefinition] = [
             {
                 "type": "constant",
                 "category": "sources",
@@ -106,9 +109,9 @@ class BlockRegistry:
         for block in blocks:
             self._blocks[block["type"]] = block
 
-    def _register_sinks(self):
+    def _register_sinks(self) -> None:
         """Register sink blocks."""
-        blocks = [
+        blocks: list[BlockDefinition] = [
             {
                 "type": "scope",
                 "category": "sinks",
@@ -157,9 +160,9 @@ class BlockRegistry:
         for block in blocks:
             self._blocks[block["type"]] = block
 
-    def _register_continuous(self):
+    def _register_continuous(self) -> None:
         """Register continuous blocks."""
-        blocks = [
+        blocks: list[BlockDefinition] = [
             {
                 "type": "integrator",
                 "category": "continuous",
@@ -244,9 +247,9 @@ class BlockRegistry:
         for block in blocks:
             self._blocks[block["type"]] = block
 
-    def _register_discrete(self):
+    def _register_discrete(self) -> None:
         """Register discrete blocks."""
-        blocks = [
+        blocks: list[BlockDefinition] = [
             {
                 "type": "unit_delay",
                 "category": "discrete",
@@ -291,9 +294,9 @@ class BlockRegistry:
         for block in blocks:
             self._blocks[block["type"]] = block
 
-    def _register_math(self):
+    def _register_math(self) -> None:
         """Register math operation blocks."""
-        blocks = [
+        blocks: list[BlockDefinition] = [
             {
                 "type": "sum",
                 "category": "math",
@@ -464,9 +467,9 @@ class BlockRegistry:
         for block in blocks:
             self._blocks[block["type"]] = block
 
-    def _register_routing(self):
+    def _register_routing(self) -> None:
         """Register signal routing blocks."""
-        blocks = [
+        blocks: list[BlockDefinition] = [
             {
                 "type": "mux",
                 "category": "routing",

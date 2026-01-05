@@ -1,5 +1,7 @@
 """Continuous-time blocks for OSK-based simulation."""
 
+from typing import Any
+
 from ..block import Block
 
 
@@ -32,18 +34,20 @@ class Integrator(Block):
         self.input_source_port = 0
 
         # For external IC mode, we have two input blocks
-        self.input_blocks = [None, None] if external_ic else None
-        self.input_source_ports = [0, 0] if external_ic else None
+        self.input_blocks: list[Any] | None = [None, None] if external_ic else None
+        self.input_source_ports: list[int] | None = [0, 0] if external_ic else None
         self._ic_initialized = False  # Track if we've read the external IC
 
         # Handle vector or scalar initial condition
         if isinstance(initial_condition, (list, tuple)):
             self._is_vector = True
             self._n = len(initial_condition)
-            self.initial_condition = list(initial_condition)
+            self.initial_condition: Any = list(initial_condition)
             # Create integrator states for each element
-            self._states = [self.addIntegrator([ic, 0.0]) for ic in initial_condition]
-            self._input_vector = [0.0] * self._n
+            self._states: list[Any] | None = [
+                self.addIntegrator([ic, 0.0]) for ic in initial_condition
+            ]
+            self._input_vector: list[float] | None = [0.0] * self._n
         else:
             self._is_vector = False
             self._n = 1

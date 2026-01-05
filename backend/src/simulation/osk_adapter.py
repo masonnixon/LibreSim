@@ -1228,7 +1228,7 @@ class OSKAdapter:
             for block_id in self._compiled_model.execution_order:
                 compiled_block = self._block_map.get(block_id)
                 osk_block = self._osk_blocks.get(block_id)
-                if compiled_block and compiled_block.type == "constant":
+                if compiled_block and compiled_block.type == "constant" and osk_block:
                     osk_block.update()
 
             # Pass 2: Have integrators read their external ICs
@@ -1236,7 +1236,7 @@ class OSKAdapter:
             for block_id in self._compiled_model.execution_order:
                 compiled_block = self._block_map.get(block_id)
                 osk_block = self._osk_blocks.get(block_id)
-                if compiled_block and compiled_block.type == "integrator":
+                if compiled_block and compiled_block.type == "integrator" and osk_block:
                     # Only read external IC, don't update derivative yet
                     if hasattr(osk_block, "_read_external_ic"):
                         osk_block._read_external_ic()
@@ -1279,7 +1279,7 @@ class OSKAdapter:
             for block_id in self._compiled_model.execution_order:
                 compiled_block = self._block_map.get(block_id)
                 osk_block = self._osk_blocks.get(block_id)
-                if compiled_block and compiled_block.type == "integrator":
+                if compiled_block and compiled_block.type == "integrator" and osk_block:
                     osk_block.update()
 
             # Record initial condition outputs BEFORE any propagation

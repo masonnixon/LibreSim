@@ -22,8 +22,9 @@ repos:
         name: ruff (format)
         files: ^backend/
 
-  # NOTE: MyPy type checking is run in CI with allow_failure: true
-  # It's excluded from pre-commit until type annotations are complete
+  # NOTE: MyPy type checking runs in CI via GitHub Actions/GitLab CI
+  # It's configured as a local hook but requires the conda environment's Python
+  # On Windows, users should run: python -m mypy backend/src/ --config-file=backend/pyproject.toml
 
   # Bandit - Security vulnerability scanner
   - repo: https://github.com/PyCQA/bandit
