@@ -4,8 +4,6 @@ These blocks implement control system design functions similar to
 MATLAB Control System Toolbox.
 """
 
-import math
-
 from ..block import Block
 
 
@@ -97,7 +95,7 @@ class PolePlacement(Block):
                 self.state[0] = self.input_block.getOutput()
 
         # u = -K * x (SISO case)
-        self.output = -sum(k * x for k, x in zip(self.K, self.state))
+        self.output = -sum(k * x for k, x in zip(self.K, self.state, strict=False))
 
     def getOutput(self, port=0):
         return self.output
@@ -249,9 +247,16 @@ class AntiWindupPID(Block):
     saturation when output limits are reached.
     """
 
-    def __init__(self, Kp=1.0, Ki=1.0, Kd=0.0, N=100.0,
-                 upper_limit=float('inf'), lower_limit=float('-inf'),
-                 Kb=1.0):
+    def __init__(
+        self,
+        Kp=1.0,
+        Ki=1.0,
+        Kd=0.0,
+        N=100.0,
+        upper_limit=float("inf"),
+        lower_limit=float("-inf"),
+        Kb=1.0,
+    ):
         super().__init__()
         self.Kp = Kp
         self.Ki = Ki

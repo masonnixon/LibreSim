@@ -1,6 +1,7 @@
 """Tests for the API endpoints."""
 
 import io
+
 from fastapi.testclient import TestClient
 
 
@@ -75,10 +76,7 @@ class TestModelsEndpoint:
 
     def test_create_model(self, test_client: TestClient):
         """Test creating a new model."""
-        model_data = {
-            "name": "Test Model",
-            "description": "A test model"
-        }
+        model_data = {"name": "Test Model", "description": "A test model"}
         response = test_client.post("/api/models", json=model_data)
         assert response.status_code == 200
         model = response.json()
@@ -240,6 +238,7 @@ class TestSimulationEndpoint:
         """Test stopping simulation when none is running."""
         # First ensure no simulation is running by resetting
         from src.api.routes import simulation as sim_module
+
         sim_module._runner = None
 
         response = test_client.post("/api/simulate/stop")
@@ -248,6 +247,7 @@ class TestSimulationEndpoint:
     def test_pause_simulation_no_runner(self, test_client: TestClient):
         """Test pausing simulation when none is running."""
         from src.api.routes import simulation as sim_module
+
         sim_module._runner = None
 
         response = test_client.post("/api/simulate/pause")
@@ -256,6 +256,7 @@ class TestSimulationEndpoint:
     def test_resume_simulation_no_runner(self, test_client: TestClient):
         """Test resuming simulation when none is running."""
         from src.api.routes import simulation as sim_module
+
         sim_module._runner = None
 
         response = test_client.post("/api/simulate/resume")
@@ -264,6 +265,7 @@ class TestSimulationEndpoint:
     def test_get_results_no_simulation(self, test_client: TestClient):
         """Test getting results when no simulation available."""
         from src.api.routes import simulation as sim_module
+
         sim_module._runner = None
 
         response = test_client.get("/api/simulate/results")
@@ -331,6 +333,7 @@ class TestImportExportEndpoint:
         """Test importing an MDL file."""
         # Use dedented MDL content
         import textwrap
+
         mdl_content = textwrap.dedent("""\
             Model {
               Name "test_model"
@@ -373,7 +376,13 @@ class TestImportExportEndpoint:
     def test_import_invalid_mdl_content(self, test_client: TestClient):
         """Test importing an MDL file with invalid content."""
         invalid_content = "This is not valid MDL content at all {"
-        files = {"file": ("invalid.mdl", io.BytesIO(invalid_content.encode()), "application/octet-stream")}
+        files = {
+            "file": (
+                "invalid.mdl",
+                io.BytesIO(invalid_content.encode()),
+                "application/octet-stream",
+            )
+        }
         response = test_client.post("/api/import/mdl", files=files)
         # Should return 200 with parsed (possibly empty) result, or 400 if parsing fails hard
         assert response.status_code in [200, 400]
@@ -393,6 +402,7 @@ class TestWebSocket:
     def test_websocket_connection_manager(self):
         """Test ConnectionManager class directly."""
         from src.api.websocket import ConnectionManager
+
         manager = ConnectionManager()
         assert len(manager.active_connections) == 0
 
@@ -456,7 +466,9 @@ class TestWebSocketBroadcast:
 class TestSimulationEndpointExtended:
     """Extended tests for simulation endpoints."""
 
-    def test_get_simulation_status_with_runner(self, test_client: TestClient, sample_model, simulation_config):
+    def test_get_simulation_status_with_runner(
+        self, test_client: TestClient, sample_model, simulation_config
+    ):
         """Test getting simulation status when runner exists."""
         # Start a simulation first
         test_client.post(
@@ -471,7 +483,9 @@ class TestSimulationEndpointExtended:
         assert "status" in data
         assert "progress" in data
 
-    def test_get_simulation_results_with_runner(self, test_client: TestClient, sample_model, simulation_config):
+    def test_get_simulation_results_with_runner(
+        self, test_client: TestClient, sample_model, simulation_config
+    ):
         """Test getting simulation results when runner exists."""
         # Start a simulation first
         start_response = test_client.post(
@@ -486,7 +500,9 @@ class TestSimulationEndpointExtended:
         data = response.json()
         assert isinstance(data, dict)
 
-    def test_pause_and_resume_simulation(self, test_client: TestClient, sample_model, simulation_config):
+    def test_pause_and_resume_simulation(
+        self, test_client: TestClient, sample_model, simulation_config
+    ):
         """Test pausing and resuming a simulation."""
         # Start simulation
         test_client.post(
@@ -505,7 +521,9 @@ class TestSimulationEndpointExtended:
         # Stop
         test_client.post("/api/simulate/stop")
 
-    def test_simulation_status_with_error(self, test_client: TestClient, sample_model, simulation_config):
+    def test_simulation_status_with_error(
+        self, test_client: TestClient, sample_model, simulation_config
+    ):
         """Test simulation status includes error when present."""
         # Start simulation
         test_client.post(
@@ -515,6 +533,7 @@ class TestSimulationEndpointExtended:
 
         # Manually set error message on runner
         from src.api.routes import simulation as sim_module
+
         if sim_module._runner:
             sim_module._runner._error_message = "Test error"
 
@@ -527,7 +546,9 @@ class TestSimulationEndpointExtended:
         # Cleanup
         sim_module._runner = None
 
-    def test_debug_endpoint_with_valid_model_and_config(self, test_client: TestClient, sample_model, simulation_config):
+    def test_debug_endpoint_with_valid_model_and_config(
+        self, test_client: TestClient, sample_model, simulation_config
+    ):
         """Test debug endpoint with valid model and config creates runner."""
         response = test_client.post(
             "/api/simulate/debug",

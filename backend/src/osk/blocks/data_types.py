@@ -15,7 +15,7 @@ class DataTypeConversion(Block):
     Supports: double, single, int8, int16, int32, uint8, uint16, uint32, boolean
     """
 
-    def __init__(self, output_type='double', saturate=True, round_mode='round'):
+    def __init__(self, output_type="double", saturate=True, round_mode="round"):
         super().__init__()
         self.output_type = output_type
         self.saturate = saturate
@@ -27,12 +27,12 @@ class DataTypeConversion(Block):
 
         # Type limits
         self.type_limits = {
-            'int8': (-128, 127),
-            'int16': (-32768, 32767),
-            'int32': (-2147483648, 2147483647),
-            'uint8': (0, 255),
-            'uint16': (0, 65535),
-            'uint32': (0, 4294967295),
+            "int8": (-128, 127),
+            "int16": (-32768, 32767),
+            "int32": (-2147483648, 2147483647),
+            "uint8": (0, 255),
+            "uint16": (0, 65535),
+            "uint32": (0, 4294967295),
         }
 
     def init(self):
@@ -47,13 +47,13 @@ class DataTypeConversion(Block):
 
     def _round_value(self, value):
         """Apply rounding mode to value."""
-        if self.round_mode == 'round':
+        if self.round_mode == "round":
             return round(value)
-        elif self.round_mode == 'floor':
+        elif self.round_mode == "floor":
             return math.floor(value)
-        elif self.round_mode == 'ceil':
+        elif self.round_mode == "ceil":
             return math.ceil(value)
-        elif self.round_mode == 'fix':
+        elif self.round_mode == "fix":
             return int(value)
         return round(value)
 
@@ -63,11 +63,11 @@ class DataTypeConversion(Block):
 
         value = self.input
 
-        if self.output_type == 'double':
+        if self.output_type == "double":
             self.output = float(value)
-        elif self.output_type == 'single':
+        elif self.output_type == "single":
             self.output = float(value)  # Python doesn't distinguish single/double
-        elif self.output_type == 'boolean':
+        elif self.output_type == "boolean":
             self.output = 1.0 if value != 0 else 0.0
         elif self.output_type in self.type_limits:
             # Integer conversion

@@ -5,10 +5,8 @@ similar to MATLAB Navigation Toolbox.
 """
 
 import math
-from typing import Optional
 
 from ..block import Block
-
 
 # =============================================================================
 # WGS84 Ellipsoid Constants
@@ -17,7 +15,7 @@ from ..block import Block
 WGS84_A = 6378137.0  # Semi-major axis (m)
 WGS84_F = 1 / 298.257223563  # Flattening
 WGS84_B = WGS84_A * (1 - WGS84_F)  # Semi-minor axis
-WGS84_E2 = 2 * WGS84_F - WGS84_F ** 2  # First eccentricity squared
+WGS84_E2 = 2 * WGS84_F - WGS84_F**2  # First eccentricity squared
 WGS84_EP2 = WGS84_E2 / (1 - WGS84_E2)  # Second eccentricity squared
 
 
@@ -62,9 +60,13 @@ class CoordinateTransformationConversion(Block):
         ("quaternion", "axis_angle"),
     }
 
-    def __init__(self, input_type: str = "lla", output_type: str = "ecef",
-                 reference_lla: Optional[list] = None,
-                 euler_sequence: str = "ZYX"):
+    def __init__(
+        self,
+        input_type: str = "lla",
+        output_type: str = "ecef",
+        reference_lla: list | None = None,
+        euler_sequence: str = "ZYX",
+    ):
         super().__init__()
         self.input_type = input_type.lower()
         self.output_type = output_type.lower()
@@ -92,7 +94,7 @@ class CoordinateTransformationConversion(Block):
         self._ref_ecef = [
             (N + alt) * math.cos(lat_rad) * math.cos(lon_rad),
             (N + alt) * math.cos(lat_rad) * math.sin(lon_rad),
-            (N * (1 - WGS84_E2) + alt) * math.sin(lat_rad)
+            (N * (1 - WGS84_E2) + alt) * math.sin(lat_rad),
         ]
 
         # Rotation matrix from ECEF to NED
@@ -104,8 +106,8 @@ class CoordinateTransformationConversion(Block):
         # R_ned_ecef (rows are NED unit vectors in ECEF)
         self._ref_rotation = [
             [-sin_lat * cos_lon, -sin_lat * sin_lon, cos_lat],  # North
-            [-sin_lon, cos_lon, 0],                              # East
-            [-cos_lat * cos_lon, -cos_lat * sin_lon, -sin_lat]   # Down
+            [-sin_lon, cos_lon, 0],  # East
+            [-cos_lat * cos_lon, -cos_lat * sin_lon, -sin_lat],  # Down
         ]
 
     def init(self):
@@ -181,7 +183,7 @@ class CoordinateTransformationConversion(Block):
 
         lon = math.atan2(y, x)
 
-        p = math.sqrt(x ** 2 + y ** 2)
+        p = math.sqrt(x**2 + y**2)
         lat = math.atan2(z, p * (1 - WGS84_E2))  # Initial guess
 
         # Iterate to refine latitude
@@ -209,9 +211,15 @@ class CoordinateTransformationConversion(Block):
 
         # Rotate to NED
         ned = [
-            self._ref_rotation[0][0] * dx + self._ref_rotation[0][1] * dy + self._ref_rotation[0][2] * dz,
-            self._ref_rotation[1][0] * dx + self._ref_rotation[1][1] * dy + self._ref_rotation[1][2] * dz,
-            self._ref_rotation[2][0] * dx + self._ref_rotation[2][1] * dy + self._ref_rotation[2][2] * dz,
+            self._ref_rotation[0][0] * dx
+            + self._ref_rotation[0][1] * dy
+            + self._ref_rotation[0][2] * dz,
+            self._ref_rotation[1][0] * dx
+            + self._ref_rotation[1][1] * dy
+            + self._ref_rotation[1][2] * dz,
+            self._ref_rotation[2][0] * dx
+            + self._ref_rotation[2][1] * dy
+            + self._ref_rotation[2][2] * dz,
         ]
 
         return ned
@@ -255,9 +263,15 @@ class CoordinateTransformationConversion(Block):
 
         # ZYX rotation: R = Rz(psi) * Ry(theta) * Rx(phi)
         dcm = [
-            c2 * c3, c3 * s1 * s2 - c1 * s3, s1 * s3 + c1 * c3 * s2,
-            c2 * s3, c1 * c3 + s1 * s2 * s3, c1 * s2 * s3 - c3 * s1,
-            -s2, c2 * s1, c1 * c2
+            c2 * c3,
+            c3 * s1 * s2 - c1 * s3,
+            s1 * s3 + c1 * c3 * s2,
+            c2 * s3,
+            c1 * c3 + s1 * s2 * s3,
+            c1 * s2 * s3 - c3 * s1,
+            -s2,
+            c2 * s1,
+            c1 * c2,
         ]
 
         return dcm
@@ -355,9 +369,15 @@ class CoordinateTransformationConversion(Block):
         w, x, y, z = q
 
         return [
-            1 - 2 * (y * y + z * z), 2 * (x * y - w * z), 2 * (x * z + w * y),
-            2 * (x * y + w * z), 1 - 2 * (x * x + z * z), 2 * (y * z - w * x),
-            2 * (x * z - w * y), 2 * (y * z + w * x), 1 - 2 * (x * x + y * y)
+            1 - 2 * (y * y + z * z),
+            2 * (x * y - w * z),
+            2 * (x * z + w * y),
+            2 * (x * y + w * z),
+            1 - 2 * (x * x + z * z),
+            2 * (y * z - w * x),
+            2 * (x * z - w * y),
+            2 * (y * z + w * x),
+            1 - 2 * (x * x + y * y),
         ]
 
     def _axis_angle_to_quaternion(self, axis_angle: list) -> list:
@@ -445,7 +465,7 @@ class LLAToECEF(Block):
         self.output = [
             (N + alt) * math.cos(lat) * math.cos(lon),
             (N + alt) * math.cos(lat) * math.sin(lon),
-            (N * (1 - WGS84_E2) + alt) * math.sin(lat)
+            (N * (1 - WGS84_E2) + alt) * math.sin(lat),
         ]
 
     def getOutput(self, port=0):
@@ -489,7 +509,7 @@ class ECEFToLLA(Block):
         x, y, z = self.input
 
         lon = math.atan2(y, x)
-        p = math.sqrt(x ** 2 + y ** 2)
+        p = math.sqrt(x**2 + y**2)
         lat = math.atan2(z, p * (1 - WGS84_E2))
 
         for _ in range(10):
@@ -526,7 +546,7 @@ class ECEFToNED(Block):
     Output: [North, East, Down] in meters
     """
 
-    def __init__(self, reference_lla: Optional[list] = None):
+    def __init__(self, reference_lla: list | None = None):
         super().__init__()
         self.reference_lla = reference_lla if reference_lla else [0.0, 0.0, 0.0]
         self.input_ecef = [0.0, 0.0, 0.0]
@@ -543,7 +563,7 @@ class ECEFToNED(Block):
         self._ref_ecef = [
             (N + alt) * math.cos(lat) * math.cos(lon),
             (N + alt) * math.cos(lat) * math.sin(lon),
-            (N * (1 - WGS84_E2) + alt) * math.sin(lat)
+            (N * (1 - WGS84_E2) + alt) * math.sin(lat),
         ]
 
         sin_lat = math.sin(lat)
@@ -554,7 +574,7 @@ class ECEFToNED(Block):
         self._rotation = [
             [-sin_lat * cos_lon, -sin_lat * sin_lon, cos_lat],
             [-sin_lon, cos_lon, 0],
-            [-cos_lat * cos_lon, -cos_lat * sin_lon, -sin_lat]
+            [-cos_lat * cos_lon, -cos_lat * sin_lon, -sin_lat],
         ]
 
     def init(self):
@@ -609,7 +629,7 @@ class NEDToECEF(Block):
     Output: [X, Y, Z] in meters
     """
 
-    def __init__(self, reference_lla: Optional[list] = None):
+    def __init__(self, reference_lla: list | None = None):
         super().__init__()
         self.reference_lla = reference_lla if reference_lla else [0.0, 0.0, 0.0]
         self.input_ned = [0.0, 0.0, 0.0]
@@ -626,7 +646,7 @@ class NEDToECEF(Block):
         self._ref_ecef = [
             (N + alt) * math.cos(lat) * math.cos(lon),
             (N + alt) * math.cos(lat) * math.sin(lon),
-            (N * (1 - WGS84_E2) + alt) * math.sin(lat)
+            (N * (1 - WGS84_E2) + alt) * math.sin(lat),
         ]
 
         sin_lat = math.sin(lat)
@@ -638,7 +658,7 @@ class NEDToECEF(Block):
         self._rotation_T = [
             [-sin_lat * cos_lon, -sin_lon, -cos_lat * cos_lon],
             [-sin_lat * sin_lon, cos_lon, -cos_lat * sin_lon],
-            [cos_lat, 0, -sin_lat]
+            [cos_lat, 0, -sin_lat],
         ]
 
     def init(self):
@@ -693,7 +713,7 @@ class WaypointFollower(Block):
     Outputs: [heading_to_wp (rad), distance_to_wp (m), current_wp_index]
     """
 
-    def __init__(self, waypoints: Optional[list] = None, acceptance_radius: float = 100.0):
+    def __init__(self, waypoints: list | None = None, acceptance_radius: float = 100.0):
         super().__init__()
         self.waypoints = waypoints if waypoints else [[0.0, 0.0]]
         self.acceptance_radius = acceptance_radius
@@ -713,8 +733,9 @@ class WaypointFollower(Block):
     def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
 
-    def _compute_bearing_distance(self, lat1: float, lon1: float,
-                                   lat2: float, lon2: float) -> tuple:
+    def _compute_bearing_distance(
+        self, lat1: float, lon1: float, lat2: float, lon2: float
+    ) -> tuple:
         """Compute bearing and distance between two points."""
         lat1_r = math.radians(lat1)
         lon1_r = math.radians(lon1)
@@ -731,7 +752,9 @@ class WaypointFollower(Block):
 
         # Bearing calculation
         x = math.sin(dlon) * math.cos(lat2_r)
-        y = math.cos(lat1_r) * math.sin(lat2_r) - math.sin(lat1_r) * math.cos(lat2_r) * math.cos(dlon)
+        y = math.cos(lat1_r) * math.sin(lat2_r) - math.sin(lat1_r) * math.cos(lat2_r) * math.cos(
+            dlon
+        )
         bearing = math.atan2(x, y)
 
         return bearing, distance
@@ -748,8 +771,7 @@ class WaypointFollower(Block):
 
         target_wp = self.waypoints[self.current_wp_index]
         bearing, distance = self._compute_bearing_distance(
-            self.position[0], self.position[1],
-            target_wp[0], target_wp[1]
+            self.position[0], self.position[1], target_wp[0], target_wp[1]
         )
 
         # Check if we've reached the waypoint
@@ -759,8 +781,7 @@ class WaypointFollower(Block):
                 # Recompute for new waypoint
                 target_wp = self.waypoints[self.current_wp_index]
                 bearing, distance = self._compute_bearing_distance(
-                    self.position[0], self.position[1],
-                    target_wp[0], target_wp[1]
+                    self.position[0], self.position[1], target_wp[0], target_wp[1]
                 )
 
         self.output = [bearing, distance, float(self.current_wp_index)]
@@ -841,7 +862,7 @@ class FlatEarthPosition(Block):
     Output: Position [N, E, D] in meters
     """
 
-    def __init__(self, initial_position: Optional[list] = None):
+    def __init__(self, initial_position: list | None = None):
         super().__init__()
         self.initial_position = initial_position if initial_position else [0.0, 0.0, 0.0]
         self.velocity = [0.0, 0.0, 0.0]

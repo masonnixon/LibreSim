@@ -25,7 +25,6 @@ from src.osk.blocks.sources import Clock, Constant, PulseGenerator, Ramp, SineWa
 from src.osk.blocks.subsystems import Outport
 from src.osk.state import State
 
-
 # =============================================================================
 # Source Block Tests
 # =============================================================================
@@ -1088,7 +1087,7 @@ class TestDiscreteIntegratorBlock:
 
     def test_discrete_integrator_forward(self):
         """Test DiscreteIntegrator forward Euler method."""
-        di = DiscreteIntegrator(method='forward', sample_time=0.1, initial_condition=0.0)
+        di = DiscreteIntegrator(method="forward", sample_time=0.1, initial_condition=0.0)
         di.init()
 
         State.t = 0.0
@@ -1102,7 +1101,7 @@ class TestDiscreteIntegratorBlock:
 
     def test_discrete_integrator_backward(self):
         """Test DiscreteIntegrator backward Euler method."""
-        di = DiscreteIntegrator(method='backward', sample_time=0.1, initial_condition=0.0)
+        di = DiscreteIntegrator(method="backward", sample_time=0.1, initial_condition=0.0)
         di.init()
 
         State.t = 0.0
@@ -1113,7 +1112,7 @@ class TestDiscreteIntegratorBlock:
 
     def test_discrete_integrator_trapezoidal(self):
         """Test DiscreteIntegrator trapezoidal method."""
-        di = DiscreteIntegrator(method='trapezoidal', sample_time=0.1, initial_condition=0.0)
+        di = DiscreteIntegrator(method="trapezoidal", sample_time=0.1, initial_condition=0.0)
         di.init()
 
         State.t = 0.0
@@ -1126,7 +1125,7 @@ class TestDiscreteIntegratorBlock:
         """Test DiscreteIntegrator with connected block."""
         const = Constant(value=2.0)
         const.init()
-        di = DiscreteIntegrator(method='backward', sample_time=0.1, initial_condition=0.0)
+        di = DiscreteIntegrator(method="backward", sample_time=0.1, initial_condition=0.0)
         di.init()
         di.connectInput(const)
 
@@ -1480,7 +1479,9 @@ class TestAnalogFilterBlock:
         """Test Chebyshev Type I filter."""
         from src.osk.blocks.signal_processing import AnalogFilter
 
-        filt = AnalogFilter(design="chebyshev1", response="lowpass", order=2, cutoff_freq=10.0, passband_ripple=1.0)
+        filt = AnalogFilter(
+            design="chebyshev1", response="lowpass", order=2, cutoff_freq=10.0, passband_ripple=1.0
+        )
         State.dt = 0.001
         filt.init()
 
@@ -1494,7 +1495,9 @@ class TestAnalogFilterBlock:
         """Test Chebyshev Type II filter."""
         from src.osk.blocks.signal_processing import AnalogFilter
 
-        filt = AnalogFilter(design="chebyshev2", response="lowpass", order=2, cutoff_freq=10.0, stopband_atten=40.0)
+        filt = AnalogFilter(
+            design="chebyshev2", response="lowpass", order=2, cutoff_freq=10.0, stopband_atten=40.0
+        )
         State.dt = 0.001
         filt.init()
 
@@ -1581,6 +1584,7 @@ class TestNotchFilterBlock:
     def test_notch_filter_rejects_notch_frequency(self):
         """Test NotchFilter attenuates the notch frequency."""
         import math
+
         from src.osk.blocks.signal_processing import NotchFilter
 
         notch_freq = 50.0
@@ -1744,11 +1748,7 @@ class TestLookupTable2DBlock:
 
     def test_lookup_2d_corner(self):
         """Test LookupTable2D at corner."""
-        lut = LookupTable2D(
-            x_data=[0.0, 1.0],
-            y_data=[0.0, 1.0],
-            z_data=[[0.0, 1.0], [2.0, 3.0]]
-        )
+        lut = LookupTable2D(x_data=[0.0, 1.0], y_data=[0.0, 1.0], z_data=[[0.0, 1.0], [2.0, 3.0]])
         lut.init()
 
         lut.setInput(0.0, 0)
@@ -1758,11 +1758,7 @@ class TestLookupTable2DBlock:
 
     def test_lookup_2d_interpolation(self):
         """Test LookupTable2D bilinear interpolation."""
-        lut = LookupTable2D(
-            x_data=[0.0, 1.0],
-            y_data=[0.0, 1.0],
-            z_data=[[0.0, 1.0], [2.0, 3.0]]
-        )
+        lut = LookupTable2D(x_data=[0.0, 1.0], y_data=[0.0, 1.0], z_data=[[0.0, 1.0], [2.0, 3.0]])
         lut.init()
 
         lut.setInput(0.5, 0)
@@ -1968,23 +1964,13 @@ class TestLuenbergerObserverBlock:
 
     def test_luenberger_init(self):
         """Test LuenbergerObserver initialization."""
-        obs = LuenbergerObserver(
-            A=[[0.0]],
-            B=[[1.0]],
-            C=[[1.0]],
-            L=[[1.0]]
-        )
+        obs = LuenbergerObserver(A=[[0.0]], B=[[1.0]], C=[[1.0]], L=[[1.0]])
         obs.init()
         assert obs.getOutput() == 0.0
 
     def test_luenberger_state_estimate(self):
         """Test LuenbergerObserver state estimate."""
-        obs = LuenbergerObserver(
-            A=[[0.0]],
-            B=[[1.0]],
-            C=[[1.0]],
-            L=[[1.0]]
-        )
+        obs = LuenbergerObserver(A=[[0.0]], B=[[1.0]], C=[[1.0]], L=[[1.0]])
         obs.init()
 
         obs.setInput(1.0, 0)  # Control input
@@ -1996,12 +1982,7 @@ class TestLuenbergerObserverBlock:
 
     def test_luenberger_full_state(self):
         """Test LuenbergerObserver full state estimate."""
-        obs = LuenbergerObserver(
-            A=[[0.0]],
-            B=[[1.0]],
-            C=[[1.0]],
-            L=[[1.0]]
-        )
+        obs = LuenbergerObserver(A=[[0.0]], B=[[1.0]], C=[[1.0]], L=[[1.0]])
         obs.init()
 
         state = obs.getStateEstimate()
@@ -2028,25 +2009,13 @@ class TestKalmanFilterBlock:
 
     def test_kalman_init(self):
         """Test KalmanFilter initialization."""
-        kf = KalmanFilter(
-            A=[[1.0]],
-            B=[[1.0]],
-            C=[[1.0]],
-            Q=[[0.01]],
-            R=[[0.1]]
-        )
+        kf = KalmanFilter(A=[[1.0]], B=[[1.0]], C=[[1.0]], Q=[[0.01]], R=[[0.1]])
         kf.init()
         assert kf.getOutput() == 0.0
 
     def test_kalman_update(self):
         """Test KalmanFilter update step."""
-        kf = KalmanFilter(
-            A=[[1.0]],
-            B=[[0.1]],
-            C=[[1.0]],
-            Q=[[0.01]],
-            R=[[0.1]]
-        )
+        kf = KalmanFilter(A=[[1.0]], B=[[0.1]], C=[[1.0]], Q=[[0.01]], R=[[0.1]])
         kf.init()
 
         kf.setInput(1.0, 0)  # Control input
@@ -2148,24 +2117,13 @@ class TestStateSpaceBlock:
 
     def test_state_space_init(self):
         """Test StateSpace initialization."""
-        ss = StateSpace(
-            A=[[0.0]],
-            B=[[1.0]],
-            C=[[1.0]],
-            D=[[0.0]]
-        )
+        ss = StateSpace(A=[[0.0]], B=[[1.0]], C=[[1.0]], D=[[0.0]])
         ss.init()
         assert ss.getOutput() == 0.0
 
     def test_state_space_with_initial_state(self):
         """Test StateSpace with initial state."""
-        ss = StateSpace(
-            A=[[0.0]],
-            B=[[1.0]],
-            C=[[1.0]],
-            D=[[0.0]],
-            initial_state=[5.0]
-        )
+        ss = StateSpace(A=[[0.0]], B=[[1.0]], C=[[1.0]], D=[[0.0]], initial_state=[5.0])
         # Output is C*x, x[0]=5, so output=5
         ss.update()
         assert ss.getOutput() == pytest.approx(5.0)
@@ -2176,7 +2134,7 @@ class TestStateSpaceBlock:
             A=[[0.0]],
             B=[[0.0]],
             C=[[0.0]],
-            D=[[2.0]]  # Direct feedthrough
+            D=[[2.0]],  # Direct feedthrough
         )
         ss.init()
         ss.setInput(3.0)
@@ -2674,7 +2632,9 @@ class TestIntegratorExtended:
 
     def test_integrator_output_clamping(self):
         """Test Integrator output clamping."""
-        integrator = Integrator(initial_condition=5.0, limit_output=True, upper_limit=3.0, lower_limit=-3.0)
+        integrator = Integrator(
+            initial_condition=5.0, limit_output=True, upper_limit=3.0, lower_limit=-3.0
+        )
         assert integrator.getOutput() == 3.0  # Clamped to upper
 
         integrator.x[0] = -5.0
@@ -2825,7 +2785,7 @@ class TestProductExtended:
         const1.init()
         const2.init()
 
-        prod = Product(operations='**')
+        prod = Product(operations="**")
         prod.connectInput(const1, 0)
         prod.connectInput(const2, 1)
 
@@ -2837,12 +2797,12 @@ class TestProductExtended:
 
     def test_product_division_by_zero(self):
         """Test Product handles division by near-zero."""
-        prod = Product(operations='*/')
+        prod = Product(operations="*/")
         prod.setInput(10.0, 0)
         prod.setInput(0.0, 1)  # Near zero
         prod.update()
         # Should handle gracefully without crashing
-        assert prod.getOutput() != float('inf')
+        assert prod.getOutput() != float("inf")
 
 
 class TestSignExtended:
@@ -2885,7 +2845,7 @@ class TestMathFunctionExtended:
         const = Constant(value=1.0)
         const.init()
 
-        mf = MathFunction(function='exp')
+        mf = MathFunction(function="exp")
         mf.connectInput(const)
         assert mf.input_block is const
 
@@ -2894,14 +2854,14 @@ class TestMathFunctionExtended:
 
     def test_math_function_log(self):
         """Test MathFunction log function."""
-        mf = MathFunction(function='log')
+        mf = MathFunction(function="log")
         mf.setInput(math.e)
         mf.update()
         assert mf.getOutput() == pytest.approx(1.0)
 
     def test_math_function_log_negative(self):
         """Test MathFunction log with near-zero input."""
-        mf = MathFunction(function='log')
+        mf = MathFunction(function="log")
         mf.setInput(0.0)
         mf.update()
         # Should not crash, uses EPS
@@ -2909,57 +2869,57 @@ class TestMathFunctionExtended:
 
     def test_math_function_log10(self):
         """Test MathFunction log10 function."""
-        mf = MathFunction(function='log10')
+        mf = MathFunction(function="log10")
         mf.setInput(100.0)
         mf.update()
         assert mf.getOutput() == pytest.approx(2.0)
 
     def test_math_function_sqrt(self):
         """Test MathFunction sqrt function."""
-        mf = MathFunction(function='sqrt')
+        mf = MathFunction(function="sqrt")
         mf.setInput(16.0)
         mf.update()
         assert mf.getOutput() == pytest.approx(4.0)
 
     def test_math_function_sqrt_negative(self):
         """Test MathFunction sqrt with negative input."""
-        mf = MathFunction(function='sqrt')
+        mf = MathFunction(function="sqrt")
         mf.setInput(-5.0)
         mf.update()
         assert mf.getOutput() == 0.0
 
     def test_math_function_square(self):
         """Test MathFunction square function."""
-        mf = MathFunction(function='square')
+        mf = MathFunction(function="square")
         mf.setInput(5.0)
         mf.update()
         assert mf.getOutput() == pytest.approx(25.0)
 
     def test_math_function_pow(self):
         """Test MathFunction pow function."""
-        mf = MathFunction(function='pow', exponent=3.0)
+        mf = MathFunction(function="pow", exponent=3.0)
         mf.setInput(2.0)
         mf.update()
         assert mf.getOutput() == pytest.approx(8.0)
 
     def test_math_function_reciprocal(self):
         """Test MathFunction reciprocal function."""
-        mf = MathFunction(function='reciprocal')
+        mf = MathFunction(function="reciprocal")
         mf.setInput(5.0)
         mf.update()
         assert mf.getOutput() == pytest.approx(0.2)
 
     def test_math_function_reciprocal_zero(self):
         """Test MathFunction reciprocal with zero."""
-        mf = MathFunction(function='reciprocal')
+        mf = MathFunction(function="reciprocal")
         mf.setInput(0.0)
         mf.update()
         # Should handle gracefully
-        assert mf.getOutput() != float('inf')
+        assert mf.getOutput() != float("inf")
 
     def test_math_function_unknown(self):
         """Test MathFunction with unknown function (pass-through)."""
-        mf = MathFunction(function='unknown_func')
+        mf = MathFunction(function="unknown_func")
         mf.setInput(42.0)
         mf.update()
         assert mf.getOutput() == 42.0
@@ -2973,7 +2933,7 @@ class TestTrigonometryExtended:
         const = Constant(value=0.0)
         const.init()
 
-        trig = Trigonometry(function='sin')
+        trig = Trigonometry(function="sin")
         trig.connectInput(const)
         assert trig.input_block is const
 
@@ -2982,56 +2942,56 @@ class TestTrigonometryExtended:
 
     def test_trig_tan(self):
         """Test Trigonometry tan function."""
-        trig = Trigonometry(function='tan')
+        trig = Trigonometry(function="tan")
         trig.setInput(0.0)
         trig.update()
         assert trig.getOutput() == pytest.approx(0.0)
 
     def test_trig_asin(self):
         """Test Trigonometry asin function."""
-        trig = Trigonometry(function='asin')
+        trig = Trigonometry(function="asin")
         trig.setInput(0.5)
         trig.update()
         assert trig.getOutput() == pytest.approx(math.asin(0.5))
 
     def test_trig_acos(self):
         """Test Trigonometry acos function."""
-        trig = Trigonometry(function='acos')
+        trig = Trigonometry(function="acos")
         trig.setInput(0.5)
         trig.update()
         assert trig.getOutput() == pytest.approx(math.acos(0.5))
 
     def test_trig_atan(self):
         """Test Trigonometry atan function."""
-        trig = Trigonometry(function='atan')
+        trig = Trigonometry(function="atan")
         trig.setInput(1.0)
         trig.update()
         assert trig.getOutput() == pytest.approx(math.atan(1.0))
 
     def test_trig_sinh(self):
         """Test Trigonometry sinh function."""
-        trig = Trigonometry(function='sinh')
+        trig = Trigonometry(function="sinh")
         trig.setInput(1.0)
         trig.update()
         assert trig.getOutput() == pytest.approx(math.sinh(1.0))
 
     def test_trig_cosh(self):
         """Test Trigonometry cosh function."""
-        trig = Trigonometry(function='cosh')
+        trig = Trigonometry(function="cosh")
         trig.setInput(1.0)
         trig.update()
         assert trig.getOutput() == pytest.approx(math.cosh(1.0))
 
     def test_trig_tanh(self):
         """Test Trigonometry tanh function."""
-        trig = Trigonometry(function='tanh')
+        trig = Trigonometry(function="tanh")
         trig.setInput(1.0)
         trig.update()
         assert trig.getOutput() == pytest.approx(math.tanh(1.0))
 
     def test_trig_overflow_handling(self):
         """Test Trigonometry handles overflow."""
-        trig = Trigonometry(function='sinh')
+        trig = Trigonometry(function="sinh")
         trig.setInput(1000.0)  # Large value that may overflow
         trig.update()
         # Should handle gracefully
@@ -3066,7 +3026,7 @@ class TestSwitchExtended:
         control.init()
         const2.init()
 
-        sw = Switch(threshold=0.5, criteria='gte')
+        sw = Switch(threshold=0.5, criteria="gte")
         sw.connectInput(const1, 0)
         sw.connectInput(control, 1)
         sw.connectInput(const2, 2)
@@ -3077,9 +3037,9 @@ class TestSwitchExtended:
 
     def test_switch_gt_criteria(self):
         """Test Switch with 'gt' criteria."""
-        sw = Switch(threshold=0.5, criteria='gt')
+        sw = Switch(threshold=0.5, criteria="gt")
         sw.setInput(10.0, 0)  # First input
-        sw.setInput(0.5, 1)   # Control - exactly at threshold
+        sw.setInput(0.5, 1)  # Control - exactly at threshold
         sw.setInput(20.0, 2)  # Second input
         sw.update()
         # Control (0.5) is NOT > threshold (0.5), so use second input
@@ -3087,9 +3047,9 @@ class TestSwitchExtended:
 
     def test_switch_neq_criteria(self):
         """Test Switch with 'neq' criteria."""
-        sw = Switch(threshold=0.5, criteria='neq')
+        sw = Switch(threshold=0.5, criteria="neq")
         sw.setInput(10.0, 0)  # First input
-        sw.setInput(0.5, 1)   # Control - exactly at threshold
+        sw.setInput(0.5, 1)  # Control - exactly at threshold
         sw.setInput(20.0, 2)  # Second input
         sw.update()
         # Control == threshold, so use second input
@@ -3564,7 +3524,6 @@ class TestObserverBlocksExtended:
     def test_luenberger_init_with_initial_state(self):
         """Test LuenbergerObserver init() with _initial_state set."""
         from src.osk.blocks.observers import LuenbergerObserver
-        import numpy as np
 
         obs = LuenbergerObserver()
         obs._initial_state = [5.0]
@@ -3574,7 +3533,6 @@ class TestObserverBlocksExtended:
     def test_luenberger_propagate_states(self):
         """Test LuenbergerObserver propagateStates method."""
         from src.osk.blocks.observers import LuenbergerObserver
-        import numpy as np
 
         State.dt = 0.01
         obs = LuenbergerObserver()
@@ -3586,7 +3544,6 @@ class TestObserverBlocksExtended:
     def test_luenberger_get_state_estimate(self):
         """Test LuenbergerObserver getStateEstimate method."""
         from src.osk.blocks.observers import LuenbergerObserver
-        import numpy as np
 
         obs = LuenbergerObserver()
         obs.x_hat = np.array([3.14])
@@ -3609,7 +3566,6 @@ class TestObserverBlocksExtended:
     def test_kalman_filter_init(self):
         """Test KalmanFilter init() method."""
         from src.osk.blocks.observers import KalmanFilter
-        import numpy as np
 
         kf = KalmanFilter()
         kf.x_hat = np.array([5.0])
@@ -3621,7 +3577,6 @@ class TestObserverBlocksExtended:
     def test_kalman_filter_get_covariance(self):
         """Test KalmanFilter getCovariance method."""
         from src.osk.blocks.observers import KalmanFilter
-        import numpy as np
 
         kf = KalmanFilter()
         kf.P = np.array([[2.5]])
@@ -3643,7 +3598,6 @@ class TestObserverBlocksExtended:
     def test_extended_kalman_filter_init(self):
         """Test ExtendedKalmanFilter init() method."""
         from src.osk.blocks.observers import ExtendedKalmanFilter
-        import numpy as np
 
         ekf = ExtendedKalmanFilter(n_states=2)
         ekf.x_hat = np.array([1.0, 2.0])
@@ -3654,7 +3608,6 @@ class TestObserverBlocksExtended:
     def test_extended_kalman_filter_get_output_port1(self):
         """Test ExtendedKalmanFilter getOutput with port 1."""
         from src.osk.blocks.observers import ExtendedKalmanFilter
-        import numpy as np
 
         ekf = ExtendedKalmanFilter(n_states=2)
         ekf.x_hat = np.array([1.0, 2.0])
@@ -3673,7 +3626,6 @@ class TestObserverBlocksExtended:
     def test_luenberger_with_2d_matrices(self):
         """Test LuenbergerObserver with proper 2D matrices."""
         from src.osk.blocks.observers import LuenbergerObserver
-        import numpy as np
 
         A = [[0, 1], [-1, -1]]
         B = [[0], [1]]
@@ -3687,7 +3639,6 @@ class TestObserverBlocksExtended:
     def test_kalman_filter_with_singular_S(self):
         """Test KalmanFilter handles near-singular innovation covariance."""
         from src.osk.blocks.observers import KalmanFilter
-        import numpy as np
 
         # Create filter with very small R (may cause numerical issues)
         kf = KalmanFilter(R=[[1e-15]])
@@ -3718,9 +3669,7 @@ class TestDiscreteBlocksExtended:
         State.dt = 0.01
 
         dtf = DiscreteTransferFunction(
-            numerator=[1.0, 1.0],
-            denominator=[1.0, 0.5, 0.25],
-            sample_time=0.01
+            numerator=[1.0, 1.0], denominator=[1.0, 0.5, 0.25], sample_time=0.01
         )
         dtf.init()
         dtf.input = 1.0
@@ -3744,10 +3693,7 @@ class TestNonlinearBlocksExtended:
         from src.osk.blocks.nonlinear import LookupTable1D
 
         # Test with default method (linear)
-        lut = LookupTable1D(
-            x_data=[0, 1, 2],
-            y_data=[0, 10, 20]
-        )
+        lut = LookupTable1D(x_data=[0, 1, 2], y_data=[0, 10, 20])
         lut.input = 0.5
         lut.update()
         assert lut.getOutput() == 5.0
@@ -3832,7 +3778,6 @@ class TestObserverMatrixEdgeCases:
     def test_kalman_filter_reshape_q_r(self):
         """Test KalmanFilter handles improper Q/R shapes."""
         from src.osk.blocks.observers import KalmanFilter
-        import numpy as np
 
         # Pass scalar Q and R which need reshaping
         kf = KalmanFilter(Q=0.01, R=0.1)
@@ -3842,7 +3787,6 @@ class TestObserverMatrixEdgeCases:
     def test_extended_kalman_filter_reshape_q_r(self):
         """Test ExtendedKalmanFilter handles improper Q/R shapes."""
         from src.osk.blocks.observers import ExtendedKalmanFilter
-        import numpy as np
 
         # Pass improper Q which needs reshaping
         ekf = ExtendedKalmanFilter(n_states=2, Q=[[1]])  # Wrong size
@@ -3866,12 +3810,7 @@ class TestObserverVectorOutput:
         from src.osk.blocks.observers import KalmanFilter
 
         # 2-state Kalman filter (position-velocity)
-        kf = KalmanFilter(
-            A=[[1, 0.01], [0, 1]],
-            B=[[0], [0]],
-            C=[[1, 0]],
-            initial_state=[1.0, 2.0]
-        )
+        kf = KalmanFilter(A=[[1, 0.01], [0, 1]], B=[[0], [0]], C=[[1, 0]], initial_state=[1.0, 2.0])
         kf.init()
 
         vec = kf.getOutputVector()
@@ -3893,11 +3832,7 @@ class TestObserverVectorOutput:
 
         # 2-state observer
         obs = LuenbergerObserver(
-            A=[[0, 1], [0, 0]],
-            B=[[0], [1]],
-            C=[[1, 0]],
-            L=[[1], [1]],
-            initial_state=[3.0, 4.0]
+            A=[[0, 1], [0, 0]], B=[[0], [1]], C=[[1, 0]], L=[[1], [1]], initial_state=[3.0, 4.0]
         )
         obs.init()
 
@@ -3925,9 +3860,9 @@ class TestObserverVectorOutput:
 
         Without getOutputVector(), the Inport would only read the first state.
         """
+        from src.osk.blocks.math_ops import Demux
         from src.osk.blocks.observers import KalmanFilter
         from src.osk.blocks.subsystems import Inport
-        from src.osk.blocks.math_ops import Demux
 
         # Create 2-state Kalman filter
         kf = KalmanFilter(
@@ -3964,9 +3899,9 @@ class TestObserverVectorOutput:
 
         This is the exact scenario that was broken before the fix.
         """
+        from src.osk.blocks.math_ops import Demux
         from src.osk.blocks.observers import KalmanFilter
         from src.osk.blocks.subsystems import Inport, Outport
-        from src.osk.blocks.math_ops import Demux
 
         # Create 2-state Kalman filter
         kf = KalmanFilter(
@@ -4084,7 +4019,7 @@ class TestVectorSum:
         const1.init()
         const2.init()
 
-        sum_block = Sum(signs='++')
+        sum_block = Sum(signs="++")
         sum_block.connectInput(const1, port=0)
         sum_block.connectInput(const2, port=1)
 
@@ -4106,7 +4041,7 @@ class TestVectorSum:
         const1.init()
         const2.init()
 
-        sum_block = Sum(signs='+-')
+        sum_block = Sum(signs="+-")
         sum_block.connectInput(const1, port=0)
         sum_block.connectInput(const2, port=1)
 
@@ -4129,7 +4064,7 @@ class TestVectorSum:
         const2.init()
         const3.init()
 
-        sum_block = Sum(signs='+++')
+        sum_block = Sum(signs="+++")
         sum_block.connectInput(const1, port=0)
         sum_block.connectInput(const2, port=1)
         sum_block.connectInput(const3, port=2)
@@ -4221,7 +4156,7 @@ class TestVectorProduct:
         const1.init()
         const2.init()
 
-        product = Product(operations='**')
+        product = Product(operations="**")
         product.connectInput(const1, port=0)
         product.connectInput(const2, port=1)
 
@@ -4242,7 +4177,7 @@ class TestVectorProduct:
         const1.init()
         const2.init()
 
-        product = Product(operations='*/')
+        product = Product(operations="*/")
         product.connectInput(const1, port=0)
         product.connectInput(const2, port=1)
 
@@ -4348,8 +4283,8 @@ class TestVectorSaturation:
         vec = sat.getOutputVector()
         assert vec is not None
         assert vec[0] == pytest.approx(-1.0)  # Saturated low
-        assert vec[1] == pytest.approx(0.5)   # In range
-        assert vec[2] == pytest.approx(1.0)   # Saturated high
+        assert vec[1] == pytest.approx(0.5)  # In range
+        assert vec[2] == pytest.approx(1.0)  # Saturated high
 
 
 class TestVectorDeadZone:
@@ -4374,9 +4309,9 @@ class TestVectorDeadZone:
         vec = dz.getOutputVector()
         assert vec is not None
         assert vec[0] == pytest.approx(-4.0)  # -5 + 1 = -4
-        assert vec[1] == pytest.approx(0.0)   # In dead zone
-        assert vec[2] == pytest.approx(0.0)   # In dead zone
-        assert vec[3] == pytest.approx(1.0)   # 2 - 1 = 1
+        assert vec[1] == pytest.approx(0.0)  # In dead zone
+        assert vec[2] == pytest.approx(0.0)  # In dead zone
+        assert vec[3] == pytest.approx(1.0)  # 2 - 1 = 1
 
 
 class TestVectorMathFunction:
@@ -4392,7 +4327,7 @@ class TestVectorMathFunction:
         const = Constant(value=[2.0, 3.0, 4.0])
         const.init()
 
-        mf = MathFunction(function='square')
+        mf = MathFunction(function="square")
         mf.connectInput(const)
 
         const.update()
@@ -4409,7 +4344,7 @@ class TestVectorMathFunction:
         const = Constant(value=[4.0, 9.0, 16.0])
         const.init()
 
-        mf = MathFunction(function='sqrt')
+        mf = MathFunction(function="sqrt")
         mf.connectInput(const)
 
         const.update()
@@ -4426,7 +4361,7 @@ class TestVectorMathFunction:
         const = Constant(value=[0.0, 1.0, 2.0])
         const.init()
 
-        mf = MathFunction(function='exp')
+        mf = MathFunction(function="exp")
         mf.connectInput(const)
 
         const.update()
@@ -4449,10 +4384,10 @@ class TestVectorTrigonometry:
 
     def test_trig_sin_vector(self):
         """Test Trigonometry sin on vector."""
-        const = Constant(value=[0.0, math.pi/2, math.pi])
+        const = Constant(value=[0.0, math.pi / 2, math.pi])
         const.init()
 
-        trig = Trigonometry(function='sin')
+        trig = Trigonometry(function="sin")
         trig.connectInput(const)
 
         const.update()
@@ -4466,10 +4401,10 @@ class TestVectorTrigonometry:
 
     def test_trig_cos_vector(self):
         """Test Trigonometry cos on vector."""
-        const = Constant(value=[0.0, math.pi/2, math.pi])
+        const = Constant(value=[0.0, math.pi / 2, math.pi])
         const.init()
 
-        trig = Trigonometry(function='cos')
+        trig = Trigonometry(function="cos")
         trig.connectInput(const)
 
         const.update()
@@ -4545,7 +4480,7 @@ class TestVectorSignalFlow:
         gain = Gain(gain=2.0)
         gain.connectInput(const1)
 
-        sum_block = Sum(signs='++')
+        sum_block = Sum(signs="++")
         sum_block.connectInput(gain, port=0)
         sum_block.connectInput(const2, port=1)
 
@@ -4617,7 +4552,7 @@ class TestVectorSignalFlow:
         const = Constant(value=[1.0, 2.0])
         const.init()
 
-        sum_block = Sum(signs='+-')
+        sum_block = Sum(signs="+-")
         gain = Gain(gain=1.0)
         integrator = Integrator(initial_condition=[0.0, 0.0])
         integrator.init()
@@ -4628,7 +4563,7 @@ class TestVectorSignalFlow:
         integrator.connectInput(gain)
 
         # Run a few steps
-        for i in range(100):
+        for _i in range(100):
             const.update()
 
             # Manually set feedback from integrator output
@@ -4660,10 +4595,10 @@ class TestVectorSignalFlow:
         const = Constant(value=[2.0, 4.0, 6.0])
         const.init()
 
-        square = MathFunction(function='square')
+        square = MathFunction(function="square")
         square.connectInput(const)
 
-        sqrt = MathFunction(function='sqrt')
+        sqrt = MathFunction(function="sqrt")
         sqrt.connectInput(square)
 
         gain = Gain(gain=0.5)
@@ -4809,7 +4744,7 @@ class TestHitCrossingBlock:
         """Test HitCrossing detects rising edge crossing."""
         from src.osk.blocks.nonlinear import HitCrossing
 
-        hc = HitCrossing(threshold=0.0, direction='rising')
+        hc = HitCrossing(threshold=0.0, direction="rising")
         hc.init()
 
         # First update below threshold
@@ -4831,7 +4766,7 @@ class TestHitCrossingBlock:
         """Test HitCrossing detects falling edge crossing."""
         from src.osk.blocks.nonlinear import HitCrossing
 
-        hc = HitCrossing(threshold=0.0, direction='falling')
+        hc = HitCrossing(threshold=0.0, direction="falling")
         hc.init()
 
         # Start above threshold
@@ -4848,7 +4783,7 @@ class TestHitCrossingBlock:
         """Test HitCrossing detects both rising and falling."""
         from src.osk.blocks.nonlinear import HitCrossing
 
-        hc = HitCrossing(threshold=0.0, direction='either')
+        hc = HitCrossing(threshold=0.0, direction="either")
         hc.init()
 
         # Start below
@@ -4878,8 +4813,9 @@ class TestHysteresisBlock:
         """Test Hysteresis starts in low state."""
         from src.osk.blocks.nonlinear import Hysteresis
 
-        hyst = Hysteresis(upper_threshold=1.0, lower_threshold=-1.0,
-                         output_high=1.0, output_low=0.0)
+        hyst = Hysteresis(
+            upper_threshold=1.0, lower_threshold=-1.0, output_high=1.0, output_low=0.0
+        )
         hyst.init()
         assert hyst.getOutput() == 0.0
 
@@ -4887,8 +4823,9 @@ class TestHysteresisBlock:
         """Test Hysteresis switches to high state."""
         from src.osk.blocks.nonlinear import Hysteresis
 
-        hyst = Hysteresis(upper_threshold=1.0, lower_threshold=-1.0,
-                         output_high=1.0, output_low=0.0)
+        hyst = Hysteresis(
+            upper_threshold=1.0, lower_threshold=-1.0, output_high=1.0, output_low=0.0
+        )
         hyst.init()
 
         # Input below upper threshold - stays low
@@ -4905,8 +4842,9 @@ class TestHysteresisBlock:
         """Test Hysteresis stays high until lower threshold crossed."""
         from src.osk.blocks.nonlinear import Hysteresis
 
-        hyst = Hysteresis(upper_threshold=1.0, lower_threshold=-1.0,
-                         output_high=1.0, output_low=0.0)
+        hyst = Hysteresis(
+            upper_threshold=1.0, lower_threshold=-1.0, output_high=1.0, output_low=0.0
+        )
         hyst.init()
 
         # Switch to high
@@ -5221,8 +5159,8 @@ class TestPowerBlock:
 
         pw = Power()
         pw.init()
-        pw.setInput(9.0, port=0)   # base
-        pw.setInput(0.5, port=1)   # exponent
+        pw.setInput(9.0, port=0)  # base
+        pw.setInput(0.5, port=1)  # exponent
         pw.update()
         assert pw.getOutput() == pytest.approx(3.0)
 
@@ -5379,7 +5317,7 @@ class TestMinMaxBlock:
         """Test MinMax finds minimum."""
         from src.osk.blocks.math_ops import MinMax
 
-        mm = MinMax(function='min', num_inputs=3)
+        mm = MinMax(function="min", num_inputs=3)
         mm.init()
         mm.setInput(5.0, port=0)
         mm.setInput(2.0, port=1)
@@ -5391,7 +5329,7 @@ class TestMinMaxBlock:
         """Test MinMax finds maximum."""
         from src.osk.blocks.math_ops import MinMax
 
-        mm = MinMax(function='max', num_inputs=3)
+        mm = MinMax(function="max", num_inputs=3)
         mm.init()
         mm.setInput(5.0, port=0)
         mm.setInput(2.0, port=1)
@@ -5407,7 +5345,7 @@ class TestRoundingBlock:
         """Test rounding to nearest."""
         from src.osk.blocks.math_ops import Rounding
 
-        r = Rounding(mode='round')
+        r = Rounding(mode="round")
         r.init()
         r.setInput(2.6)
         r.update()
@@ -5417,7 +5355,7 @@ class TestRoundingBlock:
         """Test floor function."""
         from src.osk.blocks.math_ops import Rounding
 
-        r = Rounding(mode='floor')
+        r = Rounding(mode="floor")
         r.init()
         r.setInput(2.9)
         r.update()
@@ -5427,7 +5365,7 @@ class TestRoundingBlock:
         """Test ceiling function."""
         from src.osk.blocks.math_ops import Rounding
 
-        r = Rounding(mode='ceil')
+        r = Rounding(mode="ceil")
         r.init()
         r.setInput(2.1)
         r.update()
@@ -5437,7 +5375,7 @@ class TestRoundingBlock:
         """Test fix (truncation) function."""
         from src.osk.blocks.math_ops import Rounding
 
-        r = Rounding(mode='fix')
+        r = Rounding(mode="fix")
         r.init()
         r.setInput(-2.9)
         r.update()
@@ -5456,7 +5394,7 @@ class TestCompareToZeroBlock:
         """Test greater than zero comparison."""
         from src.osk.blocks.logic import CompareToZero
 
-        cz = CompareToZero(operator='>')
+        cz = CompareToZero(operator=">")
         cz.init()
         cz.setInput(1.0)
         cz.update()
@@ -5470,7 +5408,7 @@ class TestCompareToZeroBlock:
         """Test equal to zero comparison."""
         from src.osk.blocks.logic import CompareToZero
 
-        cz = CompareToZero(operator='==')
+        cz = CompareToZero(operator="==")
         cz.init()
         cz.setInput(0.0)
         cz.update()
@@ -5488,7 +5426,7 @@ class TestCompareToConstantBlock:
         """Test greater than constant comparison."""
         from src.osk.blocks.logic import CompareToConstant
 
-        cc = CompareToConstant(constant=5.0, operator='>')
+        cc = CompareToConstant(constant=5.0, operator=">")
         cc.init()
         cc.setInput(6.0)
         cc.update()
@@ -5506,7 +5444,7 @@ class TestRelationalOperatorBlock:
         """Test less than comparison between two inputs."""
         from src.osk.blocks.logic import RelationalOperator
 
-        ro = RelationalOperator(operator='<')
+        ro = RelationalOperator(operator="<")
         ro.init()
         ro.setInput(3.0, port=0)
         ro.setInput(5.0, port=1)
@@ -5525,7 +5463,7 @@ class TestLogicalOperatorBlock:
         """Test logical AND operation."""
         from src.osk.blocks.logic import LogicalOperator
 
-        lo = LogicalOperator(operator='AND', num_inputs=2)
+        lo = LogicalOperator(operator="AND", num_inputs=2)
         lo.init()
         lo.setInput(1.0, port=0)
         lo.setInput(1.0, port=1)
@@ -5540,7 +5478,7 @@ class TestLogicalOperatorBlock:
         """Test logical OR operation."""
         from src.osk.blocks.logic import LogicalOperator
 
-        lo = LogicalOperator(operator='OR', num_inputs=2)
+        lo = LogicalOperator(operator="OR", num_inputs=2)
         lo.init()
         lo.setInput(0.0, port=0)
         lo.setInput(1.0, port=1)
@@ -5555,7 +5493,7 @@ class TestLogicalOperatorBlock:
         """Test logical NOT operation."""
         from src.osk.blocks.logic import LogicalOperator
 
-        lo = LogicalOperator(operator='NOT', num_inputs=1)
+        lo = LogicalOperator(operator="NOT", num_inputs=1)
         lo.init()
         lo.setInput(1.0, port=0)
         lo.update()
@@ -5573,7 +5511,7 @@ class TestBitOperatorBlock:
         """Test bitwise AND operation."""
         from src.osk.blocks.logic import BitOperator
 
-        bo = BitOperator(operator='AND')
+        bo = BitOperator(operator="AND")
         bo.init()
         bo.setInput(0b1100, port=0)
         bo.setInput(0b1010, port=1)
@@ -5584,7 +5522,7 @@ class TestBitOperatorBlock:
         """Test bitwise OR operation."""
         from src.osk.blocks.logic import BitOperator
 
-        bo = BitOperator(operator='OR')
+        bo = BitOperator(operator="OR")
         bo.init()
         bo.setInput(0b1100, port=0)
         bo.setInput(0b1010, port=1)
@@ -5595,7 +5533,7 @@ class TestBitOperatorBlock:
         """Test bitwise XOR operation."""
         from src.osk.blocks.logic import BitOperator
 
-        bo = BitOperator(operator='XOR')
+        bo = BitOperator(operator="XOR")
         bo.init()
         bo.setInput(0b1100, port=0)
         bo.setInput(0b1010, port=1)
@@ -5663,7 +5601,7 @@ class TestSignalGeneratorBlock:
         """Test SignalGenerator with sine wave."""
         from src.osk.blocks.sources import SignalGenerator
 
-        sg = SignalGenerator(wave_type='sine', amplitude=2.0, frequency=1.0, units='hertz')
+        sg = SignalGenerator(wave_type="sine", amplitude=2.0, frequency=1.0, units="hertz")
         sg.init()
 
         State.t = 0.25  # Quarter period
@@ -5674,7 +5612,7 @@ class TestSignalGeneratorBlock:
         """Test SignalGenerator with square wave."""
         from src.osk.blocks.sources import SignalGenerator
 
-        sg = SignalGenerator(wave_type='square', amplitude=1.0, frequency=1.0, units='hertz')
+        sg = SignalGenerator(wave_type="square", amplitude=1.0, frequency=1.0, units="hertz")
         sg.init()
 
         State.t = 0.25
@@ -5753,12 +5691,7 @@ class TestDiscreteStateSpaceBlock:
 
         # Simple first-order discrete system
         dss = DiscreteStateSpace(
-            A=[[0.9]],
-            B=[[0.1]],
-            C=[[1.0]],
-            D=[[0.0]],
-            initial_state=[0.0],
-            sample_time=0.1
+            A=[[0.9]], B=[[0.1]], C=[[1.0]], D=[[0.0]], initial_state=[0.0], sample_time=0.1
         )
         State.t = 0.0
         dss.init()

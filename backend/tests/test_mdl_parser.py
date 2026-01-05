@@ -1,7 +1,5 @@
 """Tests for the MDL parser."""
 
-import pytest
-
 from src.parsers.mdl_parser import MDLParser
 
 
@@ -65,7 +63,7 @@ class TestMDLParser:
 
         value = parser._parse_quoted_string()
         # Note: the escape character stays in the output
-        assert 'test' in value
+        assert "test" in value
 
     def test_parse_array(self):
         """Test parsing array value."""
@@ -355,7 +353,7 @@ class TestMDLParser:
             "StartTime": "0.5",
             "StopTime": "20.0",
             "FixedStep": "0.001",
-            "Solver": "ode1"
+            "Solver": "ode1",
         }
 
         config = parser._parse_simulation_config(model_data)
@@ -387,7 +385,7 @@ class TestMDLParser:
             "BlockType": "Gain",
             "Name": "Gain1",
             "Position": "[100, 100, 150, 150]",
-            "Gain": "2.0"
+            "Gain": "2.0",
         }
 
         result = parser._convert_block(block_data, 0)
@@ -407,12 +405,7 @@ class TestMDLParser:
     def test_parse_blocks_single_dict(self):
         """Test parsing single block as dict."""
         parser = MDLParser()
-        system_data = {
-            "Block": {
-                "BlockType": "Gain",
-                "Name": "Gain1"
-            }
-        }
+        system_data = {"Block": {"BlockType": "Gain", "Name": "Gain1"}}
 
         blocks = parser._parse_blocks(system_data)
         assert len(blocks) == 1

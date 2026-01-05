@@ -83,7 +83,7 @@ class ZeroOrderHold(Block):
 class DiscreteIntegrator(Block):
     """Discrete-time integrator block."""
 
-    def __init__(self, method='forward', sample_time=0.1, initial_condition=0.0):
+    def __init__(self, method="forward", sample_time=0.1, initial_condition=0.0):
         super().__init__()
         self.method = method  # 'forward', 'backward', 'trapezoidal'
         self.sample_time = sample_time
@@ -113,13 +113,13 @@ class DiscreteIntegrator(Block):
 
         # Check if it's time to update
         if State.t - self.last_sample_time >= self.sample_time - State.EPS:
-            if self.method == 'forward':
+            if self.method == "forward":
                 # Forward Euler: y[n] = y[n-1] + T*u[n-1]
                 self.output += self.sample_time * self.prev_input
-            elif self.method == 'backward':
+            elif self.method == "backward":
                 # Backward Euler: y[n] = y[n-1] + T*u[n]
                 self.output += self.sample_time * self.input
-            elif self.method == 'trapezoidal':
+            elif self.method == "trapezoidal":
                 # Trapezoidal: y[n] = y[n-1] + T/2*(u[n] + u[n-1])
                 self.output += self.sample_time / 2.0 * (self.input + self.prev_input)
 
@@ -409,7 +409,7 @@ class DiscretePIDController(Block):
     with various discretization methods.
     """
 
-    def __init__(self, Kp=1.0, Ki=0.0, Kd=0.0, N=100.0, sample_time=0.1, method='forward'):
+    def __init__(self, Kp=1.0, Ki=0.0, Kd=0.0, N=100.0, sample_time=0.1, method="forward"):
         super().__init__()
         self.Kp = Kp
         self.Ki = Ki
@@ -456,9 +456,9 @@ class DiscretePIDController(Block):
             p_term = self.Kp * error
 
             # Integral term
-            if self.method == 'forward':
+            if self.method == "forward":
                 self._integral += Ts * self._prev_error
-            elif self.method == 'backward':
+            elif self.method == "backward":
                 self._integral += Ts * error
             else:  # trapezoidal
                 self._integral += Ts * (error + self._prev_error) / 2
@@ -469,7 +469,9 @@ class DiscretePIDController(Block):
             # Simplified for Kd only:
             if self.N > 0 and Ts > 0:
                 alpha = self.N * Ts
-                d_term = (self._prev_derivative + self.Kd * self.N * (error - self._prev_error)) / (1 + alpha)
+                d_term = (self._prev_derivative + self.Kd * self.N * (error - self._prev_error)) / (
+                    1 + alpha
+                )
                 self._prev_derivative = d_term
             else:
                 d_term = self.Kd * (error - self._prev_error) / Ts if Ts > 0 else 0.0

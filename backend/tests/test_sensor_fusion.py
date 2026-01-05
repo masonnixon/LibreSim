@@ -1,12 +1,20 @@
 """Unit tests for Sensor Fusion Toolbox blocks."""
 
 import math
-import pytest
 
 from src.osk.blocks.sensor_fusion import (
-    IMUSensor, Accelerometer, Gyroscope, Magnetometer,
-    GPSSensor, Altimeter, ComplementaryFilter, MadgwickFilter,
-    MahonyFilter, INSGPSFusion, AlphaBetaFilter, AlphaBetaGammaFilter
+    Accelerometer,
+    AlphaBetaFilter,
+    AlphaBetaGammaFilter,
+    Altimeter,
+    ComplementaryFilter,
+    GPSSensor,
+    Gyroscope,
+    IMUSensor,
+    INSGPSFusion,
+    MadgwickFilter,
+    Magnetometer,
+    MahonyFilter,
 )
 
 
@@ -16,10 +24,7 @@ class TestIMUSensor:
     def test_zero_noise(self):
         """IMU with zero noise should output true values."""
         imu = IMUSensor(
-            accel_noise=0.0,
-            gyro_noise=0.0,
-            accel_bias=[0.0, 0.0, 0.0],
-            gyro_bias=[0.0, 0.0, 0.0]
+            accel_noise=0.0, gyro_noise=0.0, accel_bias=[0.0, 0.0, 0.0], gyro_bias=[0.0, 0.0, 0.0]
         )
 
         true_accel = [1.0, 2.0, 3.0]
@@ -32,17 +37,12 @@ class TestIMUSensor:
         output = imu.getOutputVector()
         for i in range(3):
             assert abs(output[i] - true_accel[i]) < 1e-6
-            assert abs(output[i+3] - true_gyro[i]) < 1e-6
+            assert abs(output[i + 3] - true_gyro[i]) < 1e-6
 
     def test_bias_applied(self):
         """IMU should add bias to measurements."""
         bias = [0.1, 0.2, 0.3]
-        imu = IMUSensor(
-            accel_noise=0.0,
-            gyro_noise=0.0,
-            accel_bias=bias,
-            gyro_bias=[0.0, 0.0, 0.0]
-        )
+        imu = IMUSensor(accel_noise=0.0, gyro_noise=0.0, accel_bias=bias, gyro_bias=[0.0, 0.0, 0.0])
 
         imu.setInput([0.0, 0.0, 0.0], port=0)
         imu.setInput([0.0, 0.0, 0.0], port=1)
@@ -59,7 +59,7 @@ class TestIMUSensor:
             gyro_noise=0.0,
             accel_bias=[0.0, 0.0, 0.0],
             gyro_bias=[0.0, 0.0, 0.0],
-            seed=42
+            seed=42,
         )
 
         samples = []
@@ -70,7 +70,7 @@ class TestIMUSensor:
             samples.append(imu.getOutput(0))
 
         mean = sum(samples) / len(samples)
-        variance = sum((x - mean)**2 for x in samples) / len(samples)
+        variance = sum((x - mean) ** 2 for x in samples) / len(samples)
 
         assert abs(mean) < 0.1  # Mean should be near 0
         assert 0.5 < variance < 1.5  # Variance should be near 1
@@ -130,14 +130,10 @@ class TestGPSSensor:
     def test_zero_noise(self):
         """GPS with zero noise should output true values."""
         from src.osk.state import State
+
         State.t = 0.0
 
-        gps = GPSSensor(
-            position_noise=0.0,
-            velocity_noise=0.0,
-            update_rate=10.0,
-            seed=42
-        )
+        gps = GPSSensor(position_noise=0.0, velocity_noise=0.0, update_rate=10.0, seed=42)
         gps.init()
 
         true_pos = [37.0, -122.0, 100.0]
@@ -150,7 +146,7 @@ class TestGPSSensor:
         output = gps.getOutputVector()
         for i in range(3):
             assert abs(output[i] - true_pos[i]) < 1e-6
-            assert abs(output[i+3] - true_vel[i]) < 1e-6
+            assert abs(output[i + 3] - true_vel[i]) < 1e-6
 
 
 class TestAltimeter:
@@ -181,6 +177,7 @@ class TestComplementaryFilter:
     def test_level_attitude(self):
         """Filter should estimate level attitude when level."""
         from src.osk.state import State
+
         State.dt = 0.01
 
         cf = ComplementaryFilter(alpha=0.98)
@@ -203,6 +200,7 @@ class TestComplementaryFilter:
     def test_gyro_integration(self):
         """Filter should integrate gyro for yaw."""
         from src.osk.state import State
+
         State.dt = 0.01
 
         cf = ComplementaryFilter(alpha=0.98)
@@ -239,6 +237,7 @@ class TestMadgwickFilter:
     def test_quaternion_normalization(self):
         """Output quaternion should always be normalized."""
         from src.osk.state import State
+
         State.dt = 0.01
 
         mf = MadgwickFilter(beta=0.1)
@@ -272,6 +271,7 @@ class TestMahonyFilter:
     def test_level_convergence(self):
         """Filter should converge to level attitude."""
         from src.osk.state import State
+
         State.dt = 0.01
 
         mh = MahonyFilter(Kp=2.0, Ki=0.0)
@@ -299,7 +299,7 @@ class TestINSGPSFusion:
         fusion = INSGPSFusion(
             initial_position=[37.0, -122.0, 100.0],
             initial_velocity=[0.0, 0.0, 0.0],
-            initial_attitude=[0.0, 0.0, 0.0]
+            initial_attitude=[0.0, 0.0, 0.0],
         )
         fusion.init()
 
@@ -311,12 +311,13 @@ class TestINSGPSFusion:
     def test_gps_correction(self):
         """GPS measurements should correct drift."""
         from src.osk.state import State
+
         State.dt = 0.1
 
         fusion = INSGPSFusion(
             initial_position=[0.0, 0.0, 0.0],
             initial_velocity=[0.0, 0.0, 0.0],
-            initial_attitude=[0.0, 0.0, 0.0]
+            initial_attitude=[0.0, 0.0, 0.0],
         )
         fusion.init()
 
@@ -355,14 +356,12 @@ class TestAlphaBetaFilter:
 
         output = abf.getOutputVector()
         assert abs(output[0] - 10.0) < 0.5  # Position estimate
-        assert abs(output[1]) < 0.5          # Velocity should be ~0
+        assert abs(output[1]) < 0.5  # Velocity should be ~0
 
     def test_constant_velocity(self):
         """Filter should track constant velocity motion."""
         abf = AlphaBetaFilter(alpha=0.8, beta=0.5, sample_time=0.1)
         abf.init()
-
-        position = 0.0
 
         class MovingBlock:
             def __init__(self):
@@ -387,16 +386,8 @@ class TestAlphaBetaGammaFilter:
 
     def test_constant_acceleration(self):
         """Filter should estimate acceleration."""
-        abgf = AlphaBetaGammaFilter(
-            alpha=0.9,
-            beta=0.5,
-            gamma=0.1,
-            sample_time=0.1
-        )
+        abgf = AlphaBetaGammaFilter(alpha=0.9, beta=0.5, gamma=0.1, sample_time=0.1)
         abgf.init()
-
-        t = 0.0
-        accel = 1.0  # 1 m/s^2
 
         class AcceleratingBlock:
             def __init__(self):

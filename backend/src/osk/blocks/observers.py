@@ -43,7 +43,9 @@ class LuenbergerObserver(Block):
             self.L = self.L.reshape(-1, 1)
 
         # State estimate
-        self._initial_state = np.array(initial_state) if initial_state is not None else np.zeros(self.n)
+        self._initial_state = (
+            np.array(initial_state) if initial_state is not None else np.zeros(self.n)
+        )
         self.x_hat = self._initial_state.copy()
         self.x_hat_dot = np.zeros(self.n)
 
@@ -81,9 +83,7 @@ class LuenbergerObserver(Block):
         # Observer dynamics: x_hat_dot = A*x_hat + B*u + L*(y - y_hat)
         innovation = y - y_hat
         self.x_hat_dot = (
-            self.A @ self.x_hat.reshape(-1, 1) +
-            self.B @ u +
-            self.L @ innovation
+            self.A @ self.x_hat.reshape(-1, 1) + self.B @ u + self.L @ innovation
         ).flatten()
 
         # Output is the first state estimate (can be extended to output all states)
@@ -156,7 +156,9 @@ class KalmanFilter(Block):
             self.R = np.eye(self.p) * (self.R.flatten()[0] if self.R.size > 0 else 0.1)
 
         # State estimate and covariance
-        self._initial_state = np.array(initial_state) if initial_state is not None else np.zeros(self.n)
+        self._initial_state = (
+            np.array(initial_state) if initial_state is not None else np.zeros(self.n)
+        )
         self._initial_P = np.array(initial_P) if initial_P is not None else np.eye(self.n)
         self.x_hat = self._initial_state.copy()
         self.P = self._initial_P.copy()
@@ -265,7 +267,9 @@ class ExtendedKalmanFilter(Block):
             self.R = np.array([[self.R[0]]])
 
         # State estimate
-        self._initial_state = np.array(initial_state) if initial_state is not None else np.zeros(self.n)
+        self._initial_state = (
+            np.array(initial_state) if initial_state is not None else np.zeros(self.n)
+        )
         self.x_hat = self._initial_state.copy()
         self.P = np.eye(self.n)
 

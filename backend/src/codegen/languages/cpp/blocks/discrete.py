@@ -8,7 +8,7 @@ def unit_delay_template(block: BlockInfo, class_name: str) -> str:
     initial_condition = block.parameters.get("initialCondition", 0.0)
     sample_time = block.parameters.get("sampleTime", 0.1)
 
-    return f'''
+    return f"""
 class {class_name} {{
 public:
     double initial_condition = {initial_condition};
@@ -36,14 +36,14 @@ public:
         return output;
     }}
 }};
-'''
+"""
 
 
 def zero_order_hold_template(block: BlockInfo, class_name: str) -> str:
     """Generate ZeroOrderHold block code."""
     sample_time = block.parameters.get("sampleTime", 0.1)
 
-    return f'''
+    return f"""
 class {class_name} {{
 public:
     double sample_time = {sample_time};
@@ -70,14 +70,14 @@ public:
         return output;
     }}
 }};
-'''
+"""
 
 
 def first_order_hold_template(block: BlockInfo, class_name: str) -> str:
     """Generate FirstOrderHold block code."""
     sample_time = block.parameters.get("sampleTime", 0.1)
 
-    return f'''
+    return f"""
 class {class_name} {{
 public:
     double sample_time = {sample_time};
@@ -112,7 +112,7 @@ public:
         return output;
     }}
 }};
-'''
+"""
 
 
 def discrete_integrator_template(block: BlockInfo, class_name: str) -> str:
@@ -125,7 +125,7 @@ def discrete_integrator_template(block: BlockInfo, class_name: str) -> str:
     method_map = {"forward": "Forward", "backward": "Backward", "trapezoidal": "Trapezoidal"}
     method_enum = method_map.get(method, "Forward")
 
-    return f'''
+    return f"""
 class {class_name} {{
 public:
     enum class Method {{ Forward, Backward, Trapezoidal }};
@@ -169,14 +169,14 @@ public:
         return output;
     }}
 }};
-'''
+"""
 
 
 def discrete_derivative_template(block: BlockInfo, class_name: str) -> str:
     """Generate DiscreteDerivative block code."""
     sample_time = block.parameters.get("sampleTime", 0.1)
 
-    return f'''
+    return f"""
 class {class_name} {{
 public:
     double sample_time = {sample_time};
@@ -203,7 +203,7 @@ public:
         return output;
     }}
 }};
-'''
+"""
 
 
 def discrete_transfer_function_template(block: BlockInfo, class_name: str) -> str:
@@ -225,7 +225,7 @@ def discrete_transfer_function_template(block: BlockInfo, class_name: str) -> st
     num_str = ", ".join(str(n) for n in numerator)
     den_str = ", ".join(str(d) for d in denominator)
 
-    return f'''
+    return f"""
 class {class_name} {{
 public:
     static constexpr int ORDER = {order};
@@ -276,14 +276,14 @@ public:
         return output;
     }}
 }};
-'''
+"""
 
 
 def memory_template(block: BlockInfo, class_name: str) -> str:
     """Generate Memory block code."""
     initial_condition = block.parameters.get("initialCondition", 0.0)
 
-    return f'''
+    return f"""
 class {class_name} {{
 public:
     double initial_condition = {initial_condition};
@@ -312,7 +312,7 @@ public:
         return output;
     }}
 }};
-'''
+"""
 
 
 # Template registry for discrete blocks

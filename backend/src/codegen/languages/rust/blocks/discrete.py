@@ -8,7 +8,7 @@ def unit_delay_template(block: BlockInfo, struct_name: str) -> str:
     initial_condition = block.parameters.get("initialCondition", 0.0)
     sample_time = block.parameters.get("sampleTime", 0.1)
 
-    return f'''
+    return f"""
 #[derive(Clone)]
 pub struct {struct_name} {{
     pub initial_condition: f64,
@@ -55,14 +55,14 @@ impl Default for {struct_name} {{
         Self::new()
     }}
 }}
-'''
+"""
 
 
 def zero_order_hold_template(block: BlockInfo, struct_name: str) -> str:
     """Generate ZeroOrderHold block code."""
     sample_time = block.parameters.get("sampleTime", 0.1)
 
-    return f'''
+    return f"""
 #[derive(Clone)]
 pub struct {struct_name} {{
     pub sample_time: f64,
@@ -107,14 +107,14 @@ impl Default for {struct_name} {{
         Self::new()
     }}
 }}
-'''
+"""
 
 
 def first_order_hold_template(block: BlockInfo, struct_name: str) -> str:
     """Generate FirstOrderHold block code."""
     sample_time = block.parameters.get("sampleTime", 0.1)
 
-    return f'''
+    return f"""
 #[derive(Clone)]
 pub struct {struct_name} {{
     pub sample_time: f64,
@@ -169,7 +169,7 @@ impl Default for {struct_name} {{
         Self::new()
     }}
 }}
-'''
+"""
 
 
 def discrete_integrator_template(block: BlockInfo, struct_name: str) -> str:
@@ -182,7 +182,7 @@ def discrete_integrator_template(block: BlockInfo, struct_name: str) -> str:
     method_map = {"forward": "Forward", "backward": "Backward", "trapezoidal": "Trapezoidal"}
     method_enum = method_map.get(method, "Forward")
 
-    return f'''
+    return f"""
 #[derive(Clone, Copy, PartialEq)]
 pub enum IntegrationMethod {{
     Forward,
@@ -252,14 +252,14 @@ impl Default for {struct_name} {{
         Self::new()
     }}
 }}
-'''
+"""
 
 
 def discrete_derivative_template(block: BlockInfo, struct_name: str) -> str:
     """Generate DiscreteDerivative block code."""
     sample_time = block.parameters.get("sampleTime", 0.1)
 
-    return f'''
+    return f"""
 #[derive(Clone)]
 pub struct {struct_name} {{
     pub sample_time: f64,
@@ -304,7 +304,7 @@ impl Default for {struct_name} {{
         Self::new()
     }}
 }}
-'''
+"""
 
 
 def discrete_transfer_function_template(block: BlockInfo, struct_name: str) -> str:
@@ -326,7 +326,7 @@ def discrete_transfer_function_template(block: BlockInfo, struct_name: str) -> s
     num_str = ", ".join(f"{n}_f64" for n in numerator)
     den_str = ", ".join(f"{d}_f64" for d in denominator)
 
-    return f'''
+    return f"""
 #[derive(Clone)]
 pub struct {struct_name} {{
     pub numerator: [f64; {num_len}],
@@ -403,14 +403,14 @@ impl Default for {struct_name} {{
         Self::new()
     }}
 }}
-'''
+"""
 
 
 def memory_template(block: BlockInfo, struct_name: str) -> str:
     """Generate Memory block code."""
     initial_condition = block.parameters.get("initialCondition", 0.0)
 
-    return f'''
+    return f"""
 #[derive(Clone)]
 pub struct {struct_name} {{
     pub initial_condition: f64,
@@ -458,7 +458,7 @@ impl Default for {struct_name} {{
         Self::new()
     }}
 }}
-'''
+"""
 
 
 # Template registry for discrete blocks

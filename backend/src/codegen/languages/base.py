@@ -4,9 +4,9 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 from ..models import (
-    GeneratedProject,
-    CompiledModelInfo,
     BlockInfo,
+    CompiledModelInfo,
+    GeneratedProject,
     IntegrationMethod,
 )
 
@@ -134,10 +134,12 @@ class LanguageGenerator(ABC):
         # Only allow ASCII letters (a-z, A-Z), digits (0-9), and underscores
         result = ""
         for char in name:
-            if (char >= "a" and char <= "z") or \
-               (char >= "A" and char <= "Z") or \
-               (char >= "0" and char <= "9") or \
-               char == "_":
+            if (
+                (char >= "a" and char <= "z")
+                or (char >= "A" and char <= "Z")
+                or (char >= "0" and char <= "9")
+                or char == "_"
+            ):
                 result += char
             else:
                 result += "_"
@@ -186,7 +188,7 @@ class LanguageGenerator(ABC):
             if port_str.isdigit():
                 return int(port_str)
             # Try to extract number from end of string (e.g., "in0" -> 0, "out1" -> 1)
-            match = re.search(r'(\d+)$', port_str)
+            match = re.search(r"(\d+)$", port_str)
             if match:
                 port_num = int(match.group(1))
                 # If port_num is 0, it's 0-indexed; otherwise assume 1-indexed

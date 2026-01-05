@@ -1,6 +1,5 @@
 """Python templates for source blocks."""
 
-import math
 from ....models import BlockInfo
 
 
@@ -217,7 +216,7 @@ def white_noise_template(block: BlockInfo, class_name: str) -> str:
     sample_time = block.parameters.get("sampleTime", block.parameters.get("sample_time", 0.0))
 
     # Format seed for Python code
-    seed_str = str(seed) if seed is not None else 'None'
+    seed_str = str(seed) if seed is not None else "None"
 
     return f'''
 class {class_name}:
@@ -271,7 +270,7 @@ def band_limited_white_noise_template(block: BlockInfo, class_name: str) -> str:
     if sample_time <= 0:
         sample_time = 1e-6
 
-    seed_str = str(seed) if seed is not None else 'None'
+    seed_str = str(seed) if seed is not None else "None"
 
     return f'''
 class {class_name}:

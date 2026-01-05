@@ -8,7 +8,7 @@ def unit_delay_template(block: BlockInfo, struct_name: str) -> str:
     initial_condition = block.parameters.get("initialCondition", 0.0)
     sample_time = block.parameters.get("sampleTime", 0.1)
 
-    return f'''
+    return f"""
 typedef struct {{
     double initial_condition;
     double sample_time;
@@ -38,14 +38,14 @@ void {struct_name}_update({struct_name}* self, double t) {{
 double {struct_name}_get_output({struct_name}* self, int port) {{
     return self->output;
 }}
-'''
+"""
 
 
 def zero_order_hold_template(block: BlockInfo, struct_name: str) -> str:
     """Generate ZeroOrderHold block code."""
     sample_time = block.parameters.get("sampleTime", 0.1)
 
-    return f'''
+    return f"""
 typedef struct {{
     double sample_time;
     double input;
@@ -73,14 +73,14 @@ void {struct_name}_update({struct_name}* self, double t) {{
 double {struct_name}_get_output({struct_name}* self, int port) {{
     return self->output;
 }}
-'''
+"""
 
 
 def first_order_hold_template(block: BlockInfo, struct_name: str) -> str:
     """Generate FirstOrderHold block code."""
     sample_time = block.parameters.get("sampleTime", 0.1)
 
-    return f'''
+    return f"""
 typedef struct {{
     double sample_time;
     double input;
@@ -116,7 +116,7 @@ void {struct_name}_update({struct_name}* self, double t) {{
 double {struct_name}_get_output({struct_name}* self, int port) {{
     return self->output;
 }}
-'''
+"""
 
 
 def discrete_integrator_template(block: BlockInfo, struct_name: str) -> str:
@@ -129,7 +129,7 @@ def discrete_integrator_template(block: BlockInfo, struct_name: str) -> str:
     method_map = {"forward": 0, "backward": 1, "trapezoidal": 2}
     method_int = method_map.get(method, 0)
 
-    return f'''
+    return f"""
 typedef struct {{
     double initial_condition;
     double sample_time;
@@ -174,14 +174,14 @@ void {struct_name}_update({struct_name}* self, double t) {{
 double {struct_name}_get_output({struct_name}* self, int port) {{
     return self->output;
 }}
-'''
+"""
 
 
 def discrete_derivative_template(block: BlockInfo, struct_name: str) -> str:
     """Generate DiscreteDerivative block code."""
     sample_time = block.parameters.get("sampleTime", 0.1)
 
-    return f'''
+    return f"""
 typedef struct {{
     double sample_time;
     double input;
@@ -209,7 +209,7 @@ void {struct_name}_update({struct_name}* self, double t) {{
 double {struct_name}_get_output({struct_name}* self, int port) {{
     return self->output;
 }}
-'''
+"""
 
 
 def discrete_transfer_function_template(block: BlockInfo, struct_name: str) -> str:
@@ -231,7 +231,7 @@ def discrete_transfer_function_template(block: BlockInfo, struct_name: str) -> s
     num_str = ", ".join(str(n) for n in numerator)
     den_str = ", ".join(str(d) for d in denominator)
 
-    return f'''
+    return f"""
 #define {struct_name}_ORDER {order}
 #define {struct_name}_NUM_LEN {num_len}
 #define {struct_name}_DEN_LEN {den_len}
@@ -298,14 +298,14 @@ void {struct_name}_update({struct_name}* self, double t) {{
 double {struct_name}_get_output({struct_name}* self, int port) {{
     return self->output;
 }}
-'''
+"""
 
 
 def memory_template(block: BlockInfo, struct_name: str) -> str:
     """Generate Memory block code."""
     initial_condition = block.parameters.get("initialCondition", 0.0)
 
-    return f'''
+    return f"""
 typedef struct {{
     double initial_condition;
     double input;
@@ -335,7 +335,7 @@ void {struct_name}_update({struct_name}* self, double t) {{
 double {struct_name}_get_output({struct_name}* self, int port) {{
     return self->output;
 }}
-'''
+"""
 
 
 # Template registry for discrete blocks

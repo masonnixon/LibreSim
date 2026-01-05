@@ -9,7 +9,7 @@ class CompareToZero(Block):
     Outputs 1 if comparison is true, 0 otherwise.
     """
 
-    def __init__(self, operator='=='):
+    def __init__(self, operator="=="):
         super().__init__()
         self.operator = operator  # '==', '~=', '<', '<=', '>', '>='
         self.input = 0.0
@@ -31,17 +31,17 @@ class CompareToZero(Block):
         if self.input_block is not None:
             self.input = self.input_block.getOutput(self.input_source_port)
 
-        if self.operator == '==':
+        if self.operator == "==":
             self.output = 1.0 if self.input == 0.0 else 0.0
-        elif self.operator == '~=' or self.operator == '!=':
+        elif self.operator == "~=" or self.operator == "!=":
             self.output = 1.0 if self.input != 0.0 else 0.0
-        elif self.operator == '<':
+        elif self.operator == "<":
             self.output = 1.0 if self.input < 0.0 else 0.0
-        elif self.operator == '<=':
+        elif self.operator == "<=":
             self.output = 1.0 if self.input <= 0.0 else 0.0
-        elif self.operator == '>':
+        elif self.operator == ">":
             self.output = 1.0 if self.input > 0.0 else 0.0
-        elif self.operator == '>=':
+        elif self.operator == ">=":
             self.output = 1.0 if self.input >= 0.0 else 0.0
         else:
             self.output = 0.0
@@ -56,7 +56,7 @@ class CompareToConstant(Block):
     Outputs 1 if comparison is true, 0 otherwise.
     """
 
-    def __init__(self, constant=0.0, operator='=='):
+    def __init__(self, constant=0.0, operator="=="):
         super().__init__()
         self.constant = constant
         self.operator = operator  # '==', '~=', '<', '<=', '>', '>='
@@ -79,17 +79,17 @@ class CompareToConstant(Block):
         if self.input_block is not None:
             self.input = self.input_block.getOutput(self.input_source_port)
 
-        if self.operator == '==':
+        if self.operator == "==":
             self.output = 1.0 if self.input == self.constant else 0.0
-        elif self.operator == '~=' or self.operator == '!=':
+        elif self.operator == "~=" or self.operator == "!=":
             self.output = 1.0 if self.input != self.constant else 0.0
-        elif self.operator == '<':
+        elif self.operator == "<":
             self.output = 1.0 if self.input < self.constant else 0.0
-        elif self.operator == '<=':
+        elif self.operator == "<=":
             self.output = 1.0 if self.input <= self.constant else 0.0
-        elif self.operator == '>':
+        elif self.operator == ">":
             self.output = 1.0 if self.input > self.constant else 0.0
-        elif self.operator == '>=':
+        elif self.operator == ">=":
             self.output = 1.0 if self.input >= self.constant else 0.0
         else:
             self.output = 0.0
@@ -105,7 +105,7 @@ class RelationalOperator(Block):
     Supports vector inputs.
     """
 
-    def __init__(self, operator='=='):
+    def __init__(self, operator="=="):
         super().__init__()
         self.operator = operator  # '==', '~=', '<', '<=', '>', '>='
         self.inputs = [0.0, 0.0]
@@ -145,17 +145,17 @@ class RelationalOperator(Block):
 
     def _compare(self, a, b):
         """Perform comparison and return 1.0 or 0.0."""
-        if self.operator == '==':
+        if self.operator == "==":
             return 1.0 if a == b else 0.0
-        elif self.operator == '~=' or self.operator == '!=':
+        elif self.operator == "~=" or self.operator == "!=":
             return 1.0 if a != b else 0.0
-        elif self.operator == '<':
+        elif self.operator == "<":
             return 1.0 if a < b else 0.0
-        elif self.operator == '<=':
+        elif self.operator == "<=":
             return 1.0 if a <= b else 0.0
-        elif self.operator == '>':
+        elif self.operator == ">":
             return 1.0 if a > b else 0.0
-        elif self.operator == '>=':
+        elif self.operator == ">=":
             return 1.0 if a >= b else 0.0
         return 0.0
 
@@ -164,7 +164,7 @@ class RelationalOperator(Block):
         for i in range(2):
             block = self.input_blocks[i]
             if block is not None:
-                if hasattr(block, 'getOutputVector'):
+                if hasattr(block, "getOutputVector"):
                     vec = block.getOutputVector()
                     if vec is not None:
                         self._setup_vector_mode(len(vec))
@@ -177,8 +177,16 @@ class RelationalOperator(Block):
 
         if self._is_vector and self._output_vector:
             for i in range(self._n):
-                a = self._input_vectors[0][i] if self._input_vectors[0] and i < len(self._input_vectors[0]) else self.inputs[0]
-                b = self._input_vectors[1][i] if self._input_vectors[1] and i < len(self._input_vectors[1]) else self.inputs[1]
+                a = (
+                    self._input_vectors[0][i]
+                    if self._input_vectors[0] and i < len(self._input_vectors[0])
+                    else self.inputs[0]
+                )
+                b = (
+                    self._input_vectors[1][i]
+                    if self._input_vectors[1] and i < len(self._input_vectors[1])
+                    else self.inputs[1]
+                )
                 self._output_vector[i] = self._compare(a, b)
             self.output = self._output_vector[0]
         else:
@@ -202,10 +210,10 @@ class LogicalOperator(Block):
     Inputs are treated as boolean (non-zero = true).
     """
 
-    def __init__(self, operator='AND', num_inputs=2):
+    def __init__(self, operator="AND", num_inputs=2):
         super().__init__()
         self.operator = operator.upper()  # 'AND', 'OR', 'NAND', 'NOR', 'XOR', 'NOT'
-        self.num_inputs = max(1, num_inputs) if operator.upper() != 'NOT' else 1
+        self.num_inputs = max(1, num_inputs) if operator.upper() != "NOT" else 1
         self.inputs = [0.0] * self.num_inputs
         self.input_blocks = [None] * self.num_inputs
         self.input_source_ports = [0] * self.num_inputs
@@ -252,18 +260,18 @@ class LogicalOperator(Block):
         """Perform logical operation on list of values."""
         bools = [self._to_bool(v) for v in values]
 
-        if self.operator == 'AND':
+        if self.operator == "AND":
             result = all(bools)
-        elif self.operator == 'OR':
+        elif self.operator == "OR":
             result = any(bools)
-        elif self.operator == 'NAND':
+        elif self.operator == "NAND":
             result = not all(bools)
-        elif self.operator == 'NOR':
+        elif self.operator == "NOR":
             result = not any(bools)
-        elif self.operator == 'XOR':
+        elif self.operator == "XOR":
             # XOR: True if odd number of inputs are true
             result = sum(bools) % 2 == 1
-        elif self.operator == 'NOT':
+        elif self.operator == "NOT":
             result = not bools[0] if bools else True
         else:
             result = False
@@ -275,7 +283,7 @@ class LogicalOperator(Block):
         for i in range(self.num_inputs):
             block = self.input_blocks[i]
             if block is not None:
-                if hasattr(block, 'getOutputVector'):
+                if hasattr(block, "getOutputVector"):
                     vec = block.getOutputVector()
                     if vec is not None:
                         self._setup_vector_mode(len(vec))
@@ -316,7 +324,7 @@ class BitOperator(Block):
     Performs bit-wise operations on integer representations of inputs.
     """
 
-    def __init__(self, operator='AND'):
+    def __init__(self, operator="AND"):
         super().__init__()
         self.operator = operator.upper()  # 'AND', 'OR', 'XOR', 'NOT', 'NAND', 'NOR'
         self.inputs = [0.0, 0.0]
@@ -344,17 +352,17 @@ class BitOperator(Block):
         a = int(self.inputs[0])
         b = int(self.inputs[1])
 
-        if self.operator == 'AND':
+        if self.operator == "AND":
             self.output = float(a & b)
-        elif self.operator == 'OR':
+        elif self.operator == "OR":
             self.output = float(a | b)
-        elif self.operator == 'XOR':
+        elif self.operator == "XOR":
             self.output = float(a ^ b)
-        elif self.operator == 'NOT':
+        elif self.operator == "NOT":
             self.output = float(~a)
-        elif self.operator == 'NAND':
+        elif self.operator == "NAND":
             self.output = float(~(a & b))
-        elif self.operator == 'NOR':
+        elif self.operator == "NOR":
             self.output = float(~(a | b))
         else:
             self.output = 0.0

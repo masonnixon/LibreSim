@@ -1,7 +1,5 @@
 """Tests for model_service and related services."""
 
-import pytest
-
 from src.models.block import Block, Connection, Port, Position
 from src.models.model import Model, ModelCreate, ModelMetadata, ModelUpdate
 from src.models.simulation import SimulationConfig

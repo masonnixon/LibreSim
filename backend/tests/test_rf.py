@@ -1,12 +1,17 @@
 """Unit tests for RF Toolbox blocks."""
 
 import math
-import pytest
 
 from src.osk.blocks.rf import (
-    RFAmplifier, RFMixer, RFFilter, SParameterNetwork,
-    RFBudgetElement, Attenuator, AMModulator, FMModulator,
-    dBmToWatts, WattsTodBm
+    AMModulator,
+    Attenuator,
+    RFAmplifier,
+    RFBudgetElement,
+    RFFilter,
+    RFMixer,
+    SParameterNetwork,
+    WattsTodBm,
+    dBmToWatts,
 )
 
 
@@ -44,7 +49,7 @@ class TestRFMixer:
         mixer = RFMixer(conversion_loss_db=6.0)
 
         mixer.setInput(-10.0, port=0)  # RF input
-        mixer.setInput(10.0, port=1)   # LO input (not used for power calc)
+        mixer.setInput(10.0, port=1)  # LO input (not used for power calc)
         mixer.update()
 
         # Output should be RF - conversion loss
@@ -61,12 +66,12 @@ class TestRFFilter:
             center_freq_hz=1e9,
             bandwidth_hz=100e6,
             insertion_loss_db=1.0,
-            rejection_db=40.0
+            rejection_db=40.0,
         )
 
         # In-band frequency
         filt.setInput(-10.0, port=0)  # Power
-        filt.setInput(1e9, port=1)    # Frequency at center
+        filt.setInput(1e9, port=1)  # Frequency at center
         filt.update()
 
         assert abs(filt.getOutput() - (-11.0)) < 0.1  # Just insertion loss
@@ -78,7 +83,7 @@ class TestRFFilter:
             center_freq_hz=1e9,
             bandwidth_hz=100e6,
             insertion_loss_db=1.0,
-            rejection_db=40.0
+            rejection_db=40.0,
         )
 
         # Out-of-band frequency
@@ -91,10 +96,7 @@ class TestRFFilter:
     def test_lowpass(self):
         """Lowpass filter behavior."""
         filt = RFFilter(
-            filter_type="lowpass",
-            center_freq_hz=1e9,
-            insertion_loss_db=0.5,
-            rejection_db=30.0
+            filter_type="lowpass", center_freq_hz=1e9, insertion_loss_db=0.5, rejection_db=30.0
         )
 
         # Below cutoff
@@ -136,7 +138,7 @@ class TestSParameterNetwork:
         spn.update()
 
         output = spn.getOutputVector()
-        b2_mag = math.sqrt(output[2]**2 + output[3]**2)
+        b2_mag = math.sqrt(output[2] ** 2 + output[3] ** 2)
         assert abs(b2_mag - s21_mag) < 1e-6
 
 
@@ -148,14 +150,14 @@ class TestRFBudgetElement:
         elem = RFBudgetElement(gain_db=10.0, noise_figure_db=3.0)
 
         elem.setInput(-20.0, port=0)  # Input power
-        elem.setInput(0.0, port=1)    # Cascade gain (0 for first)
-        elem.setInput(0.0, port=2)    # Cascade NF (0 for first)
+        elem.setInput(0.0, port=1)  # Cascade gain (0 for first)
+        elem.setInput(0.0, port=2)  # Cascade NF (0 for first)
         elem.update()
 
         output = elem.getOutputVector()
         assert abs(output[0] - (-10.0)) < 0.1  # Output power
-        assert abs(output[1] - 10.0) < 0.1     # Cascade gain
-        assert abs(output[2] - 3.0) < 0.1      # NF
+        assert abs(output[1] - 10.0) < 0.1  # Cascade gain
+        assert abs(output[2] - 3.0) < 0.1  # NF
 
     def test_cascaded_gain(self):
         """Cascaded elements should sum gains."""
@@ -175,7 +177,7 @@ class TestRFBudgetElement:
         elem2.update()
 
         output = elem2.getOutputVector()
-        assert abs(output[0] - 5.0) < 0.1   # -20 + 10 + 15 = 5 dBm
+        assert abs(output[0] - 5.0) < 0.1  # -20 + 10 + 15 = 5 dBm
         assert abs(output[1] - 25.0) < 0.1  # 10 + 15 = 25 dB
 
 
@@ -198,6 +200,7 @@ class TestAMModulator:
     def test_carrier_at_zero_modulation(self):
         """AM with zero message should produce carrier only."""
         from src.osk.state import State
+
         State.t = 0.0
 
         am = AMModulator(carrier_freq=1e6, carrier_amplitude=1.0, modulation_index=0.5)
@@ -210,6 +213,7 @@ class TestAMModulator:
     def test_modulation_envelope(self):
         """AM modulation should affect envelope."""
         from src.osk.state import State
+
         State.t = 0.0
 
         am = AMModulator(carrier_freq=1e6, carrier_amplitude=1.0, modulation_index=1.0)

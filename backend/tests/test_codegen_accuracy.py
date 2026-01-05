@@ -12,16 +12,12 @@ import tempfile
 from pathlib import Path
 
 import numpy as np
-import pytest
 
-from src.codegen.generator import CodeGenerator, CodeGenerationConfig
-from src.codegen.models import Language, IntegrationMethod
+from src.codegen.generator import CodeGenerationConfig, CodeGenerator
+from src.codegen.models import IntegrationMethod, Language
 from src.models.model import Model
 from src.simulation.compiler import ModelCompiler
 from src.simulation.osk_adapter import OSKAdapter
-from src.osk.sim import Sim
-from src.osk.state import State
-
 
 # Tolerance for numerical comparison
 # Note: Some blocks (PID, complex transfer functions) may have small timing
@@ -122,7 +118,9 @@ def run_codegen_simulation(model_data: dict, dt: float = 0.01, t_end: float = 10
     )
 
     if result.returncode != 0:
-        raise RuntimeError(f"Generated code failed:\nstdout: {result.stdout}\nstderr: {result.stderr}")
+        raise RuntimeError(
+            f"Generated code failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"
+        )
 
     # Read results.csv
     results = {}
@@ -138,8 +136,9 @@ def run_codegen_simulation(model_data: dict, dt: float = 0.01, t_end: float = 10
     return results
 
 
-def find_best_signal_match(backend_signals: list, codegen_signals: list,
-                           backend: dict, codegen: dict, min_len: int) -> list:
+def find_best_signal_match(
+    backend_signals: list, codegen_signals: list, backend: dict, codegen: dict, min_len: int
+) -> list:
     """Match signals by finding the codegen signal with lowest RMS error for each backend signal.
 
     Returns:
@@ -151,14 +150,14 @@ def find_best_signal_match(backend_signals: list, codegen_signals: list,
     for backend_sig in backend_signals:
         backend_vals = np.array(backend[backend_sig][:min_len])
         best_match = None
-        best_rms = float('inf')
+        best_rms = float("inf")
 
         for codegen_sig in codegen_signals:
             if codegen_sig in used_codegen:
                 continue
             codegen_vals = np.array(codegen[codegen_sig][:min_len])
             diff = np.abs(backend_vals - codegen_vals)
-            rms = np.sqrt(np.mean(diff ** 2))
+            rms = np.sqrt(np.mean(diff**2))
             if rms < best_rms:
                 best_rms = rms
                 best_match = codegen_sig
@@ -181,13 +180,18 @@ def compare_results(backend: dict, codegen: dict, test_name: str):
     codegen_time = np.array(codegen["time"])
 
     min_len = min(len(backend_time), len(codegen_time))
-    print(f"\n{test_name}: backend has {len(backend_time)} samples, codegen has {len(codegen_time)} samples")
+    print(
+        f"\n{test_name}: backend has {len(backend_time)} samples, codegen has {len(codegen_time)} samples"
+    )
     print(f"Using first {min_len} samples for comparison")
 
     # Time values should still match for common samples
     np.testing.assert_allclose(
-        backend_time[:min_len], codegen_time[:min_len], rtol=1e-6, atol=1e-9,
-        err_msg=f"{test_name}: Time arrays differ"
+        backend_time[:min_len],
+        codegen_time[:min_len],
+        rtol=1e-6,
+        atol=1e-9,
+        err_msg=f"{test_name}: Time arrays differ",
     )
 
     # For each signal, compare
@@ -197,7 +201,9 @@ def compare_results(backend: dict, codegen: dict, test_name: str):
     codegen_sig_list = sorted(codegen_signals)
 
     if len(backend_sig_list) != len(codegen_sig_list):
-        errors.append(f"Signal count mismatch: backend={len(backend_sig_list)}, codegen={len(codegen_sig_list)}")
+        errors.append(
+            f"Signal count mismatch: backend={len(backend_sig_list)}, codegen={len(codegen_sig_list)}"
+        )
         errors.append(f"Backend signals: {backend_sig_list}")
         errors.append(f"Codegen signals: {codegen_sig_list}")
         raise AssertionError(f"{test_name} failed:\n" + "\n".join(errors))
@@ -213,7 +219,7 @@ def compare_results(backend: dict, codegen: dict, test_name: str):
         diff = np.abs(backend_vals - codegen_vals)
         max_diff = np.max(diff)
         max_diff_idx = np.argmax(diff)
-        rms_diff = np.sqrt(np.mean(diff ** 2))
+        rms_diff = np.sqrt(np.mean(diff**2))
 
         # Use RMS error as primary criterion
         if rms_diff > MAX_RMS:
@@ -225,12 +231,16 @@ def compare_results(backend: dict, codegen: dict, test_name: str):
             print(f"\n{test_name} - {backend_sig} vs {codegen_sig} comparison:")
             print(f"  Backend first 5: {backend_vals[:5]}")
             print(f"  Codegen first 5: {codegen_vals[:5]}")
-            print(f"  Backend at max diff (t={backend_time[max_diff_idx]:.3f}): {backend_vals[max_diff_idx]}")
+            print(
+                f"  Backend at max diff (t={backend_time[max_diff_idx]:.3f}): {backend_vals[max_diff_idx]}"
+            )
             print(f"  Codegen at max diff: {codegen_vals[max_diff_idx]}")
             print(f"  Backend last 5: {backend_vals[-5:]}")
             print(f"  Codegen last 5: {codegen_vals[-5:]}")
         else:
-            print(f"  {backend_sig} vs {codegen_sig}: PASS (max_diff={max_diff:.2e}, rms={rms_diff:.2e})")
+            print(
+                f"  {backend_sig} vs {codegen_sig}: PASS (max_diff={max_diff:.2e}, rms={rms_diff:.2e})"
+            )
 
     if errors:
         raise AssertionError(f"{test_name} failed:\n" + "\n".join(errors))

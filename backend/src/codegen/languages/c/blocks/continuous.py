@@ -6,7 +6,9 @@ from ....models import BlockInfo
 def template_integrator(block: BlockInfo, struct_name: str) -> str:
     """Generate C code for Integrator block."""
     # Support both camelCase (JSON) and snake_case parameter names
-    initial_condition = block.parameters.get("initialCondition", block.parameters.get("initial_condition", 0.0))
+    initial_condition = block.parameters.get(
+        "initialCondition", block.parameters.get("initial_condition", 0.0)
+    )
     return f"""
 // {block.name} - Integrator
 typedef struct {{
@@ -239,7 +241,7 @@ def template_state_space(block: BlockInfo, struct_name: str) -> str:
     B = block.parameters.get("B", [[1.0]])
     C = block.parameters.get("C", [[1.0]])
     D = block.parameters.get("D", [[0.0]])
-    x0 = block.parameters.get("x0", [0.0])
+    block.parameters.get("x0", [0.0])
 
     # Ensure matrices are 2D
     if not isinstance(A, list) or not A:

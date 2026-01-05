@@ -1,18 +1,18 @@
 """Main code generator orchestrator."""
 
-from dataclasses import dataclass, field
-from typing import Any, Literal
+from dataclasses import dataclass
+from typing import Any
 
-from src.simulation.compiler import ModelCompiler
 from src.models.model import Model
-from .models import (
-    Language,
-    IntegrationMethod,
-    GeneratedProject,
-    CompiledModelInfo,
-    BlockInfo,
-)
+from src.simulation.compiler import ModelCompiler
 
+from .models import (
+    BlockInfo,
+    CompiledModelInfo,
+    GeneratedProject,
+    IntegrationMethod,
+    Language,
+)
 
 # Block types that require numerical integration (have state/derivative interface)
 # These blocks implement the integrator interface with state, derivative, x0, xd0, etc.
@@ -96,6 +96,7 @@ SINK_BLOCKS = {
 @dataclass
 class CodeGenerationConfig:
     """Configuration for code generation."""
+
     language: Language = Language.PYTHON
     integration_method: IntegrationMethod = IntegrationMethod.RK4
     step_size: float = 0.01
@@ -112,15 +113,15 @@ class CodeGenerator:
 
     def __init__(self):
         self._compiler = ModelCompiler()
-        self._generators: dict[Language, "LanguageGenerator"] = {}
+        self._generators: dict[Language, LanguageGenerator] = {}
         self._register_generators()
 
     def _register_generators(self) -> None:
         """Register language-specific generators."""
         # Import here to avoid circular imports
-        from .languages.python.generator import PythonCodeGenerator
         from .languages.c.generator import CCodeGenerator
         from .languages.cpp.generator import CppCodeGenerator
+        from .languages.python.generator import PythonCodeGenerator
         from .languages.rust.generator import RustCodeGenerator
 
         self._generators[Language.PYTHON] = PythonCodeGenerator()
@@ -288,7 +289,7 @@ class CodeGenerator:
                 break
         else:
             # Fallback: try to extract number from port ID
-            match = re.search(r'(\d+)$', source_port_id)
+            match = re.search(r"(\d+)$", source_port_id)
             if match:
                 port_num = int(match.group(1))
                 source_port_idx = port_num if port_num == 0 else port_num - 1
@@ -302,7 +303,7 @@ class CodeGenerator:
                 break
         else:
             # Fallback: try to extract number from port ID
-            match = re.search(r'(\d+)$', target_port_id)
+            match = re.search(r"(\d+)$", target_port_id)
             if match:
                 port_num = int(match.group(1))
                 target_port_idx = port_num if port_num == 0 else port_num - 1
@@ -313,6 +314,7 @@ class CodeGenerator:
     def get_supported_blocks(self) -> list[str]:
         """Get list of block types supported for code generation."""
         from src.simulation.osk_adapter import BLOCK_TYPE_MAP
+
         return list(BLOCK_TYPE_MAP.keys())
 
     def get_supported_languages(self) -> list[str]:
@@ -326,6 +328,7 @@ class CodeGenerator:
 
 class CodeGenerationError(Exception):
     """Error during code generation."""
+
     pass
 
 

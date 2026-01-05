@@ -10,6 +10,7 @@ from .simulation import SimulationConfig
 
 class ModelMetadata(BaseModel):
     """Model metadata."""
+
     model_config = ConfigDict(populate_by_name=True)
 
     name: str
@@ -22,6 +23,7 @@ class ModelMetadata(BaseModel):
 
 class Model(BaseModel):
     """Complete model definition."""
+
     model_config = ConfigDict(populate_by_name=True)
 
     id: str
@@ -42,6 +44,7 @@ class ModelCreate(BaseModel):
 
 class ModelUpdate(BaseModel):
     """Request model for updating an existing model."""
+
     model_config = ConfigDict(populate_by_name=True)
 
     metadata: ModelMetadata | None = None

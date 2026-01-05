@@ -8,7 +8,6 @@ import math
 
 from ..block import Block
 
-
 # =============================================================================
 # Quaternion Operations
 # =============================================================================
@@ -451,9 +450,15 @@ class QuaternionToDCM(Block):
 
         # DCM elements
         self.output = [
-            1 - 2 * (y * y + z * z), 2 * (x * y - w * z), 2 * (x * z + w * y),
-            2 * (x * y + w * z), 1 - 2 * (x * x + z * z), 2 * (y * z - w * x),
-            2 * (x * z - w * y), 2 * (y * z + w * x), 1 - 2 * (x * x + y * y),
+            1 - 2 * (y * y + z * z),
+            2 * (x * y - w * z),
+            2 * (x * z + w * y),
+            2 * (x * y + w * z),
+            1 - 2 * (x * x + z * z),
+            2 * (y * z - w * x),
+            2 * (x * z - w * y),
+            2 * (y * z + w * x),
+            1 - 2 * (x * x + y * y),
         ]
 
     def getOutput(self, port=0):
@@ -574,8 +579,20 @@ class SixDOFEuler(Block):
         self.ze = self.addIntegrator([0.0, 0.0])  # Z position (Earth frame)
 
     def init(self):
-        for state in [self.u, self.v, self.w, self.p, self.q, self.r,
-                      self.phi, self.theta, self.psi, self.xe, self.ye, self.ze]:
+        for state in [
+            self.u,
+            self.v,
+            self.w,
+            self.p,
+            self.q,
+            self.r,
+            self.phi,
+            self.theta,
+            self.psi,
+            self.xe,
+            self.ye,
+            self.ze,
+        ]:
             state[0] = 0.0
             state[1] = 0.0
         self.output = [0.0] * 12
@@ -614,19 +631,19 @@ class SixDOFEuler(Block):
         self.w[1] = Fz / self.mass - p * v + q * u
 
         # Moment equations (simplified, assuming Ixy = Iyz = 0)
-        Gamma = self.Ixx * self.Izz - self.Ixz ** 2
-        c1 = ((self.Iyy - self.Izz) * self.Izz - self.Ixz ** 2) / Gamma
+        Gamma = self.Ixx * self.Izz - self.Ixz**2
+        c1 = ((self.Iyy - self.Izz) * self.Izz - self.Ixz**2) / Gamma
         c2 = ((self.Ixx - self.Iyy + self.Izz) * self.Ixz) / Gamma
         c3 = self.Izz / Gamma
         c4 = self.Ixz / Gamma
         c5 = (self.Izz - self.Ixx) / self.Iyy
         c6 = self.Ixz / self.Iyy
         c7 = 1.0 / self.Iyy
-        c8 = ((self.Ixx - self.Iyy) * self.Ixx + self.Ixz ** 2) / Gamma
+        c8 = ((self.Ixx - self.Iyy) * self.Ixx + self.Ixz**2) / Gamma
         c9 = self.Ixx / Gamma
 
         self.p[1] = c1 * p * q + c2 * q * r + c3 * L + c4 * N
-        self.q[1] = c5 * p * r + c6 * (p ** 2 - r ** 2) + c7 * M
+        self.q[1] = c5 * p * r + c6 * (p**2 - r**2) + c7 * M
         self.r[1] = c8 * p * q - c2 * q * r + c4 * L + c9 * N
 
         # Kinematic equations (Euler angles)
@@ -645,22 +662,34 @@ class SixDOFEuler(Block):
         cos_psi, sin_psi = math.cos(psi), math.sin(psi)
         sin_theta = math.sin(theta)
 
-        self.xe[1] = (cos_theta * cos_psi) * u + \
-                     (sin_phi * sin_theta * cos_psi - cos_phi * sin_psi) * v + \
-                     (cos_phi * sin_theta * cos_psi + sin_phi * sin_psi) * w
+        self.xe[1] = (
+            (cos_theta * cos_psi) * u
+            + (sin_phi * sin_theta * cos_psi - cos_phi * sin_psi) * v
+            + (cos_phi * sin_theta * cos_psi + sin_phi * sin_psi) * w
+        )
 
-        self.ye[1] = (cos_theta * sin_psi) * u + \
-                     (sin_phi * sin_theta * sin_psi + cos_phi * cos_psi) * v + \
-                     (cos_phi * sin_theta * sin_psi - sin_phi * cos_psi) * w
+        self.ye[1] = (
+            (cos_theta * sin_psi) * u
+            + (sin_phi * sin_theta * sin_psi + cos_phi * cos_psi) * v
+            + (cos_phi * sin_theta * sin_psi - sin_phi * cos_psi) * w
+        )
 
         self.ze[1] = (-sin_theta) * u + (sin_phi * cos_theta) * v + (cos_phi * cos_theta) * w
 
         # Update output
         self.output = [
-            self.u[0], self.v[0], self.w[0],
-            self.p[0], self.q[0], self.r[0],
-            self.phi[0], self.theta[0], self.psi[0],
-            self.xe[0], self.ye[0], self.ze[0]
+            self.u[0],
+            self.v[0],
+            self.w[0],
+            self.p[0],
+            self.q[0],
+            self.r[0],
+            self.phi[0],
+            self.theta[0],
+            self.psi[0],
+            self.xe[0],
+            self.ye[0],
+            self.ze[0],
         ]
 
     def getOutput(self, port=0):
@@ -754,8 +783,9 @@ class WGS84Gravity(Block):
         sin_lat2 = math.sin(lat) ** 2
 
         # Gravity at sea level (Somigliana formula)
-        g0 = self.ge * (1 + 0.00193185265241 * sin_lat2) / \
-             math.sqrt(1 - 0.00669437999014 * sin_lat2)
+        g0 = (
+            self.ge * (1 + 0.00193185265241 * sin_lat2) / math.sqrt(1 - 0.00669437999014 * sin_lat2)
+        )
 
         # Free-air correction for altitude
         self.output = g0 * (1 - 2 * h / self.a)

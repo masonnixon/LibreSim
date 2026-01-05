@@ -15,6 +15,7 @@ class SolverType(str, Enum):
 
 class SimulationConfig(BaseModel):
     """Simulation configuration."""
+
     model_config = ConfigDict(populate_by_name=True)
 
     solver: SolverType = SolverType.RK4
@@ -40,6 +41,7 @@ class SimulationStatus(str, Enum):
 
 class SignalData(BaseModel):
     """Time series data for a signal."""
+
     model_config = ConfigDict(populate_by_name=True)
 
     block_id: str = Field(alias="blockId")
@@ -51,6 +53,7 @@ class SignalData(BaseModel):
 
 class SimulationStatistics(BaseModel):
     """Simulation execution statistics."""
+
     model_config = ConfigDict(populate_by_name=True)
 
     total_steps: int = Field(alias="totalSteps")

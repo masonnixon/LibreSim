@@ -48,7 +48,7 @@ class Inport(Block):
         if self.input_block is not None:
             # Check if source has vector output method and it returns a vector
             vec = None
-            if hasattr(self.input_block, 'getOutputVector'):
+            if hasattr(self.input_block, "getOutputVector"):
                 vec = self.input_block.getOutputVector()
 
             if vec is not None:
@@ -108,7 +108,7 @@ class Outport(Block):
         if self.input_block is not None:
             # Check if source has vector output method and it returns a vector
             vec = None
-            if hasattr(self.input_block, 'getOutputVector'):
+            if hasattr(self.input_block, "getOutputVector"):
                 vec = self.input_block.getOutputVector()
 
             if vec is not None:
@@ -190,7 +190,7 @@ class Subsystem(Block):
 
         # Update output vectors from outport blocks
         for port_num, outport in self._outport_blocks.items():
-            if hasattr(outport, 'getOutputVector'):
+            if hasattr(outport, "getOutputVector"):
                 vec = outport.getOutputVector()
                 if vec is not None:
                     self._output_vectors[port_num - 1] = vec  # port_number is 1-indexed

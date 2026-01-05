@@ -1,6 +1,5 @@
 """Python templates for signal processing blocks."""
 
-import math
 from ....models import BlockInfo
 
 

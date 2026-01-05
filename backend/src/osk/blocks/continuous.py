@@ -14,9 +14,14 @@ class Integrator(Block):
     - Port 1: External initial condition (read only at t=0)
     """
 
-    def __init__(self, initial_condition=0.0, limit_output=False,
-                 upper_limit=float('inf'), lower_limit=float('-inf'),
-                 external_ic=False):
+    def __init__(
+        self,
+        initial_condition=0.0,
+        limit_output=False,
+        upper_limit=float("inf"),
+        lower_limit=float("-inf"),
+        external_ic=False,
+    ):
         super().__init__()
         self.limit_output = limit_output
         self.upper_limit = upper_limit
@@ -52,12 +57,20 @@ class Integrator(Block):
 
         if self._is_vector and self._states:
             for i, state in enumerate(self._states):
-                ic = self.initial_condition[i] if isinstance(self.initial_condition, list) and i < len(self.initial_condition) else 0.0
+                ic = (
+                    self.initial_condition[i]
+                    if isinstance(self.initial_condition, list) and i < len(self.initial_condition)
+                    else 0.0
+                )
                 state[0] = ic
                 state[1] = 0.0
             self._input_vector = [0.0] * self._n
-        elif hasattr(self, 'x'):
-            ic = self.initial_condition if not isinstance(self.initial_condition, list) else self.initial_condition[0]
+        elif hasattr(self, "x"):
+            ic = (
+                self.initial_condition
+                if not isinstance(self.initial_condition, list)
+                else self.initial_condition[0]
+            )
             self.x[0] = ic
             self.x[1] = 0.0
 
@@ -78,9 +91,17 @@ class Integrator(Block):
             self._input_vector = [0.0] * n
             # Create integrator states
             if isinstance(self.initial_condition, list):
-                self._states = [self.addIntegrator([self.initial_condition[i] if i < len(self.initial_condition) else 0.0, 0.0]) for i in range(n)]
+                self._states = [
+                    self.addIntegrator(
+                        [self.initial_condition[i] if i < len(self.initial_condition) else 0.0, 0.0]
+                    )
+                    for i in range(n)
+                ]
             else:
-                self._states = [self.addIntegrator([self.initial_condition if i == 0 else 0.0, 0.0]) for i in range(n)]
+                self._states = [
+                    self.addIntegrator([self.initial_condition if i == 0 else 0.0, 0.0])
+                    for i in range(n)
+                ]
 
     def connectInput(self, block, port=0, source_port=0):
         if self.external_ic and self.input_blocks is not None:
@@ -98,7 +119,9 @@ class Integrator(Block):
         if not self.external_ic or self._ic_initialized:
             return
 
-        ic_block = self.input_blocks[1] if self.input_blocks and len(self.input_blocks) > 1 else None
+        ic_block = (
+            self.input_blocks[1] if self.input_blocks and len(self.input_blocks) > 1 else None
+        )
         if ic_block is None:
             self._ic_initialized = True
             return
@@ -111,7 +134,7 @@ class Integrator(Block):
             # For vector mode, set all states to the same IC (or handle vector IC if needed)
             for state in self._states:
                 state[0] = ic_value
-        elif hasattr(self, 'x'):
+        elif hasattr(self, "x"):
             self.x[0] = ic_value
 
         self._ic_initialized = True
@@ -126,18 +149,22 @@ class Integrator(Block):
             signal_block = self.input_blocks[0]
             if signal_block is not None:
                 # Check for vector output from connected block
-                if hasattr(signal_block, 'getOutputVector'):
+                if hasattr(signal_block, "getOutputVector"):
                     vec = signal_block.getOutputVector()
                     if vec is not None:
                         self._setup_vector_mode(len(vec))
                         self._input_vector = list(vec)
                     else:
-                        self.input = signal_block.getOutput(self.input_source_ports[0] if self.input_source_ports else 0)
+                        self.input = signal_block.getOutput(
+                            self.input_source_ports[0] if self.input_source_ports else 0
+                        )
                 else:
-                    self.input = signal_block.getOutput(self.input_source_ports[0] if self.input_source_ports else 0)
+                    self.input = signal_block.getOutput(
+                        self.input_source_ports[0] if self.input_source_ports else 0
+                    )
         elif self.input_block is not None:
             # Check for vector output from connected block
-            if hasattr(self.input_block, 'getOutputVector'):
+            if hasattr(self.input_block, "getOutputVector"):
                 vec = self.input_block.getOutputVector()
                 if vec is not None:
                     self._setup_vector_mode(len(vec))
@@ -150,22 +177,28 @@ class Integrator(Block):
         if self._is_vector and self._states:
             # Vector integration
             for i in range(self._n):
-                inp = self._input_vector[i] if self._input_vector and i < len(self._input_vector) else 0.0
+                inp = (
+                    self._input_vector[i]
+                    if self._input_vector and i < len(self._input_vector)
+                    else 0.0
+                )
                 self._states[i][1] = inp
 
                 # Apply limits if enabled
                 if self.limit_output:
-                    if (self._states[i][0] >= self.upper_limit and self._states[i][1] > 0) or \
-                       (self._states[i][0] <= self.lower_limit and self._states[i][1] < 0):
+                    if (self._states[i][0] >= self.upper_limit and self._states[i][1] > 0) or (
+                        self._states[i][0] <= self.lower_limit and self._states[i][1] < 0
+                    ):
                         self._states[i][1] = 0.0
-        elif hasattr(self, 'x'):
+        elif hasattr(self, "x"):
             # Scalar integration
             self.x[1] = self.input
 
             # Apply limits if enabled
             if self.limit_output:
-                if (self.x[0] >= self.upper_limit and self.x[1] > 0) or \
-                   (self.x[0] <= self.lower_limit and self.x[1] < 0):
+                if (self.x[0] >= self.upper_limit and self.x[1] > 0) or (
+                    self.x[0] <= self.lower_limit and self.x[1] < 0
+                ):
                     self.x[1] = 0.0
 
     def getOutput(self, port=0):
@@ -176,7 +209,7 @@ class Integrator(Block):
                     output = max(self.lower_limit, min(self.upper_limit, output))
                 return output
             return 0.0
-        elif hasattr(self, 'x'):
+        elif hasattr(self, "x"):
             output = self.x[0]
             if self.limit_output:
                 output = max(self.lower_limit, min(self.upper_limit, output))
@@ -255,7 +288,7 @@ class Derivative(Block):
     def update(self):
         if self.input_block is not None:
             # Check for vector output from connected block
-            if hasattr(self.input_block, 'getOutputVector'):
+            if hasattr(self.input_block, "getOutputVector"):
                 vec = self.input_block.getOutputVector()
                 if vec is not None:
                     self._setup_vector_mode(len(vec))
@@ -268,7 +301,11 @@ class Derivative(Block):
         if self._is_vector and self._states:
             # Vector derivative
             for i in range(self._n):
-                inp = self._input_vector[i] if self._input_vector and i < len(self._input_vector) else 0.0
+                inp = (
+                    self._input_vector[i]
+                    if self._input_vector and i < len(self._input_vector)
+                    else 0.0
+                )
                 # Filtered derivative: y = N*(u - x), x' = y
                 output = self.coefficient * (inp - self._states[i][0])
                 self._states[i][1] = output
@@ -678,8 +715,9 @@ class LimitedIntegrator(Block):
         self.x[1] = self.input
 
         # Anti-windup: stop integrating if at limits
-        if (self.x[0] >= self.upper_limit and self.x[1] > 0) or \
-           (self.x[0] <= self.lower_limit and self.x[1] < 0):
+        if (self.x[0] >= self.upper_limit and self.x[1] > 0) or (
+            self.x[0] <= self.lower_limit and self.x[1] < 0
+        ):
             self.x[1] = 0.0
 
     def getOutput(self, port=0):

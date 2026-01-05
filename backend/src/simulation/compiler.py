@@ -116,9 +116,7 @@ class ModelCompiler:
                 errors=[str(e)],
             )
 
-    def _build_input_map(
-        self, connections: list[Connection]
-    ) -> dict[str, list[str]]:
+    def _build_input_map(self, connections: list[Connection]) -> dict[str, list[str]]:
         """Build map of block ID -> list of input connections.
 
         Each connection is formatted as "source_block_id:source_port_id@target_port_id"
@@ -133,17 +131,13 @@ class ModelCompiler:
             )
         return result
 
-    def _build_output_map(
-        self, connections: list[Connection]
-    ) -> dict[str, list[str]]:
+    def _build_output_map(self, connections: list[Connection]) -> dict[str, list[str]]:
         """Build map of block ID -> list of output connections."""
         result: dict[str, list[str]] = {}
         for conn in connections:
             if conn.source_block_id not in result:
                 result[conn.source_block_id] = []
-            result[conn.source_block_id].append(
-                f"{conn.target_block_id}:{conn.target_port_id}"
-            )
+            result[conn.source_block_id].append(f"{conn.target_block_id}:{conn.target_port_id}")
         return result
 
     # Blocks that have internal state and thus "break" algebraic loops
@@ -172,8 +166,10 @@ class ModelCompiler:
     }
 
     def _build_dependency_graph(
-        self, blocks: list[Block], input_connections: dict[str, list[str]],
-        for_algebraic_loop_detection: bool = False
+        self,
+        blocks: list[Block],
+        input_connections: dict[str, list[str]],
+        for_algebraic_loop_detection: bool = False,
     ) -> dict[str, set[str]]:
         """Build graph of block dependencies (block -> set of blocks it depends on).
 
@@ -205,9 +201,7 @@ class ModelCompiler:
 
         return dependencies
 
-    def _detect_algebraic_loops(
-        self, dependencies: dict[str, set[str]]
-    ) -> list[str] | None:
+    def _detect_algebraic_loops(self, dependencies: dict[str, set[str]]) -> list[str] | None:
         """Detect algebraic loops using DFS. Returns loop if found, None otherwise."""
         WHITE, GRAY, BLACK = 0, 1, 2
         color: dict[str, int] = {node: WHITE for node in dependencies}
@@ -377,12 +371,14 @@ class ModelCompiler:
             if new_source_id in subsystem_inport_map or new_target_id in subsystem_outport_map:
                 continue
 
-            rewired_connections.append(Connection(
-                id=conn.id,
-                source_block_id=new_source_id,
-                source_port_id=new_source_port,
-                target_block_id=new_target_id,
-                target_port_id=new_target_port,
-            ))
+            rewired_connections.append(
+                Connection(
+                    id=conn.id,
+                    source_block_id=new_source_id,
+                    source_port_id=new_source_port,
+                    target_block_id=new_target_id,
+                    target_port_id=new_target_port,
+                )
+            )
 
         return flattened_blocks, rewired_connections

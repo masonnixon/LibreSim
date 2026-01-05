@@ -1,14 +1,15 @@
 """Data models for code generation."""
 
+import zipfile
 from dataclasses import dataclass, field
 from enum import Enum
 from io import BytesIO
 from typing import Any
-import zipfile
 
 
 class Language(str, Enum):
     """Supported target languages."""
+
     PYTHON = "python"
     C = "c"
     CPP = "cpp"
@@ -17,6 +18,7 @@ class Language(str, Enum):
 
 class IntegrationMethod(str, Enum):
     """Numerical integration methods."""
+
     EULER = "euler"
     RK2 = "rk2"
     RK4 = "rk4"
@@ -26,6 +28,7 @@ class IntegrationMethod(str, Enum):
 @dataclass
 class GeneratedFile:
     """A single generated file."""
+
     path: str  # Relative path within project
     content: str
     is_binary: bool = False
@@ -34,6 +37,7 @@ class GeneratedFile:
 @dataclass
 class GeneratedProject:
     """A complete generated project."""
+
     name: str
     language: Language
     files: list[GeneratedFile] = field(default_factory=list)
@@ -46,12 +50,12 @@ class GeneratedProject:
     def to_zip(self) -> BytesIO:
         """Create a ZIP archive of the project."""
         buffer = BytesIO()
-        with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+        with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
             for file in self.files:
                 # Prefix with project name
                 full_path = f"{self.name}/{file.path}"
                 if file.is_binary:
-                    zf.writestr(full_path, file.content.encode('utf-8'))
+                    zf.writestr(full_path, file.content.encode("utf-8"))
                 else:
                     zf.writestr(full_path, file.content)
         buffer.seek(0)
@@ -68,6 +72,7 @@ class GeneratedProject:
 @dataclass
 class BlockTemplate:
     """Template for generating code for a specific block type."""
+
     block_type: str
     # Structure/class definition
     struct_definition: str
@@ -88,6 +93,7 @@ class BlockTemplate:
 @dataclass
 class SignalInfo:
     """Information about a signal in the model."""
+
     source_block_id: str
     source_port: int
     dimensions: list[int]  # [1] = scalar, [3] = 3-vector, etc.
@@ -97,6 +103,7 @@ class SignalInfo:
 @dataclass
 class BlockInfo:
     """Compiled information about a block for code generation."""
+
     id: str
     type: str
     name: str
@@ -116,6 +123,7 @@ class BlockInfo:
 @dataclass
 class CompiledModelInfo:
     """Information extracted from compiled model for code generation."""
+
     blocks: list[BlockInfo]
     execution_order: list[str]
     integrator_blocks: list[str]  # Block IDs that have state

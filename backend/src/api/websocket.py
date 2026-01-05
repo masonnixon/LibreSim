@@ -62,10 +62,13 @@ async def websocket_simulation(websocket: WebSocket):
             # Handle different message types
             if message.get("type") == "subscribe":
                 # Client wants to subscribe to simulation data
-                await manager.send_personal(websocket, {
-                    "type": "subscribed",
-                    "payload": {"message": "Subscribed to simulation updates"}
-                })
+                await manager.send_personal(
+                    websocket,
+                    {
+                        "type": "subscribed",
+                        "payload": {"message": "Subscribed to simulation updates"},
+                    },
+                )
 
             elif message.get("type") == "parameter_update":
                 # Handle runtime parameter update
@@ -80,32 +83,19 @@ async def websocket_simulation(websocket: WebSocket):
 
 async def broadcast_simulation_data(time: float, signals: dict):
     """Broadcast simulation data to all connected clients."""
-    await manager.broadcast({
-        "type": "data",
-        "payload": {
-            "time": time,
-            "signals": signals
-        }
-    })
+    await manager.broadcast({"type": "data", "payload": {"time": time, "signals": signals}})
 
 
 async def broadcast_simulation_status(status: str, progress: float, current_time: float):
     """Broadcast simulation status to all connected clients."""
-    await manager.broadcast({
-        "type": "status",
-        "payload": {
-            "status": status,
-            "progress": progress,
-            "currentTime": current_time
+    await manager.broadcast(
+        {
+            "type": "status",
+            "payload": {"status": status, "progress": progress, "currentTime": current_time},
         }
-    })
+    )
 
 
 async def broadcast_simulation_error(error: str):
     """Broadcast simulation error to all connected clients."""
-    await manager.broadcast({
-        "type": "error",
-        "payload": {
-            "message": error
-        }
-    })
+    await manager.broadcast({"type": "error", "payload": {"message": error}})

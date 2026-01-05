@@ -128,6 +128,7 @@ class SimulationRunner:
 
         except Exception as e:
             import traceback
+
             self._status = SimulationStatus.ERROR
             self._error_message = str(e)
             print(f"Simulation error: {e}")
@@ -149,7 +150,7 @@ class SimulationRunner:
             # Key format: "blockId:portId:signalName" or "blockId:inputIndex:sourceName"
             parts = key.split(":")
             block_id = parts[0] if len(parts) > 0 else ""
-            port_id = parts[1] if len(parts) > 1 else ""
+            parts[1] if len(parts) > 1 else ""
             # Use the signal name from the key (source block name for scope inputs)
             signal_name = parts[2] if len(parts) > 2 else key
 

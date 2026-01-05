@@ -4,54 +4,50 @@ import math
 
 import pytest
 
-from src.osk.state import State
-
-# Data Type blocks
-from src.osk.blocks.data_types import (
-    DataTypeConversion,
-    RealImagToComplex,
-    ComplexToRealImag,
-)
-
-# Matrix Operations blocks
-from src.osk.blocks.matrix_ops import (
-    MatrixMultiply,
-    MatrixTranspose,
-    MatrixInverse,
-    Selector,
-    Assignment,
-    Concatenate,
-    MatrixSum,
-    VectorNorm,
+# Aerospace blocks
+from src.osk.blocks.aerospace import (
+    DCMToQuaternion,
+    EulerToQuaternion,
+    FlatEarthGravity,
+    ISAAtmosphere,
+    QuaternionConjugate,
+    QuaternionMultiply,
+    QuaternionNormalize,
+    QuaternionRotateVector,
+    QuaternionToDCM,
+    QuaternionToEuler,
+    SixDOFEuler,
+    WGS84Gravity,
 )
 
 # Control Design blocks
 from src.osk.blocks.control_design import (
-    LQRController,
-    PolePlacement,
-    LeadLagCompensator,
-    PIController,
-    PDController,
     AntiWindupPID,
+    LQRController,
     ModelReference,
+    PDController,
+    PIController,
+    PolePlacement,
 )
 
-# Aerospace blocks
-from src.osk.blocks.aerospace import (
-    QuaternionNormalize,
-    QuaternionMultiply,
-    QuaternionConjugate,
-    QuaternionToEuler,
-    EulerToQuaternion,
-    QuaternionRotateVector,
-    DCMToQuaternion,
-    QuaternionToDCM,
-    ISAAtmosphere,
-    SixDOFEuler,
-    FlatEarthGravity,
-    WGS84Gravity,
+# Data Type blocks
+from src.osk.blocks.data_types import (
+    ComplexToRealImag,
+    DataTypeConversion,
+    RealImagToComplex,
 )
 
+# Matrix Operations blocks
+from src.osk.blocks.matrix_ops import (
+    Assignment,
+    Concatenate,
+    MatrixInverse,
+    MatrixMultiply,
+    MatrixSum,
+    MatrixTranspose,
+    Selector,
+    VectorNorm,
+)
 
 # =============================================================================
 # Data Type Conversion Block Tests
@@ -63,7 +59,7 @@ class TestDataTypeConversion:
 
     def test_double_conversion(self):
         """Test conversion to double."""
-        dtc = DataTypeConversion(output_type='double')
+        dtc = DataTypeConversion(output_type="double")
         dtc.init()
         dtc.setInput(5)
         dtc.update()
@@ -71,7 +67,7 @@ class TestDataTypeConversion:
 
     def test_boolean_conversion(self):
         """Test conversion to boolean."""
-        dtc = DataTypeConversion(output_type='boolean')
+        dtc = DataTypeConversion(output_type="boolean")
         dtc.init()
         dtc.setInput(3.5)
         dtc.update()
@@ -83,7 +79,7 @@ class TestDataTypeConversion:
 
     def test_int8_saturation(self):
         """Test int8 conversion with saturation."""
-        dtc = DataTypeConversion(output_type='int8', saturate=True)
+        dtc = DataTypeConversion(output_type="int8", saturate=True)
         dtc.init()
 
         dtc.setInput(200)
@@ -96,7 +92,7 @@ class TestDataTypeConversion:
 
     def test_uint8_saturation(self):
         """Test uint8 conversion with saturation."""
-        dtc = DataTypeConversion(output_type='uint8', saturate=True)
+        dtc = DataTypeConversion(output_type="uint8", saturate=True)
         dtc.init()
 
         dtc.setInput(300)
@@ -109,7 +105,7 @@ class TestDataTypeConversion:
 
     def test_int8_wrap(self):
         """Test int8 conversion with wrap-around."""
-        dtc = DataTypeConversion(output_type='int8', saturate=False)
+        dtc = DataTypeConversion(output_type="int8", saturate=False)
         dtc.init()
 
         dtc.setInput(130)  # Should wrap
@@ -119,9 +115,9 @@ class TestDataTypeConversion:
 
     def test_rounding_modes(self):
         """Test different rounding modes."""
-        dtc_floor = DataTypeConversion(output_type='int32', round_mode='floor')
-        dtc_ceil = DataTypeConversion(output_type='int32', round_mode='ceil')
-        dtc_round = DataTypeConversion(output_type='int32', round_mode='round')
+        dtc_floor = DataTypeConversion(output_type="int32", round_mode="floor")
+        dtc_ceil = DataTypeConversion(output_type="int32", round_mode="ceil")
+        dtc_round = DataTypeConversion(output_type="int32", round_mode="round")
 
         for dtc in [dtc_floor, dtc_ceil, dtc_round]:
             dtc.init()
@@ -282,7 +278,7 @@ class TestMatrixInverse:
         mi.setInput([1, 2, 2, 4])  # Singular
         mi.update()
 
-        assert mi.getOutput(0) == float('inf')
+        assert mi.getOutput(0) == float("inf")
 
 
 class TestSelector:
@@ -362,7 +358,7 @@ class TestVectorNorm:
 
     def test_2norm(self):
         """Test Euclidean norm."""
-        vn = VectorNorm(norm_type='2')
+        vn = VectorNorm(norm_type="2")
         vn.init()
         vn.setInput([3, 4])
         vn.update()
@@ -371,7 +367,7 @@ class TestVectorNorm:
 
     def test_1norm(self):
         """Test 1-norm (Manhattan)."""
-        vn = VectorNorm(norm_type='1')
+        vn = VectorNorm(norm_type="1")
         vn.init()
         vn.setInput([3, -4])
         vn.update()
@@ -380,7 +376,7 @@ class TestVectorNorm:
 
     def test_inf_norm(self):
         """Test infinity norm."""
-        vn = VectorNorm(norm_type='inf')
+        vn = VectorNorm(norm_type="inf")
         vn.init()
         vn.setInput([3, -7, 2])
         vn.update()
@@ -692,7 +688,7 @@ class TestQuaternionToDCM:
 
         vec = qd.getOutputVector()
         expected = [1, 0, 0, 0, 1, 0, 0, 0, 1]
-        for i, (a, b) in enumerate(zip(vec, expected)):
+        for i, (a, b) in enumerate(zip(vec, expected, strict=False)):
             assert a == pytest.approx(b), f"Index {i}: {a} != {b}"
 
 

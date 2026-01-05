@@ -1,6 +1,5 @@
 """Tests for the model compiler."""
 
-
 from src.models.block import Block, Connection
 from src.models.model import Model, ModelMetadata
 from src.simulation.compiler import ModelCompiler

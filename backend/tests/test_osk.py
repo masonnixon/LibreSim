@@ -39,7 +39,7 @@ class TestStateClass:
 
     def test_state_propagate_euler(self):
         """Test Euler integration."""
-        State.method = 'Euler'
+        State.method = "Euler"
         State.dt = 0.1
         State.kpass = 0
 
@@ -51,7 +51,7 @@ class TestStateClass:
 
     def test_state_propagate_rk2_pass0(self):
         """Test RK2 integration pass 0."""
-        State.method = 'RK2'
+        State.method = "RK2"
         State.dt = 0.1
         State.kpass = 0
 
@@ -63,7 +63,7 @@ class TestStateClass:
 
     def test_state_propagate_rk2_pass1(self):
         """Test RK2 integration pass 1."""
-        State.method = 'RK2'
+        State.method = "RK2"
         State.dt = 0.1
 
         state = State([0.0, 1.0])
@@ -82,7 +82,7 @@ class TestStateClass:
 
     def test_state_propagate_rk4_all_passes(self):
         """Test RK4 integration all passes."""
-        State.method = 'RK4'
+        State.method = "RK4"
         State.dt = 0.1
 
         state = State([0.0, 1.0])
@@ -114,7 +114,7 @@ class TestStateClass:
 
     def test_state_propagate_merson(self):
         """Test Merson integration."""
-        State.method = 'Merson'
+        State.method = "Merson"
         State.dt = 0.1
 
         state = State([0.0, 1.0])
@@ -148,7 +148,7 @@ class TestStateClass:
 
     def test_state_propagate_unknown_method(self):
         """Test propagate with unknown method defaults to RK4."""
-        State.method = 'Unknown'
+        State.method = "Unknown"
         State.dt = 0.1
         State.kpass = 0
 
@@ -160,7 +160,7 @@ class TestStateClass:
 
     def test_state_updateclock_euler(self):
         """Test clock update for Euler method."""
-        State.method = 'Euler'
+        State.method = "Euler"
         State.t = 0.0
         State.dtp = 0.1
         State.kpass = 0
@@ -175,7 +175,7 @@ class TestStateClass:
 
     def test_state_updateclock_rk4(self):
         """Test clock update for RK4 method."""
-        State.method = 'RK4'
+        State.method = "RK4"
         State.t = 0.0
         State.dtp = 0.1
         State.kpass = 0
@@ -225,7 +225,7 @@ class TestSimClass:
     def test_sim_init(self):
         """Test Sim initialization."""
         stage = []
-        sim = Sim(dts=[0.01], tmax=1.0, vStage=[stage])
+        Sim(dts=[0.01], tmax=1.0, vStage=[stage])
 
         assert Sim.tmax == 1.0
         assert Sim.dts == [0.01]
@@ -278,8 +278,8 @@ class TestSimRun:
         sim = Sim(dts=[0.1], tmax=0.5, vStage=[[]])
         results = sim.run()
 
-        assert 'times' in results
-        assert 'outputs' in results
+        assert "times" in results
+        assert "outputs" in results
 
     def test_sim_run_single_block(self):
         """Test running simulation with single block."""
@@ -287,7 +287,7 @@ class TestSimRun:
         sim = Sim(dts=[0.1], tmax=0.2, vStage=[[block]])
         results = sim.run()
 
-        assert len(results['times']) >= 2
+        assert len(results["times"]) >= 2
         assert State.t >= 0.2 - State.EPS
 
     def test_sim_run_multiple_blocks(self):
@@ -297,4 +297,4 @@ class TestSimRun:
         sim = Sim(dts=[0.1], tmax=0.2, vStage=[[block1, block2]])
         results = sim.run()
 
-        assert len(results['times']) >= 2
+        assert len(results["times"]) >= 2

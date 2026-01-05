@@ -1,6 +1,7 @@
 """Rust templates for signal processing blocks."""
 
 import math
+
 from ....models import BlockInfo
 
 
@@ -354,9 +355,7 @@ def template_notch_filter(block: BlockInfo, struct_name: str) -> str:
     fs = 1.0 / sample_time
     omega_0 = 2.0 * math.pi * notch_freq / fs
     bw = 2.0 * math.pi * bandwidth / fs
-    alpha = math.sin(omega_0) * math.sinh(
-        math.log(2.0) / 2.0 * bw * omega_0 / math.sin(omega_0)
-    )
+    alpha = math.sin(omega_0) * math.sinh(math.log(2.0) / 2.0 * bw * omega_0 / math.sin(omega_0))
 
     b0 = 1.0
     b1 = -2.0 * math.cos(omega_0)

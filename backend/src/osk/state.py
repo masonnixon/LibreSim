@@ -16,17 +16,17 @@ class State:
     """
 
     # Class-level simulation timing variables
-    t = 0.0          # Current simulation time
-    t1 = 0.0         # Previous time
-    dt = 0.01        # Current time step
-    dtp = 0.01       # Primary time step
-    ready = 1        # Flag indicating when outputs are ready
-    kpass = 0        # Current integration pass (0-4 depending on method)
-    method = 'RK4'   # Integration method: 'Euler', 'RK2', 'RK4', 'Merson'
-    EPS = 1e-10      # Small epsilon for floating point comparisons
-    EVENT = -1       # Event time constant
-    tickfirst = 1    # First tick flag
-    ticklast = 0     # Last tick flag
+    t = 0.0  # Current simulation time
+    t1 = 0.0  # Previous time
+    dt = 0.01  # Current time step
+    dtp = 0.01  # Primary time step
+    ready = 1  # Flag indicating when outputs are ready
+    kpass = 0  # Current integration pass (0-4 depending on method)
+    method = "RK4"  # Integration method: 'Euler', 'RK2', 'RK4', 'Merson'
+    EPS = 1e-10  # Small epsilon for floating point comparisons
+    EVENT = -1  # Event time constant
+    tickfirst = 1  # First tick flag
+    ticklast = 0  # Last tick flag
 
     def __init__(self, x=None):
         """Initialize state with optional initial values.
@@ -39,12 +39,12 @@ class State:
         self.x = list(x)
 
         # Storage for intermediate values during multi-pass integration
-        self.x0 = 0.0    # Initial position for this step
-        self.xd0 = 0.0   # Derivative at start
-        self.xd1 = 0.0   # Derivative at pass 1
-        self.xd2 = 0.0   # Derivative at pass 2
-        self.xd3 = 0.0   # Derivative at pass 3
-        self.xd4 = 0.0   # Derivative at pass 4 (Merson)
+        self.x0 = 0.0  # Initial position for this step
+        self.xd0 = 0.0  # Derivative at start
+        self.xd1 = 0.0  # Derivative at pass 1
+        self.xd2 = 0.0  # Derivative at pass 2
+        self.xd3 = 0.0  # Derivative at pass 3
+        self.xd4 = 0.0  # Derivative at pass 4 (Merson)
 
     def set(self):
         """Initialize simulation timing."""
@@ -86,13 +86,13 @@ class State:
         intermediate derivatives and the final pass combines them to
         update the state.
         """
-        if State.method == 'Euler':
+        if State.method == "Euler":
             self._propagate_euler()
-        elif State.method == 'RK2':
+        elif State.method == "RK2":
             self._propagate_rk2()
-        elif State.method == 'RK4':
+        elif State.method == "RK4":
             self._propagate_rk4()
-        elif State.method == 'Merson':
+        elif State.method == "Merson":
             self._propagate_merson()
         else:
             # Default to RK4
@@ -156,25 +156,16 @@ class State:
         elif State.kpass == 3:
             # k4
             self.xd3 = self.x[1]  # k4
-            self.x[0] = self.x0 + State.dt / 2.0 * (
-                self.xd0 - 3.0 * self.xd2 + 4.0 * self.xd3
-            )
+            self.x[0] = self.x0 + State.dt / 2.0 * (self.xd0 - 3.0 * self.xd2 + 4.0 * self.xd3)
         elif State.kpass == 4:
             # k5 - final combination
             self.xd4 = self.x[1]  # k5
-            self.x[0] = self.x0 + State.dt / 6.0 * (
-                self.xd0 + 4.0 * self.xd3 + self.xd4
-            )
+            self.x[0] = self.x0 + State.dt / 6.0 * (self.xd0 + 4.0 * self.xd3 + self.xd4)
 
     def updateclock(self):
         """Update simulation clock based on integration method passes."""
         # Number of passes for each method
-        passes = {
-            'Euler': 1,
-            'RK2': 2,
-            'RK4': 4,
-            'Merson': 5
-        }
+        passes = {"Euler": 1, "RK2": 2, "RK4": 4, "Merson": 5}
         max_pass = passes.get(State.method, 4)
 
         State.kpass += 1
@@ -188,13 +179,13 @@ class State:
         else:
             State.ready = 0
             # Set appropriate dt for intermediate passes
-            if State.method == 'RK2':
+            if State.method == "RK2":
                 State.dt = State.dtp / 2.0 if State.kpass == 0 else State.dtp
-            elif State.method == 'RK4':
+            elif State.method == "RK4":
                 if State.kpass in [0, 1]:
                     State.dt = State.dtp / 2.0
                 else:
                     State.dt = State.dtp
-            elif State.method == 'Merson':
+            elif State.method == "Merson":
                 # Merson uses various fractions
                 State.dt = State.dtp

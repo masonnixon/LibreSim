@@ -4,11 +4,8 @@ These blocks implement DSP functions similar to MATLAB DSP System Toolbox.
 """
 
 import math
-import cmath
-from typing import Optional
 
 from ..block import Block
-
 
 # =============================================================================
 # FFT/IFFT Operations
@@ -35,7 +32,7 @@ class FFT(Block):
 
     def setInput(self, value, port=0):
         if isinstance(value, list):
-            self.input = value[:self.n_points] + [0.0] * max(0, self.n_points - len(value))
+            self.input = value[: self.n_points] + [0.0] * max(0, self.n_points - len(value))
 
     def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
@@ -44,7 +41,7 @@ class FFT(Block):
         if self.input_block is not None:
             vec = self.input_block.getOutputVector()
             if vec is not None:
-                self.input = vec[:self.n_points] + [0.0] * max(0, self.n_points - len(vec))
+                self.input = vec[: self.n_points] + [0.0] * max(0, self.n_points - len(vec))
 
         # Simple DFT implementation (O(n^2), but works for any size)
         result = []
@@ -137,7 +134,7 @@ class FIRFilter(Block):
     Output: Filtered signal sample
     """
 
-    def __init__(self, coefficients: Optional[list] = None):
+    def __init__(self, coefficients: list | None = None):
         super().__init__()
         self.coefficients = coefficients if coefficients else [1.0]
         self.buffer = [0.0] * len(self.coefficients)
@@ -161,7 +158,7 @@ class FIRFilter(Block):
             self.buffer = [float(val)] + self.buffer[:-1]
 
         # Apply FIR filter
-        self.output = sum(b * x for b, x in zip(self.coefficients, self.buffer))
+        self.output = sum(b * x for b, x in zip(self.coefficients, self.buffer, strict=False))
 
     def getOutput(self, port=0):
         return self.output
@@ -178,7 +175,7 @@ class IIRFilter(Block):
         denominator: A coefficients [a0, a1, a2, ...] (a0 is normalized to 1)
     """
 
-    def __init__(self, numerator: Optional[list] = None, denominator: Optional[list] = None):
+    def __init__(self, numerator: list | None = None, denominator: list | None = None):
         super().__init__()
         self.numerator = numerator if numerator else [1.0]
         self.denominator = denominator if denominator else [1.0]
@@ -465,14 +462,19 @@ class WindowFunction(Block):
             elif self.window_type == "hamming":
                 w = 0.54 - 0.46 * math.cos(2 * math.pi * n / (N - 1))
             elif self.window_type == "blackman":
-                w = (0.42 - 0.5 * math.cos(2 * math.pi * n / (N - 1)) +
-                     0.08 * math.cos(4 * math.pi * n / (N - 1)))
+                w = (
+                    0.42
+                    - 0.5 * math.cos(2 * math.pi * n / (N - 1))
+                    + 0.08 * math.cos(4 * math.pi * n / (N - 1))
+                )
             elif self.window_type == "kaiser":
                 # Simplified Kaiser window (uses approximation for Bessel function)
                 alpha = (N - 1) / 2
                 ratio = (n - alpha) / alpha
                 if abs(ratio) <= 1:
-                    w = self._bessel_i0(self.beta * math.sqrt(1 - ratio * ratio)) / self._bessel_i0(self.beta)
+                    w = self._bessel_i0(self.beta * math.sqrt(1 - ratio * ratio)) / self._bessel_i0(
+                        self.beta
+                    )
                 else:
                     w = 0.0
             else:
@@ -499,7 +501,7 @@ class WindowFunction(Block):
 
     def setInput(self, value, port=0):
         if isinstance(value, list):
-            self.input = value[:self.length] + [0.0] * max(0, self.length - len(value))
+            self.input = value[: self.length] + [0.0] * max(0, self.length - len(value))
 
     def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
@@ -508,10 +510,10 @@ class WindowFunction(Block):
         if self.input_block is not None:
             vec = self.input_block.getOutputVector()
             if vec is not None:
-                self.input = vec[:self.length] + [0.0] * max(0, self.length - len(vec))
+                self.input = vec[: self.length] + [0.0] * max(0, self.length - len(vec))
 
         # Apply window
-        self.output = [x * w for x, w in zip(self.input, self.window)]
+        self.output = [x * w for x, w in zip(self.input, self.window, strict=False)]
 
     def getOutput(self, port=0):
         if port < len(self.output):

@@ -26,24 +26,18 @@ from ..osk.blocks import (
     ExtendedKalmanFilter,
     Gain,
     HighPassFilter,
+    # Nonlinear
+    HitCrossing,
+    Hysteresis,
     # Subsystems
     Inport,
     # Continuous
     Integrator,
-    LimitedIntegrator,
-    SecondOrder,
-    TransportDelay,
-    ZeroPole,
     KalmanFilter,
-    # Nonlinear
-    HitCrossing,
-    Hysteresis,
+    LimitedIntegrator,
     LookupTable1D,
     LookupTable2D,
     LowPassFilter,
-    SlewRateLimiter,
-    Stiction,
-    WrapToRange,
     # Observers
     LuenbergerObserver,
     MovingAverage,
@@ -61,19 +55,53 @@ from ..osk.blocks import (
     Saturation,
     # Sinks
     Scope,
+    SecondOrder,
     SineWave,
+    SlewRateLimiter,
     StateSpace,
     Step,
     StepInfo,
+    Stiction,
     Subsystem,
     # Math
     Sum,
     ToWorkspace,
     TransferFunction,
+    TransportDelay,
     # Discrete
     UnitDelay,
     VariableTransportDelay,
+    WrapToRange,
     ZeroOrderHold,
+    ZeroPole,
+)
+from ..osk.blocks.aerospace import (
+    DCMToQuaternion,
+    EulerToQuaternion,
+    FlatEarthGravity,
+    ISAAtmosphere,
+    QuaternionConjugate,
+    QuaternionMultiply,
+    QuaternionNormalize,
+    QuaternionRotateVector,
+    QuaternionToDCM,
+    QuaternionToEuler,
+    SixDOFEuler,
+    WGS84Gravity,
+)
+from ..osk.blocks.control_design import (
+    AntiWindupPID,
+    LeadLagCompensator,
+    LQRController,
+    ModelReference,
+    PDController,
+    PIController,
+    PolePlacement,
+)
+from ..osk.blocks.data_types import (
+    ComplexToRealImag,
+    DataTypeConversion,
+    RealImagToComplex,
 )
 from ..osk.blocks.discrete import (
     DiscreteDerivative,
@@ -83,6 +111,22 @@ from ..osk.blocks.discrete import (
     DiscreteTransferFunction,
     FirstOrderHold,
     Memory,
+)
+from ..osk.blocks.dsp import (
+    FFT,
+    IFFT,
+    RMS,
+    Convolution,
+    Downsampler,
+    FIRFilter,
+    IIRFilter,
+    Interpolator,
+    Mean,
+    PeakDetector,
+    Upsampler,
+    Variance,
+    WindowFunction,
+    ZeroCrossingDetector,
 )
 from ..osk.blocks.logic import (
     BitOperator,
@@ -123,96 +167,52 @@ from ..osk.blocks.math_ops import (
     UnaryMinus,
     WeightedSum,
 )
-from ..osk.blocks.data_types import (
-    DataTypeConversion,
-    RealImagToComplex,
-    ComplexToRealImag,
-)
 from ..osk.blocks.matrix_ops import (
-    MatrixMultiply,
-    MatrixTranspose,
-    MatrixInverse,
-    Selector,
     Assignment,
     Concatenate,
+    MatrixInverse,
+    MatrixMultiply,
     MatrixSum,
+    MatrixTranspose,
+    Selector,
     VectorNorm,
-)
-from ..osk.blocks.control_design import (
-    LQRController,
-    PolePlacement,
-    LeadLagCompensator,
-    PIController,
-    PDController,
-    AntiWindupPID,
-    ModelReference,
-)
-from ..osk.blocks.aerospace import (
-    QuaternionNormalize,
-    QuaternionMultiply,
-    QuaternionConjugate,
-    QuaternionToEuler,
-    EulerToQuaternion,
-    QuaternionRotateVector,
-    DCMToQuaternion,
-    QuaternionToDCM,
-    ISAAtmosphere,
-    SixDOFEuler,
-    FlatEarthGravity,
-    WGS84Gravity,
-)
-from ..osk.blocks.dsp import (
-    FFT,
-    IFFT,
-    FIRFilter,
-    IIRFilter,
-    Convolution,
-    Downsampler,
-    Upsampler,
-    Interpolator,
-    WindowFunction,
-    Mean,
-    Variance,
-    RMS,
-    PeakDetector,
-    ZeroCrossingDetector,
-)
-from ..osk.blocks.rf import (
-    RFAmplifier,
-    RFMixer,
-    RFFilter,
-    SParameterNetwork,
-    RFBudgetElement,
-    Attenuator,
-    AMModulator,
-    FMModulator,
-    PhaseNoise,
-    dBmToWatts,
-    WattsTodBm,
 )
 from ..osk.blocks.navigation import (
     CoordinateTransformationConversion,
-    LLAToECEF,
     ECEFToLLA,
     ECEFToNED,
+    FlatEarthPosition,
+    GreatCircleDistance,
+    LLAToECEF,
     NEDToECEF,
     WaypointFollower,
-    GreatCircleDistance,
-    FlatEarthPosition,
+)
+from ..osk.blocks.rf import (
+    AMModulator,
+    Attenuator,
+    FMModulator,
+    PhaseNoise,
+    RFAmplifier,
+    RFBudgetElement,
+    RFFilter,
+    RFMixer,
+    SParameterNetwork,
+    WattsTodBm,
+    dBmToWatts,
 )
 from ..osk.blocks.sensor_fusion import (
-    IMUSensor,
     Accelerometer,
-    Gyroscope,
-    Magnetometer,
-    GPSSensor,
-    Altimeter,
-    ComplementaryFilter,
-    MadgwickFilter,
-    MahonyFilter,
-    INSGPSFusion,
     AlphaBetaFilter,
     AlphaBetaGammaFilter,
+    Altimeter,
+    ComplementaryFilter,
+    GPSSensor,
+    Gyroscope,
+    IMUSensor,
+    INSGPSFusion,
+    MadgwickFilter,
+    Magnetometer,
+    MahonyFilter,
 )
 from ..osk.blocks.sinks import Display, Terminator
 from ..osk.blocks.sources import (
@@ -436,26 +436,75 @@ PARAM_MAP: dict[str, dict[str, str]] = {
     "constant": {"value": "value"},
     "step": {"stepTime": "step_time", "initialValue": "initial_value", "finalValue": "final_value"},
     "ramp": {"slope": "slope", "startTime": "start_time", "initialOutput": "initial_output"},
-    "sine_wave": {"amplitude": "amplitude", "frequency": "frequency", "phase": "phase", "bias": "bias"},
-    "pulse_generator": {"amplitude": "amplitude", "period": "period", "dutyCycle": "duty_cycle", "phaseDelay": "phase_delay"},
-    "white_noise": {"mean": "mean", "variance": "variance", "power": "variance", "seed": "seed", "sampleTime": "sample_time"},
-    "uniform_noise": {"minimum": "minimum", "maximum": "maximum", "seed": "seed", "sampleTime": "sample_time"},
+    "sine_wave": {
+        "amplitude": "amplitude",
+        "frequency": "frequency",
+        "phase": "phase",
+        "bias": "bias",
+    },
+    "pulse_generator": {
+        "amplitude": "amplitude",
+        "period": "period",
+        "dutyCycle": "duty_cycle",
+        "phaseDelay": "phase_delay",
+    },
+    "white_noise": {
+        "mean": "mean",
+        "variance": "variance",
+        "power": "variance",
+        "seed": "seed",
+        "sampleTime": "sample_time",
+    },
+    "uniform_noise": {
+        "minimum": "minimum",
+        "maximum": "maximum",
+        "seed": "seed",
+        "sampleTime": "sample_time",
+    },
     "scope": {"numInputs": "num_inputs", "num_input_ports": "num_inputs"},
     "to_workspace": {"variableName": "variable_name"},
-    "integrator": {"initialCondition": "initial_condition", "limitOutput": "limit_output", "upperLimit": "upper_limit", "lowerLimit": "lower_limit", "externalIC": "external_ic"},
+    "integrator": {
+        "initialCondition": "initial_condition",
+        "limitOutput": "limit_output",
+        "upperLimit": "upper_limit",
+        "lowerLimit": "lower_limit",
+        "externalIC": "external_ic",
+    },
     "derivative": {"coefficient": "coefficient"},
     "transfer_function": {"numerator": "numerator", "denominator": "denominator"},
     "state_space": {"A": "A", "B": "B", "C": "C", "D": "D", "initialCondition": "initial_state"},
-    "pid_controller": {"Kp": "Kp", "Ki": "Ki", "Kd": "Kd", "N": "N", "initialConditionI": "initial_integrator"},
+    "pid_controller": {
+        "Kp": "Kp",
+        "Ki": "Ki",
+        "Kd": "Kd",
+        "N": "N",
+        "initialConditionI": "initial_integrator",
+    },
     "transport_delay": {"delayTime": "delay_time", "initialOutput": "initial_output"},
-    "second_order": {"naturalFrequency": "natural_frequency", "dampingRatio": "damping_ratio", "gain": "gain"},
-    "limited_integrator": {"initialCondition": "initial_condition", "upperLimit": "upper_limit", "lowerLimit": "lower_limit"},
+    "second_order": {
+        "naturalFrequency": "natural_frequency",
+        "dampingRatio": "damping_ratio",
+        "gain": "gain",
+    },
+    "limited_integrator": {
+        "initialCondition": "initial_condition",
+        "upperLimit": "upper_limit",
+        "lowerLimit": "lower_limit",
+    },
     "zero_pole": {"zeros": "zeros", "poles": "poles", "gain": "gain"},
     "unit_delay": {"initialCondition": "initial_condition", "sampleTime": "sample_time"},
     "zero_order_hold": {"sampleTime": "sample_time"},
-    "discrete_integrator": {"method": "method", "sampleTime": "sample_time", "initialCondition": "initial_condition"},
+    "discrete_integrator": {
+        "method": "method",
+        "sampleTime": "sample_time",
+        "initialCondition": "initial_condition",
+    },
     "discrete_derivative": {"sampleTime": "sample_time", "initialCondition": "initial_condition"},
-    "discrete_transfer_function": {"numerator": "numerator", "denominator": "denominator", "sampleTime": "sample_time"},
+    "discrete_transfer_function": {
+        "numerator": "numerator",
+        "denominator": "denominator",
+        "sampleTime": "sample_time",
+    },
     "sum": {"signs": "signs", "inputs": "signs"},
     "gain": {"gain": "gain"},
     "product": {"operations": "operations"},
@@ -481,15 +530,46 @@ PARAM_MAP: dict[str, dict[str, str]] = {
     "bit_operator": {"operator": "operator"},
     # New Sources
     "repeating_sequence": {"timeValues": "time_values", "outputValues": "output_values"},
-    "chirp_signal": {"initialFrequency": "initial_frequency", "targetTime": "target_time", "targetFrequency": "target_frequency"},
-    "band_limited_white_noise": {"noisePower": "noise_power", "sampleTime": "sample_time", "seed": "seed"},
-    "from_workspace": {"timeData": "time_data", "valueData": "value_data", "interpolation": "interpolation"},
-    "signal_generator": {"waveType": "wave_type", "amplitude": "amplitude", "frequency": "frequency", "units": "units"},
+    "chirp_signal": {
+        "initialFrequency": "initial_frequency",
+        "targetTime": "target_time",
+        "targetFrequency": "target_frequency",
+    },
+    "band_limited_white_noise": {
+        "noisePower": "noise_power",
+        "sampleTime": "sample_time",
+        "seed": "seed",
+    },
+    "from_workspace": {
+        "timeData": "time_data",
+        "valueData": "value_data",
+        "interpolation": "interpolation",
+    },
+    "signal_generator": {
+        "waveType": "wave_type",
+        "amplitude": "amplitude",
+        "frequency": "frequency",
+        "units": "units",
+    },
     # New Discrete
     "memory": {"initialCondition": "initial_condition"},
-    "discrete_state_space": {"A": "A", "B": "B", "C": "C", "D": "D", "initialState": "initial_state", "sampleTime": "sample_time"},
+    "discrete_state_space": {
+        "A": "A",
+        "B": "B",
+        "C": "C",
+        "D": "D",
+        "initialState": "initial_state",
+        "sampleTime": "sample_time",
+    },
     "first_order_hold": {"sampleTime": "sample_time"},
-    "discrete_pid_controller": {"Kp": "Kp", "Ki": "Ki", "Kd": "Kd", "N": "N", "sampleTime": "sample_time", "method": "method"},
+    "discrete_pid_controller": {
+        "Kp": "Kp",
+        "Ki": "Ki",
+        "Kd": "Kd",
+        "N": "N",
+        "sampleTime": "sample_time",
+        "method": "method",
+    },
     # Subsystems
     "inport": {"portNumber": "port_number"},
     "outport": {"portNumber": "port_number"},
@@ -501,9 +581,14 @@ PARAM_MAP: dict[str, dict[str, str]] = {
     "high_pass_filter": {"cutoffFrequency": "cutoff_freq"},
     "band_pass_filter": {"lowCutoff": "low_cutoff", "highCutoff": "high_cutoff"},
     "analog_filter": {
-        "design": "design", "response": "response", "order": "order",
-        "cutoffFrequency": "cutoff_freq", "lowCutoff": "low_cutoff", "highCutoff": "high_cutoff",
-        "passbandRipple": "passband_ripple", "stopbandAtten": "stopband_atten"
+        "design": "design",
+        "response": "response",
+        "order": "order",
+        "cutoffFrequency": "cutoff_freq",
+        "lowCutoff": "low_cutoff",
+        "highCutoff": "high_cutoff",
+        "passbandRipple": "passband_ripple",
+        "stopbandAtten": "stopband_atten",
     },
     "notch_filter": {"notchFrequency": "notch_freq", "bandwidth": "bandwidth", "depth": "depth"},
     "backlash": {"deadbandWidth": "deadband_width", "initialOutput": "initial_output"},
@@ -511,25 +596,84 @@ PARAM_MAP: dict[str, dict[str, str]] = {
     "lookup_table_1d": {"xData": "x_data", "yData": "y_data"},
     "lookup_table_2d": {"xData": "x_data", "yData": "y_data", "zData": "z_data"},
     "quantizer": {"interval": "interval"},
-    "relay": {"switchOn": "switch_on", "switchOff": "switch_off", "outputOn": "output_on", "outputOff": "output_off"},
-    "coulomb_friction": {"staticGain": "static_gain", "dynamicGain": "dynamic_gain", "velocityThreshold": "velocity_threshold"},
+    "relay": {
+        "switchOn": "switch_on",
+        "switchOff": "switch_off",
+        "outputOn": "output_on",
+        "outputOff": "output_off",
+    },
+    "coulomb_friction": {
+        "staticGain": "static_gain",
+        "dynamicGain": "dynamic_gain",
+        "velocityThreshold": "velocity_threshold",
+    },
     "variable_transport_delay": {"maxDelay": "max_delay", "initialDelay": "initial_delay"},
     "wrap_to_range": {"lower": "lower", "upper": "upper"},
     "hit_crossing": {"threshold": "threshold", "direction": "direction"},
-    "hysteresis": {"upperThreshold": "upper_threshold", "lowerThreshold": "lower_threshold", "outputHigh": "output_high", "outputLow": "output_low"},
+    "hysteresis": {
+        "upperThreshold": "upper_threshold",
+        "lowerThreshold": "lower_threshold",
+        "outputHigh": "output_high",
+        "outputLow": "output_low",
+    },
     "stiction": {"breakawayForce": "breakaway_force", "velocityThreshold": "velocity_threshold"},
-    "slew_rate_limiter": {"risingRate": "rising_rate", "fallingRate": "falling_rate", "sampleTime": "sample_time"},
+    "slew_rate_limiter": {
+        "risingRate": "rising_rate",
+        "fallingRate": "falling_rate",
+        "sampleTime": "sample_time",
+    },
     # Observers
-    "luenberger_observer": {"A": "A", "B": "B", "C": "C", "L": "L", "initialState": "initial_state"},
-    "kalman_filter": {"A": "A", "B": "B", "C": "C", "Q": "Q", "R": "R", "initialState": "initial_state", "initialP": "initial_P"},
-    "extended_kalman_filter": {"nStates": "n_states", "Q": "Q", "R": "R", "initialState": "initial_state"},
+    "luenberger_observer": {
+        "A": "A",
+        "B": "B",
+        "C": "C",
+        "L": "L",
+        "initialState": "initial_state",
+    },
+    "kalman_filter": {
+        "A": "A",
+        "B": "B",
+        "C": "C",
+        "Q": "Q",
+        "R": "R",
+        "initialState": "initial_state",
+        "initialP": "initial_P",
+    },
+    "extended_kalman_filter": {
+        "nStates": "n_states",
+        "Q": "Q",
+        "R": "R",
+        "initialState": "initial_state",
+    },
     # Control Analysis
-    "bode_plot": {"numerator": "numerator", "denominator": "denominator", "minFrequency": "minFrequency", "maxFrequency": "maxFrequency", "numPoints": "numPoints"},
-    "nyquist_plot": {"numerator": "numerator", "denominator": "denominator", "minFrequency": "minFrequency", "maxFrequency": "maxFrequency", "numPoints": "numPoints"},
+    "bode_plot": {
+        "numerator": "numerator",
+        "denominator": "denominator",
+        "minFrequency": "minFrequency",
+        "maxFrequency": "maxFrequency",
+        "numPoints": "numPoints",
+    },
+    "nyquist_plot": {
+        "numerator": "numerator",
+        "denominator": "denominator",
+        "minFrequency": "minFrequency",
+        "maxFrequency": "maxFrequency",
+        "numPoints": "numPoints",
+    },
     "pole_zero_map": {"numerator": "numerator", "denominator": "denominator"},
-    "step_info": {"numerator": "numerator", "denominator": "denominator", "simulationTime": "simulationTime", "numPoints": "numPoints", "settlingPercent": "settlingPercent"},
+    "step_info": {
+        "numerator": "numerator",
+        "denominator": "denominator",
+        "simulationTime": "simulationTime",
+        "numPoints": "numPoints",
+        "settlingPercent": "settlingPercent",
+    },
     # Data Types
-    "data_type_conversion": {"outputType": "output_type", "saturationMode": "saturation_mode", "roundingMode": "rounding_mode"},
+    "data_type_conversion": {
+        "outputType": "output_type",
+        "saturationMode": "saturation_mode",
+        "roundingMode": "rounding_mode",
+    },
     "real_imag_to_complex": {},
     "complex_to_real_imag": {},
     # Matrix Operations
@@ -547,7 +691,15 @@ PARAM_MAP: dict[str, dict[str, str]] = {
     "lead_lag_compensator": {"K": "gain", "zero": "zero", "pole": "pole"},
     "pi_controller": {"Kp": "Kp", "Ki": "Ki"},
     "pd_controller": {"Kp": "Kp", "Kd": "Kd", "N": "N"},
-    "anti_windup_pid": {"Kp": "Kp", "Ki": "Ki", "Kd": "Kd", "N": "N", "Kb": "Kb", "upperLimit": "upper_limit", "lowerLimit": "lower_limit"},
+    "anti_windup_pid": {
+        "Kp": "Kp",
+        "Ki": "Ki",
+        "Kd": "Kd",
+        "N": "N",
+        "Kb": "Kb",
+        "upperLimit": "upper_limit",
+        "lowerLimit": "lower_limit",
+    },
     "model_reference": {"naturalFrequency": "natural_frequency", "dampingRatio": "damping_ratio"},
     # Aerospace
     "quaternion_normalize": {},
@@ -559,7 +711,14 @@ PARAM_MAP: dict[str, dict[str, str]] = {
     "dcm_to_quaternion": {},
     "quaternion_to_dcm": {},
     "isa_atmosphere": {},
-    "six_dof_euler": {"mass": "mass", "inertia": "inertia", "initialPosition": "initial_position", "initialVelocity": "initial_velocity", "initialEuler": "initial_euler", "initialOmega": "initial_omega"},
+    "six_dof_euler": {
+        "mass": "mass",
+        "inertia": "inertia",
+        "initialPosition": "initial_position",
+        "initialVelocity": "initial_velocity",
+        "initialEuler": "initial_euler",
+        "initialOmega": "initial_omega",
+    },
     "flat_earth_gravity": {"g": "g"},
     "wgs84_gravity": {},
     # DSP
@@ -578,19 +737,53 @@ PARAM_MAP: dict[str, dict[str, str]] = {
     "peak_detector": {"threshold": "threshold"},
     "zero_crossing_detector": {"direction": "direction"},
     # RF
-    "rf_amplifier": {"gainDb": "gain_db", "noiseFigureDb": "noise_figure_db", "p1dbDbm": "p1db_dbm", "oip3Dbm": "oip3_dbm"},
-    "rf_mixer": {"conversionLossDb": "conversion_loss_db", "noiseFigureDb": "noise_figure_db", "iip3Dbm": "iip3_dbm", "sideband": "sideband"},
-    "rf_filter": {"filterType": "filter_type", "centerFreqHz": "center_freq_hz", "bandwidthHz": "bandwidth_hz", "insertionLossDb": "insertion_loss_db", "rejectionDb": "rejection_db"},
+    "rf_amplifier": {
+        "gainDb": "gain_db",
+        "noiseFigureDb": "noise_figure_db",
+        "p1dbDbm": "p1db_dbm",
+        "oip3Dbm": "oip3_dbm",
+    },
+    "rf_mixer": {
+        "conversionLossDb": "conversion_loss_db",
+        "noiseFigureDb": "noise_figure_db",
+        "iip3Dbm": "iip3_dbm",
+        "sideband": "sideband",
+    },
+    "rf_filter": {
+        "filterType": "filter_type",
+        "centerFreqHz": "center_freq_hz",
+        "bandwidthHz": "bandwidth_hz",
+        "insertionLossDb": "insertion_loss_db",
+        "rejectionDb": "rejection_db",
+    },
     "s_parameter_network": {"sParams": "s_params"},
-    "rf_budget_element": {"gainDb": "gain_db", "noiseFigureDb": "noise_figure_db", "oip3Dbm": "oip3_dbm", "name": "name"},
+    "rf_budget_element": {
+        "gainDb": "gain_db",
+        "noiseFigureDb": "noise_figure_db",
+        "oip3Dbm": "oip3_dbm",
+        "name": "name",
+    },
     "attenuator": {"attenuationDb": "attenuation_db"},
-    "am_modulator": {"carrierFreq": "carrier_freq", "carrierAmplitude": "carrier_amplitude", "modulationIndex": "modulation_index"},
-    "fm_modulator": {"carrierFreq": "carrier_freq", "carrierAmplitude": "carrier_amplitude", "freqDeviation": "freq_deviation"},
+    "am_modulator": {
+        "carrierFreq": "carrier_freq",
+        "carrierAmplitude": "carrier_amplitude",
+        "modulationIndex": "modulation_index",
+    },
+    "fm_modulator": {
+        "carrierFreq": "carrier_freq",
+        "carrierAmplitude": "carrier_amplitude",
+        "freqDeviation": "freq_deviation",
+    },
     "phase_noise": {"phaseNoiseDbcHz": "phase_noise_dbcHz", "offsetFreq": "offset_freq"},
     "dbm_to_watts": {},
     "watts_to_dbm": {},
     # Navigation
-    "coordinate_transformation": {"inputType": "input_type", "outputType": "output_type", "referenceLla": "reference_lla", "eulerSequence": "euler_sequence"},
+    "coordinate_transformation": {
+        "inputType": "input_type",
+        "outputType": "output_type",
+        "referenceLla": "reference_lla",
+        "eulerSequence": "euler_sequence",
+    },
     "lla_to_ecef": {},
     "ecef_to_lla": {},
     "ecef_to_ned": {"referenceLla": "reference_lla"},
@@ -599,18 +792,45 @@ PARAM_MAP: dict[str, dict[str, str]] = {
     "great_circle_distance": {},
     "flat_earth_position": {"initialPosition": "initial_position"},
     # Sensor Fusion
-    "imu_sensor": {"accelNoise": "accel_noise", "gyroNoise": "gyro_noise", "accelBias": "accel_bias", "gyroBias": "gyro_bias", "accelScaleError": "accel_scale_error", "gyroScaleError": "gyro_scale_error", "seed": "seed"},
-    "accelerometer": {"noise": "noise", "bias": "bias", "scaleError": "scale_error", "seed": "seed"},
+    "imu_sensor": {
+        "accelNoise": "accel_noise",
+        "gyroNoise": "gyro_noise",
+        "accelBias": "accel_bias",
+        "gyroBias": "gyro_bias",
+        "accelScaleError": "accel_scale_error",
+        "gyroScaleError": "gyro_scale_error",
+        "seed": "seed",
+    },
+    "accelerometer": {
+        "noise": "noise",
+        "bias": "bias",
+        "scaleError": "scale_error",
+        "seed": "seed",
+    },
     "gyroscope": {"noise": "noise", "bias": "bias", "scaleError": "scale_error", "seed": "seed"},
     "magnetometer": {"noise": "noise", "bias": "bias", "scaleError": "scale_error", "seed": "seed"},
-    "gps_sensor": {"positionNoise": "position_noise", "velocityNoise": "velocity_noise", "updateRate": "update_rate", "seed": "seed"},
+    "gps_sensor": {
+        "positionNoise": "position_noise",
+        "velocityNoise": "velocity_noise",
+        "updateRate": "update_rate",
+        "seed": "seed",
+    },
     "altimeter": {"noise": "noise", "bias": "bias", "seed": "seed"},
     "complementary_filter": {"alpha": "alpha"},
     "madgwick_filter": {"beta": "beta"},
     "mahony_filter": {"Kp": "Kp", "Ki": "Ki"},
-    "ins_gps_fusion": {"initialPosition": "initial_position", "initialVelocity": "initial_velocity", "initialAttitude": "initial_attitude"},
+    "ins_gps_fusion": {
+        "initialPosition": "initial_position",
+        "initialVelocity": "initial_velocity",
+        "initialAttitude": "initial_attitude",
+    },
     "alpha_beta_filter": {"alpha": "alpha", "beta": "beta", "sampleTime": "sample_time"},
-    "alpha_beta_gamma_filter": {"alpha": "alpha", "beta": "beta", "gamma": "gamma", "sampleTime": "sample_time"},
+    "alpha_beta_gamma_filter": {
+        "alpha": "alpha",
+        "beta": "beta",
+        "gamma": "gamma",
+        "sampleTime": "sample_time",
+    },
 }
 
 
@@ -760,7 +980,7 @@ class OSKAdapter:
 
         # Otherwise, it should already be an operation string
         # Validate it contains only valid characters
-        valid_ops = {'*', '/'}
+        valid_ops = {"*", "/"}
         if all(c in valid_ops for c in value_str):
             return value_str
 
@@ -781,8 +1001,9 @@ class OSKAdapter:
             if block.type == "scope":
                 # Get the actual number of inputs from the block parameters
                 # Support both 'numInputs' (frontend) and 'num_input_ports' (MDL import)
-                num_inputs = int(block.parameters.get('numInputs',
-                                 block.parameters.get('num_input_ports', 1)))
+                num_inputs = int(
+                    block.parameters.get("numInputs", block.parameters.get("num_input_ports", 1))
+                )
                 self._scope_input_names[block.id] = [""] * num_inputs
 
             # Connect inputs
@@ -822,7 +1043,11 @@ class OSKAdapter:
                         elif suffix.startswith("out") and len(suffix) > 3 and suffix[3:].isdigit():
                             # Output format: "block-out1" -> index 0
                             target_port_index = int(suffix[3:]) - 1
-                    elif target_port_id.startswith("in") and len(target_port_id) > 2 and target_port_id[2:].isdigit():
+                    elif (
+                        target_port_id.startswith("in")
+                        and len(target_port_id) > 2
+                        and target_port_id[2:].isdigit()
+                    ):
                         # Simple format: "in0", "in1", "in2"
                         # If port_num is 0, it's 0-indexed; otherwise assume 1-indexed
                         port_num = int(target_port_id[2:])
@@ -854,34 +1079,43 @@ class OSKAdapter:
 
                 if source_osk_block:
                     # Use connectInput if available, otherwise we'll handle in step()
-                    if hasattr(osk_block, 'connectInput'):
+                    if hasattr(osk_block, "connectInput"):
                         # Pass source_port_index to all blocks that accept it
                         # This allows blocks connected to multi-output sources
                         # (like Demux) to read from the correct port
                         sig = inspect.signature(osk_block.connectInput)
-                        if 'source_port' in sig.parameters:
-                            osk_block.connectInput(source_osk_block, target_port_index, source_port_index)
+                        if "source_port" in sig.parameters:
+                            osk_block.connectInput(
+                                source_osk_block, target_port_index, source_port_index
+                            )
                         else:
                             osk_block.connectInput(source_osk_block, target_port_index)
-                    elif hasattr(osk_block, 'input_block'):
+                    elif hasattr(osk_block, "input_block"):
                         osk_block.input_block = source_osk_block
                         # Also store source port for single-input blocks
-                        if hasattr(osk_block, 'input_source_port'):
+                        if hasattr(osk_block, "input_source_port"):
                             osk_block.input_source_port = source_port_index
-                    elif hasattr(osk_block, 'input_blocks') and osk_block.input_blocks is not None:
+                    elif hasattr(osk_block, "input_blocks") and osk_block.input_blocks is not None:
                         if target_port_index < len(osk_block.input_blocks):
                             osk_block.input_blocks[target_port_index] = source_osk_block
                             # Also store source port for multi-input blocks
-                            if hasattr(osk_block, 'input_source_ports') and osk_block.input_source_ports is not None:
+                            if (
+                                hasattr(osk_block, "input_source_ports")
+                                and osk_block.input_source_ports is not None
+                            ):
                                 if target_port_index < len(osk_block.input_source_ports):
-                                    osk_block.input_source_ports[target_port_index] = source_port_index
+                                    osk_block.input_source_ports[target_port_index] = (
+                                        source_port_index
+                                    )
 
                 # Track source name for scope inputs and set on the scope block
                 if block.type == "scope" and source_compiled_block:
                     if target_port_index < len(self._scope_input_names[block.id]):
-                        self._scope_input_names[block.id][target_port_index] = source_compiled_block.name
+                        self._scope_input_names[block.id][target_port_index] = (
+                            source_compiled_block.name
+                        )
                     # Also set the input name on the scope block itself for legend display
-                    if hasattr(osk_block, 'setInputName'):
+                    if hasattr(osk_block, "setInputName"):
                         osk_block.setInputName(source_compiled_block.name, target_port_index)
 
     def _record_outputs(self) -> dict[str, float]:
@@ -900,9 +1134,9 @@ class OSKAdapter:
                 continue
 
             # For scopes with multiple inputs or vector inputs, record each trace separately
-            if block_id in self._scope_input_names and hasattr(osk_block, 'inputs'):
+            if block_id in self._scope_input_names and hasattr(osk_block, "inputs"):
                 input_names = self._scope_input_names[block_id]
-                input_blocks = getattr(osk_block, 'input_blocks', [])
+                input_blocks = getattr(osk_block, "input_blocks", [])
 
                 trace_idx = 0
                 for i in range(len(osk_block.inputs)):
@@ -910,12 +1144,12 @@ class OSKAdapter:
                     if i < len(input_blocks) and input_blocks[i] is None:
                         continue
 
-                    base_name = input_names[i] if i < len(input_names) else f"Input {i+1}"
+                    base_name = input_names[i] if i < len(input_names) else f"Input {i + 1}"
                     # Check if this input is a vector (from Mux)
-                    if hasattr(osk_block, '_vector_inputs') and i in osk_block._vector_inputs:
+                    if hasattr(osk_block, "_vector_inputs") and i in osk_block._vector_inputs:
                         vec = osk_block._vector_inputs[i]
                         for j, val in enumerate(vec):
-                            signal_name = f"{base_name}[{j+1}]"
+                            signal_name = f"{base_name}[{j + 1}]"
                             key = f"{block_id}:{trace_idx}:{signal_name}"
                             if isinstance(val, (int, float)):
                                 recorded_outputs[key] = float(val)
@@ -963,7 +1197,7 @@ class OSKAdapter:
         State.ready = 1
 
         # Number of passes for each integration method
-        passes = {'Euler': 1, 'RK2': 2, 'RK4': 4, 'Merson': 5}
+        passes = {"Euler": 1, "RK2": 2, "RK4": 4, "Merson": 5}
         num_passes = passes.get(State.method, 1)
 
         recorded_outputs: dict[str, float] = {}
@@ -994,7 +1228,7 @@ class OSKAdapter:
             for block_id in self._compiled_model.execution_order:
                 compiled_block = self._block_map.get(block_id)
                 osk_block = self._osk_blocks.get(block_id)
-                if compiled_block and compiled_block.type == 'constant':
+                if compiled_block and compiled_block.type == "constant":
                     osk_block.update()
 
             # Pass 2: Have integrators read their external ICs
@@ -1002,9 +1236,9 @@ class OSKAdapter:
             for block_id in self._compiled_model.execution_order:
                 compiled_block = self._block_map.get(block_id)
                 osk_block = self._osk_blocks.get(block_id)
-                if compiled_block and compiled_block.type == 'integrator':
+                if compiled_block and compiled_block.type == "integrator":
                     # Only read external IC, don't update derivative yet
-                    if hasattr(osk_block, '_read_external_ic'):
+                    if hasattr(osk_block, "_read_external_ic"):
                         osk_block._read_external_ic()
 
             # Pass 3: Update all non-integrator blocks in execution order
@@ -1017,12 +1251,18 @@ class OSKAdapter:
                     continue
 
                 # Skip constants (already updated) and integrators (will be updated after)
-                if compiled_block.type in ('constant', 'integrator'):
+                if compiled_block.type in ("constant", "integrator"):
                     continue
 
                 # Set inputs manually for blocks without automatic connection
-                has_input_block = hasattr(osk_block, 'input_block') and osk_block.input_block is not None
-                has_input_blocks = hasattr(osk_block, 'input_blocks') and osk_block.input_blocks is not None and any(b is not None for b in osk_block.input_blocks)
+                has_input_block = (
+                    hasattr(osk_block, "input_block") and osk_block.input_block is not None
+                )
+                has_input_blocks = (
+                    hasattr(osk_block, "input_blocks")
+                    and osk_block.input_blocks is not None
+                    and any(b is not None for b in osk_block.input_blocks)
+                )
                 if not has_input_block and not has_input_blocks:
                     for i, conn in enumerate(compiled_block.input_connections):
                         source_block_id, _ = conn.split(":")
@@ -1039,7 +1279,7 @@ class OSKAdapter:
             for block_id in self._compiled_model.execution_order:
                 compiled_block = self._block_map.get(block_id)
                 osk_block = self._osk_blocks.get(block_id)
-                if compiled_block and compiled_block.type == 'integrator':
+                if compiled_block and compiled_block.type == "integrator":
                     osk_block.update()
 
             # Record initial condition outputs BEFORE any propagation
@@ -1072,11 +1312,17 @@ class OSKAdapter:
                         continue
 
                     # Skip integrators in first pass
-                    if compiled_block.type == 'integrator':
+                    if compiled_block.type == "integrator":
                         continue
 
-                    has_input_block = hasattr(osk_block, 'input_block') and osk_block.input_block is not None
-                    has_input_blocks = hasattr(osk_block, 'input_blocks') and osk_block.input_blocks is not None and any(b is not None for b in osk_block.input_blocks)
+                    has_input_block = (
+                        hasattr(osk_block, "input_block") and osk_block.input_block is not None
+                    )
+                    has_input_blocks = (
+                        hasattr(osk_block, "input_blocks")
+                        and osk_block.input_blocks is not None
+                        and any(b is not None for b in osk_block.input_blocks)
+                    )
                     if not has_input_block and not has_input_blocks:
                         for i, conn in enumerate(compiled_block.input_connections):
                             source_block_id, _ = conn.split(":")
@@ -1095,7 +1341,7 @@ class OSKAdapter:
                     if not osk_block or not compiled_block:
                         continue
 
-                    if compiled_block.type == 'integrator':
+                    if compiled_block.type == "integrator":
                         osk_block.update()
 
                 # Propagate states after each pass
@@ -1122,12 +1368,18 @@ class OSKAdapter:
                     continue
 
                 # Skip integrators - their outputs already reflect current state
-                if compiled_block.type == 'integrator':
+                if compiled_block.type == "integrator":
                     continue
 
                 # For blocks without automatic input connection, set inputs manually
-                has_input_block = hasattr(osk_block, 'input_block') and osk_block.input_block is not None
-                has_input_blocks = hasattr(osk_block, 'input_blocks') and osk_block.input_blocks is not None and any(b is not None for b in osk_block.input_blocks)
+                has_input_block = (
+                    hasattr(osk_block, "input_block") and osk_block.input_block is not None
+                )
+                has_input_blocks = (
+                    hasattr(osk_block, "input_blocks")
+                    and osk_block.input_blocks is not None
+                    and any(b is not None for b in osk_block.input_blocks)
+                )
                 if not has_input_block and not has_input_blocks:
                     for i, conn in enumerate(compiled_block.input_connections):
                         source_block_id, _ = conn.split(":")
@@ -1157,11 +1409,17 @@ class OSKAdapter:
                     if not osk_block or not compiled_block:
                         continue
 
-                    if compiled_block.type == 'integrator':
+                    if compiled_block.type == "integrator":
                         continue
 
-                    has_input_block = hasattr(osk_block, 'input_block') and osk_block.input_block is not None
-                    has_input_blocks = hasattr(osk_block, 'input_blocks') and osk_block.input_blocks is not None and any(b is not None for b in osk_block.input_blocks)
+                    has_input_block = (
+                        hasattr(osk_block, "input_block") and osk_block.input_block is not None
+                    )
+                    has_input_blocks = (
+                        hasattr(osk_block, "input_blocks")
+                        and osk_block.input_blocks is not None
+                        and any(b is not None for b in osk_block.input_blocks)
+                    )
                     if not has_input_block and not has_input_blocks:
                         for i, conn in enumerate(compiled_block.input_connections):
                             source_block_id, _ = conn.split(":")
@@ -1180,7 +1438,7 @@ class OSKAdapter:
                     if not osk_block or not compiled_block:
                         continue
 
-                    if compiled_block.type == 'integrator':
+                    if compiled_block.type == "integrator":
                         osk_block.update()
 
                 # Propagate states for all blocks after each pass
@@ -1212,11 +1470,7 @@ class OSKAdapter:
         ]
 
         # Create and run simulation
-        sim = Sim(
-            dts=[self._config.step_size],
-            tmax=self._config.stop_time,
-            vStage=[stage]
-        )
+        sim = Sim(dts=[self._config.step_size], tmax=self._config.stop_time, vStage=[stage])
 
         results = sim.run()
 
@@ -1224,7 +1478,7 @@ class OSKAdapter:
         signals = []
         for block_id in self._sink_blocks:
             osk_block = self._osk_blocks.get(block_id)
-            if osk_block and hasattr(osk_block, 'getData'):
+            if osk_block and hasattr(osk_block, "getData"):
                 data = osk_block.getData()
                 num_inputs = data.get("numInputs", 1)
                 input_names = data.get("inputNames", [])
@@ -1233,32 +1487,40 @@ class OSKAdapter:
 
                 if num_inputs > 1 and isinstance(values, list) and len(values) == num_inputs:
                     # Multi-input scope: create a signal entry with all traces
-                    signals.append({
-                        "blockId": block_id,
-                        "portId": "out",
-                        "name": data.get("name", block_id),
-                        "times": times,
-                        "values": values,  # List of lists, one per input
-                        "inputNames": input_names,
-                        "numInputs": num_inputs
-                    })
+                    signals.append(
+                        {
+                            "blockId": block_id,
+                            "portId": "out",
+                            "name": data.get("name", block_id),
+                            "times": times,
+                            "values": values,  # List of lists, one per input
+                            "inputNames": input_names,
+                            "numInputs": num_inputs,
+                        }
+                    )
                 else:
                     # Single-input scope or backward compatibility
-                    signals.append({
-                        "blockId": block_id,
-                        "portId": "out",
-                        "name": data.get("name", block_id),
-                        "times": times,
-                        "values": values[0] if isinstance(values, list) and len(values) > 0 and isinstance(values[0], list) else values
-                    })
+                    signals.append(
+                        {
+                            "blockId": block_id,
+                            "portId": "out",
+                            "name": data.get("name", block_id),
+                            "times": times,
+                            "values": values[0]
+                            if isinstance(values, list)
+                            and len(values) > 0
+                            and isinstance(values[0], list)
+                            else values,
+                        }
+                    )
 
         return {
             "signals": signals,
             "statistics": {
                 "totalSteps": len(results.get("times", [])),
                 "executionTime": 0,  # Would need to measure
-                "finalTime": results.get("times", [0])[-1] if results.get("times") else 0
-            }
+                "finalTime": results.get("times", [0])[-1] if results.get("times") else 0,
+            },
         }
 
     def get_solver(self, solver_type: SolverType) -> str:
@@ -1301,10 +1563,10 @@ class OSKAdapter:
         for block_id in self._analysis_blocks:
             osk_block = self._osk_blocks.get(block_id)
             compiled_block = self._block_map.get(block_id)
-            if osk_block and hasattr(osk_block, 'getData'):
+            if osk_block and hasattr(osk_block, "getData"):
                 data = osk_block.getData()
                 # Add block name for display
                 if compiled_block:
-                    data['name'] = compiled_block.name
+                    data["name"] = compiled_block.name
                 analyses[block_id] = data
         return analyses

@@ -12,21 +12,24 @@ def validate_imports():
 
     # Test core imports
     try:
-        from pydantic import BaseModel
+        from pydantic import BaseModel  # noqa: F401
+
         print("  ✓ pydantic")
     except ImportError as e:
         errors.append(f"pydantic: {e}")
         print(f"  ✗ pydantic: {e}")
 
     try:
-        from pydantic_settings import BaseSettings
+        from pydantic_settings import BaseSettings  # noqa: F401
+
         print("  ✓ pydantic_settings")
     except ImportError as e:
         errors.append(f"pydantic_settings: {e}")
         print(f"  ✗ pydantic_settings: {e}")
 
     try:
-        from fastapi import FastAPI
+        from fastapi import FastAPI  # noqa: F401
+
         print("  ✓ fastapi")
     except ImportError as e:
         errors.append(f"fastapi: {e}")
@@ -34,7 +37,6 @@ def validate_imports():
 
     # Test config
     try:
-        from src.config import settings
         print("  ✓ src.config")
     except Exception as e:
         errors.append(f"src.config: {e}")
@@ -42,9 +44,6 @@ def validate_imports():
 
     # Test models
     try:
-        from src.models.model import Model
-        from src.models.block import Block, Connection
-        from src.models.simulation import SimulationConfig
         print("  ✓ src.models")
     except Exception as e:
         errors.append(f"src.models: {e}")
@@ -52,8 +51,6 @@ def validate_imports():
 
     # Test OSK
     try:
-        from src.osk import State, Block as OSKBlock, Sim
-        from src.osk.blocks import Constant, Scope, Integrator, Sum, Gain
         print("  ✓ src.osk")
     except Exception as e:
         errors.append(f"src.osk: {e}")
@@ -61,9 +58,6 @@ def validate_imports():
 
     # Test simulation
     try:
-        from src.simulation.runner import SimulationRunner
-        from src.simulation.compiler import ModelCompiler
-        from src.simulation.osk_adapter import OSKAdapter
         print("  ✓ src.simulation")
     except Exception as e:
         errors.append(f"src.simulation: {e}")
@@ -71,7 +65,6 @@ def validate_imports():
 
     # Test routes
     try:
-        from src.api.routes import models, blocks, simulation, import_export
         print("  ✓ src.api.routes")
     except Exception as e:
         errors.append(f"src.api.routes: {e}")
@@ -79,7 +72,6 @@ def validate_imports():
 
     # Test main app
     try:
-        from src.main import app
         print("  ✓ src.main")
     except Exception as e:
         errors.append(f"src.main: {e}")

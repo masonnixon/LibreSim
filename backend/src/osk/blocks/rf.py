@@ -5,11 +5,8 @@ MATLAB RF Blockset and RF Toolbox.
 """
 
 import math
-import cmath
-from typing import Optional
 
 from ..block import Block
-
 
 # =============================================================================
 # RF Amplifier
@@ -29,8 +26,13 @@ class RFAmplifier(Block):
     Output: Amplified signal power
     """
 
-    def __init__(self, gain_db: float = 20.0, noise_figure_db: float = 3.0,
-                 p1db_dbm: float = 30.0, oip3_dbm: float = 40.0):
+    def __init__(
+        self,
+        gain_db: float = 20.0,
+        noise_figure_db: float = 3.0,
+        p1db_dbm: float = 30.0,
+        oip3_dbm: float = 40.0,
+    ):
         super().__init__()
         self.gain_db = gain_db
         self.noise_figure_db = noise_figure_db
@@ -90,8 +92,13 @@ class RFMixer(Block):
     For power budget analysis, models conversion loss.
     """
 
-    def __init__(self, conversion_loss_db: float = 6.0, noise_figure_db: float = 8.0,
-                 iip3_dbm: float = 10.0, sideband: str = "lower"):
+    def __init__(
+        self,
+        conversion_loss_db: float = 6.0,
+        noise_figure_db: float = 8.0,
+        iip3_dbm: float = 10.0,
+        sideband: str = "lower",
+    ):
         super().__init__()
         self.conversion_loss_db = conversion_loss_db
         self.noise_figure_db = noise_figure_db
@@ -140,9 +147,14 @@ class RFFilter(Block):
     Types: lowpass, highpass, bandpass, bandstop
     """
 
-    def __init__(self, filter_type: str = "bandpass", center_freq_hz: float = 1e9,
-                 bandwidth_hz: float = 100e6, insertion_loss_db: float = 1.0,
-                 rejection_db: float = 40.0):
+    def __init__(
+        self,
+        filter_type: str = "bandpass",
+        center_freq_hz: float = 1e9,
+        bandwidth_hz: float = 100e6,
+        insertion_loss_db: float = 1.0,
+        rejection_db: float = 40.0,
+    ):
         super().__init__()
         self.filter_type = filter_type.lower()
         self.center_freq = center_freq_hz
@@ -228,7 +240,7 @@ class SParameterNetwork(Block):
     Outputs: [b1_re, b1_im, b2_re, b2_im] - reflected waves
     """
 
-    def __init__(self, s_params: Optional[list] = None):
+    def __init__(self, s_params: list | None = None):
         super().__init__()
         # Default: ideal through connection (S21 = 1, others = 0)
         if s_params is None:
@@ -262,9 +274,9 @@ class SParameterNetwork(Block):
 
         # S-parameters as complex numbers
         S11 = complex(self.s_params[0], self.s_params[1])
-        S12 = complex(self.s_params[2], self.s_params[3])
+        complex(self.s_params[2], self.s_params[3])
         S21 = complex(self.s_params[4], self.s_params[5])
-        S22 = complex(self.s_params[6], self.s_params[7])
+        complex(self.s_params[6], self.s_params[7])
 
         # Assuming a2 = 0 (matched load at port 2)
         # b1 = S11 * a1
@@ -305,8 +317,13 @@ class RFBudgetElement(Block):
         - Port 2: Cumulative noise figure (dB)
     """
 
-    def __init__(self, gain_db: float = 0.0, noise_figure_db: float = 0.0,
-                 oip3_dbm: float = 100.0, name: str = "Element"):
+    def __init__(
+        self,
+        gain_db: float = 0.0,
+        noise_figure_db: float = 0.0,
+        oip3_dbm: float = 100.0,
+        name: str = "Element",
+    ):
         super().__init__()
         self.gain_db = gain_db
         self.noise_figure_db = noise_figure_db
@@ -420,8 +437,12 @@ class AMModulator(Block):
         - modulation_index: Modulation depth (0-1)
     """
 
-    def __init__(self, carrier_freq: float = 1e6, carrier_amplitude: float = 1.0,
-                 modulation_index: float = 0.5):
+    def __init__(
+        self,
+        carrier_freq: float = 1e6,
+        carrier_amplitude: float = 1.0,
+        modulation_index: float = 0.5,
+    ):
         super().__init__()
         self.carrier_freq = carrier_freq
         self.carrier_amplitude = carrier_amplitude
@@ -445,6 +466,7 @@ class AMModulator(Block):
             self.message = self.input_block.getOutput()
 
         from ..state import State
+
         t = State.t
 
         carrier = math.cos(2 * math.pi * self.carrier_freq * t)
@@ -468,8 +490,12 @@ class FMModulator(Block):
         - freq_deviation: Frequency deviation (Hz)
     """
 
-    def __init__(self, carrier_freq: float = 1e6, carrier_amplitude: float = 1.0,
-                 freq_deviation: float = 75e3):
+    def __init__(
+        self,
+        carrier_freq: float = 1e6,
+        carrier_amplitude: float = 1.0,
+        freq_deviation: float = 75e3,
+    ):
         super().__init__()
         self.carrier_freq = carrier_freq
         self.carrier_amplitude = carrier_amplitude
@@ -495,6 +521,7 @@ class FMModulator(Block):
             self.message = self.input_block.getOutput()
 
         from ..state import State
+
         t = State.t
         dt = State.dt
 
@@ -524,6 +551,7 @@ class PhaseNoise(Block):
 
         # Random state for noise generation
         import random
+
         self._random = random.Random()
 
     def init(self):
@@ -543,6 +571,7 @@ class PhaseNoise(Block):
             signal = 0.0
 
         from ..state import State
+
         dt = State.dt
 
         # Generate phase noise

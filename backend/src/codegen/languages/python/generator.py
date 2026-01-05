@@ -2,16 +2,16 @@
 
 from typing import Any
 
-from ..base import LanguageGenerator
-from ...models import (
-    Language,
-    IntegrationMethod,
-    GeneratedProject,
-    CompiledModelInfo,
-    BlockInfo,
-)
 from ...integration import IntegrationCodeGenerator
-from .blocks import get_block_template, BLOCK_TEMPLATES
+from ...models import (
+    BlockInfo,
+    CompiledModelInfo,
+    GeneratedProject,
+    IntegrationMethod,
+    Language,
+)
+from ..base import LanguageGenerator
+from .blocks import BLOCK_TEMPLATES, get_block_template
 
 
 class PythonCodeGenerator(LanguageGenerator):
@@ -79,9 +79,9 @@ class PythonCodeGenerator(LanguageGenerator):
             SyntaxError: If any Python file has syntax errors
         """
         for file in project.files:
-            if file.path.endswith('.py'):
+            if file.path.endswith(".py"):
                 try:
-                    compile(file.content, file.path, 'exec')
+                    compile(file.content, file.path, "exec")
                 except SyntaxError as e:
                     # Add more context to the error
                     error_msg = (
@@ -121,7 +121,7 @@ class PythonCodeGenerator(LanguageGenerator):
         """Generate main entry point code."""
         csv_output = ""
         if config.include_csv_output:
-            csv_output = '''
+            csv_output = """
     # Write results to CSV
     with open('results.csv', 'w', newline='') as f:
         import csv
@@ -142,7 +142,7 @@ class PythonCodeGenerator(LanguageGenerator):
             writer.writerow(row)
 
     print(f"Results written to results.csv ({n_points} data points)")
-'''
+"""
 
         return f'''#!/usr/bin/env python3
 """Example simulation runner.
@@ -204,7 +204,7 @@ except ImportError:
     def _generate_block_class(self, block: BlockInfo) -> str:
         """Generate a Python class for a block."""
         class_name = f"Block_{self.sanitize_identifier(block.id)}"
-        var_name = self.get_block_var_name(block)
+        self.get_block_var_name(block)
 
         # Get template for this block type
         template_func = BLOCK_TEMPLATES.get(block.type)
@@ -232,7 +232,11 @@ except ImportError:
         )
 
         if has_vector_output or has_vector_input:
-            output_size = block.output_dimensions[0][0] if has_vector_output else (block.input_dimensions[0][0] if has_vector_input else 1)
+            output_size = (
+                block.output_dimensions[0][0]
+                if has_vector_output
+                else (block.input_dimensions[0][0] if has_vector_input else 1)
+            )
             input_size = block.input_dimensions[0][0] if has_vector_input else 1
             return f'''
 class {class_name}:
@@ -326,7 +330,12 @@ class {class_name}:
                 var_name = self.get_block_var_name(block)
                 integrator_list.append(f"self.{var_name}")
                 # Multi-state blocks need additional propagation
-                if block.type in ("transfer_function", "state_space", "second_order", "pid_controller"):
+                if block.type in (
+                    "transfer_function",
+                    "state_space",
+                    "second_order",
+                    "pid_controller",
+                ):
                     multi_state_list.append(f"self.{var_name}")
 
         # Build output recording code
@@ -358,10 +367,10 @@ class Model:
 {chr(10).join(block_inits)}
 
         # List of integrator blocks for state propagation
-        self._integrators = [{', '.join(integrator_list)}]
+        self._integrators = [{", ".join(integrator_list)}]
 
         # List of multi-state blocks needing additional propagation
-        self._multi_state_blocks = [{', '.join(multi_state_list)}]
+        self._multi_state_blocks = [{", ".join(multi_state_list)}]
 
     def init(self):
         """Initialize all blocks."""
@@ -419,7 +428,7 @@ def run_simulation(
 
     # Results storage
     results = {{'time': []}}
-{output_recording['init']}
+{output_recording["init"]}
 
     # Simulation loop
     # OSK reports outputs after update() but BEFORE propagation for kpass=0
@@ -433,7 +442,7 @@ def run_simulation(
             # Record outputs after kpass=0 update, before propagation (matches OSK)
             if kpass == 0:
                 results['time'].append(t)
-{output_recording['record']}
+{output_recording["record"]}
 
             propagate(model._integrators, dt, kpass){multi_state_propagation}
 
@@ -489,11 +498,9 @@ def run_simulation(
         lines = []
         for block in model_info.blocks:
             var_name = self.get_block_var_name(block)
-            for i, conn in enumerate(block.input_connections):
+            for _i, conn in enumerate(block.input_connections):
                 source_id, source_port, target_port = self.parse_connection(conn)
-                source_block = next(
-                    (b for b in model_info.blocks if b.id == source_id), None
-                )
+                source_block = next((b for b in model_info.blocks if b.id == source_id), None)
                 if source_block:
                     source_var = self.get_block_var_name(source_block)
 
@@ -543,9 +550,7 @@ def run_simulation(
             block_lines = []
             for conn in block.input_connections:
                 source_id, source_port, target_port = self.parse_connection(conn)
-                source_block = next(
-                    (b for b in model_info.blocks if b.id == source_id), None
-                )
+                source_block = next((b for b in model_info.blocks if b.id == source_id), None)
                 if source_block:
                     source_var = self.get_block_var_name(source_block)
 
@@ -632,8 +637,8 @@ def run_simulation(
                     )
 
         return {
-            'init': "\n".join(init_lines) if init_lines else "    pass",
-            'record': "\n".join(record_lines) if record_lines else "                pass",
+            "init": "\n".join(init_lines) if init_lines else "    pass",
+            "record": "\n".join(record_lines) if record_lines else "                pass",
         }
 
     def _generate_requirements(self) -> str:
@@ -666,7 +671,7 @@ setup(
 
     def _generate_readme(self, model_info: CompiledModelInfo, config: Any) -> str:
         """Generate README.md."""
-        return f'''# {config.project_name}
+        return f"""# {config.project_name}
 
 Simulation generated by LibreSim Coder.
 
@@ -721,11 +726,11 @@ docker run --rm -v $(pwd)/output:/output {config.project_name}-builder
 ```
 
 The executable will be created in the `output/` directory.
-'''
+"""
 
     def _generate_dockerfile(self, config: Any) -> str:
         """Generate Dockerfile for compilation and execution."""
-        return f'''# Dockerfile for compiling and running {config.project_name}
+        return f"""# Dockerfile for compiling and running {config.project_name}
 # Generated by LibreSim Coder
 
 FROM python:3.11-slim
@@ -764,11 +769,11 @@ RUN pyinstaller \\
 
 # Default command runs the simulation and copies outputs
 CMD ["/build/run.sh"]
-'''
+"""
 
     def _generate_build_script(self, config: Any) -> str:
         """Generate build script."""
-        return f'''#!/bin/bash
+        return f"""#!/bin/bash
 # Build and run script for {config.project_name}
 # Generated by LibreSim Coder
 #
@@ -818,11 +823,11 @@ if [ -f output/results.csv ]; then
     echo "=== Results Preview (last 5 lines) ==="
     tail -n 5 output/results.csv
 fi
-'''
+"""
 
     def _generate_run_script(self, config: Any) -> str:
         """Generate run script that executes inside Docker container."""
-        return f'''#!/bin/bash
+        return f"""#!/bin/bash
 # Run script for {config.project_name}
 # This script runs inside the Docker container
 # Generated by LibreSim Coder
@@ -847,4 +852,4 @@ if [ -d "/output" ]; then
 else
     echo "Warning: /output not mounted, results not copied."
 fi
-'''
+"""

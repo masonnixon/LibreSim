@@ -1,19 +1,20 @@
 """Unit tests for code generation module."""
 
 import pytest
+
 from src.codegen.generator import (
-    CodeGenerator,
     CodeGenerationConfig,
     CodeGenerationError,
-)
-from src.codegen.models import (
-    Language,
-    IntegrationMethod,
-    GeneratedProject,
-    CompiledModelInfo,
-    BlockInfo,
+    CodeGenerator,
 )
 from src.codegen.integration import IntegrationCodeGenerator
+from src.codegen.models import (
+    BlockInfo,
+    CompiledModelInfo,
+    GeneratedProject,
+    IntegrationMethod,
+    Language,
+)
 
 
 class TestCodeGenerationConfig:
@@ -138,7 +139,7 @@ class TestIntegrationCodeGenerator:
     def test_c_source_generator(self):
         """Test C source generation."""
         code = IntegrationCodeGenerator.generate_c_source()
-        assert "#include \"integration.h\"" in code
+        assert '#include "integration.h"' in code
         assert "get_num_passes" in code
         assert "propagate_integrator" in code
         assert "euler" in code
@@ -154,7 +155,7 @@ class TestIntegrationCodeGenerator:
     def test_cpp_source_generator(self):
         """Test C++ source generation."""
         code = IntegrationCodeGenerator.generate_cpp_source()
-        assert "#include \"integration.hpp\"" in code
+        assert '#include "integration.hpp"' in code
         assert "euler_step" in code
         assert "rk4_step" in code
         assert "merson_step" in code

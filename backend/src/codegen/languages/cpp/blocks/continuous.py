@@ -6,7 +6,9 @@ from ....models import BlockInfo
 def template_integrator(block: BlockInfo, class_name: str) -> str:
     """Generate C++ code for Integrator block."""
     # Support both camelCase (JSON) and snake_case parameter names
-    initial_condition = block.parameters.get("initialCondition", block.parameters.get("initial_condition", 0.0))
+    initial_condition = block.parameters.get(
+        "initialCondition", block.parameters.get("initial_condition", 0.0)
+    )
     return f"""
 // {block.name} - Integrator
 class {class_name} {{

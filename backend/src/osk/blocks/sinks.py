@@ -21,13 +21,15 @@ class Scope(Block):
         self.num_inputs = int(num_inputs)
         self.inputs = [0.0] * self.num_inputs
         self.input_blocks = [None] * self.num_inputs
-        self.input_source_ports = [0] * self.num_inputs  # Track which output port to read from source
-        self.input_names = [f"Input {i+1}" for i in range(self.num_inputs)]
+        self.input_source_ports = [
+            0
+        ] * self.num_inputs  # Track which output port to read from source
+        self.input_names = [f"Input {i + 1}" for i in range(self.num_inputs)]
         self.times = []
         self.values = []  # Will be built dynamically based on connected inputs
         # Track vector inputs (expanded from Mux blocks)
         self._vector_inputs = {}  # port -> list of values
-        self._vector_names = {}   # port -> list of names
+        self._vector_names = {}  # port -> list of names
         self._total_traces = 0
 
     def init(self):
@@ -73,7 +75,7 @@ class Scope(Block):
 
                 # Check if source has vector output (Mux, Outport with vector, etc.)
                 vec = None
-                if hasattr(block, 'getOutputVector'):
+                if hasattr(block, "getOutputVector"):
                     vec = block.getOutputVector()
 
                 if vec is not None and len(vec) > 1:
@@ -82,8 +84,10 @@ class Scope(Block):
                     self.inputs[i] = vec[0] if vec else 0.0
                     # Generate indexed names for vector elements
                     if i not in self._vector_names or len(self._vector_names[i]) != len(vec):
-                        base_name = self.input_names[i] if i < len(self.input_names) else f"Input {i+1}"
-                        self._vector_names[i] = [f"{base_name}[{j+1}]" for j in range(len(vec))]
+                        base_name = (
+                            self.input_names[i] if i < len(self.input_names) else f"Input {i + 1}"
+                        )
+                        self._vector_names[i] = [f"{base_name}[{j + 1}]" for j in range(len(vec))]
                 else:
                     # Scalar signal - use source_port to get correct output from multi-output blocks
                     self.inputs[i] = block.getOutput(source_port)
@@ -136,13 +140,13 @@ class Scope(Block):
                 elif i < len(self.input_names):
                     all_names.append(self.input_names[i])
                 else:
-                    all_names.append(f"Input {i+1}")
+                    all_names.append(f"Input {i + 1}")
 
         return {
-            'times': self.times,
-            'values': self.values,
-            'inputNames': all_names,
-            'numInputs': len(self.values)  # Return actual number of traces
+            "times": self.times,
+            "values": self.values,
+            "inputNames": all_names,
+            "numInputs": len(self.values),  # Return actual number of traces
         }
 
     def getOutput(self, port=0):
@@ -154,7 +158,7 @@ class Scope(Block):
 class ToWorkspace(Block):
     """ToWorkspace block - logs signal to output data."""
 
-    def __init__(self, variable_name='simout'):
+    def __init__(self, variable_name="simout"):
         super().__init__()
         self.variable_name = variable_name
         self.input = 0.0
@@ -186,11 +190,7 @@ class ToWorkspace(Block):
 
     def getData(self):
         """Get logged data."""
-        return {
-            'name': self.variable_name,
-            'times': self.times,
-            'values': self.values
-        }
+        return {"name": self.variable_name, "times": self.times, "values": self.values}
 
     def getOutput(self, port=0):
         return self.input

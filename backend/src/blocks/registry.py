@@ -43,7 +43,12 @@ class BlockRegistry:
                 "outputs": [{"name": "out", "dataType": "double", "dimensions": [1]}],
                 "parameters": [
                     {"name": "stepTime", "type": "number", "default": 1, "label": "Step Time"},
-                    {"name": "initialValue", "type": "number", "default": 0, "label": "Initial Value"},
+                    {
+                        "name": "initialValue",
+                        "type": "number",
+                        "default": 0,
+                        "label": "Initial Value",
+                    },
                     {"name": "finalValue", "type": "number", "default": 1, "label": "Final Value"},
                 ],
                 "icon": "⌐",
@@ -58,7 +63,12 @@ class BlockRegistry:
                 "parameters": [
                     {"name": "slope", "type": "number", "default": 1, "label": "Slope"},
                     {"name": "startTime", "type": "number", "default": 0, "label": "Start Time"},
-                    {"name": "initialOutput", "type": "number", "default": 0, "label": "Initial Output"},
+                    {
+                        "name": "initialOutput",
+                        "type": "number",
+                        "default": 0,
+                        "label": "Initial Output",
+                    },
                 ],
                 "icon": "/",
             },
@@ -71,7 +81,12 @@ class BlockRegistry:
                 "outputs": [{"name": "out", "dataType": "double", "dimensions": [1]}],
                 "parameters": [
                     {"name": "amplitude", "type": "number", "default": 1, "label": "Amplitude"},
-                    {"name": "frequency", "type": "number", "default": 1, "label": "Frequency (Hz)"},
+                    {
+                        "name": "frequency",
+                        "type": "number",
+                        "default": 1,
+                        "label": "Frequency (Hz)",
+                    },
                     {"name": "phase", "type": "number", "default": 0, "label": "Phase (rad)"},
                     {"name": "bias", "type": "number", "default": 0, "label": "Bias"},
                 ],
@@ -102,7 +117,12 @@ class BlockRegistry:
                 "inputs": [{"name": "in", "dataType": "double", "dimensions": [1]}],
                 "outputs": [],
                 "parameters": [
-                    {"name": "numInputs", "type": "number", "default": 1, "label": "Number of Inputs"},
+                    {
+                        "name": "numInputs",
+                        "type": "number",
+                        "default": 1,
+                        "label": "Number of Inputs",
+                    },
                 ],
                 "icon": "📊",
             },
@@ -124,7 +144,12 @@ class BlockRegistry:
                 "inputs": [{"name": "in", "dataType": "double", "dimensions": [1]}],
                 "outputs": [],
                 "parameters": [
-                    {"name": "variableName", "type": "string", "default": "simout", "label": "Variable Name"},
+                    {
+                        "name": "variableName",
+                        "type": "string",
+                        "default": "simout",
+                        "label": "Variable Name",
+                    },
                 ],
                 "icon": "💾",
             },
@@ -143,7 +168,12 @@ class BlockRegistry:
                 "inputs": [{"name": "in", "dataType": "double", "dimensions": [1]}],
                 "outputs": [{"name": "out", "dataType": "double", "dimensions": [1]}],
                 "parameters": [
-                    {"name": "initialCondition", "type": "number", "default": 0, "label": "Initial Condition"},
+                    {
+                        "name": "initialCondition",
+                        "type": "number",
+                        "default": 0,
+                        "label": "Initial Condition",
+                    },
                 ],
                 "icon": "∫",
             },
@@ -166,7 +196,12 @@ class BlockRegistry:
                 "outputs": [{"name": "out", "dataType": "double", "dimensions": [1]}],
                 "parameters": [
                     {"name": "numerator", "type": "array", "default": [1], "label": "Numerator"},
-                    {"name": "denominator", "type": "array", "default": [1, 1], "label": "Denominator"},
+                    {
+                        "name": "denominator",
+                        "type": "array",
+                        "default": [1, 1],
+                        "label": "Denominator",
+                    },
                 ],
                 "icon": "H(s)",
             },
@@ -196,7 +231,12 @@ class BlockRegistry:
                     {"name": "Kp", "type": "number", "default": 1, "label": "Proportional (Kp)"},
                     {"name": "Ki", "type": "number", "default": 0, "label": "Integral (Ki)"},
                     {"name": "Kd", "type": "number", "default": 0, "label": "Derivative (Kd)"},
-                    {"name": "N", "type": "number", "default": 100, "label": "Filter Coefficient (N)"},
+                    {
+                        "name": "N",
+                        "type": "number",
+                        "default": 100,
+                        "label": "Filter Coefficient (N)",
+                    },
                 ],
                 "icon": "PID",
             },
@@ -215,8 +255,18 @@ class BlockRegistry:
                 "inputs": [{"name": "in", "dataType": "double", "dimensions": [1]}],
                 "outputs": [{"name": "out", "dataType": "double", "dimensions": [1]}],
                 "parameters": [
-                    {"name": "initialCondition", "type": "number", "default": 0, "label": "Initial Condition"},
-                    {"name": "sampleTime", "type": "number", "default": 0.1, "label": "Sample Time"},
+                    {
+                        "name": "initialCondition",
+                        "type": "number",
+                        "default": 0,
+                        "label": "Initial Condition",
+                    },
+                    {
+                        "name": "sampleTime",
+                        "type": "number",
+                        "default": 0.1,
+                        "label": "Sample Time",
+                    },
                 ],
                 "icon": "1/z",
             },
@@ -228,7 +278,12 @@ class BlockRegistry:
                 "inputs": [{"name": "in", "dataType": "double", "dimensions": [1]}],
                 "outputs": [{"name": "out", "dataType": "double", "dimensions": [1]}],
                 "parameters": [
-                    {"name": "sampleTime", "type": "number", "default": 0.1, "label": "Sample Time"},
+                    {
+                        "name": "sampleTime",
+                        "type": "number",
+                        "default": 0.1,
+                        "label": "Sample Time",
+                    },
                 ],
                 "icon": "ZOH",
             },
@@ -277,7 +332,12 @@ class BlockRegistry:
                 ],
                 "outputs": [{"name": "out", "dataType": "double", "dimensions": [1]}],
                 "parameters": [
-                    {"name": "operations", "type": "string", "default": "**", "label": "Operations"},
+                    {
+                        "name": "operations",
+                        "type": "string",
+                        "default": "**",
+                        "label": "Operations",
+                    },
                 ],
                 "icon": "×",
             },
@@ -347,7 +407,12 @@ class BlockRegistry:
                 "inputs": [{"name": "in", "dataType": "double", "dimensions": [1]}],
                 "outputs": [{"name": "out", "dataType": "double", "dimensions": [1]}],
                 "parameters": [
-                    {"name": "start", "type": "number", "default": -0.5, "label": "Start of Dead Zone"},
+                    {
+                        "name": "start",
+                        "type": "number",
+                        "default": -0.5,
+                        "label": "Start of Dead Zone",
+                    },
                     {"name": "end", "type": "number", "default": 0.5, "label": "End of Dead Zone"},
                 ],
                 "icon": "⊔",
@@ -385,7 +450,13 @@ class BlockRegistry:
                 "inputs": [{"name": "in", "dataType": "double", "dimensions": [1]}],
                 "outputs": [{"name": "out", "dataType": "double", "dimensions": [1]}],
                 "parameters": [
-                    {"name": "bias", "type": "number", "default": 0, "label": "Bias", "description": "Value to add to input"},
+                    {
+                        "name": "bias",
+                        "type": "number",
+                        "default": 0,
+                        "label": "Bias",
+                        "description": "Value to add to input",
+                    },
                 ],
                 "icon": "+b",
             },
@@ -407,7 +478,12 @@ class BlockRegistry:
                 ],
                 "outputs": [{"name": "out", "dataType": "double", "dimensions": [2]}],
                 "parameters": [
-                    {"name": "numInputs", "type": "number", "default": 2, "label": "Number of Inputs"},
+                    {
+                        "name": "numInputs",
+                        "type": "number",
+                        "default": 2,
+                        "label": "Number of Inputs",
+                    },
                 ],
                 "icon": "⋮→",
             },
@@ -422,7 +498,12 @@ class BlockRegistry:
                     {"name": "out2", "dataType": "double", "dimensions": [1]},
                 ],
                 "parameters": [
-                    {"name": "numOutputs", "type": "number", "default": 2, "label": "Number of Outputs"},
+                    {
+                        "name": "numOutputs",
+                        "type": "number",
+                        "default": 2,
+                        "label": "Number of Outputs",
+                    },
                 ],
                 "icon": "→⋮",
             },

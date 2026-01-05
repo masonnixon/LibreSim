@@ -1,12 +1,17 @@
 """Unit tests for Navigation Toolbox blocks."""
 
 import math
-import pytest
 
 from src.osk.blocks.navigation import (
-    CoordinateTransformationConversion, LLAToECEF, ECEFToLLA,
-    ECEFToNED, NEDToECEF, WaypointFollower, GreatCircleDistance,
-    FlatEarthPosition, WGS84_A
+    WGS84_A,
+    CoordinateTransformationConversion,
+    ECEFToLLA,
+    ECEFToNED,
+    FlatEarthPosition,
+    GreatCircleDistance,
+    LLAToECEF,
+    NEDToECEF,
+    WaypointFollower,
 )
 
 
@@ -21,8 +26,8 @@ class TestLLAToECEF:
 
         output = block.getOutputVector()
         assert abs(output[0] - WGS84_A) < 1.0  # X ~= semi-major axis
-        assert abs(output[1]) < 1.0             # Y ~= 0
-        assert abs(output[2]) < 1.0             # Z ~= 0
+        assert abs(output[1]) < 1.0  # Y ~= 0
+        assert abs(output[2]) < 1.0  # Z ~= 0
 
     def test_north_pole(self):
         """North pole should be on +Z axis."""
@@ -31,9 +36,9 @@ class TestLLAToECEF:
         block.update()
 
         output = block.getOutputVector()
-        assert abs(output[0]) < 1.0             # X ~= 0
-        assert abs(output[1]) < 1.0             # Y ~= 0
-        assert output[2] > 6356000              # Z > semi-minor axis
+        assert abs(output[0]) < 1.0  # X ~= 0
+        assert abs(output[1]) < 1.0  # Y ~= 0
+        assert output[2] > 6356000  # Z > semi-minor axis
 
     def test_altitude(self):
         """Adding altitude should increase distance from center."""
@@ -124,10 +129,7 @@ class TestCoordinateTransformationConversion:
 
     def test_lla_to_ecef(self):
         """Test LLA to ECEF conversion."""
-        block = CoordinateTransformationConversion(
-            input_type="lla",
-            output_type="ecef"
-        )
+        block = CoordinateTransformationConversion(input_type="lla", output_type="ecef")
         block.setInput([0.0, 0.0, 0.0])
         block.update()
 
@@ -136,33 +138,28 @@ class TestCoordinateTransformationConversion:
 
     def test_euler_to_quaternion(self):
         """Test Euler to quaternion conversion."""
-        block = CoordinateTransformationConversion(
-            input_type="euler",
-            output_type="quaternion"
-        )
+        block = CoordinateTransformationConversion(input_type="euler", output_type="quaternion")
         block.setInput([0.0, 0.0, 0.0])  # Zero Euler angles
         block.update()
 
         output = block.getOutputVector()
         assert abs(output[0] - 1.0) < 1e-6  # w = 1
-        assert abs(output[1]) < 1e-6         # x = 0
-        assert abs(output[2]) < 1e-6         # y = 0
-        assert abs(output[3]) < 1e-6         # z = 0
+        assert abs(output[1]) < 1e-6  # x = 0
+        assert abs(output[2]) < 1e-6  # y = 0
+        assert abs(output[3]) < 1e-6  # z = 0
 
     def test_quaternion_to_euler_roundtrip(self):
         """Test quaternion <-> Euler roundtrip."""
         euler_original = [0.1, 0.2, 0.3]
 
         euler_to_q = CoordinateTransformationConversion(
-            input_type="euler",
-            output_type="quaternion"
+            input_type="euler", output_type="quaternion"
         )
         euler_to_q.setInput(euler_original)
         euler_to_q.update()
 
         q_to_euler = CoordinateTransformationConversion(
-            input_type="quaternion",
-            output_type="euler"
+            input_type="quaternion", output_type="euler"
         )
         q_to_euler.setInput(euler_to_q.getOutputVector())
         q_to_euler.update()
@@ -174,10 +171,7 @@ class TestCoordinateTransformationConversion:
 
     def test_dcm_to_quaternion(self):
         """Test DCM to quaternion for identity matrix."""
-        block = CoordinateTransformationConversion(
-            input_type="dcm",
-            output_type="quaternion"
-        )
+        block = CoordinateTransformationConversion(input_type="dcm", output_type="quaternion")
         # Identity DCM
         block.setInput([1, 0, 0, 0, 1, 0, 0, 0, 1])
         block.update()
@@ -191,19 +185,18 @@ class TestCoordinateTransformationConversion:
     def test_axis_angle_to_quaternion(self):
         """Test axis-angle to quaternion."""
         block = CoordinateTransformationConversion(
-            input_type="axis_angle",
-            output_type="quaternion"
+            input_type="axis_angle", output_type="quaternion"
         )
         # 90 degree rotation around Z axis
-        block.setInput([0, 0, 1, math.pi/2])
+        block.setInput([0, 0, 1, math.pi / 2])
         block.update()
 
         output = block.getOutputVector()
         # Expected: [cos(45), 0, 0, sin(45)] = [0.707, 0, 0, 0.707]
-        assert abs(output[0] - math.cos(math.pi/4)) < 1e-6
+        assert abs(output[0] - math.cos(math.pi / 4)) < 1e-6
         assert abs(output[1]) < 1e-6
         assert abs(output[2]) < 1e-6
-        assert abs(output[3] - math.sin(math.pi/4)) < 1e-6
+        assert abs(output[3] - math.sin(math.pi / 4)) < 1e-6
 
 
 class TestWaypointFollower:
@@ -213,33 +206,30 @@ class TestWaypointFollower:
         """Bearing to point due north should be 0."""
         wp = WaypointFollower(
             waypoints=[[1.0, 0.0]],  # 1 degree north of origin
-            acceptance_radius=100.0
+            acceptance_radius=100.0,
         )
         wp.setInput([0.0, 0.0])  # At origin
         wp.update()
 
         output = wp.getOutputVector()
         assert abs(output[0]) < 0.01  # Bearing ~0 (north)
-        assert output[1] > 100000     # Distance > 100km
+        assert output[1] > 100000  # Distance > 100km
 
     def test_bearing_east(self):
         """Bearing to point due east should be pi/2."""
         wp = WaypointFollower(
             waypoints=[[0.0, 1.0]],  # 1 degree east
-            acceptance_radius=100.0
+            acceptance_radius=100.0,
         )
         wp.setInput([0.0, 0.0])
         wp.update()
 
         output = wp.getOutputVector()
-        assert abs(output[0] - math.pi/2) < 0.01  # Bearing ~90 degrees
+        assert abs(output[0] - math.pi / 2) < 0.01  # Bearing ~90 degrees
 
     def test_waypoint_advancement(self):
         """Should advance to next waypoint when reached."""
-        wp = WaypointFollower(
-            waypoints=[[0.0, 0.0], [1.0, 0.0]],
-            acceptance_radius=1000.0
-        )
+        wp = WaypointFollower(waypoints=[[0.0, 0.0], [1.0, 0.0]], acceptance_radius=1000.0)
 
         # Start at first waypoint
         wp.setInput([0.0, 0.0])
@@ -266,7 +256,7 @@ class TestGreatCircleDistance:
         # New York to London is approximately 5,570 km
         block = GreatCircleDistance()
         block.setInput([40.7128, -74.0060], port=0)  # NYC
-        block.setInput([51.5074, -0.1278], port=1)   # London
+        block.setInput([51.5074, -0.1278], port=1)  # London
         block.update()
 
         distance = block.getOutput()
@@ -291,6 +281,7 @@ class TestFlatEarthPosition:
     def test_stationary(self):
         """Zero velocity should maintain position."""
         from src.osk.state import State
+
         State.dt = 0.01
 
         block = FlatEarthPosition(initial_position=[100.0, 200.0, -50.0])
@@ -307,6 +298,7 @@ class TestFlatEarthPosition:
     def test_constant_velocity(self):
         """Constant velocity should integrate to position."""
         from src.osk.state import State
+
         State.dt = 0.1
 
         block = FlatEarthPosition(initial_position=[0.0, 0.0, 0.0])

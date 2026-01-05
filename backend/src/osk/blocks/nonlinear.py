@@ -415,7 +415,7 @@ class HitCrossing(Block):
     direction, 0 otherwise. Useful for event detection.
     """
 
-    def __init__(self, threshold=0.0, direction='rising'):
+    def __init__(self, threshold=0.0, direction="rising"):
         super().__init__()
         self.threshold = threshold
         self.direction = direction  # 'rising', 'falling', 'either'
@@ -442,9 +442,9 @@ class HitCrossing(Block):
 
         crossing = False
 
-        if self.direction == 'rising':
+        if self.direction == "rising":
             crossing = self.prev_input < self.threshold <= self.input
-        elif self.direction == 'falling':
+        elif self.direction == "falling":
             crossing = self.prev_input > self.threshold >= self.input
         else:  # 'either'
             rising = self.prev_input < self.threshold <= self.input
@@ -465,8 +465,7 @@ class Hysteresis(Block):
     upper and lower thresholds. Creates a "sticky" switching behavior.
     """
 
-    def __init__(self, upper_threshold=1.0, lower_threshold=-1.0,
-                 output_high=1.0, output_low=0.0):
+    def __init__(self, upper_threshold=1.0, lower_threshold=-1.0, output_high=1.0, output_low=0.0):
         super().__init__()
         self.upper_threshold = upper_threshold
         self.lower_threshold = lower_threshold

@@ -17,7 +17,7 @@ def template_sum(block: BlockInfo, struct_name: str) -> str:
     # Build sum expression
     sum_terms = []
     for i, sign in enumerate(signs):
-        if sign == '+':
+        if sign == "+":
             sum_terms.append(f"self.input{i}")
         else:
             sum_terms.append(f"(-self.input{i})")
@@ -63,7 +63,7 @@ def template_gain(block: BlockInfo, struct_name: str) -> str:
 
     # Check if this block expects vector input from its port dimensions
     expects_vector = False
-    if hasattr(block, 'input_dimensions') and block.input_dimensions:
+    if hasattr(block, "input_dimensions") and block.input_dimensions:
         dims = block.input_dimensions[0] if block.input_dimensions else [1]
         expects_vector = len(dims) > 0 and dims[0] > 1
 
@@ -164,7 +164,7 @@ def template_product(block: BlockInfo, struct_name: str) -> str:
     # Build product expression
     product_terms = []
     for i, op in enumerate(inputs):
-        if op == '*':
+        if op == "*":
             product_terms.append(f"self.input{i}")
         else:
             product_terms.append(f"(1.0 / self.input{i}.max(1e-10))")
@@ -542,7 +542,9 @@ def template_mux(block: BlockInfo, struct_name: str) -> str:
     num_inputs = block.parameters.get("numInputs", 2)
     input_fields = "\n    ".join([f"pub input{i}: f64," for i in range(num_inputs)])
     input_inits = "\n            ".join([f"input{i}: 0.0," for i in range(num_inputs)])
-    output_assigns = "\n        ".join([f"self.output[{i}] = self.input{i};" for i in range(num_inputs)])
+    output_assigns = "\n        ".join(
+        [f"self.output[{i}] = self.input{i};" for i in range(num_inputs)]
+    )
 
     return f"""
 /// {block.name} - Mux block
@@ -635,7 +637,7 @@ def template_demux(block: BlockInfo, struct_name: str) -> str:
 
     # Generate get_output match arms
     get_output_arms = []
-    for i, width in enumerate(output_widths):
+    for i, _width in enumerate(output_widths):
         get_output_arms.append(f"            {i} => self.output{i}[0],")
 
     get_output_str = "\n".join(get_output_arms)

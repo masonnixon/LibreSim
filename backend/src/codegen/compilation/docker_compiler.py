@@ -5,29 +5,29 @@ into standalone executables using Docker containers.
 """
 
 import asyncio
-import shutil
+import logging
+import subprocess
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
-import subprocess
-import logging
 
-from ..models import Language, GeneratedProject
+from ..models import GeneratedProject, Language
 
 logger = logging.getLogger(__name__)
 
 
 class CompilationError(Exception):
     """Raised when compilation fails."""
+
     pass
 
 
 @dataclass
 class CompilationResult:
     """Result of a compilation operation."""
+
     success: bool
-    executable_path: Optional[Path] = None
+    executable_path: Path | None = None
     executable_name: str = ""
     stdout: str = ""
     stderr: str = ""
@@ -50,7 +50,7 @@ class DockerCompiler:
         Language.RUST: "libresim-compiler-rust:latest",
     }
 
-    def __init__(self, docker_compose_dir: Optional[Path] = None):
+    def __init__(self, docker_compose_dir: Path | None = None):
         """Initialize the Docker compiler.
 
         Args:
@@ -60,8 +60,7 @@ class DockerCompiler:
         if docker_compose_dir is None:
             # Default to project's docker/codegen directory
             self.docker_compose_dir = (
-                Path(__file__).parent.parent.parent.parent.parent.parent
-                / "docker" / "codegen"
+                Path(__file__).parent.parent.parent.parent.parent.parent / "docker" / "codegen"
             )
         else:
             self.docker_compose_dir = docker_compose_dir
@@ -70,10 +69,7 @@ class DockerCompiler:
         """Check if Docker is available on the system."""
         try:
             result = subprocess.run(
-                ["docker", "--version"],
-                capture_output=True,
-                text=True,
-                timeout=10
+                ["docker", "--version"], capture_output=True, text=True, timeout=10
             )
             return result.returncode == 0
         except (subprocess.TimeoutExpired, FileNotFoundError):
@@ -90,7 +86,7 @@ class DockerCompiler:
                 ["docker", "image", "inspect", image_name],
                 capture_output=True,
                 text=True,
-                timeout=30
+                timeout=30,
             )
             return result.returncode == 0
         except (subprocess.TimeoutExpired, FileNotFoundError):
@@ -122,16 +118,11 @@ class DockerCompiler:
 
         try:
             result = subprocess.run(
-                [
-                    "docker", "build",
-                    "-t", image_name,
-                    "-f", dockerfile,
-                    "."
-                ],
+                ["docker", "build", "-t", image_name, "-f", dockerfile, "."],
                 cwd=compilers_dir,
                 capture_output=True,
                 text=True,
-                timeout=600  # 10 minutes for image build
+                timeout=600,  # 10 minutes for image build
             )
 
             if result.returncode != 0:
@@ -148,9 +139,7 @@ class DockerCompiler:
             return False
 
     async def compile(
-        self,
-        project: GeneratedProject,
-        timeout_seconds: int = 300
+        self, project: GeneratedProject, timeout_seconds: int = 300
     ) -> CompilationResult:
         """Compile a generated project into an executable.
 
@@ -165,13 +154,13 @@ class DockerCompiler:
             CompilationError: If compilation fails critically.
         """
         import time
+
         start_time = time.time()
 
         # Check Docker availability
         if not self.check_docker_available():
             return CompilationResult(
-                success=False,
-                errors=["Docker is not available on this system"]
+                success=False, errors=["Docker is not available on this system"]
             )
 
         # Check/build compiler image
@@ -180,7 +169,7 @@ class DockerCompiler:
             if not self.build_compiler_image(project.language):
                 return CompilationResult(
                     success=False,
-                    errors=[f"Failed to build compiler image for {project.language.value}"]
+                    errors=[f"Failed to build compiler image for {project.language.value}"],
                 )
 
         # Create temporary directories
@@ -210,18 +199,21 @@ class DockerCompiler:
                     asyncio.to_thread(
                         subprocess.run,
                         [
-                            "docker", "run",
+                            "docker",
+                            "run",
                             "--rm",
-                            "-v", f"{project_mount}:/build/project",
-                            "-v", f"{output_mount}:/build/output",
+                            "-v",
+                            f"{project_mount}:/build/project",
+                            "-v",
+                            f"{output_mount}:/build/output",
                             image_name,
                             "/build/project",
-                            "/build/output"
+                            "/build/output",
                         ],
                         capture_output=True,
-                        text=True
+                        text=True,
                     ),
-                    timeout=timeout_seconds
+                    timeout=timeout_seconds,
                 )
 
                 duration = time.time() - start_time
@@ -232,7 +224,7 @@ class DockerCompiler:
                         stdout=result.stdout,
                         stderr=result.stderr,
                         duration_seconds=duration,
-                        errors=[f"Compilation failed with exit code {result.returncode}"]
+                        errors=[f"Compilation failed with exit code {result.returncode}"],
                     )
 
                 # Find the compiled executable
@@ -243,7 +235,7 @@ class DockerCompiler:
                         stdout=result.stdout,
                         stderr=result.stderr,
                         duration_seconds=duration,
-                        errors=["No executable produced"]
+                        errors=["No executable produced"],
                     )
 
                 # Copy executable to a persistent location
@@ -255,25 +247,20 @@ class DockerCompiler:
                     executable_name=executable.name,
                     stdout=result.stdout,
                     stderr=result.stderr,
-                    duration_seconds=duration
+                    duration_seconds=duration,
                 )
 
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 return CompilationResult(
                     success=False,
                     duration_seconds=timeout_seconds,
-                    errors=[f"Compilation timed out after {timeout_seconds} seconds"]
+                    errors=[f"Compilation timed out after {timeout_seconds} seconds"],
                 )
             except Exception as e:
-                return CompilationResult(
-                    success=False,
-                    errors=[f"Compilation error: {str(e)}"]
-                )
+                return CompilationResult(success=False, errors=[f"Compilation error: {str(e)}"])
 
     def compile_sync(
-        self,
-        project: GeneratedProject,
-        timeout_seconds: int = 300
+        self, project: GeneratedProject, timeout_seconds: int = 300
     ) -> CompilationResult:
         """Synchronous version of compile().
 
@@ -282,9 +269,7 @@ class DockerCompiler:
         return asyncio.run(self.compile(project, timeout_seconds))
 
     async def get_executable_bytes(
-        self,
-        project: GeneratedProject,
-        timeout_seconds: int = 300
+        self, project: GeneratedProject, timeout_seconds: int = 300
     ) -> tuple[bytes, str]:
         """Compile and return the executable as bytes.
 

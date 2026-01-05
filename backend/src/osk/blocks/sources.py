@@ -52,15 +52,15 @@ class Constant(Block):
                 pass
 
             # Try parsing as array literal: [1, 2, 3] or [1 2 3]
-            if value.startswith('[') and value.endswith(']'):
+            if value.startswith("[") and value.endswith("]"):
                 inner = value[1:-1].strip()
                 if inner:
                     # Handle comma-separated or space-separated values
-                    if ',' in inner:
-                        parts = [p.strip() for p in inner.split(',')]
-                    elif ';' in inner:
+                    if "," in inner:
+                        parts = [p.strip() for p in inner.split(",")]
+                    elif ";" in inner:
                         # Handle semicolon-separated (MATLAB row separator)
-                        parts = [p.strip() for p in inner.split(';')]
+                        parts = [p.strip() for p in inner.split(";")]
                     else:
                         parts = inner.split()
 
@@ -70,8 +70,8 @@ class Constant(Block):
                         pass
 
             # Try parsing as comma-separated values without brackets: 1,2,3,4
-            if ',' in value:
-                parts = [p.strip() for p in value.split(',')]
+            if "," in value:
+                parts = [p.strip() for p in value.split(",")]
                 try:
                     parsed = [float(p) for p in parts if p]
                     if len(parsed) > 1:
@@ -371,7 +371,9 @@ class RepeatingSequence(Block):
         self.output_values = self.output_values[:min_len]
 
         # Calculate period (time span of one cycle)
-        self.period = self.time_values[-1] - self.time_values[0] if len(self.time_values) > 1 else 1.0
+        self.period = (
+            self.time_values[-1] - self.time_values[0] if len(self.time_values) > 1 else 1.0
+        )
 
     def init(self):
         self.output = self.output_values[0] if self.output_values else 0.0
@@ -391,7 +393,9 @@ class RepeatingSequence(Block):
                     alpha = (t_in_period - t0) / (t1 - t0)
                 else:
                     alpha = 0.0
-                return self.output_values[i] + alpha * (self.output_values[i + 1] - self.output_values[i])
+                return self.output_values[i] + alpha * (
+                    self.output_values[i + 1] - self.output_values[i]
+                )
 
         return self.output_values[-1]
 
@@ -435,22 +439,30 @@ class ChirpSignal(Block):
         # Instantaneous frequency at time t
         if State.t <= self.target_time:
             # During sweep: f(t) = f0 + (f1-f0)*t/T
-            inst_freq = self.initial_frequency + self.sweep_rate * State.t
+            self.initial_frequency + self.sweep_rate * State.t
         else:
             # After target time: constant frequency
-            inst_freq = self.target_frequency
+            pass
 
         # Phase is integral of frequency: phi(t) = 2*pi * integral(f(t))
         # For linear chirp: phi(t) = 2*pi * (f0*t + sweep_rate*t^2/2)
         if State.t <= self.target_time:
-            phase = 2 * math.pi * (self.initial_frequency * State.t + self.sweep_rate * State.t**2 / 2)
+            phase = (
+                2 * math.pi * (self.initial_frequency * State.t + self.sweep_rate * State.t**2 / 2)
+            )
         else:
             # Continue from target point
-            phase_at_target = 2 * math.pi * (
-                self.initial_frequency * self.target_time +
-                self.sweep_rate * self.target_time**2 / 2
+            phase_at_target = (
+                2
+                * math.pi
+                * (
+                    self.initial_frequency * self.target_time
+                    + self.sweep_rate * self.target_time**2 / 2
+                )
             )
-            phase = phase_at_target + 2 * math.pi * self.target_frequency * (State.t - self.target_time)
+            phase = phase_at_target + 2 * math.pi * self.target_frequency * (
+                State.t - self.target_time
+            )
 
         self.output = math.cos(phase)
 
@@ -517,7 +529,7 @@ class FromWorkspace(Block):
     Interpolates data from time-value pairs provided during initialization.
     """
 
-    def __init__(self, time_data=None, value_data=None, interpolation='linear'):
+    def __init__(self, time_data=None, value_data=None, interpolation="linear"):
         super().__init__()
         self.time_data = time_data if time_data else [0.0, 1.0]
         self.value_data = value_data if value_data else [0.0, 0.0]
@@ -548,9 +560,9 @@ class FromWorkspace(Block):
         # Find interval
         for i in range(len(self.time_data) - 1):
             if self.time_data[i] <= t < self.time_data[i + 1]:
-                if self.interpolation == 'zoh':
+                if self.interpolation == "zoh":
                     return self.value_data[i]
-                elif self.interpolation == 'nearest':
+                elif self.interpolation == "nearest":
                     if t - self.time_data[i] < self.time_data[i + 1] - t:
                         return self.value_data[i]
                     else:
@@ -559,7 +571,9 @@ class FromWorkspace(Block):
                     dt = self.time_data[i + 1] - self.time_data[i]
                     if dt > 1e-10:
                         alpha = (t - self.time_data[i]) / dt
-                        return self.value_data[i] + alpha * (self.value_data[i + 1] - self.value_data[i])
+                        return self.value_data[i] + alpha * (
+                            self.value_data[i + 1] - self.value_data[i]
+                        )
                     else:
                         return self.value_data[i]
 
@@ -578,7 +592,7 @@ class SignalGenerator(Block):
     Can generate sine, square, sawtooth, and random waveforms.
     """
 
-    def __init__(self, wave_type='sine', amplitude=1.0, frequency=1.0, units='Hz'):
+    def __init__(self, wave_type="sine", amplitude=1.0, frequency=1.0, units="Hz"):
         super().__init__()
         self.wave_type = wave_type.lower()  # 'sine', 'square', 'sawtooth', 'random'
         self.amplitude = amplitude
@@ -588,13 +602,13 @@ class SignalGenerator(Block):
         self._rng = random.Random()
 
         # Convert rad/s to Hz if needed
-        if units.lower() == 'rad/s':
+        if units.lower() == "rad/s":
             self.freq_hz = frequency / (2 * math.pi)
         else:
             self.freq_hz = frequency
 
     def init(self):
-        if self.wave_type == 'random':
+        if self.wave_type == "random":
             self.output = self.amplitude * (2 * self._rng.random() - 1)
         else:
             self.output = 0.0
@@ -607,13 +621,13 @@ class SignalGenerator(Block):
         period = 1.0 / self.freq_hz
         t_in_period = (State.t % period) / period  # Normalized time [0, 1)
 
-        if self.wave_type == 'sine':
+        if self.wave_type == "sine":
             self.output = self.amplitude * math.sin(2 * math.pi * t_in_period)
-        elif self.wave_type == 'square':
+        elif self.wave_type == "square":
             self.output = self.amplitude if t_in_period < 0.5 else -self.amplitude
-        elif self.wave_type == 'sawtooth':
+        elif self.wave_type == "sawtooth":
             self.output = self.amplitude * (2 * t_in_period - 1)
-        elif self.wave_type == 'random':
+        elif self.wave_type == "random":
             self.output = self.amplitude * (2 * self._rng.random() - 1)
         else:
             self.output = 0.0

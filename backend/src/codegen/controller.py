@@ -2,20 +2,21 @@
 
 import re
 from typing import Any
+
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import StreamingResponse, Response
+from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel
 
-from .generator import CodeGenerator, CodeGenerationConfig, CodeGenerationError
-from .models import Language, IntegrationMethod
-from .compilation import DockerCompiler, CompilationError
+from .compilation import CompilationError, DockerCompiler
+from .generator import CodeGenerationConfig, CodeGenerationError, CodeGenerator
+from .models import IntegrationMethod, Language
 
 
 def sanitize_project_name(name: str) -> str:
     """Sanitize a name for use as a project/file name."""
     # Replace spaces with underscores, remove special chars
-    sanitized = re.sub(r'[^\w\s-]', '', name)
-    sanitized = re.sub(r'[\s-]+', '_', sanitized).strip('_')
+    sanitized = re.sub(r"[^\w\s-]", "", name)
+    sanitized = re.sub(r"[\s-]+", "_", sanitized).strip("_")
     return sanitized if sanitized else "simulation"
 
 
@@ -24,6 +25,7 @@ router = APIRouter(prefix="/codegen", tags=["Code Generation"])
 
 class CodeGenRequest(BaseModel):
     """Request model for code generation."""
+
     model: dict[str, Any]
     language: str = "python"
     integration_method: str = "rk4"
@@ -37,6 +39,7 @@ class CodeGenRequest(BaseModel):
 
 class CodeGenInfo(BaseModel):
     """Response model for code generation info."""
+
     languages: list[str]
     integration_methods: list[str]
     supported_blocks: list[str]
@@ -56,7 +59,7 @@ async def generate_code(request: CodeGenRequest):
             raise HTTPException(
                 status_code=400,
                 detail=f"Unsupported language: {request.language}. "
-                       f"Supported: {[l.value for l in Language]}"
+                f"Supported: {[lang.value for lang in Language]}",
             )
 
         # Parse integration method
@@ -66,7 +69,7 @@ async def generate_code(request: CodeGenRequest):
             raise HTTPException(
                 status_code=400,
                 detail=f"Unsupported integration method: {request.integration_method}. "
-                       f"Supported: {[m.value for m in IntegrationMethod]}"
+                f"Supported: {[m.value for m in IntegrationMethod]}",
             )
 
         # Determine project name: use request.project_name if provided and not default,
@@ -100,9 +103,7 @@ async def generate_code(request: CodeGenRequest):
         return StreamingResponse(
             zip_buffer,
             media_type="application/zip",
-            headers={
-                "Content-Disposition": f'attachment; filename="{project.name}.zip"'
-            }
+            headers={"Content-Disposition": f'attachment; filename="{project.name}.zip"'},
         )
 
     except CodeGenerationError as e:
@@ -128,10 +129,7 @@ async def get_language_info(language: str):
     try:
         lang = Language(language.lower())
     except ValueError:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Language not found: {language}"
-        )
+        raise HTTPException(status_code=404, detail=f"Language not found: {language}")
 
     # Return basic info about the language
     info = {
@@ -166,6 +164,7 @@ async def get_language_info(language: str):
 
 class CompileRequest(BaseModel):
     """Request model for code compilation."""
+
     model: dict[str, Any]
     language: str = "python"
     integration_method: str = "rk4"
@@ -177,6 +176,7 @@ class CompileRequest(BaseModel):
 
 class CompileStatusResponse(BaseModel):
     """Response model for compilation status."""
+
     docker_available: bool
     images_available: dict[str, bool]
 
@@ -195,7 +195,7 @@ async def compile_code(request: CompileRequest):
             raise HTTPException(
                 status_code=400,
                 detail=f"Unsupported language: {request.language}. "
-                       f"Supported: {[l.value for l in Language]}"
+                f"Supported: {[lang.value for lang in Language]}",
             )
 
         # Parse integration method
@@ -205,7 +205,7 @@ async def compile_code(request: CompileRequest):
             raise HTTPException(
                 status_code=400,
                 detail=f"Unsupported integration method: {request.integration_method}. "
-                       f"Supported: {[m.value for m in IntegrationMethod]}"
+                f"Supported: {[m.value for m in IntegrationMethod]}",
             )
 
         # Determine project name from model if not explicitly provided
@@ -245,9 +245,7 @@ async def compile_code(request: CompileRequest):
         return Response(
             content=executable_bytes,
             media_type=content_type,
-            headers={
-                "Content-Disposition": f'attachment; filename="{filename}"'
-            }
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
 
     except CompilationError as e:
@@ -277,8 +275,7 @@ async def get_compile_status():
             images_available[lang.value] = False
 
     return CompileStatusResponse(
-        docker_available=docker_available,
-        images_available=images_available
+        docker_available=docker_available, images_available=images_available
     )
 
 
@@ -291,18 +288,12 @@ async def build_compiler_image(language: str):
     try:
         lang = Language(language.lower())
     except ValueError:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Language not found: {language}"
-        )
+        raise HTTPException(status_code=404, detail=f"Language not found: {language}")
 
     compiler = DockerCompiler()
 
     if not compiler.check_docker_available():
-        raise HTTPException(
-            status_code=503,
-            detail="Docker is not available on this system"
-        )
+        raise HTTPException(status_code=503, detail="Docker is not available on this system")
 
     success = compiler.build_compiler_image(lang)
 
@@ -310,6 +301,5 @@ async def build_compiler_image(language: str):
         return {"status": "success", "message": f"Built compiler image for {language}"}
     else:
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to build compiler image for {language}"
+            status_code=500, detail=f"Failed to build compiler image for {language}"
         )

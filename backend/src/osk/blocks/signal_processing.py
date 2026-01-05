@@ -11,7 +11,6 @@ from typing import Literal
 from ..block import Block
 from ..state import State
 
-
 # Filter design types
 FilterDesign = Literal["butterworth", "chebyshev1", "chebyshev2", "bessel"]
 FilterResponse = Literal["lowpass", "highpass", "bandpass", "bandstop"]
@@ -27,7 +26,9 @@ class RateLimiter(Block):
     def __init__(self, rising_rate=1.0, falling_rate=-1.0):
         super().__init__()
         self.rising_rate = abs(rising_rate)  # Max rate of increase per second
-        self.falling_rate = -abs(falling_rate) if falling_rate < 0 else -abs(rising_rate)  # Max rate of decrease
+        self.falling_rate = (
+            -abs(falling_rate) if falling_rate < 0 else -abs(rising_rate)
+        )  # Max rate of decrease
         self.input = 0.0
         self.output = 0.0
         self.input_block = None
@@ -378,11 +379,19 @@ def _bessel_poles(n: int) -> list[complex]:
         1: [complex(-1.0, 0.0)],
         2: [complex(-1.1030, 0.6368), complex(-1.1030, -0.6368)],
         3: [complex(-1.0509, 0.9991), complex(-1.0509, -0.9991), complex(-1.3270, 0.0)],
-        4: [complex(-0.9952, 1.2571), complex(-0.9952, -1.2571),
-            complex(-1.3700, 0.4103), complex(-1.3700, -0.4103)],
-        5: [complex(-0.9576, 1.4711), complex(-0.9576, -1.4711),
-            complex(-1.3809, 0.7179), complex(-1.3809, -0.7179),
-            complex(-1.5023, 0.0)],
+        4: [
+            complex(-0.9952, 1.2571),
+            complex(-0.9952, -1.2571),
+            complex(-1.3700, 0.4103),
+            complex(-1.3700, -0.4103),
+        ],
+        5: [
+            complex(-0.9576, 1.4711),
+            complex(-0.9576, -1.4711),
+            complex(-1.3809, 0.7179),
+            complex(-1.3809, -0.7179),
+            complex(-1.5023, 0.0),
+        ],
     }
 
     if n in bessel_poles_table:
@@ -497,15 +506,19 @@ class AnalogFilter(Block):
 
                 # Normalize
                 if abs(a0) > 1e-10:
-                    self._biquads.append({
-                        "b0": b0 / a0,
-                        "b1": b1 / a0,
-                        "b2": 0.0,
-                        "a1": a1 / a0,
-                        "a2": 0.0,
-                        "x1": 0.0, "x2": 0.0,
-                        "y1": 0.0, "y2": 0.0,
-                    })
+                    self._biquads.append(
+                        {
+                            "b0": b0 / a0,
+                            "b1": b1 / a0,
+                            "b2": 0.0,
+                            "a1": a1 / a0,
+                            "a2": 0.0,
+                            "x1": 0.0,
+                            "x2": 0.0,
+                            "y1": 0.0,
+                            "y2": 0.0,
+                        }
+                    )
                 i += 1
             else:
                 # Complex conjugate pair - second order section
@@ -537,25 +550,36 @@ class AnalogFilter(Block):
 
                 # Normalize
                 if abs(a0) > 1e-10:
-                    self._biquads.append({
-                        "b0": b0 / a0,
-                        "b1": b1 / a0,
-                        "b2": b2 / a0,
-                        "a1": a1 / a0,
-                        "a2": a2 / a0,
-                        "x1": 0.0, "x2": 0.0,
-                        "y1": 0.0, "y2": 0.0,
-                    })
+                    self._biquads.append(
+                        {
+                            "b0": b0 / a0,
+                            "b1": b1 / a0,
+                            "b2": b2 / a0,
+                            "a1": a1 / a0,
+                            "a2": a2 / a0,
+                            "x1": 0.0,
+                            "x2": 0.0,
+                            "y1": 0.0,
+                            "y2": 0.0,
+                        }
+                    )
                 i += 2  # Skip conjugate
 
         # If no biquads were created, create a simple passthrough
         if not self._biquads:
-            self._biquads.append({
-                "b0": 1.0, "b1": 0.0, "b2": 0.0,
-                "a1": 0.0, "a2": 0.0,
-                "x1": 0.0, "x2": 0.0,
-                "y1": 0.0, "y2": 0.0,
-            })
+            self._biquads.append(
+                {
+                    "b0": 1.0,
+                    "b1": 0.0,
+                    "b2": 0.0,
+                    "a1": 0.0,
+                    "a2": 0.0,
+                    "x1": 0.0,
+                    "x2": 0.0,
+                    "y1": 0.0,
+                    "y2": 0.0,
+                }
+            )
 
         self._initialized = True
 
@@ -583,8 +607,13 @@ class AnalogFilter(Block):
         x = self.input
         for bq in self._biquads:
             # Direct Form II Transposed
-            y = bq["b0"] * x + bq["b1"] * bq["x1"] + bq["b2"] * bq["x2"] \
-                - bq["a1"] * bq["y1"] - bq["a2"] * bq["y2"]
+            y = (
+                bq["b0"] * x
+                + bq["b1"] * bq["x1"]
+                + bq["b2"] * bq["x2"]
+                - bq["a1"] * bq["y1"]
+                - bq["a2"] * bq["y2"]
+            )
 
             # Shift state
             bq["x2"] = bq["x1"]
@@ -686,8 +715,13 @@ class NotchFilter(Block):
             self._design_notch(State.dt)
 
         # Biquad filter
-        y = self.b0 * self.input + self.b1 * self.x1 + self.b2 * self.x2 \
-            - self.a1 * self.y1 - self.a2 * self.y2
+        y = (
+            self.b0 * self.input
+            + self.b1 * self.x1
+            + self.b2 * self.x2
+            - self.a1 * self.y1
+            - self.a2 * self.y2
+        )
 
         self.x2 = self.x1
         self.x1 = self.input

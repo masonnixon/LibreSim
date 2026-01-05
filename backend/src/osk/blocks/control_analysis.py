@@ -4,9 +4,11 @@ These blocks compute frequency response, stability analysis, and time-domain
 characteristics of linear systems defined by transfer functions.
 """
 
-import math
 import cmath
+import math
+
 import numpy as np
+
 from ..block import Block
 
 
@@ -27,8 +29,9 @@ class BodePlot(Block):
         Port 0: DC gain (magnitude at lowest frequency)
     """
 
-    def __init__(self, numerator=None, denominator=None,
-                 minFrequency=0.01, maxFrequency=100.0, numPoints=200):
+    def __init__(
+        self, numerator=None, denominator=None, minFrequency=0.01, maxFrequency=100.0, numPoints=200
+    ):
         super().__init__()
         self.numerator = numerator if numerator else [1.0]
         self.denominator = denominator if denominator else [1.0, 1.0]
@@ -60,7 +63,7 @@ class BodePlot(Block):
         """Extract TF coefficients from connected input block if available."""
         if self.input_block is not None:
             # Check for TransferFunction block
-            if hasattr(self.input_block, 'numerator') and hasattr(self.input_block, 'denominator'):
+            if hasattr(self.input_block, "numerator") and hasattr(self.input_block, "denominator"):
                 self.numerator = list(self.input_block.numerator)
                 self.denominator = list(self.input_block.denominator)
 
@@ -70,13 +73,13 @@ class BodePlot(Block):
         num = complex(0, 0)
         for i, coef in enumerate(self.numerator):
             power = len(self.numerator) - 1 - i
-            num += coef * (s ** power)
+            num += coef * (s**power)
 
         # Compute denominator polynomial
         den = complex(0, 0)
         for i, coef in enumerate(self.denominator):
             power = len(self.denominator) - 1 - i
-            den += coef * (s ** power)
+            den += coef * (s**power)
 
         if abs(den) < 1e-15:
             return complex(1e10, 0)  # Avoid division by zero
@@ -99,7 +102,7 @@ class BodePlot(Block):
         for i in range(self.numPoints):
             # Frequency in Hz
             log_f = log_min + (log_max - log_min) * i / (self.numPoints - 1)
-            freq_hz = 10 ** log_f
+            freq_hz = 10**log_f
 
             # Convert to rad/s for s-domain
             omega = 2 * math.pi * freq_hz
@@ -148,7 +151,9 @@ class BodePlot(Block):
             if self.magnitude_db[i] >= 0 and self.magnitude_db[i + 1] < 0:
                 # Interpolate
                 t = -self.magnitude_db[i] / (self.magnitude_db[i + 1] - self.magnitude_db[i])
-                self.gain_crossover_freq = self.frequencies[i] + t * (self.frequencies[i + 1] - self.frequencies[i])
+                self.gain_crossover_freq = self.frequencies[i] + t * (
+                    self.frequencies[i + 1] - self.frequencies[i]
+                )
                 phase_at_gc = self.phase_deg[i] + t * (self.phase_deg[i + 1] - self.phase_deg[i])
                 self.phase_margin = 180 + phase_at_gc
                 break
@@ -171,8 +176,12 @@ class BodePlot(Block):
                 if phase_i > target and phase_next <= target:
                     # Interpolate
                     t = (target - phase_i) / (phase_next - phase_i)
-                    self.phase_crossover_freq = self.frequencies[i] + t * (self.frequencies[i + 1] - self.frequencies[i])
-                    mag_at_pc = self.magnitude_db[i] + t * (self.magnitude_db[i + 1] - self.magnitude_db[i])
+                    self.phase_crossover_freq = self.frequencies[i] + t * (
+                        self.frequencies[i + 1] - self.frequencies[i]
+                    )
+                    mag_at_pc = self.magnitude_db[i] + t * (
+                        self.magnitude_db[i + 1] - self.magnitude_db[i]
+                    )
                     self.gain_margin = -mag_at_pc
                     return  # Found first phase crossover
 
@@ -192,21 +201,18 @@ class BodePlot(Block):
     def get_bode_data(self):
         """Return Bode plot data for visualization."""
         return {
-            'frequencies': self.frequencies,
-            'magnitude_db': self.magnitude_db,
-            'phase_deg': self.phase_deg,
-            'gain_margin': self.gain_margin,
-            'phase_margin': self.phase_margin,
-            'gain_crossover_freq': self.gain_crossover_freq,
-            'phase_crossover_freq': self.phase_crossover_freq,
+            "frequencies": self.frequencies,
+            "magnitude_db": self.magnitude_db,
+            "phase_deg": self.phase_deg,
+            "gain_margin": self.gain_margin,
+            "phase_margin": self.phase_margin,
+            "gain_crossover_freq": self.gain_crossover_freq,
+            "phase_crossover_freq": self.phase_crossover_freq,
         }
 
     def getData(self):
         """Return analysis data for visualization."""
-        return {
-            'analysisType': 'bode',
-            **self.get_bode_data()
-        }
+        return {"analysisType": "bode", **self.get_bode_data()}
 
 
 class NyquistPlot(Block):
@@ -226,8 +232,14 @@ class NyquistPlot(Block):
         Port 0: Encirclement count (for stability analysis)
     """
 
-    def __init__(self, numerator=None, denominator=None,
-                 minFrequency=0.001, maxFrequency=1000.0, numPoints=500):
+    def __init__(
+        self,
+        numerator=None,
+        denominator=None,
+        minFrequency=0.001,
+        maxFrequency=1000.0,
+        numPoints=500,
+    ):
         super().__init__()
         self.numerator = numerator if numerator else [1.0]
         self.denominator = denominator if denominator else [1.0, 1.0]
@@ -255,7 +267,7 @@ class NyquistPlot(Block):
         """Extract TF coefficients from connected input block if available."""
         if self.input_block is not None:
             # Check for TransferFunction block
-            if hasattr(self.input_block, 'numerator') and hasattr(self.input_block, 'denominator'):
+            if hasattr(self.input_block, "numerator") and hasattr(self.input_block, "denominator"):
                 self.numerator = list(self.input_block.numerator)
                 self.denominator = list(self.input_block.denominator)
 
@@ -264,12 +276,12 @@ class NyquistPlot(Block):
         num = complex(0, 0)
         for i, coef in enumerate(self.numerator):
             power = len(self.numerator) - 1 - i
-            num += coef * (s ** power)
+            num += coef * (s**power)
 
         den = complex(0, 0)
         for i, coef in enumerate(self.denominator):
             power = len(self.denominator) - 1 - i
-            den += coef * (s ** power)
+            den += coef * (s**power)
 
         if abs(den) < 1e-15:
             return complex(1e10, 0)
@@ -288,7 +300,7 @@ class NyquistPlot(Block):
 
         for i in range(self.numPoints):
             log_f = log_min + (log_max - log_min) * i / (self.numPoints - 1)
-            freq_hz = 10 ** log_f
+            freq_hz = 10**log_f
             omega = 2 * math.pi * freq_hz
             s = complex(0, omega)
 
@@ -303,21 +315,24 @@ class NyquistPlot(Block):
         # Simplified encirclement counting
         # For a proper implementation, need to handle the full contour
         encirclements = 0
-        critical_point = (-1, 0)
 
         for i in range(len(self.real_parts) - 1):
             # Check if contour crosses the negative real axis
-            if (self.imag_parts[i] >= 0 and self.imag_parts[i + 1] < 0):
+            if self.imag_parts[i] >= 0 and self.imag_parts[i + 1] < 0:
                 # Crossing from positive to negative imaginary
                 # Interpolate to find real value at crossing
                 t = self.imag_parts[i] / (self.imag_parts[i] - self.imag_parts[i + 1])
-                real_at_cross = self.real_parts[i] + t * (self.real_parts[i + 1] - self.real_parts[i])
+                real_at_cross = self.real_parts[i] + t * (
+                    self.real_parts[i + 1] - self.real_parts[i]
+                )
                 if real_at_cross < -1:
                     encirclements += 1
-            elif (self.imag_parts[i] < 0 and self.imag_parts[i + 1] >= 0):
+            elif self.imag_parts[i] < 0 and self.imag_parts[i + 1] >= 0:
                 # Crossing from negative to positive imaginary
                 t = -self.imag_parts[i] / (self.imag_parts[i + 1] - self.imag_parts[i])
-                real_at_cross = self.real_parts[i] + t * (self.real_parts[i + 1] - self.real_parts[i])
+                real_at_cross = self.real_parts[i] + t * (
+                    self.real_parts[i + 1] - self.real_parts[i]
+                )
                 if real_at_cross < -1:
                     encirclements -= 1
 
@@ -339,18 +354,15 @@ class NyquistPlot(Block):
     def get_nyquist_data(self):
         """Return Nyquist plot data for visualization."""
         return {
-            'real': self.real_parts,
-            'imag': self.imag_parts,
-            'frequencies': self.frequencies,
-            'encirclements': self.encirclements,
+            "real": self.real_parts,
+            "imag": self.imag_parts,
+            "frequencies": self.frequencies,
+            "encirclements": self.encirclements,
         }
 
     def getData(self):
         """Return analysis data for visualization."""
-        return {
-            'analysisType': 'nyquist',
-            **self.get_nyquist_data()
-        }
+        return {"analysisType": "nyquist", **self.get_nyquist_data()}
 
 
 class PoleZeroMap(Block):
@@ -392,7 +404,7 @@ class PoleZeroMap(Block):
         """Extract TF coefficients from connected input block if available."""
         if self.input_block is not None:
             # Check for TransferFunction block
-            if hasattr(self.input_block, 'numerator') and hasattr(self.input_block, 'denominator'):
+            if hasattr(self.input_block, "numerator") and hasattr(self.input_block, "denominator"):
                 self.numerator = list(self.input_block.numerator)
                 self.denominator = list(self.input_block.denominator)
 
@@ -445,18 +457,15 @@ class PoleZeroMap(Block):
     def get_pole_zero_data(self):
         """Return pole-zero map data for visualization."""
         return {
-            'poles': self.poles,
-            'zeros': self.zeros,
-            'is_stable': self.is_stable,
-            'dominant_pole': self.dominant_pole,
+            "poles": self.poles,
+            "zeros": self.zeros,
+            "is_stable": self.is_stable,
+            "dominant_pole": self.dominant_pole,
         }
 
     def getData(self):
         """Return analysis data for visualization."""
-        return {
-            'analysisType': 'pzmap',
-            **self.get_pole_zero_data()
-        }
+        return {"analysisType": "pzmap", **self.get_pole_zero_data()}
 
 
 class StepInfo(Block):
@@ -480,8 +489,14 @@ class StepInfo(Block):
         Port 0: Settling time
     """
 
-    def __init__(self, numerator=None, denominator=None,
-                 simulationTime=10.0, numPoints=1000, settlingPercent=2.0):
+    def __init__(
+        self,
+        numerator=None,
+        denominator=None,
+        simulationTime=10.0,
+        numPoints=1000,
+        settlingPercent=2.0,
+    ):
         super().__init__()
         self.numerator = numerator if numerator else [1.0]
         self.denominator = denominator if denominator else [1.0, 1.0]
@@ -513,7 +528,7 @@ class StepInfo(Block):
         """Extract TF coefficients from connected input block if available."""
         if self.input_block is not None:
             # Check for TransferFunction block
-            if hasattr(self.input_block, 'numerator') and hasattr(self.input_block, 'denominator'):
+            if hasattr(self.input_block, "numerator") and hasattr(self.input_block, "denominator"):
                 self.numerator = list(self.input_block.numerator)
                 self.denominator = list(self.input_block.denominator)
 
@@ -616,15 +631,15 @@ class StepInfo(Block):
             if time_10 is None and y >= target_10:
                 if i > 0:
                     # Interpolate
-                    t = (target_10 - self.response[i-1]) / (y - self.response[i-1])
-                    time_10 = self.times[i-1] + t * (self.times[i] - self.times[i-1])
+                    t = (target_10 - self.response[i - 1]) / (y - self.response[i - 1])
+                    time_10 = self.times[i - 1] + t * (self.times[i] - self.times[i - 1])
                 else:
                     time_10 = self.times[i]
 
             if time_90 is None and y >= target_90:
                 if i > 0:
-                    t = (target_90 - self.response[i-1]) / (y - self.response[i-1])
-                    time_90 = self.times[i-1] + t * (self.times[i] - self.times[i-1])
+                    t = (target_90 - self.response[i - 1]) / (y - self.response[i - 1])
+                    time_90 = self.times[i - 1] + t * (self.times[i] - self.times[i - 1])
                 else:
                     time_90 = self.times[i]
                 break
@@ -663,19 +678,16 @@ class StepInfo(Block):
     def get_step_data(self):
         """Return step response data for visualization."""
         return {
-            'times': self.times,
-            'response': self.response,
-            'rise_time': self.rise_time,
-            'settling_time': self.settling_time,
-            'overshoot_percent': self.overshoot_percent,
-            'peak_time': self.peak_time,
-            'peak_value': self.peak_value,
-            'steady_state_value': self.steady_state_value,
+            "times": self.times,
+            "response": self.response,
+            "rise_time": self.rise_time,
+            "settling_time": self.settling_time,
+            "overshoot_percent": self.overshoot_percent,
+            "peak_time": self.peak_time,
+            "peak_value": self.peak_value,
+            "steady_state_value": self.steady_state_value,
         }
 
     def getData(self):
         """Return analysis data for visualization."""
-        return {
-            'analysisType': 'stepinfo',
-            **self.get_step_data()
-        }
+        return {"analysisType": "stepinfo", **self.get_step_data()}

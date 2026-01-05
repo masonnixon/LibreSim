@@ -399,7 +399,9 @@ class MDLParser:
                 # Special handling for Integrator ExternalReset -> boolean externalIC
                 elif block_type == "integrator" and lib_name == "externalIC":
                     # ExternalReset "none" -> False, any other value -> True
-                    params[lib_name] = value.lower() != "none" if isinstance(value, str) else bool(value)
+                    params[lib_name] = (
+                        value.lower() != "none" if isinstance(value, str) else bool(value)
+                    )
                 else:
                     # Try to convert to appropriate type
                     params[lib_name] = self._convert_value(value)
@@ -503,14 +505,14 @@ class MDLParser:
         if block_type == "product":
             operations = parameters.get("operations", "**")
             num_inputs = len(operations)
-            in_config = [{"name": f"in{i+1}"} for i in range(num_inputs)]
+            in_config = [{"name": f"in{i + 1}"} for i in range(num_inputs)]
         elif block_type == "sum":
             signs = parameters.get("signs", "++")
             num_inputs = len(signs)
-            in_config = [{"name": f"in{i+1}"} for i in range(num_inputs)]
+            in_config = [{"name": f"in{i + 1}"} for i in range(num_inputs)]
         elif block_type == "scope":
             num_inputs = int(parameters.get("num_input_ports", 1))
-            in_config = [{"name": f"in{i+1}"} for i in range(num_inputs)]
+            in_config = [{"name": f"in{i + 1}"} for i in range(num_inputs)]
         elif block_type == "integrator" and parameters.get("externalIC"):
             # External IC mode: port 0 = signal to integrate, port 1 = initial condition
             in_config = [{"name": "in"}, {"name": "x0"}]
@@ -537,9 +539,7 @@ class MDLParser:
 
         return input_ports, output_ports
 
-    def _parse_connections(
-        self, system_data: dict, blocks: list[Block]
-    ) -> list[Connection]:
+    def _parse_connections(self, system_data: dict, blocks: list[Block]) -> list[Connection]:
         """Parse connections (Lines) from the system."""
         connections = []
         line_data = system_data.get("Line", [])

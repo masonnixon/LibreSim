@@ -55,12 +55,14 @@ class MatrixMultiply(Block):
 
         # For 1D vectors, compute dot product
         if len(self.input_a) == len(self.input_b):
-            result = sum(a * b for a, b in zip(self.input_a, self.input_b))
+            result = sum(a * b for a, b in zip(self.input_a, self.input_b, strict=False))
             self.output = [result]
             self._is_vector = False
         else:
             # Treat as scalars
-            self.output = [self.input_a[0] * self.input_b[0] if self.input_a and self.input_b else 0.0]
+            self.output = [
+                self.input_a[0] * self.input_b[0] if self.input_a and self.input_b else 0.0
+            ]
             self._is_vector = False
 
     def getOutput(self, port=0):
@@ -154,7 +156,7 @@ class MatrixInverse(Block):
 
         if n == 1:
             # Scalar inverse
-            self.output = [1.0 / self.input[0]] if self.input[0] != 0 else [float('inf')]
+            self.output = [1.0 / self.input[0]] if self.input[0] != 0 else [float("inf")]
         elif n == 4:
             # 2x2 matrix inverse: [[a,b],[c,d]] stored as [a,b,c,d]
             a, b, c, d = self.input
@@ -162,7 +164,7 @@ class MatrixInverse(Block):
             if abs(det) > 1e-15:
                 self.output = [d / det, -b / det, -c / det, a / det]
             else:
-                self.output = [float('inf')] * 4
+                self.output = [float("inf")] * 4
         else:
             # Pass through for unsupported sizes
             self.output = self.input.copy()
@@ -294,7 +296,7 @@ class Concatenate(Block):
     Combines multiple input vectors into one output vector.
     """
 
-    def __init__(self, num_inputs=2, mode='vector'):
+    def __init__(self, num_inputs=2, mode="vector"):
         super().__init__()
         self.num_inputs = num_inputs
         self.mode = mode  # 'vector' or 'matrix'
@@ -345,7 +347,7 @@ class MatrixSum(Block):
     Computes sum across specified dimension or all elements.
     """
 
-    def __init__(self, dimension='all'):
+    def __init__(self, dimension="all"):
         super().__init__()
         self.dimension = dimension  # 'all', 'rows', 'columns'
         self.input = []
@@ -381,7 +383,7 @@ class VectorNorm(Block):
     Supports: 2-norm (Euclidean), 1-norm (Manhattan), inf-norm (maximum).
     """
 
-    def __init__(self, norm_type='2'):
+    def __init__(self, norm_type="2"):
         super().__init__()
         self.norm_type = norm_type  # '1', '2', 'inf'
         self.input = []
@@ -405,11 +407,11 @@ class VectorNorm(Block):
             else:
                 self.input = [self.input_block.getOutput()]
 
-        if self.norm_type == '1':
+        if self.norm_type == "1":
             self.output = sum(abs(x) for x in self.input)
-        elif self.norm_type == '2':
+        elif self.norm_type == "2":
             self.output = math.sqrt(sum(x * x for x in self.input))
-        elif self.norm_type == 'inf':
+        elif self.norm_type == "inf":
             self.output = max(abs(x) for x in self.input) if self.input else 0.0
         else:
             self.output = math.sqrt(sum(x * x for x in self.input))

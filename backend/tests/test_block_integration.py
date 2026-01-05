@@ -7,8 +7,8 @@ issue where a block exists in the UI but doesn't actually work in simulation.
 
 import pytest
 
-from src.simulation.osk_adapter import BLOCK_TYPE_MAP, PARAM_MAP
 from src.blocks.registry import block_registry
+from src.simulation.osk_adapter import BLOCK_TYPE_MAP, PARAM_MAP
 
 
 class TestBlockRegistration:
@@ -119,14 +119,38 @@ class TestBlockRegistration:
     # Blocks that have OSK implementations but are not in the basic registry
     # These are implemented but registry.py only has basic definitions
     REGISTRY_NOT_REQUIRED = {
-        "outport", "inport", "subsystem",  # Subsystem blocks
-        "quantizer", "relay", "coulomb_friction", "variable_transport_delay", "lookup_table_1d", "lookup_table_2d",  # Nonlinear
-        "discrete_derivative", "discrete_integrator", "discrete_transfer_function",  # Discrete
-        "low_pass_filter", "high_pass_filter", "band_pass_filter", "analog_filter", "notch_filter", "moving_average", "rate_limiter", "backlash",  # Signal processing
-        "luenberger_observer", "kalman_filter", "extended_kalman_filter",  # Observers
-        "bode_plot", "nyquist_plot", "pole_zero_map", "step_info",  # Control analysis
-        "white_noise", "uniform_noise", "pulse_generator",  # Additional sources
-        "terminator", "reshape",  # Misc
+        "outport",
+        "inport",
+        "subsystem",  # Subsystem blocks
+        "quantizer",
+        "relay",
+        "coulomb_friction",
+        "variable_transport_delay",
+        "lookup_table_1d",
+        "lookup_table_2d",  # Nonlinear
+        "discrete_derivative",
+        "discrete_integrator",
+        "discrete_transfer_function",  # Discrete
+        "low_pass_filter",
+        "high_pass_filter",
+        "band_pass_filter",
+        "analog_filter",
+        "notch_filter",
+        "moving_average",
+        "rate_limiter",
+        "backlash",  # Signal processing
+        "luenberger_observer",
+        "kalman_filter",
+        "extended_kalman_filter",  # Observers
+        "bode_plot",
+        "nyquist_plot",
+        "pole_zero_map",
+        "step_info",  # Control analysis
+        "white_noise",
+        "uniform_noise",
+        "pulse_generator",  # Additional sources
+        "terminator",
+        "reshape",  # Misc
     }
 
     def test_all_core_blocks_have_osk_implementation(self):
@@ -148,7 +172,10 @@ class TestBlockRegistration:
         missing_blocks = []
         for block_type in self.FRONTEND_BLOCKS:
             if block_registry.get(block_type) is None:
-                if block_type not in self.INTENTIONALLY_UNIMPLEMENTED and block_type not in self.REGISTRY_NOT_REQUIRED:
+                if (
+                    block_type not in self.INTENTIONALLY_UNIMPLEMENTED
+                    and block_type not in self.REGISTRY_NOT_REQUIRED
+                ):
                     missing_blocks.append(block_type)
 
         if missing_blocks:
@@ -168,11 +195,10 @@ class TestBlockRegistration:
                 if params and block_type not in PARAM_MAP:
                     # Check if the OSK class accepts any constructor args
                     import inspect
+
                     sig = inspect.signature(block_class.__init__)
                     # Exclude 'self' from the parameter list
-                    constructor_params = [
-                        p for p in sig.parameters.keys() if p != 'self'
-                    ]
+                    constructor_params = [p for p in sig.parameters.keys() if p != "self"]
                     if constructor_params:
                         # Block has constructor params but no PARAM_MAP entry
                         # This might be okay if param names match exactly
@@ -239,9 +265,9 @@ class TestBlockSimulationIntegration:
 
     def test_bias_in_simulation_adapter(self):
         """Test Bias block through the OSK adapter."""
-        from src.simulation.osk_adapter import OSKAdapter
-        from src.simulation.compiler import CompiledBlock, CompiledModel
         from src.models.simulation import SimulationConfig, SolverType
+        from src.simulation.compiler import CompiledBlock, CompiledModel
+        from src.simulation.osk_adapter import OSKAdapter
 
         # Create a simple model: Constant -> Bias -> Scope
         blocks = [
@@ -286,7 +312,7 @@ class TestBlockSimulationIntegration:
         adapter.initialize(model, config)
 
         # Step the simulation
-        outputs = adapter.step(0.0, 0.01)
+        adapter.step(0.0, 0.01)
 
         # Check the bias block was created and works
         bias_block = adapter.get_block("bias1")
@@ -397,8 +423,9 @@ class TestAllMathBlocks:
 
     def test_math_function_block(self):
         """Test MathFunction block."""
-        from src.osk.blocks.math_ops import MathFunction
         import math
+
+        from src.osk.blocks.math_ops import MathFunction
 
         # Test exp
         block = MathFunction(function="exp")
@@ -420,8 +447,9 @@ class TestAllMathBlocks:
 
     def test_trigonometry_block(self):
         """Test Trigonometry block."""
-        from src.osk.blocks.math_ops import Trigonometry
         import math
+
+        from src.osk.blocks.math_ops import Trigonometry
 
         block = Trigonometry(function="sin")
         block.setInput(math.pi / 2)
@@ -439,7 +467,7 @@ class TestAllMathBlocks:
 
         block = Switch(threshold=0.0, criteria="gte")
         block.setInput(10.0, 0)  # in1
-        block.setInput(1.0, 1)   # control (>= 0, so use in1)
+        block.setInput(1.0, 1)  # control (>= 0, so use in1)
         block.setInput(20.0, 2)  # in2
         block.update()
         assert block.getOutput() == 10.0  # control >= threshold, use in1
@@ -494,9 +522,9 @@ class TestAllSourceBlocks:
 
     def test_sine_wave_block(self):
         """Test SineWave block."""
+
         from src.osk.blocks.sources import SineWave
         from src.osk.state import State
-        import math
 
         block = SineWave(amplitude=1.0, frequency=1.0, phase=0.0, bias=0.0)
         block.init()
@@ -585,10 +613,10 @@ class TestFrontendBackendParameterConversion:
         adapter = OSKAdapter()
 
         # Test numeric string conversion
-        assert adapter._convert_product_operations('2') == '**'
-        assert adapter._convert_product_operations('3') == '***'
-        assert adapter._convert_product_operations('1') == '*'
-        assert adapter._convert_product_operations('5') == '*****'
+        assert adapter._convert_product_operations("2") == "**"
+        assert adapter._convert_product_operations("3") == "***"
+        assert adapter._convert_product_operations("1") == "*"
+        assert adapter._convert_product_operations("5") == "*****"
 
     def test_product_operations_integer_converted(self):
         """Test that integer operations are converted to operation format."""
@@ -597,8 +625,8 @@ class TestFrontendBackendParameterConversion:
         adapter = OSKAdapter()
 
         # Test integer conversion
-        assert adapter._convert_product_operations(2) == '**'
-        assert adapter._convert_product_operations(3) == '***'
+        assert adapter._convert_product_operations(2) == "**"
+        assert adapter._convert_product_operations(3) == "***"
 
     def test_product_operations_valid_string_unchanged(self):
         """Test that valid operation strings are not modified."""
@@ -607,17 +635,17 @@ class TestFrontendBackendParameterConversion:
         adapter = OSKAdapter()
 
         # Valid operation strings should pass through
-        assert adapter._convert_product_operations('**') == '**'
-        assert adapter._convert_product_operations('*/') == '*/'
-        assert adapter._convert_product_operations('*/*') == '*/*'
-        assert adapter._convert_product_operations('/') == '/'
+        assert adapter._convert_product_operations("**") == "**"
+        assert adapter._convert_product_operations("*/") == "*/"
+        assert adapter._convert_product_operations("*/*") == "*/*"
+        assert adapter._convert_product_operations("/") == "/"
 
     def test_product_operations_none_defaults(self):
         """Test that None defaults to two multiply operations."""
         from src.simulation.osk_adapter import OSKAdapter
 
         adapter = OSKAdapter()
-        assert adapter._convert_product_operations(None) == '**'
+        assert adapter._convert_product_operations(None) == "**"
 
     def test_product_operations_invalid_defaults(self):
         """Test that invalid strings default to multiply operations."""
@@ -626,17 +654,17 @@ class TestFrontendBackendParameterConversion:
         adapter = OSKAdapter()
 
         # Invalid characters should result in default multiply
-        assert adapter._convert_product_operations('abc') == '***'  # 3 chars = 3 *
-        assert adapter._convert_product_operations('xy') == '**'
+        assert adapter._convert_product_operations("abc") == "***"  # 3 chars = 3 *
+        assert adapter._convert_product_operations("xy") == "**"
 
     def test_product_block_with_numeric_operations_via_adapter(self):
         """Test Product block with numeric operations through the OSK adapter.
 
         This simulates the exact scenario that caused the 95 million bug.
         """
-        from src.simulation.osk_adapter import OSKAdapter
-        from src.simulation.compiler import CompiledBlock, CompiledModel
         from src.models.simulation import SimulationConfig, SolverType
+        from src.simulation.compiler import CompiledBlock, CompiledModel
+        from src.simulation.osk_adapter import OSKAdapter
 
         # Create a model with Product block receiving operations='2' (frontend format)
         blocks = [
@@ -688,13 +716,13 @@ class TestFrontendBackendParameterConversion:
         adapter.initialize(model, config)
 
         # Step the simulation
-        outputs = adapter.step(0.0, 0.01)
+        adapter.step(0.0, 0.01)
 
         # Check the product block was created with correct operations
         product_block = adapter.get_block("product1")
         assert product_block is not None, "Product block should be created"
         # Operations should have been converted from '2' to '**'
-        assert product_block.operations == '**', f"Expected '**', got '{product_block.operations}'"
+        assert product_block.operations == "**", f"Expected '**', got '{product_block.operations}'"
         # Test that operations conversion worked - the key test is that operations is '**'
         # The actual multiplication depends on connection setup which varies by test setup
 
@@ -704,9 +732,9 @@ class TestFrontendBackendParameterConversion:
         This was the exact bug: when operations='2' (invalid) was interpreted as
         division, and inputs were 0, the result was 1/epsilon = 10 billion.
         """
-        from src.simulation.osk_adapter import OSKAdapter
-        from src.simulation.compiler import CompiledBlock, CompiledModel
         from src.models.simulation import SimulationConfig, SolverType
+        from src.simulation.compiler import CompiledBlock, CompiledModel
+        from src.simulation.osk_adapter import OSKAdapter
 
         # Create a model with Product block receiving operations='2' and zero inputs
         blocks = [
@@ -754,7 +782,9 @@ class TestFrontendBackendParameterConversion:
         product_block = adapter.get_block("product1")
         # With proper conversion, 0 * 0 = 0 (not 1/epsilon = 10 billion)
         assert product_block.getOutput() == 0.0, f"Expected 0.0, got {product_block.getOutput()}"
-        assert abs(product_block.getOutput()) < 1e6, "Output should not be huge (division by epsilon bug)"
+        assert abs(product_block.getOutput()) < 1e6, (
+            "Output should not be huge (division by epsilon bug)"
+        )
 
 
 class TestParameterMappingCompleteness:
@@ -762,33 +792,31 @@ class TestParameterMappingCompleteness:
 
     def test_all_blocks_with_parameters_have_mappings(self):
         """Verify blocks with complex parameters have proper mappings in _map_parameters."""
-        from src.simulation.osk_adapter import PARAM_MAP, BLOCK_TYPE_MAP
-        from src.blocks.registry import block_registry
+        from src.simulation.osk_adapter import BLOCK_TYPE_MAP, PARAM_MAP
 
         # These blocks have parameters that need special handling or mapping
         blocks_requiring_param_map = {
-            'sum': ['signs'],
-            'product': ['operations'],
-            'gain': ['gain'],
-            'bias': ['bias'],
-            'saturation': ['upper_limit', 'lower_limit'],
-            'dead_zone': ['start', 'end'],
-            'integrator': ['initialCondition', 'externalIC'],
-            'step': ['step_time', 'initial_value', 'final_value'],
-            'sine_wave': ['amplitude', 'frequency', 'phase', 'bias'],
-            'constant': ['value'],
-            'scope': ['numInputs', 'num_input_ports'],
-            'transfer_function': ['numerator', 'denominator'],
-            'state_space': ['A', 'B', 'C', 'D', 'X0'],
-            'pid_controller': ['Kp', 'Ki', 'Kd', 'N'],
+            "sum": ["signs"],
+            "product": ["operations"],
+            "gain": ["gain"],
+            "bias": ["bias"],
+            "saturation": ["upper_limit", "lower_limit"],
+            "dead_zone": ["start", "end"],
+            "integrator": ["initialCondition", "externalIC"],
+            "step": ["step_time", "initial_value", "final_value"],
+            "sine_wave": ["amplitude", "frequency", "phase", "bias"],
+            "constant": ["value"],
+            "scope": ["numInputs", "num_input_ports"],
+            "transfer_function": ["numerator", "denominator"],
+            "state_space": ["A", "B", "C", "D", "X0"],
+            "pid_controller": ["Kp", "Ki", "Kd", "N"],
         }
 
-        missing_mappings = []
         for block_type, params in blocks_requiring_param_map.items():
             if block_type in BLOCK_TYPE_MAP:
                 # Block is implemented, check if params are mapped
                 if block_type in PARAM_MAP:
-                    for param in params:
+                    for _param in params:
                         # Either the param is in the mapping, or it matches the OSK constructor name directly
                         pass  # Could add more detailed checks here
 
@@ -797,9 +825,9 @@ class TestParameterMappingCompleteness:
 
         Frontend may use camelCase (numInputs) vs snake_case (num_inputs).
         """
-        from src.simulation.osk_adapter import OSKAdapter
-        from src.simulation.compiler import CompiledBlock, CompiledModel
         from src.models.simulation import SimulationConfig, SolverType
+        from src.simulation.compiler import CompiledBlock, CompiledModel
+        from src.simulation.osk_adapter import OSKAdapter
 
         # Test scope with numInputs (frontend format)
         blocks = [
@@ -885,7 +913,7 @@ class TestIntegratorExternalICHandling:
         State.t = 0.0
         State.dt = 0.01
         State.dtp = 0.01
-        State.method = 'Euler'
+        State.method = "Euler"
         State.kpass = 0
         State.ready = 1
 

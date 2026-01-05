@@ -1,6 +1,5 @@
 """C templates for aerospace blocks."""
 
-import math
 from ....models import BlockInfo
 
 

@@ -1,6 +1,5 @@
 """Python templates for DSP (Digital Signal Processing) blocks."""
 
-import math
 from ....models import BlockInfo
 
 

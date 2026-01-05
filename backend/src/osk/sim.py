@@ -35,14 +35,14 @@ class Sim:
         sim.run()
     """
 
-    stop0 = 0        # Previous stop flag
-    stop = 0         # Current stop flag (set by blocks to terminate)
-    dts = []         # Time steps for each stage
-    dt = 0           # Current time step
-    tmax = 0         # Maximum simulation time
-    vObj = []        # (unused, kept for compatibility)
-    vStage = []      # Vector of stages (each stage is a list of blocks)
-    clock = None     # Clock State object
+    stop0 = 0  # Previous stop flag
+    stop = 0  # Current stop flag (set by blocks to terminate)
+    dts = []  # Time steps for each stage
+    dt = 0  # Current time step
+    tmax = 0  # Maximum simulation time
+    vObj = []  # (unused, kept for compatibility)
+    vStage = []  # Vector of stages (each stage is a list of blocks)
+    clock = None  # Clock State object
 
     def __init__(self, dts, tmax, vStage):
         """Initialize the simulation.
@@ -81,10 +81,7 @@ class Sim:
         Returns:
             Dictionary with simulation results
         """
-        results = {
-            'times': [],
-            'outputs': {}
-        }
+        results = {"times": [], "outputs": {}}
 
         Sim.clock.set()
         Sim.stop = Sim.stop0 = 0
@@ -123,7 +120,7 @@ class Sim:
                 # Report if ready (complete integration step)
                 if State.ready:
                     # Record time
-                    results['times'].append(State.t)
+                    results["times"].append(State.t)
 
                     # Report and collect outputs
                     for obj in stage:
@@ -131,9 +128,9 @@ class Sim:
 
                         # Collect outputs from blocks that have them
                         block_id = id(obj)
-                        if block_id not in results['outputs']:
-                            results['outputs'][block_id] = []
-                        results['outputs'][block_id].append(obj.getOutput())
+                        if block_id not in results["outputs"]:
+                            results["outputs"][block_id] = []
+                        results["outputs"][block_id].append(obj.getOutput())
 
                     State.tickfirst = 0
 

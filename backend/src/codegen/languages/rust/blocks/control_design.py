@@ -419,7 +419,7 @@ def lqr_controller_template(block: BlockInfo, struct_name: str) -> str:
     # Helper to format values as Rust f64 literals
     def to_rust_float(val):
         s = str(val)
-        if '.' not in s and 'e' not in s.lower():
+        if "." not in s and "e" not in s.lower():
             return s + ".0_f64"
         return s + "_f64"
 
@@ -487,9 +487,10 @@ def pole_placement_template(block: BlockInfo, struct_name: str) -> str:
     # Format K vector initialization with _f64 suffix for Rust
     def to_rust_float(val):
         s = str(val)
-        if '.' not in s and 'e' not in s.lower():
+        if "." not in s and "e" not in s.lower():
             return s + ".0_f64"
         return s + "_f64"
+
     k_vals = [to_rust_float(K[i]) if i < len(K) else "0.0_f64" for i in range(num_states)]
     k_init = "[" + ", ".join(k_vals) + "]"
 

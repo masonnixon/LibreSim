@@ -36,8 +36,8 @@ class Block:
 
     def __init__(self):
         """Initialize the block with empty state vector."""
-        self.vState = []      # Vector of State objects (integrators)
-        self.initCount = 0    # Initialization counter
+        self.vState = []  # Vector of State objects (integrators)
+        self.initCount = 0  # Initialization counter
 
     def init(self):
         """Initialize block - override in subclass.
@@ -90,7 +90,7 @@ class Block:
         self.vState.append(state)
         return state.x
 
-    def set_method(self, method='RK4'):
+    def set_method(self, method="RK4"):
         """Set the integration method for all states.
 
         Args:

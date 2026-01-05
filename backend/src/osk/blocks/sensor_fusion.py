@@ -6,10 +6,8 @@ MATLAB Sensor Fusion and Tracking Toolbox.
 
 import math
 import random
-from typing import Optional
 
 from ..block import Block
-
 
 # =============================================================================
 # IMU Sensor Model
@@ -38,10 +36,16 @@ class IMUSensor(Block):
         - gyro_scale_error: Scale factor error (fraction)
     """
 
-    def __init__(self, accel_noise: float = 0.01, gyro_noise: float = 0.001,
-                 accel_bias: Optional[list] = None, gyro_bias: Optional[list] = None,
-                 accel_scale_error: float = 0.0, gyro_scale_error: float = 0.0,
-                 seed: Optional[int] = None):
+    def __init__(
+        self,
+        accel_noise: float = 0.01,
+        gyro_noise: float = 0.001,
+        accel_bias: list | None = None,
+        gyro_bias: list | None = None,
+        accel_scale_error: float = 0.0,
+        gyro_scale_error: float = 0.0,
+        seed: int | None = None,
+    ):
         super().__init__()
         self.accel_noise = accel_noise
         self.gyro_noise = gyro_noise
@@ -115,8 +119,13 @@ class Accelerometer(Block):
     Output: Measured acceleration with noise and bias
     """
 
-    def __init__(self, noise: float = 0.01, bias: Optional[list] = None,
-                 scale_error: float = 0.0, seed: Optional[int] = None):
+    def __init__(
+        self,
+        noise: float = 0.01,
+        bias: list | None = None,
+        scale_error: float = 0.0,
+        seed: int | None = None,
+    ):
         super().__init__()
         self.noise = noise
         self.bias = bias if bias else [0.0, 0.0, 0.0]
@@ -165,8 +174,13 @@ class Gyroscope(Block):
     Output: Measured angular velocity with noise and bias
     """
 
-    def __init__(self, noise: float = 0.001, bias: Optional[list] = None,
-                 scale_error: float = 0.0, seed: Optional[int] = None):
+    def __init__(
+        self,
+        noise: float = 0.001,
+        bias: list | None = None,
+        scale_error: float = 0.0,
+        seed: int | None = None,
+    ):
         super().__init__()
         self.noise = noise
         self.bias = bias if bias else [0.0, 0.0, 0.0]
@@ -215,8 +229,13 @@ class Magnetometer(Block):
     Output: Measured magnetic field with noise and bias
     """
 
-    def __init__(self, noise: float = 0.001, bias: Optional[list] = None,
-                 scale_error: float = 0.0, seed: Optional[int] = None):
+    def __init__(
+        self,
+        noise: float = 0.001,
+        bias: list | None = None,
+        scale_error: float = 0.0,
+        seed: int | None = None,
+    ):
         super().__init__()
         self.noise = noise
         self.bias = bias if bias else [0.0, 0.0, 0.0]
@@ -282,8 +301,13 @@ class GPSSensor(Block):
         - update_rate: GPS update rate (Hz)
     """
 
-    def __init__(self, position_noise: float = 5.0, velocity_noise: float = 0.1,
-                 update_rate: float = 1.0, seed: Optional[int] = None):
+    def __init__(
+        self,
+        position_noise: float = 5.0,
+        velocity_noise: float = 0.1,
+        update_rate: float = 1.0,
+        seed: int | None = None,
+    ):
         super().__init__()
         self.position_noise = position_noise
         self.velocity_noise = velocity_noise
@@ -328,6 +352,7 @@ class GPSSensor(Block):
                         self.true_velocity = vec[:3]
 
         from ..state import State
+
         t = State.t
 
         # Only update at GPS rate
@@ -369,8 +394,7 @@ class Altimeter(Block):
     Output: Measured altitude with noise
     """
 
-    def __init__(self, noise: float = 1.0, bias: float = 0.0,
-                 seed: Optional[int] = None):
+    def __init__(self, noise: float = 1.0, bias: float = 0.0, seed: int | None = None):
         super().__init__()
         self.noise = noise
         self.bias = bias
@@ -454,6 +478,7 @@ class ComplementaryFilter(Block):
                         self.gyro = vec[:3]
 
         from ..state import State
+
         dt = State.dt
 
         # Estimate angles from accelerometer
@@ -463,13 +488,18 @@ class ComplementaryFilter(Block):
 
         # Integrate gyroscope
         p, q, r = self.gyro
-        roll_rate = p + math.sin(self.euler[0]) * math.tan(self.euler[1]) * q + \
-                    math.cos(self.euler[0]) * math.tan(self.euler[1]) * r
+        roll_rate = (
+            p
+            + math.sin(self.euler[0]) * math.tan(self.euler[1]) * q
+            + math.cos(self.euler[0]) * math.tan(self.euler[1]) * r
+        )
         pitch_rate = math.cos(self.euler[0]) * q - math.sin(self.euler[0]) * r
 
         if abs(math.cos(self.euler[1])) > 1e-6:
-            yaw_rate = math.sin(self.euler[0]) / math.cos(self.euler[1]) * q + \
-                       math.cos(self.euler[0]) / math.cos(self.euler[1]) * r
+            yaw_rate = (
+                math.sin(self.euler[0]) / math.cos(self.euler[1]) * q
+                + math.cos(self.euler[0]) / math.cos(self.euler[1]) * r
+            )
         else:
             yaw_rate = 0.0
 
@@ -553,6 +583,7 @@ class MadgwickFilter(Block):
                         self.mag = vec[:3]
 
         from ..state import State
+
         dt = State.dt
 
         q = self.q
@@ -586,8 +617,26 @@ class MadgwickFilter(Block):
 
         # Gradient (objective function derivative)
         s0 = _4q0 * q2q2 + _2q2 * ax + _4q0 * q1q1 - _2q1 * ay
-        s1 = _4q1 * q3q3 - _2q3 * ax + 4.0 * q0q0 * q1 - _2q0 * ay - _4q1 + _8q1 * q1q1 + _8q1 * q2q2 + _4q1 * az
-        s2 = 4.0 * q0q0 * q2 + _2q0 * ax + _4q2 * q3q3 - _2q3 * ay - _4q2 + _8q2 * q1q1 + _8q2 * q2q2 + _4q2 * az
+        s1 = (
+            _4q1 * q3q3
+            - _2q3 * ax
+            + 4.0 * q0q0 * q1
+            - _2q0 * ay
+            - _4q1
+            + _8q1 * q1q1
+            + _8q1 * q2q2
+            + _4q1 * az
+        )
+        s2 = (
+            4.0 * q0q0 * q2
+            + _2q0 * ax
+            + _4q2 * q3q3
+            - _2q3 * ay
+            - _4q2
+            + _8q2 * q1q1
+            + _8q2 * q2q2
+            + _4q2 * az
+        )
         s3 = 4.0 * q1q1 * q3 - _2q1 * ax + 4.0 * q2q2 * q3 - _2q2 * ay
 
         # Normalize gradient
@@ -683,6 +732,7 @@ class MahonyFilter(Block):
                         self.gyro = vec[:3]
 
         from ..state import State
+
         dt = State.dt
 
         q0, q1, q2, q3 = self.q
@@ -771,9 +821,12 @@ class INSGPSFusion(Block):
     This is a simplified implementation.
     """
 
-    def __init__(self, initial_position: Optional[list] = None,
-                 initial_velocity: Optional[list] = None,
-                 initial_attitude: Optional[list] = None):
+    def __init__(
+        self,
+        initial_position: list | None = None,
+        initial_velocity: list | None = None,
+        initial_attitude: list | None = None,
+    ):
         super().__init__()
         self.position = initial_position if initial_position else [0.0, 0.0, 0.0]
         self.velocity = initial_velocity if initial_velocity else [0.0, 0.0, 0.0]
@@ -827,6 +880,7 @@ class INSGPSFusion(Block):
                         self.gps_velocity = vec[:3]
 
         from ..state import State
+
         dt = State.dt
 
         ax, ay, az, wx, wy, wz = self.imu_data
@@ -858,7 +912,9 @@ class INSGPSFusion(Block):
         # Position integration (simplified, degrees)
         m_per_deg = 111320.0
         self.position[0] += self.velocity[0] * dt / m_per_deg
-        self.position[1] += self.velocity[1] * dt / (m_per_deg * max(0.1, math.cos(math.radians(self.position[0]))))
+        self.position[1] += (
+            self.velocity[1] * dt / (m_per_deg * max(0.1, math.cos(math.radians(self.position[0]))))
+        )
         self.position[2] -= self.velocity[2] * dt
 
         # GPS correction (simple Kalman-like update)
@@ -966,8 +1022,9 @@ class AlphaBetaGammaFilter(Block):
         - gamma: Acceleration gain
     """
 
-    def __init__(self, alpha: float = 0.5, beta: float = 0.3, gamma: float = 0.1,
-                 sample_time: float = 0.1):
+    def __init__(
+        self, alpha: float = 0.5, beta: float = 0.3, gamma: float = 0.1, sample_time: float = 0.1
+    ):
         super().__init__()
         self.alpha = alpha
         self.beta = beta

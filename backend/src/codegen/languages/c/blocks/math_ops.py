@@ -10,7 +10,7 @@ def template_sum(block: BlockInfo, struct_name: str) -> str:
     input_decls = "\n    ".join([f"double input{i};" for i in range(num_inputs)])
     sum_terms = []
     for i, sign in enumerate(signs):
-        if sign == '+':
+        if sign == "+":
             sum_terms.append(f"b->input{i}")
         else:
             sum_terms.append(f"(-b->input{i})")
@@ -49,7 +49,7 @@ def template_gain(block: BlockInfo, struct_name: str) -> str:
 
     # Check if this block expects vector input from its port dimensions
     expects_vector = False
-    if hasattr(block, 'input_dimensions') and block.input_dimensions:
+    if hasattr(block, "input_dimensions") and block.input_dimensions:
         dims = block.input_dimensions[0] if block.input_dimensions else [1]
         expects_vector = len(dims) > 0 and dims[0] > 1
 
@@ -126,7 +126,7 @@ def template_product(block: BlockInfo, struct_name: str) -> str:
     # Build product expression
     product_terms = []
     for i, op in enumerate(inputs):
-        if op == '*':
+        if op == "*":
             product_terms.append(f"b->input{i}")
         else:  # divide
             product_terms.append(f"(1.0 / (b->input{i} != 0 ? b->input{i} : 1e-10))")
@@ -505,7 +505,7 @@ def template_demux(block: BlockInfo, struct_name: str) -> str:
 
     # Generate getOutputVector functions for each output
     vector_funcs = []
-    for i, width in enumerate(output_widths):
+    for i, _width in enumerate(output_widths):
         suffix = "" if i == 0 else str(i)
         vector_funcs.append(f"""static inline double* {struct_name}_get_output_vector{suffix}({struct_name}* b) {{
     return b->output{i};

@@ -160,8 +160,12 @@ async def debug_simulation(request: dict[str, Any]) -> dict[str, Any]:
     }
 
     if model_data:
-        result["model_keys"] = list(model_data.keys()) if isinstance(model_data, dict) else "not a dict"
-        result["blocks_count"] = len(model_data.get("blocks", [])) if isinstance(model_data, dict) else 0
+        result["model_keys"] = (
+            list(model_data.keys()) if isinstance(model_data, dict) else "not a dict"
+        )
+        result["blocks_count"] = (
+            len(model_data.get("blocks", [])) if isinstance(model_data, dict) else 0
+        )
 
         # Try to parse model
         try:
@@ -185,7 +189,7 @@ async def debug_simulation(request: dict[str, Any]) -> dict[str, Any]:
     # Try to create runner
     if result.get("model_parsed") and result.get("config_parsed"):
         try:
-            runner = SimulationRunner(model, config)
+            SimulationRunner(model, config)
             result["runner_created"] = True
         except Exception as e:
             result["runner_created"] = False

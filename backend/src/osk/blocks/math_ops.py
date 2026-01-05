@@ -13,7 +13,7 @@ class Sum(Block):
     performs element-wise addition/subtraction.
     """
 
-    def __init__(self, signs='++'):
+    def __init__(self, signs="++"):
         super().__init__()
         self.signs = signs
         self.num_inputs = len(signs)
@@ -52,7 +52,7 @@ class Sum(Block):
         for i, block in enumerate(self.input_blocks):
             if block is not None:
                 # Check for vector output
-                if hasattr(block, 'getOutputVector'):
+                if hasattr(block, "getOutputVector"):
                     vec = block.getOutputVector()
                     if vec is not None:
                         self._input_vectors[i] = vec
@@ -72,7 +72,7 @@ class Sum(Block):
             self._output_vector = [0.0] * max_len
             for i, sign in enumerate(self.signs):
                 if i < self.num_inputs:
-                    sign_mult = 1.0 if sign == '+' else -1.0
+                    sign_mult = 1.0 if sign == "+" else -1.0
                     if self._input_vectors[i] is not None:
                         for j in range(len(self._input_vectors[i])):
                             if j < max_len:
@@ -87,7 +87,7 @@ class Sum(Block):
             self.output = 0.0
             for i, sign in enumerate(self.signs):
                 if i < len(self.inputs):
-                    if sign == '+':
+                    if sign == "+":
                         self.output += self.inputs[i]
                     else:
                         self.output -= self.inputs[i]
@@ -153,7 +153,7 @@ class Gain(Block):
                 self._input_vector = None
                 self.input = self.input_block.getOutput(self.input_source_port)
             # Check for vector output (only when source_port == 0)
-            elif hasattr(self.input_block, 'getOutputVector'):
+            elif hasattr(self.input_block, "getOutputVector"):
                 vec = self.input_block.getOutputVector()
                 if vec is not None:
                     self._is_vector = True
@@ -196,7 +196,7 @@ class Product(Block):
     performs element-wise multiplication/division.
     """
 
-    def __init__(self, operations='**'):
+    def __init__(self, operations="**"):
         super().__init__()
         self.operations = operations
         self.num_inputs = len(operations)
@@ -234,7 +234,7 @@ class Product(Block):
 
         for i, block in enumerate(self.input_blocks):
             if block is not None:
-                if hasattr(block, 'getOutputVector'):
+                if hasattr(block, "getOutputVector"):
                     vec = block.getOutputVector()
                     if vec is not None:
                         self._input_vectors[i] = vec
@@ -257,7 +257,7 @@ class Product(Block):
                         for j in range(len(self._input_vectors[i])):
                             if j < max_len:
                                 val = self._input_vectors[i][j]
-                                if op == '*':
+                                if op == "*":
                                     self._output_vector[j] *= val
                                 else:
                                     if abs(val) > State.EPS:
@@ -268,7 +268,7 @@ class Product(Block):
                         # Apply scalar to all elements
                         val = self.inputs[i]
                         for j in range(max_len):
-                            if op == '*':
+                            if op == "*":
                                 self._output_vector[j] *= val
                             else:
                                 if abs(val) > State.EPS:
@@ -282,7 +282,7 @@ class Product(Block):
             self.output = 1.0
             for i, op in enumerate(self.operations):
                 if i < len(self.inputs):
-                    if op == '*':
+                    if op == "*":
                         self.output *= self.inputs[i]
                     else:
                         if abs(self.inputs[i]) > State.EPS:
@@ -343,7 +343,7 @@ class Abs(Block):
 
     def update(self):
         if self.input_block is not None:
-            if hasattr(self.input_block, 'getOutputVector'):
+            if hasattr(self.input_block, "getOutputVector"):
                 vec = self.input_block.getOutputVector()
                 if vec is not None:
                     self._is_vector = True
@@ -424,7 +424,7 @@ class Sign(Block):
 
     def update(self):
         if self.input_block is not None:
-            if hasattr(self.input_block, 'getOutputVector'):
+            if hasattr(self.input_block, "getOutputVector"):
                 vec = self.input_block.getOutputVector()
                 if vec is not None:
                     self._is_vector = True
@@ -500,7 +500,7 @@ class Saturation(Block):
 
     def update(self):
         if self.input_block is not None:
-            if hasattr(self.input_block, 'getOutputVector'):
+            if hasattr(self.input_block, "getOutputVector"):
                 vec = self.input_block.getOutputVector()
                 if vec is not None:
                     self._is_vector = True
@@ -516,7 +516,9 @@ class Saturation(Block):
                 self.input = self.input_block.getOutput(self.input_source_port)
 
         if self._is_vector and self._input_vector:
-            self._output_vector = [max(self.lower_limit, min(self.upper_limit, v)) for v in self._input_vector]
+            self._output_vector = [
+                max(self.lower_limit, min(self.upper_limit, v)) for v in self._input_vector
+            ]
             self.output = self._output_vector[0] if self._output_vector else 0.0
         else:
             self._output_vector = None
@@ -541,7 +543,7 @@ class MathFunction(Block):
     Supports both scalar and vector inputs.
     """
 
-    def __init__(self, function='exp', exponent=2.0):
+    def __init__(self, function="exp", exponent=2.0):
         super().__init__()
         self.function = function
         self.exponent = exponent
@@ -561,19 +563,19 @@ class MathFunction(Block):
         self._output_vector = None
 
     def _compute_function(self, val):
-        if self.function == 'exp':
+        if self.function == "exp":
             return math.exp(val)
-        elif self.function == 'log':
+        elif self.function == "log":
             return math.log(max(val, State.EPS))
-        elif self.function == 'log10':
+        elif self.function == "log10":
             return math.log10(max(val, State.EPS))
-        elif self.function == 'sqrt':
+        elif self.function == "sqrt":
             return math.sqrt(max(val, 0.0))
-        elif self.function == 'square':
-            return val ** 2
-        elif self.function == 'pow':
-            return val ** self.exponent
-        elif self.function == 'reciprocal':
+        elif self.function == "square":
+            return val**2
+        elif self.function == "pow":
+            return val**self.exponent
+        elif self.function == "reciprocal":
             if abs(val) > State.EPS:
                 return 1.0 / val
             return 1.0 / State.EPS
@@ -595,7 +597,7 @@ class MathFunction(Block):
 
     def update(self):
         if self.input_block is not None:
-            if hasattr(self.input_block, 'getOutputVector'):
+            if hasattr(self.input_block, "getOutputVector"):
                 vec = self.input_block.getOutputVector()
                 if vec is not None:
                     self._is_vector = True
@@ -636,7 +638,7 @@ class Trigonometry(Block):
     Supports both scalar and vector inputs.
     """
 
-    def __init__(self, function='sin'):
+    def __init__(self, function="sin"):
         super().__init__()
         self.function = function
         self.input = 0.0
@@ -656,15 +658,15 @@ class Trigonometry(Block):
 
     def _compute_trig(self, val):
         funcs = {
-            'sin': math.sin,
-            'cos': math.cos,
-            'tan': math.tan,
-            'asin': math.asin,
-            'acos': math.acos,
-            'atan': math.atan,
-            'sinh': math.sinh,
-            'cosh': math.cosh,
-            'tanh': math.tanh,
+            "sin": math.sin,
+            "cos": math.cos,
+            "tan": math.tan,
+            "asin": math.asin,
+            "acos": math.acos,
+            "atan": math.atan,
+            "sinh": math.sinh,
+            "cosh": math.cosh,
+            "tanh": math.tanh,
         }
         func = funcs.get(self.function, math.sin)
         try:
@@ -688,7 +690,7 @@ class Trigonometry(Block):
 
     def update(self):
         if self.input_block is not None:
-            if hasattr(self.input_block, 'getOutputVector'):
+            if hasattr(self.input_block, "getOutputVector"):
                 vec = self.input_block.getOutputVector()
                 if vec is not None:
                     self._is_vector = True
@@ -771,7 +773,7 @@ class DeadZone(Block):
 
     def update(self):
         if self.input_block is not None:
-            if hasattr(self.input_block, 'getOutputVector'):
+            if hasattr(self.input_block, "getOutputVector"):
                 vec = self.input_block.getOutputVector()
                 if vec is not None:
                     self._is_vector = True
@@ -809,7 +811,7 @@ class DeadZone(Block):
 class Switch(Block):
     """Switch block - selects between inputs based on control signal."""
 
-    def __init__(self, threshold=0.0, criteria='gte'):
+    def __init__(self, threshold=0.0, criteria="gte"):
         super().__init__()
         self.threshold = threshold
         self.criteria = criteria  # 'gte', 'gt', 'neq'
@@ -833,9 +835,9 @@ class Switch(Block):
 
         control = self.inputs[1]
 
-        if self.criteria == 'gte':
+        if self.criteria == "gte":
             use_first = control >= self.threshold
-        elif self.criteria == 'gt':
+        elif self.criteria == "gt":
             use_first = control > self.threshold
         else:  # 'neq'
             use_first = abs(control - self.threshold) > State.EPS
@@ -938,7 +940,7 @@ class Demux(Block):
         if self.input_block is not None:
             # Check if the input block has a vector output (like Mux or vector Constant)
             vec = None
-            if hasattr(self.input_block, 'getOutputVector'):
+            if hasattr(self.input_block, "getOutputVector"):
                 vec = self.input_block.getOutputVector()
 
             if vec is not None:
@@ -946,12 +948,14 @@ class Demux(Block):
                 for i, v in enumerate(vec):
                     if i < len(self.input_vector):
                         self.input_vector[i] = v
-            elif hasattr(self.input_block, 'outputs') and isinstance(self.input_block.outputs, list):
+            elif hasattr(self.input_block, "outputs") and isinstance(
+                self.input_block.outputs, list
+            ):
                 # Access outputs array directly if available
                 for i, v in enumerate(self.input_block.outputs):
                     if i < len(self.input_vector):
                         self.input_vector[i] = v
-            elif hasattr(self.input_block, 'x_hat'):
+            elif hasattr(self.input_block, "x_hat"):
                 # Handle observer blocks with state estimate (KalmanFilter, etc.)
                 x_hat = self.input_block.x_hat
                 for i in range(min(len(x_hat), len(self.input_vector))):
@@ -1024,7 +1028,7 @@ class Bias(Block):
 
     def update(self):
         if self.input_block is not None:
-            if hasattr(self.input_block, 'getOutputVector'):
+            if hasattr(self.input_block, "getOutputVector"):
                 vec = self.input_block.getOutputVector()
                 if vec is not None:
                     self._is_vector = True
@@ -1096,7 +1100,7 @@ class Reshape(Block):
     def update(self):
         if self.input_block is not None:
             # Check if source has vector output
-            if hasattr(self.input_block, 'getOutputVector'):
+            if hasattr(self.input_block, "getOutputVector"):
                 vec = self.input_block.getOutputVector()
                 if vec is not None:
                     self._input_vector = vec
@@ -1162,7 +1166,7 @@ class Divide(Block):
         for i in range(2):
             block = self.input_blocks[i]
             if block is not None:
-                if hasattr(block, 'getOutputVector'):
+                if hasattr(block, "getOutputVector"):
                     vec = block.getOutputVector()
                     if vec is not None:
                         self._setup_vector_mode(len(vec))
@@ -1176,8 +1180,16 @@ class Divide(Block):
         if self._is_vector and self._output_vector:
             n = len(self._output_vector)
             for i in range(n):
-                a = self._input_vectors[0][i] if self._input_vectors[0] and i < len(self._input_vectors[0]) else self.inputs[0]
-                b = self._input_vectors[1][i] if self._input_vectors[1] and i < len(self._input_vectors[1]) else self.inputs[1]
+                a = (
+                    self._input_vectors[0][i]
+                    if self._input_vectors[0] and i < len(self._input_vectors[0])
+                    else self.inputs[0]
+                )
+                b = (
+                    self._input_vectors[1][i]
+                    if self._input_vectors[1] and i < len(self._input_vectors[1])
+                    else self.inputs[1]
+                )
                 if abs(b) > State.EPS:
                     self._output_vector[i] = a / b
                 else:
@@ -1244,7 +1256,7 @@ class Mod(Block):
         for i in range(2):
             block = self.input_blocks[i]
             if block is not None:
-                if hasattr(block, 'getOutputVector'):
+                if hasattr(block, "getOutputVector"):
                     vec = block.getOutputVector()
                     if vec is not None:
                         self._setup_vector_mode(len(vec))
@@ -1258,8 +1270,16 @@ class Mod(Block):
         if self._is_vector and self._output_vector:
             n = len(self._output_vector)
             for i in range(n):
-                a = self._input_vectors[0][i] if self._input_vectors[0] and i < len(self._input_vectors[0]) else self.inputs[0]
-                b = self._input_vectors[1][i] if self._input_vectors[1] and i < len(self._input_vectors[1]) else self.inputs[1]
+                a = (
+                    self._input_vectors[0][i]
+                    if self._input_vectors[0] and i < len(self._input_vectors[0])
+                    else self.inputs[0]
+                )
+                b = (
+                    self._input_vectors[1][i]
+                    if self._input_vectors[1] and i < len(self._input_vectors[1])
+                    else self.inputs[1]
+                )
                 if abs(b) > State.EPS:
                     self._output_vector[i] = math.fmod(a, b)
                 else:
@@ -1327,7 +1347,7 @@ class Atan2(Block):
         for i in range(2):
             block = self.input_blocks[i]
             if block is not None:
-                if hasattr(block, 'getOutputVector'):
+                if hasattr(block, "getOutputVector"):
                     vec = block.getOutputVector()
                     if vec is not None:
                         self._setup_vector_mode(len(vec))
@@ -1341,8 +1361,16 @@ class Atan2(Block):
         if self._is_vector and self._output_vector:
             n = len(self._output_vector)
             for i in range(n):
-                y = self._input_vectors[0][i] if self._input_vectors[0] and i < len(self._input_vectors[0]) else self.inputs[0]
-                x = self._input_vectors[1][i] if self._input_vectors[1] and i < len(self._input_vectors[1]) else self.inputs[1]
+                y = (
+                    self._input_vectors[0][i]
+                    if self._input_vectors[0] and i < len(self._input_vectors[0])
+                    else self.inputs[0]
+                )
+                x = (
+                    self._input_vectors[1][i]
+                    if self._input_vectors[1] and i < len(self._input_vectors[1])
+                    else self.inputs[1]
+                )
                 self._output_vector[i] = math.atan2(y, x)
             self.output = self._output_vector[0]
         else:
@@ -1366,7 +1394,7 @@ class Rounding(Block):
     Supports both scalar and vector inputs.
     """
 
-    def __init__(self, mode='round'):
+    def __init__(self, mode="round"):
         super().__init__()
         self.mode = mode  # 'floor', 'ceil', 'round', 'fix'
         self.input = 0.0
@@ -1382,13 +1410,13 @@ class Rounding(Block):
         self._output_vector = None
 
     def _compute_round(self, val):
-        if self.mode == 'floor':
+        if self.mode == "floor":
             return math.floor(val)
-        elif self.mode == 'ceil':
+        elif self.mode == "ceil":
             return math.ceil(val)
-        elif self.mode == 'round':
+        elif self.mode == "round":
             return round(val)
-        elif self.mode == 'fix':
+        elif self.mode == "fix":
             return math.trunc(val)
         return val
 
@@ -1408,7 +1436,7 @@ class Rounding(Block):
 
     def update(self):
         if self.input_block is not None:
-            if hasattr(self.input_block, 'getOutputVector'):
+            if hasattr(self.input_block, "getOutputVector"):
                 vec = self.input_block.getOutputVector()
                 if vec is not None:
                     self._is_vector = True
@@ -1447,7 +1475,7 @@ class MinMax(Block):
     Supports both scalar and vector inputs.
     """
 
-    def __init__(self, function='min', num_inputs=2):
+    def __init__(self, function="min", num_inputs=2):
         super().__init__()
         self.function = function  # 'min' or 'max'
         self.num_inputs = int(num_inputs)
@@ -1488,7 +1516,7 @@ class MinMax(Block):
         for i in range(self.num_inputs):
             block = self.input_blocks[i]
             if block is not None:
-                if hasattr(block, 'getOutputVector'):
+                if hasattr(block, "getOutputVector"):
                     vec = block.getOutputVector()
                     if vec is not None:
                         self._setup_vector_mode(len(vec))
@@ -1499,7 +1527,7 @@ class MinMax(Block):
                 else:
                     self.inputs[i] = block.getOutput(self.input_source_ports[i])
 
-        op = min if self.function == 'min' else max
+        op = min if self.function == "min" else max
 
         if self._is_vector and self._output_vector:
             n = len(self._output_vector)
@@ -1562,7 +1590,7 @@ class DotProduct(Block):
         for i in range(2):
             block = self.input_blocks[i]
             if block is not None:
-                if hasattr(block, 'getOutputVector'):
+                if hasattr(block, "getOutputVector"):
                     vec = block.getOutputVector()
                     if vec is not None:
                         self._input_vectors[i] = list(vec)
@@ -1629,7 +1657,7 @@ class CrossProduct(Block):
         for i in range(2):
             block = self.input_blocks[i]
             if block is not None:
-                if hasattr(block, 'getOutputVector'):
+                if hasattr(block, "getOutputVector"):
                     vec = block.getOutputVector()
                     if vec is not None:
                         self._input_vectors[i] = list(vec)
@@ -1707,7 +1735,7 @@ class Hypot(Block):
         for i in range(2):
             block = self.input_blocks[i]
             if block is not None:
-                if hasattr(block, 'getOutputVector'):
+                if hasattr(block, "getOutputVector"):
                     vec = block.getOutputVector()
                     if vec is not None:
                         self._setup_vector_mode(len(vec))
@@ -1721,8 +1749,16 @@ class Hypot(Block):
         if self._is_vector and self._output_vector:
             n = len(self._output_vector)
             for i in range(n):
-                x = self._input_vectors[0][i] if self._input_vectors[0] and i < len(self._input_vectors[0]) else self.inputs[0]
-                y = self._input_vectors[1][i] if self._input_vectors[1] and i < len(self._input_vectors[1]) else self.inputs[1]
+                x = (
+                    self._input_vectors[0][i]
+                    if self._input_vectors[0] and i < len(self._input_vectors[0])
+                    else self.inputs[0]
+                )
+                y = (
+                    self._input_vectors[1][i]
+                    if self._input_vectors[1] and i < len(self._input_vectors[1])
+                    else self.inputs[1]
+                )
                 self._output_vector[i] = math.hypot(x, y)
             self.output = self._output_vector[0]
         else:
@@ -1775,7 +1811,7 @@ class UnaryMinus(Block):
 
     def update(self):
         if self.input_block is not None:
-            if hasattr(self.input_block, 'getOutputVector'):
+            if hasattr(self.input_block, "getOutputVector"):
                 vec = self.input_block.getOutputVector()
                 if vec is not None:
                     self._is_vector = True
@@ -1848,7 +1884,7 @@ class SliderGain(Block):
 
     def update(self):
         if self.input_block is not None:
-            if hasattr(self.input_block, 'getOutputVector'):
+            if hasattr(self.input_block, "getOutputVector"):
                 vec = self.input_block.getOutputVector()
                 if vec is not None:
                     self._is_vector = True
@@ -1926,7 +1962,7 @@ class WeightedSum(Block):
         for i in range(self.num_inputs):
             block = self.input_blocks[i]
             if block is not None:
-                if hasattr(block, 'getOutputVector'):
+                if hasattr(block, "getOutputVector"):
                     vec = block.getOutputVector()
                     if vec is not None:
                         self._setup_vector_mode(len(vec))
@@ -1949,7 +1985,7 @@ class WeightedSum(Block):
                         self._output_vector[j] += w * self.inputs[i]
             self.output = self._output_vector[0]
         else:
-            self.output = sum(w * v for w, v in zip(self.weights, self.inputs))
+            self.output = sum(w * v for w, v in zip(self.weights, self.inputs, strict=False))
 
     def getOutput(self, port=0):
         if self._is_vector and self._output_vector and port < len(self._output_vector):
@@ -2007,7 +2043,7 @@ class Polynomial(Block):
 
     def update(self):
         if self.input_block is not None:
-            if hasattr(self.input_block, 'getOutputVector'):
+            if hasattr(self.input_block, "getOutputVector"):
                 vec = self.input_block.getOutputVector()
                 if vec is not None:
                     self._is_vector = True
@@ -2164,7 +2200,7 @@ class Sqrt(Block):
 
     def update(self):
         if self.input_block is not None:
-            if hasattr(self.input_block, 'getOutputVector'):
+            if hasattr(self.input_block, "getOutputVector"):
                 vec = self.input_block.getOutputVector()
                 if vec is not None:
                     self._is_vector = True
@@ -2234,7 +2270,7 @@ class Reciprocal(Block):
 
     def update(self):
         if self.input_block is not None:
-            if hasattr(self.input_block, 'getOutputVector'):
+            if hasattr(self.input_block, "getOutputVector"):
                 vec = self.input_block.getOutputVector()
                 if vec is not None:
                     self._is_vector = True
@@ -2250,11 +2286,11 @@ class Reciprocal(Block):
                 self.input = self.input_block.getOutput(self.input_source_port)
 
         if self._is_vector and self._input_vector:
-            self._output_vector = [1.0 / v if v != 0 else float('inf') for v in self._input_vector]
+            self._output_vector = [1.0 / v if v != 0 else float("inf") for v in self._input_vector]
             self.output = self._output_vector[0] if self._output_vector else 0.0
         else:
             self._output_vector = None
-            self.output = 1.0 / self.input if self.input != 0 else float('inf')
+            self.output = 1.0 / self.input if self.input != 0 else float("inf")
 
     def getOutput(self, port=0):
         if self._is_vector and self._output_vector and port < len(self._output_vector):
@@ -2304,7 +2340,7 @@ class Square(Block):
 
     def update(self):
         if self.input_block is not None:
-            if hasattr(self.input_block, 'getOutputVector'):
+            if hasattr(self.input_block, "getOutputVector"):
                 vec = self.input_block.getOutputVector()
                 if vec is not None:
                     self._is_vector = True
@@ -2417,7 +2453,7 @@ class Exp(Block):
 
     def update(self):
         if self.input_block is not None:
-            if hasattr(self.input_block, 'getOutputVector'):
+            if hasattr(self.input_block, "getOutputVector"):
                 vec = self.input_block.getOutputVector()
                 if vec is not None:
                     self._is_vector = True
@@ -2433,7 +2469,9 @@ class Exp(Block):
                 self.input = self.input_block.getOutput(self.input_source_port)
 
         if self._is_vector and self._input_vector:
-            self._output_vector = [math.exp(min(v, 700)) for v in self._input_vector]  # Clamp to avoid overflow
+            self._output_vector = [
+                math.exp(min(v, 700)) for v in self._input_vector
+            ]  # Clamp to avoid overflow
             self.output = self._output_vector[0] if self._output_vector else 1.0
         else:
             self._output_vector = None
@@ -2487,7 +2525,7 @@ class Log(Block):
 
     def update(self):
         if self.input_block is not None:
-            if hasattr(self.input_block, 'getOutputVector'):
+            if hasattr(self.input_block, "getOutputVector"):
                 vec = self.input_block.getOutputVector()
                 if vec is not None:
                     self._is_vector = True
@@ -2557,7 +2595,7 @@ class Log10(Block):
 
     def update(self):
         if self.input_block is not None:
-            if hasattr(self.input_block, 'getOutputVector'):
+            if hasattr(self.input_block, "getOutputVector"):
                 vec = self.input_block.getOutputVector()
                 if vec is not None:
                     self._is_vector = True

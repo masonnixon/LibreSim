@@ -6,7 +6,7 @@ from src.models.block import Block, Connection, Port, Position
 from src.models.model import Model, ModelMetadata
 from src.models.simulation import SimulationConfig, SolverType
 from src.simulation.compiler import CompiledBlock, CompiledModel, ModelCompiler
-from src.simulation.osk_adapter import OSKAdapter, BLOCK_TYPE_MAP, PARAM_MAP
+from src.simulation.osk_adapter import BLOCK_TYPE_MAP, PARAM_MAP, OSKAdapter
 
 
 class TestCompiledBlock:
@@ -123,12 +123,18 @@ class TestModelCompiler:
     def test_compile_simple_model(self):
         """Test compiling a simple model."""
         const_block = self._create_block(
-            "const-1", "constant", "Constant1", {"value": 5.0},
-            outputs=[Port(id="const-1-out-0", name="out", dataType="double", dimensions=[1])]
+            "const-1",
+            "constant",
+            "Constant1",
+            {"value": 5.0},
+            outputs=[Port(id="const-1-out-0", name="out", dataType="double", dimensions=[1])],
         )
         scope_block = self._create_block(
-            "scope-1", "scope", "Scope1", {},
-            inputs=[Port(id="scope-1-in-0", name="in", dataType="double", dimensions=[1])]
+            "scope-1",
+            "scope",
+            "Scope1",
+            {},
+            inputs=[Port(id="scope-1-in-0", name="in", dataType="double", dimensions=[1])],
         )
 
         conn = self._create_connection(
@@ -151,17 +157,26 @@ class TestModelCompiler:
     def test_compile_execution_order(self):
         """Test that execution order follows dependencies."""
         const_block = self._create_block(
-            "const-1", "constant", "Constant1", {"value": 5.0},
-            outputs=[Port(id="const-1-out-0", name="out", dataType="double", dimensions=[1])]
+            "const-1",
+            "constant",
+            "Constant1",
+            {"value": 5.0},
+            outputs=[Port(id="const-1-out-0", name="out", dataType="double", dimensions=[1])],
         )
         gain_block = self._create_block(
-            "gain-1", "gain", "Gain1", {"gain": 2.0},
+            "gain-1",
+            "gain",
+            "Gain1",
+            {"gain": 2.0},
             inputs=[Port(id="gain-1-in-0", name="in", dataType="double", dimensions=[1])],
-            outputs=[Port(id="gain-1-out-0", name="out", dataType="double", dimensions=[1])]
+            outputs=[Port(id="gain-1-out-0", name="out", dataType="double", dimensions=[1])],
         )
         scope_block = self._create_block(
-            "scope-1", "scope", "Scope1", {},
-            inputs=[Port(id="scope-1-in-0", name="in", dataType="double", dimensions=[1])]
+            "scope-1",
+            "scope",
+            "Scope1",
+            {},
+            inputs=[Port(id="scope-1-in-0", name="in", dataType="double", dimensions=[1])],
         )
 
         conn1 = self._create_connection(
@@ -194,22 +209,24 @@ class TestModelCompiler:
         """Test that algebraic loops are detected."""
         # Create a loop: gain1 -> gain2 -> gain1
         gain1 = self._create_block(
-            "gain-1", "gain", "Gain1", {"gain": 2.0},
+            "gain-1",
+            "gain",
+            "Gain1",
+            {"gain": 2.0},
             inputs=[Port(id="gain-1-in-0", name="in", dataType="double", dimensions=[1])],
-            outputs=[Port(id="gain-1-out-0", name="out", dataType="double", dimensions=[1])]
+            outputs=[Port(id="gain-1-out-0", name="out", dataType="double", dimensions=[1])],
         )
         gain2 = self._create_block(
-            "gain-2", "gain", "Gain2", {"gain": 2.0},
+            "gain-2",
+            "gain",
+            "Gain2",
+            {"gain": 2.0},
             inputs=[Port(id="gain-2-in-0", name="in", dataType="double", dimensions=[1])],
-            outputs=[Port(id="gain-2-out-0", name="out", dataType="double", dimensions=[1])]
+            outputs=[Port(id="gain-2-out-0", name="out", dataType="double", dimensions=[1])],
         )
 
-        conn1 = self._create_connection(
-            "conn-1", "gain-1", "gain-1-out-0", "gain-2", "gain-2-in-0"
-        )
-        conn2 = self._create_connection(
-            "conn-2", "gain-2", "gain-2-out-0", "gain-1", "gain-1-in-0"
-        )
+        conn1 = self._create_connection("conn-1", "gain-1", "gain-1-out-0", "gain-2", "gain-2-in-0")
+        conn2 = self._create_connection("conn-2", "gain-2", "gain-2-out-0", "gain-1", "gain-1-in-0")
 
         model = Model(
             id="model-1",
@@ -227,44 +244,48 @@ class TestModelCompiler:
         """Test that loops with integrators are not algebraic loops."""
         # Create a feedback loop with integrator: sum -> integrator -> gain -> sum
         sum_block = self._create_block(
-            "sum-1", "sum", "Sum1", {"signs": "+-"},
+            "sum-1",
+            "sum",
+            "Sum1",
+            {"signs": "+-"},
             inputs=[
                 Port(id="sum-1-in-0", name="in1", dataType="double", dimensions=[1]),
-                Port(id="sum-1-in-1", name="in2", dataType="double", dimensions=[1])
+                Port(id="sum-1-in-1", name="in2", dataType="double", dimensions=[1]),
             ],
-            outputs=[Port(id="sum-1-out-0", name="out", dataType="double", dimensions=[1])]
+            outputs=[Port(id="sum-1-out-0", name="out", dataType="double", dimensions=[1])],
         )
         integrator = self._create_block(
-            "int-1", "integrator", "Integrator1", {"initialCondition": 0.0},
+            "int-1",
+            "integrator",
+            "Integrator1",
+            {"initialCondition": 0.0},
             inputs=[Port(id="int-1-in-0", name="in", dataType="double", dimensions=[1])],
-            outputs=[Port(id="int-1-out-0", name="out", dataType="double", dimensions=[1])]
+            outputs=[Port(id="int-1-out-0", name="out", dataType="double", dimensions=[1])],
         )
         gain_block = self._create_block(
-            "gain-1", "gain", "Gain1", {"gain": 0.5},
+            "gain-1",
+            "gain",
+            "Gain1",
+            {"gain": 0.5},
             inputs=[Port(id="gain-1-in-0", name="in", dataType="double", dimensions=[1])],
-            outputs=[Port(id="gain-1-out-0", name="out", dataType="double", dimensions=[1])]
+            outputs=[Port(id="gain-1-out-0", name="out", dataType="double", dimensions=[1])],
         )
         const_block = self._create_block(
-            "const-1", "constant", "Constant1", {"value": 1.0},
-            outputs=[Port(id="const-1-out-0", name="out", dataType="double", dimensions=[1])]
+            "const-1",
+            "constant",
+            "Constant1",
+            {"value": 1.0},
+            outputs=[Port(id="const-1-out-0", name="out", dataType="double", dimensions=[1])],
         )
 
         # const -> sum (input 1)
-        conn1 = self._create_connection(
-            "conn-1", "const-1", "const-1-out-0", "sum-1", "sum-1-in-0"
-        )
+        conn1 = self._create_connection("conn-1", "const-1", "const-1-out-0", "sum-1", "sum-1-in-0")
         # sum -> integrator
-        conn2 = self._create_connection(
-            "conn-2", "sum-1", "sum-1-out-0", "int-1", "int-1-in-0"
-        )
+        conn2 = self._create_connection("conn-2", "sum-1", "sum-1-out-0", "int-1", "int-1-in-0")
         # integrator -> gain
-        conn3 = self._create_connection(
-            "conn-3", "int-1", "int-1-out-0", "gain-1", "gain-1-in-0"
-        )
+        conn3 = self._create_connection("conn-3", "int-1", "int-1-out-0", "gain-1", "gain-1-in-0")
         # gain -> sum (input 2) - feedback
-        conn4 = self._create_connection(
-            "conn-4", "gain-1", "gain-1-out-0", "sum-1", "sum-1-in-1"
-        )
+        conn4 = self._create_connection("conn-4", "gain-1", "gain-1-out-0", "sum-1", "sum-1-in-1")
 
         model = Model(
             id="model-1",
@@ -505,6 +526,7 @@ class TestOSKBlockBase:
     def test_block_init(self):
         """Test Block initialization."""
         from src.osk.block import Block
+
         block = Block()
         assert block.vState == []
         assert block.initCount == 0
@@ -512,6 +534,7 @@ class TestOSKBlockBase:
     def test_add_integrator(self):
         """Test adding an integrator."""
         from src.osk.block import Block
+
         block = Block()
         x = block.addIntegrator([1.0, 0.5])
 
@@ -522,6 +545,7 @@ class TestOSKBlockBase:
     def test_add_integrator_default(self):
         """Test adding an integrator with default values."""
         from src.osk.block import Block
+
         block = Block()
         x = block.addIntegrator()
 
@@ -532,19 +556,20 @@ class TestOSKBlockBase:
         """Test setting integration method."""
         from src.osk.block import Block
         from src.osk.state import State
-        block = Block()
-        block.set_method('Euler')
-        assert State.method == 'Euler'
 
-        block.set_method('RK4')
-        assert State.method == 'RK4'
+        block = Block()
+        block.set_method("Euler")
+        assert State.method == "Euler"
+
+        block.set_method("RK4")
+        assert State.method == "RK4"
 
     def test_propagate_states(self):
         """Test propagating states."""
         from src.osk.block import Block
         from src.osk.state import State
 
-        State.method = 'Euler'
+        State.method = "Euler"
         State.dt = 0.1
         State.kpass = 0
 
@@ -559,25 +584,29 @@ class TestOSKBlockBase:
     def test_get_output_default(self):
         """Test default getOutput."""
         from src.osk.block import Block
+
         block = Block()
         assert block.getOutput() == 0.0
 
     def test_get_output_with_state(self):
         """Test getOutput with state."""
         from src.osk.block import Block
+
         block = Block()
-        x = block.addIntegrator([5.0, 0.0])
+        block.addIntegrator([5.0, 0.0])
         assert block.getOutput(0) == 5.0
 
     def test_state_method(self):
         """Test state() method returns default."""
         from src.osk.block import Block
+
         block = Block()
         assert block.state() == [0.0, 0.0]
 
     def test_set_input_default(self):
         """Test setInput does nothing by default."""
         from src.osk.block import Block
+
         block = Block()
         # Should not raise
         block.setInput(5.0, 0)
@@ -585,6 +614,7 @@ class TestOSKBlockBase:
     def test_init_update_rpt_methods(self):
         """Test that init, update, rpt can be called."""
         from src.osk.block import Block
+
         block = Block()
         # Should not raise
         block.init()
@@ -632,8 +662,8 @@ class TestSimulationRunner:
 
     def test_runner_init(self):
         """Test SimulationRunner initialization."""
-        from src.simulation.runner import SimulationRunner
         from src.models.simulation import SimulationStatus
+        from src.simulation.runner import SimulationRunner
 
         model = self._create_simple_model()
         config = SimulationConfig(stopTime=1.0, stepSize=0.01)
@@ -658,8 +688,8 @@ class TestSimulationRunner:
 
     def test_runner_pause_resume(self):
         """Test pause and resume."""
-        from src.simulation.runner import SimulationRunner
         from src.models.simulation import SimulationStatus
+        from src.simulation.runner import SimulationRunner
 
         model = self._create_simple_model()
         runner = SimulationRunner(model, SimulationConfig())
@@ -675,8 +705,8 @@ class TestSimulationRunner:
     @pytest.mark.asyncio
     async def test_runner_run_simple(self):
         """Test running a simple simulation."""
-        from src.simulation.runner import SimulationRunner
         from src.models.simulation import SimulationStatus
+        from src.simulation.runner import SimulationRunner
 
         model = self._create_simple_model()
         config = SimulationConfig(stopTime=0.05, stepSize=0.01)
@@ -847,8 +877,18 @@ class TestMDLParserComplete:
         parser = MDLParser()
         system_data = {
             "Block": [
-                {"BlockType": "Constant", "Name": "Constant1", "Position": "[100, 100, 150, 130]", "Value": "5.0"},
-                {"BlockType": "Gain", "Name": "Gain1", "Position": "[200, 100, 250, 130]", "Gain": "2.0"},
+                {
+                    "BlockType": "Constant",
+                    "Name": "Constant1",
+                    "Position": "[100, 100, 150, 130]",
+                    "Value": "5.0",
+                },
+                {
+                    "BlockType": "Gain",
+                    "Name": "Gain1",
+                    "Position": "[200, 100, 250, 130]",
+                    "Gain": "2.0",
+                },
                 {"BlockType": "Scope", "Name": "Scope1", "Position": "[300, 100, 350, 130]"},
             ]
         }
@@ -870,7 +910,7 @@ class TestMDLParserComplete:
             "Position": "[100, 100, 150, 130]",
             "Time": "1.0",
             "Before": "0",
-            "After": "1"
+            "After": "1",
         }
 
         block = parser._convert_block(block_data, 0)
@@ -892,7 +932,7 @@ class TestMDLParserComplete:
             "Amplitude": "2.0",
             "Frequency": "1.0",
             "Phase": "0.5",
-            "Bias": "0.1"
+            "Bias": "0.1",
         }
 
         block = parser._convert_block(block_data, 0)
@@ -913,7 +953,7 @@ class TestMDLParserComplete:
             "Name": "Sat1",
             "Position": "[100, 100, 150, 130]",
             "UpperLimit": "10",
-            "LowerLimit": "-5"
+            "LowerLimit": "-5",
         }
 
         block = parser._convert_block(block_data, 0)
@@ -932,7 +972,7 @@ class TestMDLParserComplete:
             "Name": "TF1",
             "Position": "[100, 100, 150, 130]",
             "Numerator": "[1, 2]",
-            "Denominator": "[1, 3, 2]"
+            "Denominator": "[1, 3, 2]",
         }
 
         block = parser._convert_block(block_data, 0)
@@ -941,8 +981,8 @@ class TestMDLParserComplete:
 
     def test_parse_connections(self):
         """Test parsing connections from system data."""
+        from src.models.block import Block, Port, Position
         from src.parsers.mdl_parser import MDLParser
-        from src.models.block import Block, Position, Port
 
         parser = MDLParser()
 
@@ -955,7 +995,9 @@ class TestMDLParserComplete:
                 position=Position(x=100, y=100),
                 parameters={},
                 inputPorts=[],
-                outputPorts=[Port(id="block-1-out-0", name="out", dataType="double", dimensions=[1])],
+                outputPorts=[
+                    Port(id="block-1-out-0", name="out", dataType="double", dimensions=[1])
+                ],
             ),
             Block(
                 id="block-2",
@@ -964,7 +1006,9 @@ class TestMDLParserComplete:
                 position=Position(x=200, y=100),
                 parameters={},
                 inputPorts=[Port(id="block-2-in-0", name="in", dataType="double", dimensions=[1])],
-                outputPorts=[Port(id="block-2-out-0", name="out", dataType="double", dimensions=[1])],
+                outputPorts=[
+                    Port(id="block-2-out-0", name="out", dataType="double", dimensions=[1])
+                ],
             ),
         ]
 
@@ -984,8 +1028,8 @@ class TestMDLParserComplete:
 
     def test_parse_connection_invalid_source(self):
         """Test that connections with invalid source blocks are skipped."""
+        from src.models.block import Block, Port, Position
         from src.parsers.mdl_parser import MDLParser
-        from src.models.block import Block, Position, Port
 
         parser = MDLParser()
 
@@ -1016,8 +1060,8 @@ class TestMDLParserComplete:
 
     def test_parse_connection_invalid_port(self):
         """Test that connections with invalid port indices are skipped."""
+        from src.models.block import Block, Port, Position
         from src.parsers.mdl_parser import MDLParser
-        from src.models.block import Block, Position, Port
 
         parser = MDLParser()
 
@@ -1029,7 +1073,9 @@ class TestMDLParserComplete:
                 position=Position(x=100, y=100),
                 parameters={},
                 inputPorts=[],
-                outputPorts=[Port(id="block-1-out-0", name="out", dataType="double", dimensions=[1])],
+                outputPorts=[
+                    Port(id="block-1-out-0", name="out", dataType="double", dimensions=[1])
+                ],
             ),
             Block(
                 id="block-2",
@@ -1063,7 +1109,7 @@ class TestMDLParserComplete:
             "BlockType": "Integrator",
             "Name": "Int1",
             "Position": "[100, 100, 150, 130]",
-            "InitialCondition": "0.5"
+            "InitialCondition": "0.5",
         }
 
         block = parser._convert_block(block_data, 0)
@@ -1207,7 +1253,7 @@ class TestOSKAdapterExtended:
             parameters={"signs": "++"},
             input_connections=[
                 "const-1:const-1-out-0@sum-1-in-0",
-                "const-2:const-2-out-0@sum-1-in-1"
+                "const-2:const-2-out-0@sum-1-in-1",
             ],
         )
 
@@ -1448,7 +1494,7 @@ class TestOSKAdapterExtended:
             parameters={"numInputs": 2},
             input_connections=[
                 "const-1:const-1-out-0@scope-1-in-0",
-                "const-2:const-2-out-0@scope-1-in-1"
+                "const-2:const-2-out-0@scope-1-in-1",
             ],
         )
 
@@ -1582,7 +1628,7 @@ class TestOSKAdapterExtended:
             parameters={"numInputs": 2},
             input_connections=[
                 "const-1:const-1-out-0@scope-1-in-0",
-                "const-2:const-2-out-0@scope-1-in-1"
+                "const-2:const-2-out-0@scope-1-in-1",
             ],
         )
 
@@ -1606,19 +1652,52 @@ class TestOSKAdapterExtended:
         from src.simulation.osk_adapter import PARAM_MAP
 
         block_types = [
-            "constant", "step", "ramp", "sine_wave", "pulse_generator",
-            "scope", "to_workspace",
-            "integrator", "derivative", "transfer_function", "state_space", "pid_controller",
-            "unit_delay", "zero_order_hold", "discrete_integrator", "discrete_derivative",
+            "constant",
+            "step",
+            "ramp",
+            "sine_wave",
+            "pulse_generator",
+            "scope",
+            "to_workspace",
+            "integrator",
+            "derivative",
+            "transfer_function",
+            "state_space",
+            "pid_controller",
+            "unit_delay",
+            "zero_order_hold",
+            "discrete_integrator",
+            "discrete_derivative",
             "discrete_transfer_function",
-            "sum", "gain", "product", "saturation", "dead_zone", "math_function",
-            "trigonometry", "switch", "mux", "demux", "reshape",
-            "inport", "outport", "subsystem",
-            "rate_limiter", "moving_average", "low_pass_filter", "high_pass_filter",
-            "band_pass_filter", "backlash",
-            "lookup_table_1d", "lookup_table_2d", "quantizer", "relay",
-            "coulomb_friction", "variable_transport_delay",
-            "luenberger_observer", "kalman_filter", "extended_kalman_filter",
+            "sum",
+            "gain",
+            "product",
+            "saturation",
+            "dead_zone",
+            "math_function",
+            "trigonometry",
+            "switch",
+            "mux",
+            "demux",
+            "reshape",
+            "inport",
+            "outport",
+            "subsystem",
+            "rate_limiter",
+            "moving_average",
+            "low_pass_filter",
+            "high_pass_filter",
+            "band_pass_filter",
+            "backlash",
+            "lookup_table_1d",
+            "lookup_table_2d",
+            "quantizer",
+            "relay",
+            "coulomb_friction",
+            "variable_transport_delay",
+            "luenberger_observer",
+            "kalman_filter",
+            "extended_kalman_filter",
         ]
 
         for bt in block_types:
@@ -1626,7 +1705,6 @@ class TestOSKAdapterExtended:
 
     def test_create_all_osk_block_types(self):
         """Test creating OSK blocks for various types."""
-        from src.simulation.osk_adapter import BLOCK_TYPE_MAP
 
         # Test creating a sample of different block types
         test_blocks = [
@@ -1709,9 +1787,10 @@ class TestSimulationRunnerExtended:
     @pytest.mark.asyncio
     async def test_runner_stop_during_run(self):
         """Test stopping simulation during run."""
-        from src.simulation.runner import SimulationRunner
-        from src.models.simulation import SimulationStatus
         import asyncio
+
+        from src.models.simulation import SimulationStatus
+        from src.simulation.runner import SimulationRunner
 
         model = self._create_simple_model()
         config = SimulationConfig(stopTime=10.0, stepSize=0.001)  # Long simulation
@@ -1733,8 +1812,8 @@ class TestSimulationRunnerExtended:
     @pytest.mark.asyncio
     async def test_runner_pause_resume(self):
         """Test pausing and resuming - verify pause state without running full sim."""
-        from src.simulation.runner import SimulationRunner
         from src.models.simulation import SimulationStatus
+        from src.simulation.runner import SimulationRunner
 
         model = self._create_simple_model()
         config = SimulationConfig(stopTime=1.0, stepSize=0.01)
@@ -1753,8 +1832,8 @@ class TestSimulationRunnerExtended:
     @pytest.mark.asyncio
     async def test_runner_compilation_error(self):
         """Test runner handles compilation errors."""
-        from src.simulation.runner import SimulationRunner
         from src.models.simulation import SimulationStatus
+        from src.simulation.runner import SimulationRunner
 
         # Create invalid model (loop without state-holding block)
         gain1 = Block(
@@ -1847,12 +1926,18 @@ class TestModelCompilerExtended:
         """Test topological sort with disconnected blocks."""
         # Create two blocks that aren't connected
         const1 = self._create_block(
-            "const-1", "constant", "Constant1", {"value": 1.0},
-            outputs=[Port(id="const-1-out-0", name="out", dataType="double", dimensions=[1])]
+            "const-1",
+            "constant",
+            "Constant1",
+            {"value": 1.0},
+            outputs=[Port(id="const-1-out-0", name="out", dataType="double", dimensions=[1])],
         )
         const2 = self._create_block(
-            "const-2", "constant", "Constant2", {"value": 2.0},
-            outputs=[Port(id="const-2-out-0", name="out", dataType="double", dimensions=[1])]
+            "const-2",
+            "constant",
+            "Constant2",
+            {"value": 2.0},
+            outputs=[Port(id="const-2-out-0", name="out", dataType="double", dimensions=[1])],
         )
 
         model = Model(
@@ -1871,30 +1956,40 @@ class TestModelCompilerExtended:
         """Test compiling model with subsystem containing children."""
         # Create a simple model with a subsystem
         const_block = self._create_block(
-            "const-1", "constant", "Constant1", {"value": 1.0},
-            outputs=[Port(id="const-1-out-0", name="out", dataType="double", dimensions=[1])]
+            "const-1",
+            "constant",
+            "Constant1",
+            {"value": 1.0},
+            outputs=[Port(id="const-1-out-0", name="out", dataType="double", dimensions=[1])],
         )
 
         # Create child blocks for subsystem
         inport = self._create_block(
-            "in-1", "inport", "In1", {"portNumber": 1},
+            "in-1",
+            "inport",
+            "In1",
+            {"portNumber": 1},
             inputs=[Port(id="in-1-in-0", name="in", dataType="double", dimensions=[1])],
-            outputs=[Port(id="in-1-out-0", name="out", dataType="double", dimensions=[1])]
+            outputs=[Port(id="in-1-out-0", name="out", dataType="double", dimensions=[1])],
         )
         gain = self._create_block(
-            "gain-1", "gain", "Gain1", {"gain": 2.0},
+            "gain-1",
+            "gain",
+            "Gain1",
+            {"gain": 2.0},
             inputs=[Port(id="gain-1-in-0", name="in", dataType="double", dimensions=[1])],
-            outputs=[Port(id="gain-1-out-0", name="out", dataType="double", dimensions=[1])]
+            outputs=[Port(id="gain-1-out-0", name="out", dataType="double", dimensions=[1])],
         )
         outport = self._create_block(
-            "out-1", "outport", "Out1", {"portNumber": 1},
+            "out-1",
+            "outport",
+            "Out1",
+            {"portNumber": 1},
             inputs=[Port(id="out-1-in-0", name="in", dataType="double", dimensions=[1])],
-            outputs=[Port(id="out-1-out-0", name="out", dataType="double", dimensions=[1])]
+            outputs=[Port(id="out-1-out-0", name="out", dataType="double", dimensions=[1])],
         )
 
-        child_conn1 = self._create_connection(
-            "cc-1", "in-1", "in-1-out-0", "gain-1", "gain-1-in-0"
-        )
+        child_conn1 = self._create_connection("cc-1", "in-1", "in-1-out-0", "gain-1", "gain-1-in-0")
         child_conn2 = self._create_connection(
             "cc-2", "gain-1", "gain-1-out-0", "out-1", "out-1-in-0"
         )
@@ -1912,16 +2007,15 @@ class TestModelCompilerExtended:
         )
 
         scope_block = self._create_block(
-            "scope-1", "scope", "Scope1", {},
-            inputs=[Port(id="scope-1-in-0", name="in", dataType="double", dimensions=[1])]
+            "scope-1",
+            "scope",
+            "Scope1",
+            {},
+            inputs=[Port(id="scope-1-in-0", name="in", dataType="double", dimensions=[1])],
         )
 
-        conn1 = self._create_connection(
-            "conn-1", "const-1", "const-1-out-0", "sub-1", "sub-1-in-0"
-        )
-        conn2 = self._create_connection(
-            "conn-2", "sub-1", "sub-1-out-0", "scope-1", "scope-1-in-0"
-        )
+        conn1 = self._create_connection("conn-1", "const-1", "const-1-out-0", "sub-1", "sub-1-in-0")
+        conn2 = self._create_connection("conn-2", "sub-1", "sub-1-out-0", "scope-1", "scope-1-in-0")
 
         model = Model(
             id="model-1",
@@ -1938,8 +2032,11 @@ class TestModelCompilerExtended:
     def test_compile_preserves_parameters(self):
         """Test that compilation preserves block parameters."""
         const_block = self._create_block(
-            "const-1", "constant", "Constant1", {"value": 42.0},
-            outputs=[Port(id="const-1-out-0", name="out", dataType="double", dimensions=[1])]
+            "const-1",
+            "constant",
+            "Constant1",
+            {"value": 42.0},
+            outputs=[Port(id="const-1-out-0", name="out", dataType="double", dimensions=[1])],
         )
 
         model = Model(

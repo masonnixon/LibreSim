@@ -104,16 +104,29 @@ class ModelService:
                 port_key = f"{block.id}:{port.id}"
                 if port_key not in connected_inputs:
                     # Some blocks like sources don't need inputs
-                    if block.type not in ["constant", "step", "ramp", "sine_wave",
-                                           "pulse_generator", "clock", "from"]:
+                    if block.type not in [
+                        "constant",
+                        "step",
+                        "ramp",
+                        "sine_wave",
+                        "pulse_generator",
+                        "clock",
+                        "from",
+                    ]:
                         errors.append(f"Block '{block.name}' has unconnected input '{port.name}'")
 
             # Check outputs are used (warning only)
             for port in block.output_ports:
                 port_key = f"{block.id}:{port.id}"
                 if port_key not in connected_outputs:
-                    if block.type not in ["scope", "display", "to_workspace",
-                                           "xy_graph", "terminator", "goto"]:
+                    if block.type not in [
+                        "scope",
+                        "display",
+                        "to_workspace",
+                        "xy_graph",
+                        "terminator",
+                        "goto",
+                    ]:
                         warnings.append(
                             f"Block '{block.name}' output '{port.name}' is not connected"
                         )

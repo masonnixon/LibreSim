@@ -1,12 +1,22 @@
 """Unit tests for DSP Toolbox blocks."""
 
 import math
-import pytest
 
 from src.osk.blocks.dsp import (
-    FFT, IFFT, FIRFilter, IIRFilter, Convolution,
-    Downsampler, Upsampler, Interpolator, WindowFunction,
-    Mean, Variance, RMS, PeakDetector, ZeroCrossingDetector
+    FFT,
+    IFFT,
+    RMS,
+    Convolution,
+    Downsampler,
+    FIRFilter,
+    IIRFilter,
+    Interpolator,
+    Mean,
+    PeakDetector,
+    Upsampler,
+    Variance,
+    WindowFunction,
+    ZeroCrossingDetector,
 )
 
 
@@ -38,7 +48,7 @@ class TestFFT:
         output = fft.getOutputVector()
 
         # Bin 2 should have significant energy
-        mag_bin2 = math.sqrt(output[4]**2 + output[5]**2)
+        mag_bin2 = math.sqrt(output[4] ** 2 + output[5] ** 2)
         assert mag_bin2 > 1.0
 
     def test_symmetry(self):
@@ -52,7 +62,7 @@ class TestFFT:
         output = fft.getOutputVector()
         # For an even-symmetric input, imaginary parts should be ~0
         for i in range(8):
-            assert abs(output[2*i + 1]) < 1e-10
+            assert abs(output[2 * i + 1]) < 1e-10
 
 
 class TestIFFT:
@@ -125,7 +135,7 @@ class TestIIRFilter:
         iir = IIRFilter(numerator=[0.5], denominator=[1.0, -0.5])
 
         # Step input
-        for i in range(10):
+        for _i in range(10):
             iir.setInput(1.0)
             iir.update()
 
@@ -238,7 +248,7 @@ class TestWindowFunction:
 
         output = win.getOutputVector()
         for i in range(4):
-            assert abs(output[i] - output[7-i]) < 1e-10
+            assert abs(output[i] - output[7 - i]) < 1e-10
 
     def test_hanning_endpoints(self):
         """Hanning window should be zero at endpoints."""

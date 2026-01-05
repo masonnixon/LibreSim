@@ -30,6 +30,7 @@ class DataType(str, Enum):
 
 class Port(BaseModel):
     """Port definition for a block."""
+
     model_config = ConfigDict(populate_by_name=True)
 
     id: str
@@ -91,6 +92,7 @@ class Position(BaseModel):
 
 class Block(BaseModel):
     """Instance of a block in a model."""
+
     model_config = ConfigDict(populate_by_name=True)
 
     id: str
@@ -108,6 +110,7 @@ class Block(BaseModel):
 
 class Connection(BaseModel):
     """Connection between blocks."""
+
     model_config = ConfigDict(populate_by_name=True)
 
     id: str
