@@ -256,7 +256,7 @@ export function Scope3DWindow({
 
       {/* Content - hidden when minimized */}
       {!isMinimized && (
-        <div className="flex-1 flex flex-col p-2 min-h-0">
+        <div className="flex-1 flex flex-col min-h-0">
           <div className="flex-1 min-h-0">
             {!signal.x || signal.x.length === 0 ? (
               <div className="h-full flex items-center justify-center text-gray-400 text-sm">
@@ -267,10 +267,11 @@ export function Scope3DWindow({
                 data={plotData}
                 layout={{
                   autosize: true,
-                  margin: { l: 5, r: 5, t: 5, b: 5 },
+                  margin: { l: 0, r: 0, t: 0, b: 0 },
                   paper_bgcolor: 'transparent',
                   scene: {
                     bgcolor: '#1e1e2e',
+                    domain: { x: [0, 1], y: [0, 1] },
                     xaxis: {
                       title: { text: axisLabels[0], font: { size: 10, color: '#cdd6f4' } },
                       gridcolor: '#45475a',
