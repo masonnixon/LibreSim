@@ -9,12 +9,11 @@ This script:
 """
 
 import asyncio
+import csv
 import json
-import os
 import shutil
 import subprocess
 import sys
-import tempfile
 import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -30,6 +29,7 @@ from src.models.simulation import SimulationConfig
 
 EXAMPLES_DIR = REPO_ROOT / "examples"
 CODEGEN_DIR = REPO_ROOT / "codegen_verification"
+BUILDS_DIR = CODEGEN_DIR / "builds"
 OUTPUT_DIR = REPO_ROOT / "docs"
 
 LANGUAGES = ["python", "cpp", "c", "rust"]
@@ -66,8 +66,15 @@ class ValidationResult:
     notes: str = ""
 
 
-async def run_headless_simulation_async(example_path: Path) -> dict[str, Any]:
-    """Run headless simulation and return final values."""
+async def run_headless_simulation_async(
+    example_path: Path, output_dir: Path | None = None
+) -> dict[str, Any]:
+    """Run headless simulation and return final values.
+
+    Args:
+        example_path: Path to the example JSON file
+        output_dir: Optional directory to save results CSV
+    """
     with open(example_path) as f:
         model_data = json.load(f)
 
@@ -93,22 +100,51 @@ async def run_headless_simulation_async(example_path: Path) -> dict[str, Any]:
 
     results = runner.get_results()
 
-    # Get final values for each output signal
+    # Get final values for each output signal and collect all time series data
     final_values = {}
+    all_series: dict[str, list[float]] = {}
+    times: list[float] = []
+
     if results.get("signals"):
         for signal in results["signals"]:
             name = signal.get("name", "")
             values = signal.get("values", [])
+            signal_times = signal.get("times", [])
+
+            # Use times from first signal with data
+            if signal_times and not times:
+                times = signal_times
+
             if values:
                 # Handle both single-trace and multi-trace cases
                 if isinstance(values[0], list):
-                    # Multi-trace: get last value from first trace
+                    # Multi-trace: get last value from each trace
                     for i, input_name in enumerate(signal.get("inputNames", [])):
                         if values[i]:
                             final_values[input_name] = values[i][-1]
+                            all_series[input_name] = values[i]
                 else:
                     # Single-trace: get last value
                     final_values[name] = values[-1]
+                    all_series[name] = values
+
+    # Save results to CSV if output directory specified
+    if output_dir is not None:
+        output_dir.mkdir(parents=True, exist_ok=True)
+        csv_path = output_dir / "headless_results.csv"
+
+        with open(csv_path, "w", newline="") as f:
+            writer = csv.writer(f)
+            # Header
+            headers = ["time"] + list(all_series.keys())
+            writer.writerow(headers)
+            # Data rows
+            num_points = len(times) if times else (len(next(iter(all_series.values()))) if all_series else 0)
+            for i in range(num_points):
+                row = [times[i] if times else i * step_size]
+                for key in all_series:
+                    row.append(all_series[key][i] if i < len(all_series[key]) else "")
+                writer.writerow(row)
 
     return {
         "success": True,
@@ -117,13 +153,19 @@ async def run_headless_simulation_async(example_path: Path) -> dict[str, Any]:
     }
 
 
-def run_headless_simulation(example_path: Path) -> dict[str, Any]:
+def run_headless_simulation(example_path: Path, output_dir: Path | None = None) -> dict[str, Any]:
     """Sync wrapper for async headless simulation."""
-    return asyncio.run(run_headless_simulation_async(example_path))
+    return asyncio.run(run_headless_simulation_async(example_path, output_dir))
 
 
-def build_and_run_codegen(zip_path: Path, language: str) -> dict[str, Any]:
-    """Extract, build, and run generated code. Return final CSV values."""
+def build_and_run_codegen(zip_path: Path, language: str, build_dir: Path) -> dict[str, Any]:
+    """Extract, build, and run generated code. Return final CSV values.
+
+    Args:
+        zip_path: Path to the codegen zip file
+        language: Target language (python, cpp, c, rust)
+        build_dir: Directory to extract and build in (persistent)
+    """
     result = {
         "build_success": False,
         "build_error": "",
@@ -132,126 +174,127 @@ def build_and_run_codegen(zip_path: Path, language: str) -> dict[str, Any]:
         "final_values": {},
     }
 
-    # Use ignore_cleanup_errors=True on Windows to handle locked files
-    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmpdir:
-        tmpdir_path = Path(tmpdir)
+    # Clean and recreate build directory
+    if build_dir.exists():
+        shutil.rmtree(build_dir, ignore_errors=True)
+    build_dir.mkdir(parents=True, exist_ok=True)
 
-        # Extract zip
-        try:
-            with zipfile.ZipFile(zip_path, 'r') as zf:
-                zf.extractall(tmpdir_path)
-        except Exception as e:
-            result["build_error"] = f"Extract failed: {e}"
-            return result
+    # Extract zip
+    try:
+        with zipfile.ZipFile(zip_path, 'r') as zf:
+            zf.extractall(build_dir)
+    except Exception as e:
+        result["build_error"] = f"Extract failed: {e}"
+        return result
 
-        # Find the project directory
-        project_dirs = list(tmpdir_path.iterdir())
-        if not project_dirs:
-            result["build_error"] = "No project directory found in zip"
-            return result
+    # Find the project directory (zip contains a folder with project name)
+    project_dirs = [d for d in build_dir.iterdir() if d.is_dir()]
+    if not project_dirs:
+        # Files extracted directly to build_dir
+        project_dir = build_dir
+    else:
         project_dir = project_dirs[0]
 
-        # Make build.sh executable and run it
-        build_script = project_dir / "build.sh"
-        if not build_script.exists():
-            result["build_error"] = "No build.sh found"
-            return result
+    # Make build.sh executable and run it
+    build_script = project_dir / "build.sh"
+    if not build_script.exists():
+        result["build_error"] = "No build.sh found"
+        return result
 
-        # For compiled languages (cpp, c, rust), build.sh handles Docker internally
-        # So we just run build.sh directly using bash
-        if language in ["cpp", "c", "rust"]:
-            try:
-                # Run build.sh directly - it handles Docker build/run internally
-                # Use shell=True on Windows to get proper path handling
-                import platform
-                if platform.system() == "Windows":
-                    # On Windows, run bash with the script in cwd
-                    build_result = subprocess.run(
-                        ["bash", "build.sh"],
-                        capture_output=True,
-                        text=True,
-                        timeout=300,  # 5 minutes for Docker build + run
-                        cwd=str(project_dir),
-                    )
-                else:
-                    build_result = subprocess.run(
-                        ["bash", str(build_script)],
-                        capture_output=True,
-                        text=True,
-                        timeout=300,
-                        cwd=str(project_dir),
-                    )
-                if build_result.returncode != 0:
-                    # Include both stdout and stderr for better diagnostics
-                    error_msg = build_result.stderr or build_result.stdout or "Unknown error"
-                    result["build_error"] = error_msg[:500]
-                    return result
-                result["build_success"] = True
-            except subprocess.TimeoutExpired:
-                result["build_error"] = "Build timeout (5 min)"
-                return result
-            except Exception as e:
-                result["build_error"] = str(e)
-                return result
-
-        elif language == "python":
-            # For Python, just run the script directly
-            main_script = project_dir / "main.py"
-            if not main_script.exists():
-                result["build_error"] = "No main.py found"
-                return result
-
-            result["build_success"] = True
-
-            try:
-                run_result = subprocess.run(
-                    [sys.executable, str(main_script)],
+    # For compiled languages (cpp, c, rust), build.sh handles Docker internally
+    # So we just run build.sh directly using bash
+    if language in ["cpp", "c", "rust"]:
+        try:
+            # Run build.sh directly - it handles Docker build/run internally
+            import platform
+            if platform.system() == "Windows":
+                # On Windows, run bash with the script in cwd
+                build_result = subprocess.run(
+                    ["bash", "build.sh"],
                     capture_output=True,
                     text=True,
-                    timeout=60,
-                    cwd=str(project_dir)
+                    timeout=300,  # 5 minutes for Docker build + run
+                    cwd=str(project_dir),
                 )
-                if run_result.returncode != 0:
-                    result["run_error"] = run_result.stderr[:500] if run_result.stderr else "Unknown error"
-                    return result
-            except subprocess.TimeoutExpired:
-                result["run_error"] = "Run timeout"
+            else:
+                build_result = subprocess.run(
+                    ["bash", str(build_script)],
+                    capture_output=True,
+                    text=True,
+                    timeout=300,
+                    cwd=str(project_dir),
+                )
+            if build_result.returncode != 0:
+                # Include both stdout and stderr for better diagnostics
+                error_msg = build_result.stderr or build_result.stdout or "Unknown error"
+                result["build_error"] = error_msg[:500]
                 return result
-            except Exception as e:
-                result["run_error"] = str(e)
-                return result
-
-        # Read the results CSV
-        results_csv = project_dir / "output" / "results.csv"
-        if not results_csv.exists():
-            results_csv = project_dir / "results.csv"
-
-        if not results_csv.exists():
-            result["run_error"] = "No results.csv found"
+            result["build_success"] = True
+        except subprocess.TimeoutExpired:
+            result["build_error"] = "Build timeout (5 min)"
             return result
-
-        result["run_success"] = True
-
-        # Parse CSV and get final values
-        try:
-            with open(results_csv) as f:
-                lines = f.readlines()
-                if len(lines) < 2:
-                    result["run_error"] = "Results CSV is empty"
-                    return result
-
-                headers = lines[0].strip().split(",")
-                last_line = lines[-1].strip().split(",")
-
-                for i, header in enumerate(headers):
-                    if header.lower() != "time" and i < len(last_line):
-                        try:
-                            result["final_values"][header] = float(last_line[i])
-                        except ValueError:
-                            pass
         except Exception as e:
-            result["run_error"] = f"CSV parse error: {e}"
+            result["build_error"] = str(e)
             return result
+
+    elif language == "python":
+        # For Python, just run the script directly
+        main_script = project_dir / "main.py"
+        if not main_script.exists():
+            result["build_error"] = "No main.py found"
+            return result
+
+        result["build_success"] = True
+
+        try:
+            run_result = subprocess.run(
+                [sys.executable, str(main_script)],
+                capture_output=True,
+                text=True,
+                timeout=60,
+                cwd=str(project_dir)
+            )
+            if run_result.returncode != 0:
+                result["run_error"] = run_result.stderr[:500] if run_result.stderr else "Unknown error"
+                return result
+        except subprocess.TimeoutExpired:
+            result["run_error"] = "Run timeout"
+            return result
+        except Exception as e:
+            result["run_error"] = str(e)
+            return result
+
+    # Read the results CSV
+    results_csv = project_dir / "output" / "results.csv"
+    if not results_csv.exists():
+        results_csv = project_dir / "results.csv"
+
+    if not results_csv.exists():
+        result["run_error"] = "No results.csv found"
+        return result
+
+    result["run_success"] = True
+
+    # Parse CSV and get final values
+    try:
+        with open(results_csv) as f:
+            lines = f.readlines()
+            if len(lines) < 2:
+                result["run_error"] = "Results CSV is empty"
+                return result
+
+            headers = lines[0].strip().split(",")
+            last_line = lines[-1].strip().split(",")
+
+            for i, header in enumerate(headers):
+                if header.lower() != "time" and i < len(last_line):
+                    try:
+                        result["final_values"][header] = float(last_line[i])
+                    except ValueError:
+                        pass
+    except Exception as e:
+        result["run_error"] = f"CSV parse error: {e}"
+        return result
 
     return result
 
@@ -268,9 +311,12 @@ def validate_example(example_name: str) -> list[ValidationResult]:
             results.append(result)
         return results
 
-    # Run headless simulation
+    # Create headless output directory
+    headless_output_dir = BUILDS_DIR / f"{example_name}_headless"
+
+    # Run headless simulation and save results
     try:
-        headless = run_headless_simulation(example_path)
+        headless = run_headless_simulation(example_path, headless_output_dir)
         headless_success = headless["success"]
         headless_final = headless["final_values"]
     except Exception as e:
@@ -298,8 +344,11 @@ def validate_example(example_name: str) -> list[ValidationResult]:
             results.append(result)
             continue
 
+        # Build directory for this example/language
+        build_dir = BUILDS_DIR / f"{example_name}_{lang}"
+
         # Build and run
-        codegen_result = build_and_run_codegen(zip_path, lang)
+        codegen_result = build_and_run_codegen(zip_path, lang, build_dir)
         result.build_success = codegen_result["build_success"]
         result.build_error = codegen_result["build_error"]
         result.run_success = codegen_result["run_success"]
@@ -415,7 +464,7 @@ def generate_report(all_results: list[ValidationResult]) -> str:
             lines.append(f"### {result.example} ({result.language})")
             lines.append("")
             if not result.headless_success:
-                lines.append(f"- Headless simulation failed")
+                lines.append("- Headless simulation failed")
             if not result.build_success:
                 lines.append(f"- Build failed: {result.build_error[:200]}")
             elif not result.run_success:
@@ -432,6 +481,7 @@ def generate_report(all_results: list[ValidationResult]) -> str:
 def main():
     """Run validation for all examples."""
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    BUILDS_DIR.mkdir(parents=True, exist_ok=True)
 
     all_examples = sorted([p.stem for p in EXAMPLES_DIR.glob("*.json")])
     # Filter out stochastic examples that can't be deterministically compared
