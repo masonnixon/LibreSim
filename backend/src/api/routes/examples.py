@@ -263,6 +263,13 @@ EXAMPLE_MANIFEST: list[dict[str, str]] = [
         "description": "Position/velocity/acceleration tracking filter comparison",
         "category": "sensor_fusion",
     },
+    # 3D Visualization
+    {
+        "id": "50_lorenz_attractor_3d",
+        "name": "Lorenz Attractor (3D)",
+        "description": "Classic chaotic attractor visualized with 3D Scope",
+        "category": "advanced",
+    },
 ]
 
 

@@ -184,6 +184,10 @@ class SimulationRunner:
                 del block_data["numInputs"]
             signals.append(block_data)
 
+        # Collect data from special sink blocks that use getData() (3D scopes, etc.)
+        # These blocks accumulate data internally rather than outputting scalars per step
+        signals.extend(self._adapter.get_scope_data())
+
         # Get analysis data from control analysis blocks
         analyses = self._adapter.get_analysis_data()
 

@@ -185,10 +185,41 @@ double {struct_name}_get_output({struct_name}* b, int port) {{
 """
 
 
+def template_scope_3d(block: BlockInfo, struct_name: str) -> str:
+    """Generate C code for 3D Scope block."""
+    return f"""
+// {block.name} - 3D Scope
+typedef struct {{
+    double input;   // X input
+    double input1;  // Y input
+    double input2;  // Z input
+}} {struct_name};
+
+void {struct_name}_init({struct_name}* b) {{
+    b->input = 0.0;
+    b->input1 = 0.0;
+    b->input2 = 0.0;
+}}
+
+void {struct_name}_update({struct_name}* b, double t) {{
+    (void)t;
+    (void)b;
+}}
+
+double {struct_name}_get_output({struct_name}* b, int port) {{
+    if (port == 0) return b->input;
+    if (port == 1) return b->input1;
+    if (port == 2) return b->input2;
+    return b->input;
+}}
+"""
+
+
 SINK_TEMPLATES = {
     "scope": template_scope,
     "display": template_display,
     "terminator": template_terminator,
     "to_workspace": template_to_workspace,
     "xy_graph": template_xy_graph,
+    "scope_3d": template_scope_3d,
 }

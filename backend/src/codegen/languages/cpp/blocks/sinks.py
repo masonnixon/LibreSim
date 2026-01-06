@@ -188,10 +188,38 @@ private:
 """
 
 
+def template_scope_3d(block: BlockInfo, class_name: str) -> str:
+    """Generate C++ code for 3D Scope block."""
+    return f"""
+// {block.name} - 3D Scope
+class {class_name} {{
+public:
+    double input = 0.0;   // X input
+    double input1 = 0.0;  // Y input
+    double input2 = 0.0;  // Z input
+
+    void init() {{
+    }}
+
+    void update(double t) {{
+        (void)t;
+    }}
+
+    double get_output(int port = 0) const {{
+        if (port == 0) return input;
+        if (port == 1) return input1;
+        if (port == 2) return input2;
+        return input;
+    }}
+}};
+"""
+
+
 SINK_TEMPLATES = {
     "scope": template_scope,
     "display": template_display,
     "terminator": template_terminator,
     "to_workspace": template_to_workspace,
     "xy_graph": template_xy_graph,
+    "scope_3d": template_scope_3d,
 }

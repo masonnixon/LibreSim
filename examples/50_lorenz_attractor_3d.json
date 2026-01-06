@@ -1,0 +1,222 @@
+{
+  "id": "example-lorenz-attractor-3d",
+  "metadata": {
+    "name": "Lorenz Attractor (3D)",
+    "description": "The classic Lorenz strange attractor - a chaotic dynamical system that produces a butterfly-shaped trajectory in 3D phase space. Demonstrates the 3D Scope block with the famous Lorenz equations: dx/dt = sigma*(y-x), dy/dt = x*(rho-z)-y, dz/dt = x*y-beta*z.",
+    "author": "LibreSim Examples",
+    "createdAt": "2025-01-05T00:00:00Z",
+    "modifiedAt": "2025-01-05T00:00:00Z",
+    "version": "1.0.0"
+  },
+  "blocks": [
+    {
+      "id": "x_integrator",
+      "type": "integrator",
+      "name": "X Integrator",
+      "position": { "x": 400, "y": 100 },
+      "parameters": { "initialCondition": 1.0 },
+      "inputPorts": [{ "id": "x_integrator-in", "name": "in", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": [{ "id": "x_integrator-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "y_integrator",
+      "type": "integrator",
+      "name": "Y Integrator",
+      "position": { "x": 400, "y": 200 },
+      "parameters": { "initialCondition": 1.0 },
+      "inputPorts": [{ "id": "y_integrator-in", "name": "in", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": [{ "id": "y_integrator-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "z_integrator",
+      "type": "integrator",
+      "name": "Z Integrator",
+      "position": { "x": 400, "y": 300 },
+      "parameters": { "initialCondition": 1.0 },
+      "inputPorts": [{ "id": "z_integrator-in", "name": "in", "dataType": "double", "dimensions": [1] }],
+      "outputPorts": [{ "id": "z_integrator-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "sigma",
+      "type": "constant",
+      "name": "Sigma (10)",
+      "position": { "x": 50, "y": 50 },
+      "parameters": { "value": 10.0 },
+      "inputPorts": [],
+      "outputPorts": [{ "id": "sigma-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "rho",
+      "type": "constant",
+      "name": "Rho (28)",
+      "position": { "x": 50, "y": 150 },
+      "parameters": { "value": 28.0 },
+      "inputPorts": [],
+      "outputPorts": [{ "id": "rho-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "beta",
+      "type": "constant",
+      "name": "Beta (8/3)",
+      "position": { "x": 50, "y": 250 },
+      "parameters": { "value": 2.666666666666667 },
+      "inputPorts": [],
+      "outputPorts": [{ "id": "beta-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "y_minus_x",
+      "type": "sum",
+      "name": "y - x",
+      "position": { "x": 150, "y": 100 },
+      "parameters": { "signs": "+-" },
+      "inputPorts": [
+        { "id": "y_minus_x-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
+        { "id": "y_minus_x-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [{ "id": "y_minus_x-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "sigma_times_diff",
+      "type": "product",
+      "name": "sigma*(y-x)",
+      "position": { "x": 250, "y": 100 },
+      "parameters": { "inputs": "**" },
+      "inputPorts": [
+        { "id": "sigma_times_diff-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
+        { "id": "sigma_times_diff-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [{ "id": "sigma_times_diff-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "rho_minus_z",
+      "type": "sum",
+      "name": "rho - z",
+      "position": { "x": 150, "y": 200 },
+      "parameters": { "signs": "+-" },
+      "inputPorts": [
+        { "id": "rho_minus_z-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
+        { "id": "rho_minus_z-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [{ "id": "rho_minus_z-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "x_times_rho_z",
+      "type": "product",
+      "name": "x*(rho-z)",
+      "position": { "x": 250, "y": 200 },
+      "parameters": { "inputs": "**" },
+      "inputPorts": [
+        { "id": "x_times_rho_z-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
+        { "id": "x_times_rho_z-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [{ "id": "x_times_rho_z-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "dy_dt",
+      "type": "sum",
+      "name": "x*(rho-z) - y",
+      "position": { "x": 320, "y": 200 },
+      "parameters": { "signs": "+-" },
+      "inputPorts": [
+        { "id": "dy_dt-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
+        { "id": "dy_dt-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [{ "id": "dy_dt-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "x_times_y",
+      "type": "product",
+      "name": "x*y",
+      "position": { "x": 150, "y": 300 },
+      "parameters": { "inputs": "**" },
+      "inputPorts": [
+        { "id": "x_times_y-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
+        { "id": "x_times_y-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [{ "id": "x_times_y-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "beta_times_z",
+      "type": "product",
+      "name": "beta*z",
+      "position": { "x": 250, "y": 300 },
+      "parameters": { "inputs": "**" },
+      "inputPorts": [
+        { "id": "beta_times_z-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
+        { "id": "beta_times_z-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [{ "id": "beta_times_z-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "dz_dt",
+      "type": "sum",
+      "name": "x*y - beta*z",
+      "position": { "x": 320, "y": 300 },
+      "parameters": { "signs": "+-" },
+      "inputPorts": [
+        { "id": "dz_dt-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
+        { "id": "dz_dt-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": [{ "id": "dz_dt-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+    },
+    {
+      "id": "scope_3d",
+      "type": "scope_3d",
+      "name": "Lorenz 3D Trajectory",
+      "position": { "x": 550, "y": 200 },
+      "parameters": { "xLabel": "X", "yLabel": "Y", "zLabel": "Z" },
+      "inputPorts": [
+        { "id": "scope_3d-x", "name": "x", "dataType": "double", "dimensions": [1] },
+        { "id": "scope_3d-y", "name": "y", "dataType": "double", "dimensions": [1] },
+        { "id": "scope_3d-z", "name": "z", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": []
+    },
+    {
+      "id": "scope_time",
+      "type": "scope",
+      "name": "X, Y, Z vs Time",
+      "position": { "x": 550, "y": 350 },
+      "parameters": { "numInputs": 3 },
+      "inputPorts": [
+        { "id": "scope_time-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
+        { "id": "scope_time-in2", "name": "in2", "dataType": "double", "dimensions": [1] },
+        { "id": "scope_time-in3", "name": "in3", "dataType": "double", "dimensions": [1] }
+      ],
+      "outputPorts": []
+    }
+  ],
+  "connections": [
+    { "id": "c1", "sourceBlockId": "y_integrator", "sourcePortId": "y_integrator-out", "targetBlockId": "y_minus_x", "targetPortId": "y_minus_x-in1" },
+    { "id": "c2", "sourceBlockId": "x_integrator", "sourcePortId": "x_integrator-out", "targetBlockId": "y_minus_x", "targetPortId": "y_minus_x-in2" },
+    { "id": "c3", "sourceBlockId": "sigma", "sourcePortId": "sigma-out", "targetBlockId": "sigma_times_diff", "targetPortId": "sigma_times_diff-in1" },
+    { "id": "c4", "sourceBlockId": "y_minus_x", "sourcePortId": "y_minus_x-out", "targetBlockId": "sigma_times_diff", "targetPortId": "sigma_times_diff-in2" },
+    { "id": "c5", "sourceBlockId": "sigma_times_diff", "sourcePortId": "sigma_times_diff-out", "targetBlockId": "x_integrator", "targetPortId": "x_integrator-in" },
+    { "id": "c6", "sourceBlockId": "rho", "sourcePortId": "rho-out", "targetBlockId": "rho_minus_z", "targetPortId": "rho_minus_z-in1" },
+    { "id": "c7", "sourceBlockId": "z_integrator", "sourcePortId": "z_integrator-out", "targetBlockId": "rho_minus_z", "targetPortId": "rho_minus_z-in2" },
+    { "id": "c8", "sourceBlockId": "x_integrator", "sourcePortId": "x_integrator-out", "targetBlockId": "x_times_rho_z", "targetPortId": "x_times_rho_z-in1" },
+    { "id": "c9", "sourceBlockId": "rho_minus_z", "sourcePortId": "rho_minus_z-out", "targetBlockId": "x_times_rho_z", "targetPortId": "x_times_rho_z-in2" },
+    { "id": "c10", "sourceBlockId": "x_times_rho_z", "sourcePortId": "x_times_rho_z-out", "targetBlockId": "dy_dt", "targetPortId": "dy_dt-in1" },
+    { "id": "c11", "sourceBlockId": "y_integrator", "sourcePortId": "y_integrator-out", "targetBlockId": "dy_dt", "targetPortId": "dy_dt-in2" },
+    { "id": "c12", "sourceBlockId": "dy_dt", "sourcePortId": "dy_dt-out", "targetBlockId": "y_integrator", "targetPortId": "y_integrator-in" },
+    { "id": "c13", "sourceBlockId": "x_integrator", "sourcePortId": "x_integrator-out", "targetBlockId": "x_times_y", "targetPortId": "x_times_y-in1" },
+    { "id": "c14", "sourceBlockId": "y_integrator", "sourcePortId": "y_integrator-out", "targetBlockId": "x_times_y", "targetPortId": "x_times_y-in2" },
+    { "id": "c15", "sourceBlockId": "beta", "sourcePortId": "beta-out", "targetBlockId": "beta_times_z", "targetPortId": "beta_times_z-in1" },
+    { "id": "c16", "sourceBlockId": "z_integrator", "sourcePortId": "z_integrator-out", "targetBlockId": "beta_times_z", "targetPortId": "beta_times_z-in2" },
+    { "id": "c17", "sourceBlockId": "x_times_y", "sourcePortId": "x_times_y-out", "targetBlockId": "dz_dt", "targetPortId": "dz_dt-in1" },
+    { "id": "c18", "sourceBlockId": "beta_times_z", "sourcePortId": "beta_times_z-out", "targetBlockId": "dz_dt", "targetPortId": "dz_dt-in2" },
+    { "id": "c19", "sourceBlockId": "dz_dt", "sourcePortId": "dz_dt-out", "targetBlockId": "z_integrator", "targetPortId": "z_integrator-in" },
+    { "id": "c20", "sourceBlockId": "x_integrator", "sourcePortId": "x_integrator-out", "targetBlockId": "scope_3d", "targetPortId": "scope_3d-x" },
+    { "id": "c21", "sourceBlockId": "y_integrator", "sourcePortId": "y_integrator-out", "targetBlockId": "scope_3d", "targetPortId": "scope_3d-y" },
+    { "id": "c22", "sourceBlockId": "z_integrator", "sourcePortId": "z_integrator-out", "targetBlockId": "scope_3d", "targetPortId": "scope_3d-z" },
+    { "id": "c23", "sourceBlockId": "x_integrator", "sourcePortId": "x_integrator-out", "targetBlockId": "scope_time", "targetPortId": "scope_time-in1" },
+    { "id": "c24", "sourceBlockId": "y_integrator", "sourcePortId": "y_integrator-out", "targetBlockId": "scope_time", "targetPortId": "scope_time-in2" },
+    { "id": "c25", "sourceBlockId": "z_integrator", "sourcePortId": "z_integrator-out", "targetBlockId": "scope_time", "targetPortId": "scope_time-in3" }
+  ],
+  "simulationConfig": {
+    "solver": "rk4",
+    "startTime": 0,
+    "stopTime": 50,
+    "stepSize": 0.01
+  }
+}

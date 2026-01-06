@@ -135,4 +135,40 @@ export const sinkBlocks: BlockDefinition[] = [
     parameters: [],
     icon: '⊗',
   },
+  {
+    type: 'scope_3d',
+    category: 'sinks',
+    name: '3D Scope',
+    description: 'Display 3D trajectory plot',
+    inputs: [
+      { name: 'x', dataType: 'double', dimensions: [1] },
+      { name: 'y', dataType: 'double', dimensions: [1] },
+      { name: 'z', dataType: 'double', dimensions: [1] },
+    ],
+    outputs: [],
+    parameters: [
+      {
+        name: 'xLabel',
+        type: 'string',
+        default: 'X',
+        label: 'X Axis Label',
+        description: 'Label for the X axis',
+      },
+      {
+        name: 'yLabel',
+        type: 'string',
+        default: 'Y',
+        label: 'Y Axis Label',
+        description: 'Label for the Y axis',
+      },
+      {
+        name: 'zLabel',
+        type: 'string',
+        default: 'Z',
+        label: 'Z Axis Label',
+        description: 'Label for the Z axis',
+      },
+    ],
+    icon: '📐',
+  },
 ]

@@ -34,6 +34,11 @@ export interface SignalData {
   values: number[] | number[][]  // Single array for single-input, array of arrays for multi-input
   inputNames?: string[]  // Names for each input trace (for legend)
   numInputs?: number  // Number of inputs (1 for single-input scopes)
+  // 3D Scope specific fields
+  x?: number[]
+  y?: number[]
+  z?: number[]
+  is3D?: boolean
 }
 
 export type AnalysisType = 'bode' | 'nyquist' | 'pzmap' | 'stepinfo'

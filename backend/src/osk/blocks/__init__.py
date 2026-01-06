@@ -186,7 +186,7 @@ from .signal_processing import (
     NotchFilter,
     RateLimiter,
 )
-from .sinks import Scope, ToWorkspace
+from .sinks import Scope, Scope3D, ToWorkspace
 from .sources import (
     BandLimitedWhiteNoise,
     ChirpSignal,
@@ -223,6 +223,7 @@ __all__ = [
     "SignalGenerator",
     # Sinks
     "Scope",
+    "Scope3D",
     "ToWorkspace",
     # Continuous
     "Integrator",

@@ -175,5 +175,98 @@ pre-commit install
 pre-commit run --all-files
 ```
 
+## Session 2026-01-05 (3D Scope Feature)
+
+### Summary
+Implemented a new `scope_3d` block for 3D visualization of trajectories in phase space.
+
+### Implementation Details
+
+**Backend (OSK Blocks)**:
+- Added `Scope3D` class to `backend/src/osk/blocks/sinks.py`
+  - 3 inputs (X, Y, Z) with customizable axis labels
+  - Records time, x, y, z values during simulation
+  - `getData()` returns 3D-specific format with `is3D: true` flag
+
+- Registered in `backend/src/osk/blocks/__init__.py`
+- Added to OSK adapter in `backend/src/simulation/osk_adapter.py`:
+  - Block mapping: `"scope_3d": Scope3D`
+  - Parameter mapping for axis labels
+  - Result collection with `is3D: true` flag for frontend detection
+
+**Frontend**:
+- Added block definition to `frontend/src/blocks/sinks.ts`:
+  - Type: `scope_3d`
+  - 3 inputs: x, y, z
+  - Parameters: xLabel, yLabel, zLabel
+  - Icon: 📐
+
+- Extended `SignalData` in `frontend/src/types/simulation.ts`:
+  - Added optional fields: `x`, `y`, `z`, `is3D`
+
+- Created `Scope3DWindow.tsx` component:
+  - Uses Plotly.js scatter3d plot
+  - Draggable/resizable window with info bar
+  - Catppuccin dark theme styling
+
+- Updated `PlotWindowManager.tsx`:
+  - Detects `is3D` signals and routes to Scope3DWindow
+  - Default 3D window size: 500x450
+
+- Extended `uiStore.ts`:
+  - `openPlotWindow()` accepts optional `initialSize` parameter
+
+**Code Generation (all 4 languages)**:
+- Python: `backend/src/codegen/languages/python/blocks/sinks.py`
+- C++: `backend/src/codegen/languages/cpp/blocks/sinks.py`
+- C: `backend/src/codegen/languages/c/blocks/sinks.py`
+- Rust: `backend/src/codegen/languages/rust/blocks/sinks.py`
+
+**Example**:
+- Created `examples/50_lorenz_attractor_3d.json`:
+  - Lorenz strange attractor (σ=10, ρ=28, β=8/3)
+  - 3 integrators for X, Y, Z states
+  - scope_3d for 3D trajectory visualization
+  - Regular scope for X, Y, Z vs time
+  - RK4 solver, 50s simulation, dt=0.01
+
+- Added to `frontend/src/data/examples.ts` fallback list
+
+**Unit Tests**:
+- Created `backend/tests/test_scope3d.py`:
+  - 21 tests covering initialization, input handling, data recording, getData()
+  - All tests pass
+
+**Bug Fixes (later in session)**:
+- Added Lorenz example to backend's `EXAMPLE_MANIFEST` in `examples.py`
+- Added `scope_3d` to sink blocks tracking list in `osk_adapter.py`
+- Added `get_scope_data()` method to OSKAdapter for collecting 3D scope data
+- Modified `SimulationRunner.get_results()` to call `get_scope_data()`
+- Modified `_record_outputs()` to skip Scope3D blocks (they use getData() instead)
+
+**Data Flow for 3D Scopes**:
+1. During simulation, Scope3D.rpt() records x, y, z values internally
+2. After simulation, SimulationRunner.get_results() calls:
+   - _record_outputs() for regular scopes (skips scope_3d)
+   - adapter.get_scope_data() for 3D scopes
+3. get_scope_data() calls Scope3D.getData() which returns `{times, x, y, z, inputNames, is3D: true}`
+4. Frontend PlotWindowManager detects `is3D` flag and routes to Scope3DWindow
+
+### Files Modified/Created
+- `backend/src/osk/blocks/sinks.py` (Scope3D class)
+- `backend/src/osk/blocks/__init__.py` (import/export)
+- `backend/src/simulation/osk_adapter.py` (block/param maps, result collection, get_scope_data())
+- `backend/src/simulation/runner.py` (calls get_scope_data())
+- `backend/src/api/routes/examples.py` (added Lorenz to EXAMPLE_MANIFEST)
+- `frontend/src/blocks/sinks.ts` (block definition)
+- `frontend/src/types/simulation.ts` (SignalData extension)
+- `frontend/src/components/Simulation/Scope3DWindow.tsx` (new component)
+- `frontend/src/components/Simulation/PlotWindowManager.tsx` (routing)
+- `frontend/src/store/uiStore.ts` (initialSize param)
+- `backend/src/codegen/languages/*/blocks/sinks.py` (4 files)
+- `examples/50_lorenz_attractor_3d.json` (new example)
+- `frontend/src/data/examples.ts` (example list)
+- `backend/tests/test_scope3d.py` (new test file)
+
 ## Development Workflow
 - **Wait for user confirmation** before committing changes to git. The user will test fixes before commits are made.

@@ -248,3 +248,76 @@ class Terminator(Block):
 
     def getOutput(self, port=0):
         return 0.0
+
+
+class Scope3D(Block):
+    """3D Scope block - records X, Y, Z signals for 3D visualization.
+
+    Supports three inputs (X, Y, Z) and records them over time for
+    3D trajectory or scatter plot visualization.
+    """
+
+    def __init__(self, x_label="X", y_label="Y", z_label="Z", **kwargs):
+        super().__init__()
+        self.x_label = x_label
+        self.y_label = y_label
+        self.z_label = z_label
+        self.inputs = [0.0, 0.0, 0.0]  # X, Y, Z
+        self.input_blocks = [None, None, None]
+        self.input_source_ports = [0, 0, 0]
+        self.times = []
+        self.x_values = []
+        self.y_values = []
+        self.z_values = []
+
+    def init(self):
+        self.times = []
+        self.x_values = []
+        self.y_values = []
+        self.z_values = []
+
+    def setInput(self, value, port=0):
+        if port < 3:
+            self.inputs[port] = value
+
+    def connectInput(self, block, port=0, source_port=0):
+        """Connect an input block.
+
+        Args:
+            block: The source block to connect
+            port: Which input port (0=X, 1=Y, 2=Z)
+            source_port: Which output port on the source block to read from
+        """
+        if port < 3:
+            self.input_blocks[port] = block
+            self.input_source_ports[port] = source_port
+
+    def update(self):
+        # Get inputs from connected blocks
+        for i, block in enumerate(self.input_blocks):
+            if block is not None:
+                source_port = self.input_source_ports[i]
+                self.inputs[i] = block.getOutput(source_port)
+
+    def rpt(self):
+        # Record data when ready
+        if State.ready:
+            self.times.append(State.t)
+            self.x_values.append(self.inputs[0])
+            self.y_values.append(self.inputs[1])
+            self.z_values.append(self.inputs[2])
+
+    def getData(self):
+        """Get recorded 3D data."""
+        return {
+            "times": self.times,
+            "x": self.x_values,
+            "y": self.y_values,
+            "z": self.z_values,
+            "inputNames": [self.x_label, self.y_label, self.z_label],
+        }
+
+    def getOutput(self, port=0):
+        if port < 3:
+            return self.inputs[port]
+        return 0.0

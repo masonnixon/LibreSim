@@ -55,6 +55,7 @@ from ..osk.blocks import (
     Saturation,
     # Sinks
     Scope,
+    Scope3D,
     SecondOrder,
     SineWave,
     SlewRateLimiter,
@@ -247,6 +248,7 @@ BLOCK_TYPE_MAP: dict[str, type[Block]] = {
     "signal_generator": SignalGenerator,
     # Sinks
     "scope": Scope,
+    "scope_3d": Scope3D,
     "display": Display,
     "to_workspace": ToWorkspace,
     "terminator": Terminator,
@@ -462,6 +464,7 @@ PARAM_MAP: dict[str, dict[str, str]] = {
         "sampleTime": "sample_time",
     },
     "scope": {"numInputs": "num_inputs", "num_input_ports": "num_inputs"},
+    "scope_3d": {"xLabel": "x_label", "yLabel": "y_label", "zLabel": "z_label"},
     "to_workspace": {"variableName": "variable_name"},
     "integrator": {
         "initialCondition": "initial_condition",
@@ -922,7 +925,7 @@ class OSKAdapter:
             self._osk_blocks[compiled_block.id] = osk_block
 
             # Track sink blocks for output recording
-            if block_type in ["scope", "display", "to_workspace"]:
+            if block_type in ["scope", "scope_3d", "display", "to_workspace"]:
                 self._sink_blocks.append(compiled_block.id)
 
             # Track analysis blocks for visualization data collection
@@ -1025,6 +1028,7 @@ class OSKAdapter:
                 # Handles formats like:
                 #   "block-in-0", "block-in-1" (numeric suffix, 0-indexed)
                 #   "sum1-in1", "sum1-in2" (named suffix like in1/in2, 1-indexed)
+                #   "scope_3d-x", "scope_3d-y", "scope_3d-z" (named ports for 3D scope)
                 target_port_index = 0
                 if target_port_id:
                     # Parse port index from ID
@@ -1043,6 +1047,15 @@ class OSKAdapter:
                         elif suffix.startswith("out") and len(suffix) > 3 and suffix[3:].isdigit():
                             # Output format: "block-out1" -> index 0
                             target_port_index = int(suffix[3:]) - 1
+                        elif suffix == "x":
+                            # Named port for 3D scope: "scope_3d-x" -> index 0
+                            target_port_index = 0
+                        elif suffix == "y":
+                            # Named port for 3D scope: "scope_3d-y" -> index 1
+                            target_port_index = 1
+                        elif suffix == "z":
+                            # Named port for 3D scope: "scope_3d-z" -> index 2
+                            target_port_index = 2
                     elif (
                         target_port_id.startswith("in")
                         and len(target_port_id) > 2
@@ -1131,6 +1144,11 @@ class OSKAdapter:
             compiled_block = self._block_map.get(block_id)
 
             if not osk_block or not compiled_block:
+                continue
+
+            # Skip Scope3D blocks - they accumulate data internally and are
+            # collected separately via get_scope_data()
+            if compiled_block.type == "scope_3d":
                 continue
 
             # For scopes with multiple inputs or vector inputs, record each trace separately
@@ -1478,41 +1496,61 @@ class OSKAdapter:
         signals = []
         for block_id in self._sink_blocks:
             osk_block = self._osk_blocks.get(block_id)
+            compiled_block = self._block_map.get(block_id)
             if osk_block and hasattr(osk_block, "getData"):
                 data = osk_block.getData()
-                num_inputs = data.get("numInputs", 1)
-                input_names = data.get("inputNames", [])
-                values = data.get("values", [])
-                times = data.get("times", [])
 
-                if num_inputs > 1 and isinstance(values, list) and len(values) == num_inputs:
-                    # Multi-input scope: create a signal entry with all traces
+                # Check if this is a 3D scope (has x, y, z fields)
+                if "x" in data and "y" in data and "z" in data:
+                    # 3D Scope: return structured 3D data
                     signals.append(
                         {
                             "blockId": block_id,
                             "portId": "out",
-                            "name": data.get("name", block_id),
-                            "times": times,
-                            "values": values,  # List of lists, one per input
-                            "inputNames": input_names,
-                            "numInputs": num_inputs,
+                            "name": compiled_block.name if compiled_block else block_id,
+                            "times": data.get("times", []),
+                            "x": data.get("x", []),
+                            "y": data.get("y", []),
+                            "z": data.get("z", []),
+                            "inputNames": data.get("inputNames", ["X", "Y", "Z"]),
+                            "is3D": True,
                         }
                     )
                 else:
-                    # Single-input scope or backward compatibility
-                    signals.append(
-                        {
-                            "blockId": block_id,
-                            "portId": "out",
-                            "name": data.get("name", block_id),
-                            "times": times,
-                            "values": values[0]
-                            if isinstance(values, list)
-                            and len(values) > 0
-                            and isinstance(values[0], list)
-                            else values,
-                        }
-                    )
+                    # Regular scope handling
+                    num_inputs = data.get("numInputs", 1)
+                    input_names = data.get("inputNames", [])
+                    values = data.get("values", [])
+                    times = data.get("times", [])
+
+                    if num_inputs > 1 and isinstance(values, list) and len(values) == num_inputs:
+                        # Multi-input scope: create a signal entry with all traces
+                        signals.append(
+                            {
+                                "blockId": block_id,
+                                "portId": "out",
+                                "name": data.get("name", block_id),
+                                "times": times,
+                                "values": values,  # List of lists, one per input
+                                "inputNames": input_names,
+                                "numInputs": num_inputs,
+                            }
+                        )
+                    else:
+                        # Single-input scope or backward compatibility
+                        signals.append(
+                            {
+                                "blockId": block_id,
+                                "portId": "out",
+                                "name": data.get("name", block_id),
+                                "times": times,
+                                "values": values[0]
+                                if isinstance(values, list)
+                                and len(values) > 0
+                                and isinstance(values[0], list)
+                                else values,
+                            }
+                        )
 
         return {
             "signals": signals,
@@ -1570,3 +1608,40 @@ class OSKAdapter:
                     data["name"] = compiled_block.name
                 analyses[block_id] = data
         return analyses
+
+    def get_scope_data(self) -> list[dict[str, Any]]:
+        """Get data from special scope blocks that accumulate data internally.
+
+        This is used for blocks like Scope3D that store their own data rather than
+        outputting scalar values per step.
+
+        Returns:
+            List of signal data dictionaries for 3D scopes
+        """
+        signals = []
+        for block_id in self._sink_blocks:
+            osk_block = self._osk_blocks.get(block_id)
+            compiled_block = self._block_map.get(block_id)
+
+            if not osk_block or not compiled_block:
+                continue
+
+            # Check if this is a Scope3D block (has getData with x, y, z)
+            if hasattr(osk_block, "getData"):
+                data = osk_block.getData()
+                # 3D Scope: has x, y, z arrays
+                if "x" in data and "y" in data and "z" in data:
+                    signals.append(
+                        {
+                            "blockId": block_id,
+                            "portId": "out",
+                            "name": compiled_block.name if compiled_block else block_id,
+                            "times": data.get("times", []),
+                            "x": data.get("x", []),
+                            "y": data.get("y", []),
+                            "z": data.get("z", []),
+                            "inputNames": data.get("inputNames", ["X", "Y", "Z"]),
+                            "is3D": True,
+                        }
+                    )
+        return signals

@@ -152,6 +152,46 @@ class {class_name}:
 '''
 
 
+def scope_3d_template(block: BlockInfo, class_name: str) -> str:
+    """Generate 3D Scope block code."""
+    x_label = block.parameters.get("xLabel", "X")
+    y_label = block.parameters.get("yLabel", "Y")
+    z_label = block.parameters.get("zLabel", "Z")
+    return f'''
+class {class_name}:
+    """3D Scope sink: {block.name}"""
+
+    def __init__(self):
+        self.input = 0.0   # X input
+        self.input1 = 0.0  # Y input
+        self.input2 = 0.0  # Z input
+        self.x_data = []
+        self.y_data = []
+        self.z_data = []
+        self.labels = ["{x_label}", "{y_label}", "{z_label}"]
+
+    def init(self):
+        self.x_data = []
+        self.y_data = []
+        self.z_data = []
+
+    def update(self, t: float):
+        self.x_data.append(self.input)
+        self.y_data.append(self.input1)
+        self.z_data.append(self.input2)
+
+    def get_output(self, port: int = 0) -> float:
+        if port == 0:
+            return self.input
+        elif port == 1:
+            return self.input1
+        return self.input2
+
+    def get_data(self) -> tuple:
+        return (self.x_data, self.y_data, self.z_data)
+'''
+
+
 # Template registry for sink blocks
 SINK_TEMPLATES = {
     "scope": scope_template,
@@ -159,4 +199,5 @@ SINK_TEMPLATES = {
     "terminator": terminator_template,
     "to_workspace": to_workspace_template,
     "xy_graph": xy_graph_template,
+    "scope_3d": scope_3d_template,
 }

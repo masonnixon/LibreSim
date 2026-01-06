@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { PlotWindow } from './PlotWindow'
+import { Scope3DWindow } from './Scope3DWindow'
 import { BodePlotWindow, NyquistPlotWindow, PoleZeroMapWindow, StepResponseWindow } from '../Analysis'
 import { useSimulationStore } from '../../store/simulationStore'
 import { useModelStore } from '../../store/modelStore'
@@ -43,7 +44,7 @@ function findAllScopeBlocks(
       ? `${parentNamePath}/${block.name}`
       : block.name
 
-    if (block.type === 'scope' || block.type === 'xy_graph') {
+    if (block.type === 'scope' || block.type === 'xy_graph' || block.type === 'scope_3d') {
       result.push({ block, flattenedId, displayName })
     }
 
@@ -168,10 +169,13 @@ export function PlotWindowManager() {
       // Open windows for each scope block
       scopeWindows.forEach((scope) => {
         if (!plotWindows[scope.blockId]) {
+          // Check if this is a 3D scope (signal has is3D flag or x/y/z data)
+          const is3DScope = scope.signals.length > 0 && (scope.signals[0].is3D || (scope.signals[0].x && scope.signals[0].y && scope.signals[0].z))
+          const windowSize = is3DScope ? { width: 500, height: 450 } : undefined
           openPlotWindow(scope.blockId, {
             x: 20 + (windowIndex * 40),
             y: 100 + (windowIndex * 40),
-          })
+          }, windowSize)
           windowIndex++
         }
       })
@@ -261,6 +265,23 @@ export function PlotWindowManager() {
         const scopeInfo = scopeWindows.find((s) => s.blockId === blockId)
         const blockName = scopeInfo?.blockName || 'Plot'
         const signals = scopeInfo?.signals || []
+
+        // Check if this is a 3D scope (signal has is3D flag or x/y/z data)
+        const is3DScope = signals.length > 0 && (signals[0].is3D || (signals[0].x && signals[0].y && signals[0].z))
+
+        if (is3DScope && signals.length > 0) {
+          return (
+            <Scope3DWindow
+              key={blockId}
+              blockId={blockId}
+              blockName={blockName}
+              signal={signals[0]}
+              windowState={windowState}
+              zIndex={zIndex}
+              onFocus={() => bringToFront(blockId)}
+            />
+          )
+        }
 
         return (
           <PlotWindow

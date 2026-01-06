@@ -38,7 +38,7 @@ interface UIState {
   setDraggingBlockType: (type: string | null) => void
 
   // Plot window actions
-  openPlotWindow: (blockId: string, initialPosition?: { x: number; y: number }) => void
+  openPlotWindow: (blockId: string, initialPosition?: { x: number; y: number }, initialSize?: { width: number; height: number }) => void
   closePlotWindow: (blockId: string) => void
   togglePlotWindowMinimized: (blockId: string) => void
   updatePlotWindowPosition: (blockId: string, position: { x: number; y: number }) => void
@@ -86,12 +86,13 @@ export const useUIStore = create<UIState>((set) => ({
   setDraggingBlockType: (type) => set({ draggingBlockType: type }),
 
   // Plot window management
-  openPlotWindow: (blockId, initialPosition) => set((state) => {
+  openPlotWindow: (blockId, initialPosition, initialSize) => set((state) => {
     const existingWindows = Object.keys(state.plotWindows).length
     const defaultPosition = initialPosition || {
       x: 20 + (existingWindows * 30),
       y: 100 + (existingWindows * 30),
     }
+    const defaultSize = initialSize || { width: 450, height: 280 }
     return {
       plotWindows: {
         ...state.plotWindows,
@@ -99,7 +100,7 @@ export const useUIStore = create<UIState>((set) => ({
           isOpen: true,
           isMinimized: false,
           position: state.plotWindows[blockId]?.position || defaultPosition,
-          size: state.plotWindows[blockId]?.size || { width: 450, height: 280 },
+          size: state.plotWindows[blockId]?.size || defaultSize,
         },
       },
     }
