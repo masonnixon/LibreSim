@@ -23,8 +23,19 @@ class RateLimiter(Block):
     changes that could damage physical systems.
     """
 
-    def __init__(self, rising_rate=1.0, falling_rate=-1.0):
+    def __init__(
+        self,
+        rising_rate=1.0,
+        falling_rate=-1.0,
+        rising_limit=None,
+        falling_limit=None,
+    ):
         super().__init__()
+        # Support both naming conventions: rising_rate/falling_rate and rising_limit/falling_limit
+        if rising_limit is not None:
+            rising_rate = rising_limit
+        if falling_limit is not None:
+            falling_rate = falling_limit
         self.rising_rate = abs(rising_rate)  # Max rate of increase per second
         self.falling_rate = (
             -abs(falling_rate) if falling_rate < 0 else -abs(rising_rate)

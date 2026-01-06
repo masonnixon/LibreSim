@@ -165,8 +165,10 @@ class QuaternionToEuler(Block):
     Output: [roll, pitch, yaw] in radians
     """
 
-    def __init__(self):
+    def __init__(self, sequence="ZYX"):
         super().__init__()
+        # sequence parameter accepted for compatibility but only ZYX is implemented
+        self.sequence = sequence
         self.input = [1.0, 0.0, 0.0, 0.0]
         self.output = [0.0, 0.0, 0.0]  # [roll, pitch, yaw]
         self.input_block = None
@@ -224,8 +226,10 @@ class EulerToQuaternion(Block):
     Output: [q0, q1, q2, q3] (scalar-first)
     """
 
-    def __init__(self):
+    def __init__(self, sequence="ZYX"):
         super().__init__()
+        # sequence parameter accepted for compatibility but only ZYX is implemented
+        self.sequence = sequence
         self.input = [0.0, 0.0, 0.0]  # [roll, pitch, yaw]
         self.output = [1.0, 0.0, 0.0, 0.0]
         self.input_block = None
