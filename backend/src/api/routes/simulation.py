@@ -92,6 +92,28 @@ async def stop_simulation() -> dict[str, str]:
     return {"message": "Simulation stopped"}
 
 
+@router.post("/reset")
+async def reset_simulation() -> dict[str, Any]:
+    """Reset the simulation to initial state, ready to run again.
+
+    This can be called after a simulation completes, pauses, or in step mode.
+    It resets all state to initial values while preserving the compiled model.
+    """
+    global _runner
+
+    if _runner is None:
+        raise HTTPException(status_code=400, detail="No simulation available")
+
+    _runner.reset()
+    return {
+        "success": True,
+        "message": "Simulation reset",
+        "currentTime": _runner.current_time,
+        "progress": _runner.progress,
+        "status": _runner.status.value,
+    }
+
+
 @router.post("/pause")
 async def pause_simulation() -> dict[str, str]:
     """Pause the current simulation."""
@@ -146,6 +168,164 @@ async def get_simulation_results() -> dict[str, Any]:
         raise HTTPException(status_code=400, detail="No simulation available")
 
     return _runner.get_results()
+
+
+@router.post("/step/init")
+async def init_step_mode(request: dict[str, Any]) -> dict[str, Any]:
+    """Initialize step mode simulation (compile model, ready for stepping)."""
+    global _runner
+
+    model_data = request.get("model")
+    config_data = request.get("config", {})
+
+    if not model_data:
+        raise HTTPException(status_code=400, detail="model is required")
+
+    try:
+        model = Model(**model_data)
+    except Exception as e:
+        print(f"Model parsing error: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=400, detail=f"Invalid model data: {str(e)}")
+
+    try:
+        config = SimulationConfig(**config_data)
+    except Exception as e:
+        print(f"Config parsing error: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=400, detail=f"Invalid config data: {str(e)}")
+
+    try:
+        _runner = SimulationRunner(model, config)
+        success = _runner.initialize_step_mode()
+
+        if not success:
+            raise HTTPException(
+                status_code=500, detail=_runner.error_message or "Failed to initialize step mode"
+            )
+
+        return {
+            "success": True,
+            "sessionId": _runner.session_id,
+            "currentTime": _runner.current_time,
+            "status": _runner.status.value,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Step mode init error: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to initialize step mode: {str(e)}")
+
+
+@router.post("/step/enter")
+async def enter_step_mode() -> dict[str, Any]:
+    """Enter step mode from a paused continuous simulation.
+
+    This preserves the current simulation state and time position,
+    unlike /step/init which reinitializes from the start.
+    """
+    global _runner
+
+    if _runner is None:
+        raise HTTPException(status_code=400, detail="No simulation running. Use /step/init first.")
+
+    try:
+        success = _runner.enter_step_mode()
+
+        if not success:
+            raise HTTPException(
+                status_code=500, detail=_runner.error_message or "Failed to enter step mode"
+            )
+
+        return {
+            "success": True,
+            "currentTime": _runner.current_time,
+            "progress": _runner.progress,
+            "status": _runner.status.value,
+            "historySize": 1,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Enter step mode error: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to enter step mode: {str(e)}")
+
+
+@router.post("/step/forward")
+async def step_forward(request: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Execute one or more simulation steps forward."""
+    global _runner
+
+    if _runner is None:
+        raise HTTPException(
+            status_code=400, detail="No simulation initialized. Call /step/init first."
+        )
+
+    num_steps = 1
+    if request:
+        num_steps = request.get("numSteps", 1)
+
+    result = _runner.step_forward(num_steps)
+    result["status"] = _runner.status.value
+
+    return result
+
+
+@router.post("/step/backward")
+async def step_backward(request: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Step backward by restoring previous state."""
+    global _runner
+
+    if _runner is None:
+        raise HTTPException(
+            status_code=400, detail="No simulation initialized. Call /step/init first."
+        )
+
+    num_steps = 1
+    if request:
+        num_steps = request.get("numSteps", 1)
+
+    result = _runner.step_backward(num_steps)
+    result["status"] = _runner.status.value
+
+    return result
+
+
+@router.post("/step/reset")
+async def reset_step_mode() -> dict[str, Any]:
+    """Reset step mode simulation to start time."""
+    global _runner
+
+    if _runner is None:
+        raise HTTPException(status_code=400, detail="No simulation initialized")
+
+    _runner.reset_step_mode()
+
+    return {
+        "success": True,
+        "currentTime": _runner.current_time,
+        "status": _runner.status.value,
+    }
+
+
+@router.post("/step/continue")
+async def continue_from_step(background_tasks: BackgroundTasks) -> dict[str, Any]:
+    """Continue running simulation from current step mode position."""
+    global _runner
+
+    if _runner is None:
+        raise HTTPException(status_code=400, detail="No simulation initialized")
+
+    # Run continuation in background
+    background_tasks.add_task(_runner.continue_from_step_mode)
+
+    return {
+        "success": True,
+        "currentTime": _runner.current_time,
+        "status": "running",
+    }
 
 
 @router.post("/debug")

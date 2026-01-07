@@ -376,6 +376,7 @@ export function PlotWindow({
               data={plotData}
               layout={{
                 autosize: true,
+                uirevision: blockId, // Preserve zoom/pan across data updates
                 margin: { l: 40, r: 10, t: 10, b: 30 },
                 paper_bgcolor: 'transparent',
                 plot_bgcolor: '#1e1e2e',

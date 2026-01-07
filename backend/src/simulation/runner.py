@@ -1,6 +1,7 @@
 """Simulation runner - executes compiled models."""
 
 import asyncio
+import copy
 import time
 import uuid
 from typing import Any
@@ -33,6 +34,12 @@ class SimulationRunner:
         self._start_time: float = 0
         self._execution_time: float = 0
         self._total_steps: int = 0
+
+        # Step mode state
+        self._step_mode = False
+        self._compiled = None  # Compiled model cache
+        self._state_history: list[dict[str, Any]] = []  # For step backward
+        self._max_history_size = 1000  # Limit history to prevent memory issues
 
         # Compile the model
         self._compiler = ModelCompiler()
@@ -68,29 +75,259 @@ class SimulationRunner:
         self._is_paused = False
         self._status = SimulationStatus.RUNNING
 
-    async def run(self):
-        """Run the simulation."""
+    def enter_step_mode(self) -> bool:
+        """Enter step mode from a paused continuous simulation.
+
+        Unlike initialize_step_mode(), this preserves the current simulation state
+        and time position instead of reinitializing from the start.
+        """
+        print(
+            f"[enter_step_mode] Entry: _compiled={self._compiled is not None}, _current_time={self._current_time}"
+        )
+
+        if self._compiled is None:
+            # Not running yet, need to initialize
+            print("[enter_step_mode] No compiled model, calling initialize_step_mode()")
+            return self.initialize_step_mode()
+
         try:
-            # Compile model
-            self._status = SimulationStatus.COMPILING
-            compiled = self._compiler.compile(self.model)
+            # IMPORTANT: Set should_stop FIRST to ensure the continuous run() loop exits
+            # before we clear the paused flag. This prevents the run loop from executing
+            # more steps while we're transitioning to step mode.
+            self._should_stop = True
+            self._step_mode = True
+            self._is_paused = False  # Clear paused flag from continuous mode
+            self._status = SimulationStatus.PAUSED
 
-            if not compiled.success:
-                self._status = SimulationStatus.ERROR
-                self._error_message = compiled.message
-                if compiled.errors:
-                    self._error_message = "; ".join(compiled.errors)
-                return
+            # Save current state as first history entry
+            self._state_history = []
+            self._save_state()
 
-            # Initialize simulation
-            self._status = SimulationStatus.RUNNING
+            print(
+                f"[enter_step_mode] Exit: _step_mode={self._step_mode}, _current_time={self._current_time}"
+            )
+            return True
+        except Exception as e:
+            import traceback
+
+            self._status = SimulationStatus.ERROR
+            self._error_message = str(e)
+            print(f"Enter step mode error: {e}")
+            traceback.print_exc()
+            return False
+
+    def initialize_step_mode(self) -> bool:
+        """Initialize simulation for step mode (compile model, ready for stepping)."""
+        try:
+            # Compile model if not already compiled
+            if self._compiled is None:
+                self._status = SimulationStatus.COMPILING
+                self._compiled = self._compiler.compile(self.model)
+
+                if not self._compiled.success:
+                    self._status = SimulationStatus.ERROR
+                    self._error_message = self._compiled.message
+                    if self._compiled.errors:
+                        self._error_message = "; ".join(self._compiled.errors)
+                    return False
+
+                # Initialize OSK adapter with compiled model
+                self._adapter.initialize(self._compiled, self.config)
+
+            self._step_mode = True
+            self._status = SimulationStatus.PAUSED
+            self._current_time = self.config.start_time
             self._start_time = time.time()
 
-            # Initialize OSK adapter with compiled model
-            self._adapter.initialize(compiled, self.config)
+            # Save initial state
+            self._save_state()
 
-            # Run simulation loop
-            t = self.config.start_time
+            return True
+        except Exception as e:
+            import traceback
+
+            self._status = SimulationStatus.ERROR
+            self._error_message = str(e)
+            print(f"Step mode initialization error: {e}")
+            traceback.print_exc()
+            return False
+
+    def _save_state(self):
+        """Save current simulation state for step backward."""
+        # Get adapter state (integrator states, etc.)
+        adapter_state = self._adapter.get_state() if hasattr(self._adapter, "get_state") else {}
+
+        state = {
+            "time": self._current_time,
+            "progress": self._progress,
+            "total_steps": self._total_steps,
+            "results": copy.deepcopy(self._results),
+            "adapter_state": adapter_state,
+        }
+
+        print(
+            f"[_save_state] Saving state at time={self._current_time}, history_size will be {len(self._state_history) + 1}"
+        )
+        self._state_history.append(state)
+
+        # Trim history if too large
+        if len(self._state_history) > self._max_history_size:
+            self._state_history = self._state_history[-self._max_history_size :]
+
+    def _restore_state(self, state: dict[str, Any]):
+        """Restore simulation to a previous state."""
+        self._current_time = state["time"]
+        self._progress = state["progress"]
+        self._total_steps = state["total_steps"]
+        self._results = copy.deepcopy(state["results"])
+
+        # Restore adapter state if available
+        if state.get("adapter_state") and hasattr(self._adapter, "set_state"):
+            self._adapter.set_state(state["adapter_state"])
+
+    def step_forward(self, num_steps: int = 1) -> dict[str, Any]:
+        """Execute one or more simulation steps."""
+        print(
+            f"[step_forward] Entry: _step_mode={self._step_mode}, _current_time={self._current_time}"
+        )
+
+        if not self._step_mode:
+            if not self.initialize_step_mode():
+                return {"success": False, "error": self._error_message}
+
+        dt = self.config.step_size
+        t_end = self.config.stop_time
+
+        print(
+            f"[step_forward] Before loop: _current_time={self._current_time}, dt={dt}, t_end={t_end}"
+        )
+
+        steps_executed = 0
+        for _ in range(num_steps):
+            if self._current_time >= t_end:
+                self._status = SimulationStatus.COMPLETED
+                break
+
+            # Save state before step (for undo)
+            self._save_state()
+
+            # Execute one step
+            outputs = self._adapter.step(self._current_time, dt)
+            self._record_outputs(self._current_time, outputs)
+
+            # Update state
+            old_time = self._current_time
+            self._current_time += dt
+            print(f"[step_forward] Step: {old_time} -> {self._current_time}")
+            self._progress = (self._current_time - self.config.start_time) / (
+                t_end - self.config.start_time
+            )
+            self._total_steps += 1
+            steps_executed += 1
+
+        self._execution_time = time.time() - self._start_time
+
+        print(
+            f"[step_forward] Exit: _current_time={self._current_time}, steps_executed={steps_executed}"
+        )
+
+        return {
+            "success": True,
+            "stepsExecuted": steps_executed,
+            "currentTime": self._current_time,
+            "progress": self._progress,
+            "completed": self._status == SimulationStatus.COMPLETED,
+            "historySize": len(self._state_history),
+        }
+
+    def step_backward(self, num_steps: int = 1) -> dict[str, Any]:
+        """Step backward by restoring previous state."""
+        print(
+            f"[step_backward] Entry: _step_mode={self._step_mode}, history_size={len(self._state_history)}, _current_time={self._current_time}"
+        )
+
+        if not self._step_mode or len(self._state_history) <= 1:
+            print(
+                f"[step_backward] Cannot step back: _step_mode={self._step_mode}, history={len(self._state_history)}"
+            )
+            return {
+                "success": False,
+                "error": "Cannot step backward - no history available",
+            }
+
+        steps_executed = 0
+        for _ in range(num_steps):
+            if len(self._state_history) <= 1:
+                break
+
+            # Remove current state and restore previous
+            self._state_history.pop()
+            if self._state_history:
+                self._restore_state(self._state_history[-1])
+                steps_executed += 1
+
+        # Reset status to paused (not completed) when stepping back
+        self._status = SimulationStatus.PAUSED
+
+        return {
+            "success": True,
+            "stepsExecuted": steps_executed,
+            "currentTime": self._current_time,
+            "progress": self._progress,
+            "historySize": len(self._state_history),
+        }
+
+    def reset_step_mode(self):
+        """Reset step mode simulation to start."""
+        if self._step_mode and self._compiled:
+            self._current_time = self.config.start_time
+            self._progress = 0.0
+            self._total_steps = 0
+            self._results = {}
+            self._state_history = []
+            self._status = SimulationStatus.PAUSED
+            self._adapter.initialize(self._compiled, self.config)
+            self._save_state()
+
+    def reset(self):
+        """Reset simulation completely, ready to run again from the beginning.
+
+        This can be called after a simulation completes, pauses, or in step mode.
+        It resets all state to initial values while preserving the compiled model.
+        """
+        self._status = SimulationStatus.IDLE
+        self._progress = 0.0
+        self._current_time = 0.0
+        self._should_stop = False
+        self._is_paused = False
+        self._error_message = None
+
+        self._results = {}
+        self._execution_time = 0
+        self._total_steps = 0
+
+        # Clear step mode state
+        self._step_mode = False
+        self._state_history = []
+
+        # Reinitialize the adapter if we have a compiled model
+        if self._compiled:
+            self._adapter.initialize(self._compiled, self.config)
+
+    async def continue_from_step_mode(self):
+        """Continue running simulation from current step mode position."""
+        if not self._step_mode or self._compiled is None:
+            return
+
+        try:
+            self._step_mode = False
+            self._state_history = []  # Clear history since we're now running continuously
+            self._status = SimulationStatus.RUNNING
+            self._is_paused = False
+            self._should_stop = False
+
+            # Run simulation loop from current position
+            t = self._current_time
             dt = self.config.step_size
             t_end = self.config.stop_time
 
@@ -123,6 +360,74 @@ class SimulationRunner:
 
             if self._should_stop:
                 self._status = SimulationStatus.IDLE
+            else:
+                self._status = SimulationStatus.COMPLETED
+
+        except Exception as e:
+            import traceback
+
+            self._status = SimulationStatus.ERROR
+            self._error_message = str(e)
+            print(f"Simulation error during continue: {e}")
+            traceback.print_exc()
+
+    async def run(self):
+        """Run the simulation."""
+        try:
+            # Compile model
+            self._status = SimulationStatus.COMPILING
+            self._compiled = self._compiler.compile(self.model)
+
+            if not self._compiled.success:
+                self._status = SimulationStatus.ERROR
+                self._error_message = self._compiled.message
+                if self._compiled.errors:
+                    self._error_message = "; ".join(self._compiled.errors)
+                return
+
+            # Initialize simulation
+            self._status = SimulationStatus.RUNNING
+            self._start_time = time.time()
+
+            # Initialize OSK adapter with compiled model
+            self._adapter.initialize(self._compiled, self.config)
+
+            # Run simulation loop
+            t = self.config.start_time
+            dt = self.config.step_size
+            t_end = self.config.stop_time
+
+            while t < t_end and not self._should_stop and not self._step_mode:
+                # Handle pause - also exit if step mode was entered while paused
+                while self._is_paused and not self._should_stop and not self._step_mode:
+                    await asyncio.sleep(0.1)
+
+                if self._should_stop or self._step_mode:
+                    break
+
+                # Execute one step
+                outputs = self._adapter.step(t, dt)
+
+                # Record outputs for sink blocks
+                self._record_outputs(t, outputs)
+
+                # Update state
+                t += dt
+                self._current_time = t
+                self._progress = (t - self.config.start_time) / (t_end - self.config.start_time)
+                self._total_steps += 1
+
+                # Yield to allow other tasks (and prevent blocking)
+                if self._total_steps % 100 == 0:
+                    await asyncio.sleep(0)
+
+            # Finalize
+            self._execution_time = time.time() - self._start_time
+
+            if self._should_stop or self._step_mode:
+                # Don't set to IDLE if we switched to step mode - keep PAUSED status
+                if not self._step_mode:
+                    self._status = SimulationStatus.IDLE
             else:
                 self._status = SimulationStatus.COMPLETED
 

@@ -1645,3 +1645,154 @@ class OSKAdapter:
                         }
                     )
         return signals
+
+    def get_state(self) -> dict[str, Any]:
+        """Get the current state of all blocks for state saving/restoration.
+
+        Returns:
+            Dictionary containing block states for step backward functionality
+        """
+        state = {
+            "global_state": {
+                "t": State.t,
+                "t1": State.t1,
+                "kpass": State.kpass,
+                "ready": State.ready,
+            },
+            "block_states": {},
+        }
+
+        for block_id, osk_block in self._osk_blocks.items():
+            block_state = {}
+
+            # Save integrator state (most important for stepping)
+            if hasattr(osk_block, "x") and osk_block.x is not None:
+                block_state["x"] = (
+                    list(osk_block.x) if hasattr(osk_block.x, "__iter__") else osk_block.x
+                )
+            if hasattr(osk_block, "x0") and osk_block.x0 is not None:
+                block_state["x0"] = (
+                    list(osk_block.x0) if hasattr(osk_block.x0, "__iter__") else osk_block.x0
+                )
+
+            # Save output state for blocks that cache it
+            if hasattr(osk_block, "_output"):
+                block_state["_output"] = osk_block._output
+            if hasattr(osk_block, "_y"):
+                block_state["_y"] = osk_block._y
+
+            # Save any internal buffer states (for filters, delays, etc.)
+            if hasattr(osk_block, "_buffer"):
+                block_state["_buffer"] = (
+                    list(osk_block._buffer)
+                    if hasattr(osk_block._buffer, "__iter__")
+                    else osk_block._buffer
+                )
+            if hasattr(osk_block, "_prev_value"):
+                block_state["_prev_value"] = osk_block._prev_value
+            if hasattr(osk_block, "_prev_input"):
+                block_state["_prev_input"] = osk_block._prev_input
+
+            # Save Scope3D internal data arrays for step backward
+            if (
+                hasattr(osk_block, "x_values")
+                and hasattr(osk_block, "y_values")
+                and hasattr(osk_block, "z_values")
+            ):
+                block_state["scope3d_times"] = list(osk_block.times) if osk_block.times else []
+                block_state["scope3d_x"] = list(osk_block.x_values) if osk_block.x_values else []
+                block_state["scope3d_y"] = list(osk_block.y_values) if osk_block.y_values else []
+                block_state["scope3d_z"] = list(osk_block.z_values) if osk_block.z_values else []
+
+            # Save regular Scope internal data arrays for step backward
+            if (
+                hasattr(osk_block, "values")
+                and hasattr(osk_block, "input_blocks")
+                and not hasattr(osk_block, "x_values")
+            ):
+                block_state["scope_times"] = list(osk_block.times) if osk_block.times else []
+                # Deep copy the values (list of lists for multi-input scopes)
+                if osk_block.values:
+                    block_state["scope_values"] = [list(v) if v else [] for v in osk_block.values]
+                else:
+                    block_state["scope_values"] = []
+
+            if block_state:
+                state["block_states"][block_id] = block_state
+
+        return state
+
+    def set_state(self, state: dict[str, Any]):
+        """Restore block states from a saved state.
+
+        Args:
+            state: Previously saved state from get_state()
+        """
+        if not state:
+            return
+
+        # Restore global OSK state
+        if "global_state" in state:
+            gs = state["global_state"]
+            State.t = gs.get("t", State.t)
+            State.t1 = gs.get("t1", State.t1)
+            State.kpass = gs.get("kpass", State.kpass)
+            State.ready = gs.get("ready", State.ready)
+
+        # Restore block states
+        block_states = state.get("block_states", {})
+        for block_id, block_state in block_states.items():
+            osk_block = self._osk_blocks.get(block_id)
+            if not osk_block:
+                continue
+
+            # Restore integrator state
+            if "x" in block_state and hasattr(osk_block, "x"):
+                if hasattr(osk_block.x, "__iter__"):
+                    for i, val in enumerate(block_state["x"]):
+                        if i < len(osk_block.x):
+                            osk_block.x[i] = val
+                else:
+                    osk_block.x = block_state["x"]
+
+            if "x0" in block_state and hasattr(osk_block, "x0"):
+                if hasattr(osk_block.x0, "__iter__"):
+                    for i, val in enumerate(block_state["x0"]):
+                        if i < len(osk_block.x0):
+                            osk_block.x0[i] = val
+                else:
+                    osk_block.x0 = block_state["x0"]
+
+            # Restore output state
+            if "_output" in block_state and hasattr(osk_block, "_output"):
+                osk_block._output = block_state["_output"]
+            if "_y" in block_state and hasattr(osk_block, "_y"):
+                osk_block._y = block_state["_y"]
+
+            # Restore internal buffer states
+            if "_buffer" in block_state and hasattr(osk_block, "_buffer"):
+                if hasattr(osk_block._buffer, "__iter__"):
+                    osk_block._buffer = list(block_state["_buffer"])
+                else:
+                    osk_block._buffer = block_state["_buffer"]
+            if "_prev_value" in block_state and hasattr(osk_block, "_prev_value"):
+                osk_block._prev_value = block_state["_prev_value"]
+            if "_prev_input" in block_state and hasattr(osk_block, "_prev_input"):
+                osk_block._prev_input = block_state["_prev_input"]
+
+            # Restore Scope3D internal data arrays
+            if "scope3d_times" in block_state and hasattr(osk_block, "x_values"):
+                osk_block.times = list(block_state["scope3d_times"])
+                osk_block.x_values = list(block_state["scope3d_x"])
+                osk_block.y_values = list(block_state["scope3d_y"])
+                osk_block.z_values = list(block_state["scope3d_z"])
+
+            # Restore regular Scope internal data arrays
+            if (
+                "scope_times" in block_state
+                and hasattr(osk_block, "values")
+                and not hasattr(osk_block, "x_values")
+            ):
+                osk_block.times = list(block_state["scope_times"])
+                # Deep copy the values (list of lists for multi-input scopes)
+                osk_block.values = [list(v) if v else [] for v in block_state["scope_values"]]

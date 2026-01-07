@@ -58,6 +58,17 @@ export const api = {
     await apiClient.post('/simulate/stop')
   },
 
+  async resetSimulation(): Promise<{
+    success: boolean
+    message: string
+    currentTime: number
+    progress: number
+    status: string
+  }> {
+    const response = await apiClient.post('/simulate/reset')
+    return response.data
+  },
+
   async pauseSimulation(): Promise<void> {
     await apiClient.post('/simulate/pause')
   },
@@ -73,6 +84,65 @@ export const api = {
 
   async getSimulationResults(): Promise<SimulationResults> {
     const response = await apiClient.get('/simulate/results')
+    return response.data
+  },
+
+  // Step mode simulation operations
+  async initStepMode(
+    model: Model,
+    config: SimulationConfig
+  ): Promise<{ success: boolean; sessionId: string; currentTime: number; status: string }> {
+    const response = await apiClient.post('/simulate/step/init', { model, config })
+    return response.data
+  },
+
+  async stepForward(
+    numSteps: number = 1
+  ): Promise<{
+    success: boolean
+    stepsExecuted: number
+    currentTime: number
+    progress: number
+    completed: boolean
+    status: string
+    historySize: number
+  }> {
+    const response = await apiClient.post('/simulate/step/forward', { numSteps })
+    return response.data
+  },
+
+  async stepBackward(
+    numSteps: number = 1
+  ): Promise<{
+    success: boolean
+    stepsExecuted: number
+    currentTime: number
+    progress: number
+    historySize: number
+    status: string
+  }> {
+    const response = await apiClient.post('/simulate/step/backward', { numSteps })
+    return response.data
+  },
+
+  async resetStepMode(): Promise<{ success: boolean; currentTime: number; status: string }> {
+    const response = await apiClient.post('/simulate/step/reset')
+    return response.data
+  },
+
+  async continueFromStepMode(): Promise<{ success: boolean; currentTime: number; status: string }> {
+    const response = await apiClient.post('/simulate/step/continue')
+    return response.data
+  },
+
+  async enterStepMode(): Promise<{
+    success: boolean
+    currentTime: number
+    progress: number
+    status: string
+    historySize: number
+  }> {
+    const response = await apiClient.post('/simulate/step/enter')
     return response.data
   },
 

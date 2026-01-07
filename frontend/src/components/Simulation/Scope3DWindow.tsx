@@ -267,6 +267,7 @@ export function Scope3DWindow({
                 data={plotData}
                 layout={{
                   autosize: true,
+                  uirevision: blockId, // Preserve camera orientation/zoom across data updates
                   margin: { l: 0, r: 0, t: 0, b: 0 },
                   paper_bgcolor: 'transparent',
                   scene: {

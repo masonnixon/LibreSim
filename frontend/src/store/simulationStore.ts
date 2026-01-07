@@ -14,6 +14,10 @@ interface SimulationStoreState {
   // WebSocket connection
   wsConnected: boolean
 
+  // Step mode state
+  stepModeActive: boolean
+  stepHistorySize: number
+
   // Actions
   setStatus: (status: SimulationStatus) => void
   setProgress: (currentTime: number, progress: number) => void
@@ -29,6 +33,10 @@ interface SimulationStoreState {
   // Connection state
   setWsConnected: (connected: boolean) => void
 
+  // Step mode actions
+  setStepModeActive: (active: boolean) => void
+  setStepHistorySize: (size: number) => void
+
   // Reset
   reset: () => void
 }
@@ -43,6 +51,8 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => ({
   state: { ...initialState },
   results: null,
   wsConnected: false,
+  stepModeActive: false,
+  stepHistorySize: 0,
 
   setStatus: (status: SimulationStatus) => {
     set((state) => ({
@@ -123,10 +133,20 @@ export const useSimulationStore = create<SimulationStoreState>((set, get) => ({
     set({ wsConnected: connected })
   },
 
+  setStepModeActive: (active: boolean) => {
+    set({ stepModeActive: active })
+  },
+
+  setStepHistorySize: (size: number) => {
+    set({ stepHistorySize: size })
+  },
+
   reset: () => {
     set({
       state: { ...initialState },
       results: null,
+      stepModeActive: false,
+      stepHistorySize: 0,
     })
   },
 }))

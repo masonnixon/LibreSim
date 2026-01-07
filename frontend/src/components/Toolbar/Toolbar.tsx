@@ -8,6 +8,7 @@ import { toast } from '../Toast/Toast'
 import { exampleList, fetchExample } from '../../data/examples'
 import { ExamplesModal } from '../Examples/ExamplesModal'
 import { CodeGenModal } from '../CodeGen/CodeGenModal'
+import { SaveAsModal } from '../SaveAs/SaveAsModal'
 import { exportModelAsMDL } from '../../utils/mdlExporter'
 import { importMDL, isMDLFile, importMDLAsLibrary } from '../../utils/mdlImporter'
 import { blockRegistry } from '../../blocks'
@@ -36,7 +37,18 @@ const STORAGE_KEY = 'libresim_last_model'
 
 export function Toolbar() {
   const { model, isDirty, createNewModel, saveModel, loadModel, undo, redo, canUndo, canRedo } = useModelStore()
-  const { state: simState, setStatus, setProgress, setResults, setError, clearResults } = useSimulationStore()
+  const {
+    state: simState,
+    setStatus,
+    setProgress,
+    setResults,
+    setError,
+    clearResults,
+    stepModeActive,
+    stepHistorySize,
+    setStepModeActive,
+    setStepHistorySize,
+  } = useSimulationStore()
   const {
     toggleProperties,
     showProperties,
@@ -53,6 +65,7 @@ export function Toolbar() {
     showCodeGenModal,
     openCodeGenModal,
     closeCodeGenModal,
+    openSaveAsModal,
   } = useUIStore()
   const importLibrary = useLibraryStore((state) => state.importLibrary)
 
@@ -482,13 +495,241 @@ export function Toolbar() {
       stopPolling()
       await api.stopSimulation()
       setStatus('idle')
+      setStepModeActive(false)
     } catch (error) {
       console.error('Failed to stop simulation:', error)
     }
     setShowMobileMenu(false)
   }
 
+  const handleReset = async () => {
+    try {
+      stopPolling()
+      const result = await api.resetSimulation()
+      if (result.success) {
+        clearResults()
+        setStatus('idle')
+        setStepModeActive(false)
+        setStepHistorySize(0)
+        setProgress(0, 0)
+        toast.info('Reset', 'Simulation reset to initial state')
+      }
+    } catch (error) {
+      console.error('Failed to reset simulation:', error)
+      // If there's no runner yet (never ran), just clear the UI state
+      clearResults()
+      setStatus('idle')
+      setStepModeActive(false)
+      setStepHistorySize(0)
+      setProgress(0, 0)
+    }
+    setShowMobileMenu(false)
+  }
+
+  const handlePause = async () => {
+    try {
+      await api.pauseSimulation()
+      setStatus('paused')
+
+      // Fetch results to show data up to paused point in scope windows
+      try {
+        const results = await api.getSimulationResults()
+        setResults(results)
+      } catch (resultsError) {
+        console.error('Failed to fetch paused results:', resultsError)
+      }
+    } catch (error) {
+      console.error('Failed to pause simulation:', error)
+    }
+    setShowMobileMenu(false)
+  }
+
+  const handleResume = async () => {
+    if (stepModeActive) {
+      // Resume from step mode - continue running the simulation
+      try {
+        // Call the backend to continue from step mode
+        await api.continueFromStepMode()
+
+        setStepModeActive(false)
+        setStatus('running')
+
+        // Start polling for status
+        pollingRef.current = window.setInterval(async () => {
+          try {
+            const status = await api.getSimulationStatus()
+            setProgress(status.currentTime || 0, status.progress || 0)
+
+            if (status.status === 'completed') {
+              stopPolling()
+              setStatus('completed')
+              const results = await api.getSimulationResults()
+              setResults(results)
+            } else if (status.status === 'error') {
+              stopPolling()
+              const errorMsg = status.error || 'Simulation failed'
+              setError(errorMsg)
+              toast.warning('Simulation Error', errorMsg)
+            } else if (status.status === 'idle') {
+              stopPolling()
+              setStatus('idle')
+            }
+          } catch (err) {
+            console.error('Failed to get simulation status:', err)
+          }
+        }, 100)
+      } catch (error) {
+        console.error('Failed to resume from step mode:', error)
+        setStepModeActive(true)
+        setStatus('paused')
+      }
+    } else {
+      // Resume from paused state (normal pause)
+      try {
+        await api.resumeSimulation()
+        setStatus('running')
+      } catch (error) {
+        console.error('Failed to resume simulation:', error)
+      }
+    }
+    setShowMobileMenu(false)
+  }
+
+  // Step mode handlers
+  const handleInitStepMode = async () => {
+    if (!model) return
+
+    try {
+      clearResults()
+      setStatus('compiling')
+      const result = await api.initStepMode(model, model.simulationConfig)
+      if (result.success) {
+        setStepModeActive(true)
+        setStepHistorySize(1) // Initial state
+        setStatus('paused')
+        setProgress(result.currentTime, 0)
+        toast.success('Step Mode', 'Simulation ready. Use step buttons to advance.')
+      }
+    } catch (error) {
+      console.error('Failed to initialize step mode:', error)
+      setStatus('error')
+      setStepModeActive(false)
+      let errorMessage = 'Failed to initialize step mode'
+      if (error && typeof error === 'object') {
+        const axiosError = error as { response?: { data?: { detail?: string } }; message?: string }
+        if (axiosError.response?.data?.detail) {
+          errorMessage = axiosError.response.data.detail
+        } else if (axiosError.message) {
+          errorMessage = axiosError.message
+        }
+      }
+      setError(errorMessage)
+    }
+  }
+
+  const handleStepForward = async () => {
+    console.log('[handleStepForward] Entry:', { stepModeActive, isPaused, currentTime: simState.currentTime })
+
+    if (!stepModeActive) {
+      // Check if we're in a paused state from a running simulation
+      if (isPaused) {
+        // Enter step mode from paused continuous simulation
+        // This preserves the current time position
+        try {
+          stopPolling() // Stop any status polling
+          console.log('[handleStepForward] Calling enterStepMode...')
+          const result = await api.enterStepMode()
+          console.log('[handleStepForward] enterStepMode result:', result)
+          if (result.success) {
+            setStepModeActive(true)
+            setProgress(result.currentTime, result.progress)
+            setStepHistorySize(result.historySize)
+            toast.info('Step Mode', `Entered step mode at t=${result.currentTime.toFixed(3)}s`)
+          }
+        } catch (error) {
+          console.error('Failed to enter step mode:', error)
+          return
+        }
+      } else {
+        // Initialize step mode from scratch
+        await handleInitStepMode()
+        return
+      }
+    }
+
+    try {
+      console.log('[handleStepForward] Calling stepForward...')
+      const result = await api.stepForward(1)
+      console.log('[handleStepForward] stepForward result:', result)
+      if (result.success) {
+        setProgress(result.currentTime, result.progress)
+        // Update history size for step backward button
+        setStepHistorySize(result.historySize)
+
+        // Always fetch results after each step to update scope display
+        try {
+          const results = await api.getSimulationResults()
+          setResults(results)
+        } catch (resultsError) {
+          console.error('Failed to fetch step results:', resultsError)
+        }
+
+        if (result.completed) {
+          setStatus('completed')
+          toast.info('Step Mode', 'Simulation completed.')
+        }
+      }
+    } catch (error) {
+      console.error('Failed to step forward:', error)
+    }
+  }
+
+  const handleStepBackward = async () => {
+    console.log('[handleStepBackward] Entry:', { stepModeActive, stepHistorySize, currentTime: simState.currentTime })
+    if (!stepModeActive) return
+
+    try {
+      console.log('[handleStepBackward] Calling stepBackward...')
+      const result = await api.stepBackward(1)
+      console.log('[handleStepBackward] stepBackward result:', result)
+      if (result.success) {
+        setProgress(result.currentTime, result.progress)
+        setStepHistorySize(result.historySize)
+
+        // Fetch results to update scope display after stepping back
+        try {
+          const results = await api.getSimulationResults()
+          setResults(results)
+        } catch (resultsError) {
+          console.error('Failed to fetch step results:', resultsError)
+        }
+      } else {
+        toast.info('Step Mode', 'Cannot step backward - at beginning.')
+      }
+    } catch (error) {
+      console.error('Failed to step backward:', error)
+    }
+  }
+
+  const handleResetStepMode = async () => {
+    if (!stepModeActive) return
+
+    try {
+      const result = await api.resetStepMode()
+      if (result.success) {
+        clearResults()
+        setProgress(result.currentTime, 0)
+        setStepHistorySize(1)
+        toast.info('Step Mode', 'Simulation reset to start.')
+      }
+    } catch (error) {
+      console.error('Failed to reset step mode:', error)
+    }
+  }
+
   const isRunning = simState.status === 'running'
+  const isPaused = simState.status === 'paused'
+  const isCompleted = simState.status === 'completed'
 
   // Mobile hamburger menu
   const MobileMenu = () => (
@@ -590,6 +831,14 @@ export function Toolbar() {
               title="Save Model"
             >
               Save{isDirty ? '*' : ''}
+            </button>
+            <button
+              onClick={openSaveAsModal}
+              disabled={!model}
+              className="px-3 py-1.5 text-sm hover:bg-editor-border rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Save As (choose filename and format)"
+            >
+              Save As
             </button>
             <div className="w-px h-5 bg-editor-border mx-1" />
             <button
@@ -709,20 +958,49 @@ export function Toolbar() {
 
           {/* Simulation Controls */}
           <div className="flex items-center gap-1 pr-2 border-r border-editor-border">
-            <button
-              onClick={handleRun}
-              disabled={!model || isRunning}
-              className="px-3 py-1.5 text-sm bg-green-600 hover:bg-green-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
-              title="Run Simulation"
-            >
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
-              </svg>
-              Run
-            </button>
+            {/* Run button - shows when not running and not in step mode, OR when paused/step mode */}
+            {(!isRunning && !isPaused && !stepModeActive) ? (
+              <button
+                onClick={handleRun}
+                disabled={!model}
+                className="px-3 py-1.5 text-sm bg-green-600 hover:bg-green-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                title="Run Simulation"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                </svg>
+                Run
+              </button>
+            ) : (isPaused || stepModeActive) ? (
+              /* Resume/Play button - shows when paused or in step mode */
+              <button
+                onClick={handleResume}
+                disabled={!model || isCompleted}
+                className="w-[72px] py-1.5 text-sm bg-green-600 hover:bg-green-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
+                title={stepModeActive ? "Continue Running from Current Position" : "Resume Simulation"}
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                </svg>
+                {stepModeActive ? 'Play' : 'Resume'}
+              </button>
+            ) : null}
+            {/* Pause button - shows when running */}
+            {isRunning && (
+              <button
+                onClick={handlePause}
+                className="px-3 py-1.5 text-sm bg-yellow-600 hover:bg-yellow-700 rounded transition-colors flex items-center gap-1"
+                title="Pause Simulation"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M5.5 3A1.5 1.5 0 004 4.5v11A1.5 1.5 0 005.5 17h2A1.5 1.5 0 009 15.5v-11A1.5 1.5 0 007.5 3h-2zm7 0A1.5 1.5 0 0011 4.5v11a1.5 1.5 0 001.5 1.5h2a1.5 1.5 0 001.5-1.5v-11A1.5 1.5 0 0014.5 3h-2z" clipRule="evenodd" />
+                </svg>
+                Pause
+              </button>
+            )}
             <button
               onClick={handleStop}
-              disabled={!isRunning}
+              disabled={!isRunning && !stepModeActive && !isPaused}
               className="px-3 py-1.5 text-sm bg-red-600 hover:bg-red-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
               title="Stop Simulation"
             >
@@ -730,6 +1008,40 @@ export function Toolbar() {
                 <path d="M5.75 3A1.75 1.75 0 004 4.75v10.5c0 .966.784 1.75 1.75 1.75h8.5A1.75 1.75 0 0016 15.25V4.75A1.75 1.75 0 0014.25 3h-8.5z" />
               </svg>
               Stop
+            </button>
+            {/* Step Controls */}
+            <div className="w-px h-5 bg-editor-border mx-1" />
+            <button
+              onClick={handleStepBackward}
+              disabled={!model || isRunning || !stepModeActive || stepHistorySize <= 1}
+              className="p-1.5 text-sm hover:bg-editor-border rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Step Backward"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+              </svg>
+            </button>
+            <button
+              onClick={handleStepForward}
+              disabled={!model || isRunning || isCompleted}
+              className={`p-1.5 text-sm rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                stepModeActive ? 'bg-blue-600 hover:bg-blue-700' : 'hover:bg-editor-border'
+              }`}
+              title={stepModeActive ? 'Step Forward' : 'Enter Step Mode'}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+              </svg>
+            </button>
+            <button
+              onClick={handleReset}
+              disabled={!model || isRunning || (simState.status === 'idle' && !stepModeActive && !isPaused && !isCompleted)}
+              className="p-1.5 text-sm hover:bg-editor-border rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Reset Simulation"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
             </button>
           </div>
 
@@ -740,13 +1052,17 @@ export function Toolbar() {
                 className={`w-2 h-2 rounded-full ${
                   simState.status === 'running'
                     ? 'bg-green-500 animate-pulse'
+                    : simState.status === 'paused'
+                    ? 'bg-yellow-500'
+                    : simState.status === 'completed'
+                    ? 'bg-blue-500'
                     : simState.status === 'error'
                     ? 'bg-red-500'
                     : 'bg-gray-500'
                 }`}
               />
-              <span className="capitalize">{simState.status}</span>
-              {isRunning && (
+              <span className="capitalize">{simState.status}{stepModeActive ? ' (Step)' : ''}</span>
+              {(isRunning || isPaused || stepModeActive) && (
                 <span>
                   | t = {simState.currentTime.toFixed(3)}s ({Math.round(simState.progress * 100)}%)
                 </span>
@@ -872,6 +1188,9 @@ export function Toolbar() {
         isOpen={showCodeGenModal}
         onClose={closeCodeGenModal}
       />
+
+      {/* Save As Modal */}
+      <SaveAsModal />
     </div>
   )
 }
