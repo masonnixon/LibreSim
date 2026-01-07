@@ -1,7 +1,13 @@
 import { useMemo, useState, useRef, useEffect, useCallback } from 'react'
 import Plot from 'react-plotly.js'
+import type { PlotRelayoutEvent } from 'plotly.js'
 import { useUIStore, PlotWindowState } from '../../store/uiStore'
 import type { SignalData } from '../../types/simulation'
+
+interface AxisRange {
+  xRange?: [number, number]
+  yRange?: [number, number]
+}
 
 interface PlotWindowProps {
   blockId: string
@@ -28,6 +34,10 @@ export function PlotWindow({
   } = useUIStore()
 
   const { position, size, isMinimized } = windowState
+
+  // Store user-set axis ranges to preserve zoom/pan across data updates
+  const axisRangeRef = useRef<AxisRange>({})
+  const userHasZoomed = useRef(false)
 
   // Drag state
   const [isDragging, setIsDragging] = useState(false)
@@ -297,6 +307,48 @@ export function PlotWindow({
   // Determine if we should show the legend (multiple traces)
   const showLegend = plotData.length > 1
 
+  // Calculate data bounds for auto-fit when user hasn't zoomed
+  const dataBounds = useMemo(() => {
+    let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity
+    for (const trace of plotData) {
+      if (trace.x && trace.y) {
+        for (const x of trace.x as number[]) {
+          if (x < xMin) xMin = x
+          if (x > xMax) xMax = x
+        }
+        for (const y of trace.y as number[]) {
+          if (y < yMin) yMin = y
+          if (y > yMax) yMax = y
+        }
+      }
+    }
+    // Add some padding (5%)
+    const xPad = (xMax - xMin) * 0.05 || 0.1
+    const yPad = (yMax - yMin) * 0.05 || 0.1
+    return {
+      xRange: [xMin - xPad, xMax + xPad] as [number, number],
+      yRange: [yMin - yPad, yMax + yPad] as [number, number],
+    }
+  }, [plotData])
+
+  // Handle relayout events to capture user zoom/pan
+  const handleRelayout = useCallback((event: PlotRelayoutEvent) => {
+    // Check if user has zoomed or panned (explicit range set)
+    if (event['xaxis.range[0]'] !== undefined && event['xaxis.range[1]'] !== undefined) {
+      axisRangeRef.current.xRange = [event['xaxis.range[0]'] as number, event['xaxis.range[1]'] as number]
+      userHasZoomed.current = true
+    }
+    if (event['yaxis.range[0]'] !== undefined && event['yaxis.range[1]'] !== undefined) {
+      axisRangeRef.current.yRange = [event['yaxis.range[0]'] as number, event['yaxis.range[1]'] as number]
+      userHasZoomed.current = true
+    }
+    // Handle autorange reset (double-click to reset)
+    if (event['xaxis.autorange'] === true || event['yaxis.autorange'] === true) {
+      userHasZoomed.current = false
+      axisRangeRef.current = {}
+    }
+  }, [])
+
   // Resize handle component
   const ResizeHandle = ({ direction, className }: { direction: string; className: string }) => (
     <div
@@ -385,12 +437,23 @@ export function PlotWindow({
                   title: { text: 'Time (s)', font: { size: 10 } },
                   gridcolor: '#45475a',
                   zerolinecolor: '#45475a',
+                  // Always use explicit range to allow panning beyond data
+                  range: userHasZoomed.current && axisRangeRef.current.xRange
+                    ? axisRangeRef.current.xRange
+                    : dataBounds.xRange,
+                  autorange: false,
                 },
                 yaxis: {
                   title: { text: 'Value', font: { size: 10 } },
                   gridcolor: '#45475a',
                   zerolinecolor: '#45475a',
+                  // Always use explicit range to allow panning beyond data
+                  range: userHasZoomed.current && axisRangeRef.current.yRange
+                    ? axisRangeRef.current.yRange
+                    : dataBounds.yRange,
+                  autorange: false,
                 },
+                dragmode: 'pan',
                 legend: {
                   orientation: 'h',
                   y: -0.15,
@@ -405,7 +468,19 @@ export function PlotWindow({
               }}
               style={{ width: '100%', height: '100%' }}
               useResizeHandler
-              config={{ responsive: true, displayModeBar: false }}
+              config={{
+                responsive: true,
+                displayModeBar: true,
+                displaylogo: false,
+                modeBarButtonsToRemove: [
+                  'select2d',
+                  'lasso2d',
+                  'hoverClosestCartesian',
+                  'hoverCompareCartesian',
+                ],
+                modeBarButtonsToAdd: [],
+              }}
+              onRelayout={handleRelayout}
             />
           )}
         </div>

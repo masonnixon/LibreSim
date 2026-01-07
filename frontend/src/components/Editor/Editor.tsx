@@ -9,6 +9,7 @@ import {
   Connection,
   Node,
   Edge,
+  EdgeTypes,
   NodeTypes,
   useReactFlow,
   OnConnect,
@@ -20,6 +21,7 @@ import { useModelStore } from '../../store/modelStore'
 import { useUIStore } from '../../store/uiStore'
 import { BlockNode } from './BlockNode'
 import { SubsystemNode } from './SubsystemNode'
+import { CustomEdge } from './CustomEdge'
 import { blockRegistry } from '../../blocks'
 import { getIsPropertiesFocused } from '../Properties/PropertiesPanel'
 import type { BlockDefinition, BlockInstance, Connection as ConnectionType } from '../../types/block'
@@ -225,6 +227,8 @@ export function Editor() {
       id: block.id,
       type: block.type === 'subsystem' ? 'subsystemNode' : 'blockNode',
       position: block.position,
+      // Pass explicit size if stored in model (for resizable blocks)
+      ...(block.size && { width: block.size.width, height: block.size.height }),
       data: {
         block,
         definition: getDefinitionOrFallback(block),
@@ -241,8 +245,12 @@ export function Editor() {
       sourceHandle: conn.sourcePortId,
       target: conn.targetBlockId,
       targetHandle: conn.targetPortId,
-      type: 'smoothstep',
+      type: 'custom',
       animated: false,
+      data: {
+        waypoints: conn.waypoints || [],
+        connectionId: conn.id,
+      },
     }))
   }, [model, currentConnections])
 
@@ -337,9 +345,13 @@ export function Editor() {
           sourceHandle: conn.sourcePortId,
           target: conn.targetBlockId,
           targetHandle: conn.targetPortId,
-          type: 'smoothstep',
+          type: 'custom',
           animated: false,
           selected: isSelected,
+          data: {
+            waypoints: conn.waypoints || [],
+            connectionId: conn.id,
+          },
           style: isSelected ? { stroke: '#22d3ee', strokeWidth: 2 } : undefined,
           label: isSelected ? dimLabel : undefined,
           labelStyle: isSelected ? {
@@ -562,6 +574,13 @@ export function Editor() {
     []
   )
 
+  const edgeTypes: EdgeTypes = useMemo(
+    () => ({
+      custom: CustomEdge,
+    }),
+    []
+  )
+
   // Check if selected block is a subsystem
   const selectedSubsystem = useMemo(() => {
     if (selectedBlockIds.length !== 1) return null
@@ -608,9 +627,9 @@ export function Editor() {
       if (node.type === 'subsystemNode') {
         enterSubsystem(node.id)
       } else {
-        // Check if this is a scope block
+        // Check if this is a scope block (any type that displays plots)
         const block = currentBlocks.find(b => b.id === node.id)
-        if (block?.type === 'scope') {
+        if (block?.type === 'scope' || block?.type === 'scope_3d' || block?.type === 'xy_graph') {
           openPlotWindow(block.id)
         }
       }
@@ -900,6 +919,7 @@ export function Editor() {
         onDrop={onDrop}
         onContextMenu={handleContextMenu}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         fitView
         snapToGrid
         snapGrid={[10, 10]}

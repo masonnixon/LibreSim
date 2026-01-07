@@ -206,3 +206,25 @@ html, body, #root {
     font-size: 0.875rem;
   }
 }
+
+/* Plotly mode bar styling for dark theme */
+.modebar {
+  background: transparent !important;
+}
+
+.modebar-btn {
+  fill: #a6adc8 !important;
+}
+
+.modebar-btn:hover {
+  fill: #cdd6f4 !important;
+}
+
+.modebar-btn.active {
+  fill: #89b4fa !important;
+}
+
+/* Hide the Plotly watermark */
+.js-plotly-plot .plotly .modebar-container {
+  background: transparent !important;
+}

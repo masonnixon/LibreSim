@@ -1,7 +1,14 @@
 import { useMemo, useState, useRef, useEffect, useCallback } from 'react'
 import Plot from 'react-plotly.js'
+import type { PlotRelayoutEvent } from 'plotly.js'
 import { useUIStore, PlotWindowState } from '../../store/uiStore'
 import type { SignalData } from '../../types/simulation'
+
+interface CameraState {
+  eye?: { x: number; y: number; z: number }
+  center?: { x: number; y: number; z: number }
+  up?: { x: number; y: number; z: number }
+}
 
 interface Scope3DWindowProps {
   blockId: string
@@ -26,6 +33,19 @@ export function Scope3DWindow({
     updatePlotWindowPosition,
     updatePlotWindowSize,
   } = useUIStore()
+
+  // Store camera state to preserve orientation across data updates
+  const cameraRef = useRef<CameraState | null>(null)
+
+  // Track data revision to help Plotly know when to update data vs layout
+  const dataRevision = useRef(0)
+  const prevDataLength = useRef(0)
+
+  // Increment revision only when data length changes
+  if (signal.x && signal.x.length !== prevDataLength.current) {
+    dataRevision.current += 1
+    prevDataLength.current = signal.x.length
+  }
 
   const { position, size, isMinimized } = windowState
 
@@ -187,6 +207,38 @@ export function Scope3DWindow({
   // Axis labels from signal
   const axisLabels = signal.inputNames || ['X', 'Y', 'Z']
 
+  // Track if user has interacted with the camera
+  const userHasRotated = useRef(false)
+
+  // Handle camera changes from user interaction
+  const handleRelayout = useCallback((event: PlotRelayoutEvent) => {
+    // Check if this is a camera change event (full camera object)
+    if (event['scene.camera']) {
+      cameraRef.current = event['scene.camera'] as CameraState
+      userHasRotated.current = true
+    }
+    // Also handle individual camera property updates
+    else if (event['scene.camera.eye'] || event['scene.camera.center'] || event['scene.camera.up']) {
+      cameraRef.current = {
+        ...cameraRef.current,
+        eye: (event['scene.camera.eye'] as CameraState['eye']) || cameraRef.current?.eye,
+        center: (event['scene.camera.center'] as CameraState['center']) || cameraRef.current?.center,
+        up: (event['scene.camera.up'] as CameraState['up']) || cameraRef.current?.up,
+      }
+      userHasRotated.current = true
+    }
+    // Handle reset camera button
+    if (event['scene.camera'] === undefined &&
+        event['scene.camera.eye'] === undefined &&
+        event['scene.camera.center'] === undefined &&
+        event['scene.camera.up'] === undefined &&
+        Object.keys(event).some(k => k.startsWith('scene'))) {
+      // This might be a reset - check for autorange or similar
+      userHasRotated.current = false
+      cameraRef.current = null
+    }
+  }, [])
+
   // Resize handle component
   const ResizeHandle = ({ direction, className }: { direction: string; className: string }) => (
     <div
@@ -265,9 +317,11 @@ export function Scope3DWindow({
             ) : (
               <Plot
                 data={plotData}
+                revision={dataRevision.current}
                 layout={{
                   autosize: true,
                   uirevision: blockId, // Preserve camera orientation/zoom across data updates
+                  datarevision: dataRevision.current,
                   margin: { l: 0, r: 0, t: 0, b: 0 },
                   paper_bgcolor: 'transparent',
                   scene: {
@@ -291,10 +345,11 @@ export function Scope3DWindow({
                       zerolinecolor: '#585b70',
                       tickfont: { size: 9, color: '#a6adc8' },
                     },
-                    camera: {
-                      eye: { x: 1.5, y: 1.5, z: 1.2 },
-                    },
                     aspectmode: 'cube',
+                    // Use stored camera state if user has rotated, otherwise use default
+                    ...(userHasRotated.current && cameraRef.current
+                      ? { camera: cameraRef.current }
+                      : { camera: { eye: { x: 1.5, y: 1.5, z: 1.2 } } }),
                   },
                   showlegend: false,
                 }}
@@ -303,9 +358,10 @@ export function Scope3DWindow({
                 config={{
                   responsive: true,
                   displayModeBar: true,
-                  modeBarButtonsToRemove: ['toImage', 'sendDataToCloud'],
                   displaylogo: false,
+                  modeBarButtonsToRemove: ['sendDataToCloud'],
                 }}
+                onRelayout={handleRelayout}
               />
             )}
           </div>
