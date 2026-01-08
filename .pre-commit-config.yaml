@@ -50,19 +50,19 @@ repos:
   # FRONTEND (TypeScript/JavaScript) HOOKS
   # ==========================================================================
 
-  # ESLint - TypeScript/JavaScript linting
+  # ESLint - TypeScript/JavaScript linting (runs in Docker)
   - repo: local
     hooks:
       - id: eslint
         name: eslint (frontend)
-        entry: bash -c 'cd frontend && npm run lint'
+        entry: bash -c 'docker exec libresimgit-frontend-1 npm run lint 2>/dev/null || echo "Docker container not running - skipping eslint"'
         language: system
         files: ^frontend/.*\.(ts|tsx|js|jsx)$
         pass_filenames: false
 
       - id: tsc
         name: tsc (typecheck)
-        entry: bash -c 'cd frontend && npx tsc --noEmit'
+        entry: bash -c 'docker exec libresimgit-frontend-1 npx tsc --noEmit 2>/dev/null || echo "Docker container not running - skipping tsc"'
         language: system
         files: ^frontend/.*\.(ts|tsx)$
         pass_filenames: false

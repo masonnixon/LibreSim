@@ -1,6 +1,7 @@
-import { memo } from 'react'
-import { Handle, Position, NodeProps, Node } from '@xyflow/react'
+import { memo, useCallback } from 'react'
+import { Handle, Position, NodeProps, Node, NodeResizer } from '@xyflow/react'
 import type { BlockInstance, BlockDefinition, BlockRotation } from '../../types/block'
+import { useModelStore } from '../../store/modelStore'
 
 interface BlockNodeData extends Record<string, unknown> {
   block: BlockInstance
@@ -22,6 +23,14 @@ function getRotatedPosition(basePosition: Position, rotation: BlockRotation): Po
 
 function BlockNodeComponent({ data, selected }: NodeProps<BlockNode>) {
   const { block, definition } = data
+  const updateBlockSize = useModelStore((state) => state.updateBlockSize)
+
+  const handleResizeEnd = useCallback(
+    (_event: unknown, params: { width: number; height: number }) => {
+      updateBlockSize(block.id, { width: params.width, height: params.height })
+    },
+    [block.id, updateBlockSize]
+  )
 
   if (!block || !definition) {
     return <div className="p-2 bg-red-500 text-white rounded">Invalid Block</div>
@@ -107,45 +116,117 @@ function BlockNodeComponent({ data, selected }: NodeProps<BlockNode>) {
     }
   }
 
+  // Calculate block dimensions
+  const blockWidth = block.size?.width || 100
+  const blockHeight = block.size?.height || 50
+
+  // Font scaling constants
+  const baseNameFontSize = 14
+  const baseIconFontSize = 18
+  const minFontSize = 4
+
+  // Calculate scale factor based on block width (normalize to 100px base)
+  const widthScale = blockWidth / 100
+
+  // Calculate actual font sizes, clamped between minimum and reasonable maximum
+  const nameFontSize = Math.max(minFontSize, Math.min(baseNameFontSize * 1.2, baseNameFontSize * widthScale))
+  const iconFontSize = Math.max(minFontSize, Math.min(baseIconFontSize * 1.2, baseIconFontSize * widthScale))
+
+  // Determine if text should be hidden (font would be smaller than minimum)
+  // Hide text when block is too small to display readable text
+  const hideText = baseNameFontSize * widthScale < minFontSize
+
+  // When in icon-only mode, scale icon to fit the block nicely
+  const iconOnlySize = Math.min(
+    blockWidth * 0.6,   // 60% of width
+    blockHeight * 0.6,  // 60% of height
+    24                  // Maximum icon size
+  )
+
+  // Calculate padding based on block size
+  const isSmallBlock = blockWidth < 50
+
   return (
-    <div
-      className={`
-        px-3 py-2 rounded-lg shadow-lg min-w-[100px]
-        ${getCategoryClass()}
-        ${selected ? 'ring-2 ring-white ring-opacity-50' : ''}
-      `}
-      style={{ transform: `rotate(${rotation}deg)` }}
-    >
-      {/* Input Handles */}
-      {block.inputPorts.map((port, index) => (
-        <Handle
-          key={port.id}
-          type="target"
-          position={inputPosition}
-          id={port.id}
-          style={getHandleStyle(index, block.inputPorts.length, inputPosition)}
-          title={port.name}
-        />
-      ))}
+    <>
+      {/* NodeResizer - only visible when selected */}
+      <NodeResizer
+        minWidth={30}
+        minHeight={24}
+        isVisible={selected}
+        lineClassName="border-blue-400"
+        handleClassName="h-2 w-2 bg-blue-500 border border-blue-300 rounded-sm"
+        onResizeEnd={handleResizeEnd}
+      />
+      <div
+        className={`
+          rounded-lg shadow-lg h-full w-full
+          ${getCategoryClass()}
+          ${selected ? 'ring-2 ring-white ring-opacity-50' : ''}
+        `}
+        style={{
+          transform: `rotate(${rotation}deg)`,
+          padding: isSmallBlock ? '4px' : '8px 12px',
+          minWidth: '30px',
+          minHeight: '24px',
+        }}
+      >
+        {/* Input Handles */}
+        {block.inputPorts.map((port, index) => (
+          <Handle
+            key={port.id}
+            type="target"
+            position={inputPosition}
+            id={port.id}
+            style={getHandleStyle(index, block.inputPorts.length, inputPosition)}
+            title={port.name}
+          />
+        ))}
 
-      {/* Block Content - counter-rotate to keep text upright */}
-      <div className="text-center text-gray-900" style={{ transform: `rotate(${-rotation}deg)` }}>
-        <div className="font-semibold text-sm truncate max-w-[120px]">{block.name}</div>
-        {displayIcon && <div className="text-lg mt-1">{displayIcon}</div>}
+        {/* Block Content - counter-rotate to keep text upright */}
+        <div
+          className="text-center text-gray-900 flex flex-col items-center justify-center h-full"
+          style={{ transform: `rotate(${-rotation}deg)` }}
+        >
+          {/* Show block name only when block is large enough */}
+          {!hideText && (
+            <div
+              className="font-semibold truncate w-full"
+              style={{
+                fontSize: `${nameFontSize}px`,
+                maxWidth: `${blockWidth - (isSmallBlock ? 8 : 16)}px`,
+                lineHeight: 1.2,
+              }}
+            >
+              {block.name}
+            </div>
+          )}
+          {/* Show icon - scale larger when in icon-only mode */}
+          {displayIcon && (
+            <div
+              className={hideText ? '' : 'mt-1'}
+              style={{
+                fontSize: `${hideText ? iconOnlySize : iconFontSize}px`,
+                lineHeight: 1,
+              }}
+            >
+              {displayIcon}
+            </div>
+          )}
+        </div>
+
+        {/* Output Handles */}
+        {block.outputPorts.map((port, index) => (
+          <Handle
+            key={port.id}
+            type="source"
+            position={outputPosition}
+            id={port.id}
+            style={getHandleStyle(index, block.outputPorts.length, outputPosition)}
+            title={port.name}
+          />
+        ))}
       </div>
-
-      {/* Output Handles */}
-      {block.outputPorts.map((port, index) => (
-        <Handle
-          key={port.id}
-          type="source"
-          position={outputPosition}
-          id={port.id}
-          style={getHandleStyle(index, block.outputPorts.length, outputPosition)}
-          title={port.name}
-        />
-      ))}
-    </div>
+    </>
   )
 }
 
@@ -168,6 +249,10 @@ function arePropsEqual(
   if (prevBlock.name !== nextBlock.name) return false
   if (prevBlock.type !== nextBlock.type) return false
   if (prevBlock.rotation !== nextBlock.rotation) return false
+
+  // Check if size changed
+  if (prevBlock.size?.width !== nextBlock.size?.width) return false
+  if (prevBlock.size?.height !== nextBlock.size?.height) return false
 
   // Check if parameters changed (simple JSON comparison for now)
   if (JSON.stringify(prevBlock.parameters) !== JSON.stringify(nextBlock.parameters)) return false
