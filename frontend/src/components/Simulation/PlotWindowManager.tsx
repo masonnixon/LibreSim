@@ -89,7 +89,7 @@ function findAllAnalysisBlocks(
 }
 
 export function PlotWindowManager() {
-  const { results, state } = useSimulationStore()
+  const { results, state, stepModeActive } = useSimulationStore()
   const { model } = useModelStore()
   const { plotWindows, openPlotWindow, closeAllPlotWindows } = useUIStore()
 
@@ -161,9 +161,17 @@ export function PlotWindowManager() {
     }
   }
 
-  // Auto-open windows for new scope and analysis blocks when simulation completes
+  // Auto-open windows for new scope and analysis blocks when simulation completes, pauses, or in step mode
   useEffect(() => {
-    if (state.status === 'completed' && (scopeWindows.length > 0 || analysisWindows.length > 0)) {
+    // Open windows when simulation completes, is paused with results, or when step mode has results
+    const hasResults = results && results.signals && results.signals.length > 0
+    const shouldOpenWindows = (
+      state.status === 'completed' ||
+      (state.status === 'paused' && hasResults) ||
+      (stepModeActive && hasResults)
+    ) && (scopeWindows.length > 0 || analysisWindows.length > 0)
+
+    if (shouldOpenWindows) {
       let windowIndex = 0
 
       // Open windows for each scope block
@@ -198,7 +206,7 @@ export function PlotWindowManager() {
       ])
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- We intentionally use scopeWindows.length/analysisWindows.length to trigger, but reference arrays for current values
-  }, [state.status, scopeWindows.length, analysisWindows.length])
+  }, [state.status, stepModeActive, scopeWindows.length, analysisWindows.length, results])
 
   // Clear windows when simulation resets
   useEffect(() => {

@@ -296,14 +296,16 @@ export function modelToMDL(model: Model): string {
   return lines.join('\n')
 }
 
-export function exportModelAsMDL(model: Model): void {
+export function exportModelAsMDL(model: Model, customFilename?: string): void {
   const mdlContent = modelToMDL(model)
   const blob = new Blob([mdlContent], { type: 'text/plain' })
   const url = URL.createObjectURL(blob)
 
   const a = document.createElement('a')
   a.href = url
-  a.download = `${model.metadata.name.replace(/[^a-zA-Z0-9_-]/g, '_') || 'model'}.mdl`
+  // Use custom filename if provided, otherwise derive from model name
+  const defaultFilename = `${model.metadata.name.replace(/[^a-zA-Z0-9_-]/g, '_') || 'model'}.mdl`
+  a.download = customFilename || defaultFilename
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)

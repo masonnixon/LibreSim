@@ -28,6 +28,7 @@ interface UIState {
   helpModalTab: 'shortcuts' | 'about' | 'blocks'
   showExamplesModal: boolean
   showCodeGenModal: boolean
+  showSaveAsModal: boolean
 
   // Actions
   toggleProperties: () => void
@@ -61,6 +62,8 @@ interface UIState {
   closeExamplesModal: () => void
   openCodeGenModal: () => void
   closeCodeGenModal: () => void
+  openSaveAsModal: () => void
+  closeSaveAsModal: () => void
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -77,6 +80,7 @@ export const useUIStore = create<UIState>((set) => ({
   helpModalTab: 'shortcuts',
   showExamplesModal: false,
   showCodeGenModal: false,
+  showSaveAsModal: false,
 
   toggleProperties: () => set((state) => ({ showProperties: !state.showProperties })),
   toggleSimulation: () => set((state) => ({ showSimulation: !state.showSimulation })),
@@ -172,4 +176,6 @@ export const useUIStore = create<UIState>((set) => ({
   closeExamplesModal: () => set({ showExamplesModal: false }),
   openCodeGenModal: () => set({ showCodeGenModal: true }),
   closeCodeGenModal: () => set({ showCodeGenModal: false }),
+  openSaveAsModal: () => set({ showSaveAsModal: true }),
+  closeSaveAsModal: () => set({ showSaveAsModal: false }),
 }))

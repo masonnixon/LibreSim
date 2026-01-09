@@ -255,11 +255,11 @@ const shortcuts = {
     { keys: 'Backspace', action: 'Delete selected blocks' },
   ],
   signals: [
-    { keys: 'Double-click line', action: 'Edit signal name' },
+    { keys: 'Right-click line', action: 'Open signal context menu (rename, delete, etc.)' },
     { keys: 'Ctrl+Shift+S', action: 'Highlight signal to source' },
     { keys: 'Ctrl+Shift+D', action: 'Highlight signal to destination' },
     { keys: 'Ctrl+Shift+H', action: 'Clear signal highlighting' },
-    { keys: 'Right-click line', action: 'Open signal context menu' },
+    { keys: 'Alt + drag', action: 'Fine-grained routing (1px grid)' },
   ],
   layout: [
     { keys: 'Space', action: 'Fit view to content' },
