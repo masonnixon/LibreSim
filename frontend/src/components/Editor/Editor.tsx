@@ -15,6 +15,7 @@ import {
   OnConnect,
   OnConnectEnd,
   Panel,
+  OnConnectStart,
 } from '@xyflow/react'
 import { nanoid } from 'nanoid'
 import { useModelStore } from '../../store/modelStore'
@@ -25,6 +26,93 @@ import { CustomEdge } from './CustomEdge'
 import { blockRegistry } from '../../blocks'
 import { getIsPropertiesFocused } from '../Properties/PropertiesPanel'
 import type { BlockDefinition, BlockInstance, Connection as ConnectionType } from '../../types/block'
+
+/**
+ * Calculate the minimum distance from a point to a line segment.
+ * Used for detecting if a connection drop is near an existing edge (for branching).
+ */
+function pointToSegmentDistance(
+  px: number, py: number,
+  x1: number, y1: number,
+  x2: number, y2: number
+): number {
+  const dx = x2 - x1
+  const dy = y2 - y1
+  const lengthSquared = dx * dx + dy * dy
+
+  if (lengthSquared === 0) {
+    // Segment is a point
+    return Math.sqrt((px - x1) ** 2 + (py - y1) ** 2)
+  }
+
+  // Parameter t for the closest point on the line
+  let t = ((px - x1) * dx + (py - y1) * dy) / lengthSquared
+  t = Math.max(0, Math.min(1, t)) // Clamp to segment
+
+  const closestX = x1 + t * dx
+  const closestY = y1 + t * dy
+
+  return Math.sqrt((px - closestX) ** 2 + (py - closestY) ** 2)
+}
+
+/**
+ * Find the nearest edge to a point, within a maximum distance threshold.
+ * Returns the connection and distance, or null if none are close enough.
+ */
+function findNearestEdge(
+  point: { x: number; y: number },
+  connections: ConnectionType[],
+  blocks: BlockInstance[],
+  maxDistance: number = 30
+): { connection: ConnectionType; distance: number } | null {
+  let nearest: { connection: ConnectionType; distance: number } | null = null
+
+  for (const conn of connections) {
+    const sourceBlock = blocks.find(b => b.id === conn.sourceBlockId)
+    const targetBlock = blocks.find(b => b.id === conn.targetBlockId)
+    if (!sourceBlock || !targetBlock) continue
+
+    // Get source port position (right side of block)
+    const sourcePort = sourceBlock.outputPorts.find(p => p.id === conn.sourcePortId)
+    if (!sourcePort) continue
+    const sourcePortIndex = sourceBlock.outputPorts.indexOf(sourcePort)
+    const sourcePortCount = sourceBlock.outputPorts.length
+    const sourceX = sourceBlock.position.x + (sourceBlock.size?.width || 100)
+    const sourceY = sourceBlock.position.y + ((sourcePortIndex + 1) / (sourcePortCount + 1)) * (sourceBlock.size?.height || 50)
+
+    // Get target port position (left side of block)
+    const targetPort = targetBlock.inputPorts.find(p => p.id === conn.targetPortId)
+    if (!targetPort) continue
+    const targetPortIndex = targetBlock.inputPorts.indexOf(targetPort)
+    const targetPortCount = targetBlock.inputPorts.length
+    const targetX = targetBlock.position.x
+    const targetY = targetBlock.position.y + ((targetPortIndex + 1) / (targetPortCount + 1)) * (targetBlock.size?.height || 50)
+
+    // For orthogonal paths, check distance to each segment
+    const waypoints = conn.waypoints || []
+    const pathPoints = [
+      { x: sourceX, y: sourceY },
+      ...waypoints,
+      { x: targetX, y: targetY }
+    ]
+
+    // Check each segment
+    for (let i = 0; i < pathPoints.length - 1; i++) {
+      const p1 = pathPoints[i]
+      const p2 = pathPoints[i + 1]
+
+      // For Manhattan routing, we have intermediate points
+      // Simple case: just check straight line for now
+      const dist = pointToSegmentDistance(point.x, point.y, p1.x, p1.y, p2.x, p2.y)
+
+      if (dist < maxDistance && (!nearest || dist < nearest.distance)) {
+        nearest = { connection: conn, distance: dist }
+      }
+    }
+  }
+
+  return nearest
+}
 
 /**
  * Deep copy a subsystem's children and connections with new IDs
@@ -204,11 +292,26 @@ export function Editor() {
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
 
+  // Signal context menu state (right-click on edge)
+  const [signalContextMenu, setSignalContextMenu] = useState<{
+    x: number
+    y: number
+    edgeId: string
+    connectionId: string
+  } | null>(null)
+
+  // Highlighted connections for signal tracing
+  const [highlightedConnections, setHighlightedConnections] = useState<Set<string>>(new Set())
+
   // Selection toolbar position (used for future toolbar positioning, currently tracked but not displayed)
   const [, setSelectionBounds] = useState<{ x: number; y: number; width: number; height: number } | null>(null)
 
   // Selected edge ID for showing signal dimensions
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
+
+  // Track if we're dragging from an input port (for visual feedback)
+  const [isDraggingFromInput, setIsDraggingFromInput] = useState(false)
+  const [nearestEdgeForBranch, setNearestEdgeForBranch] = useState<string | null>(null)
 
   // Clipboard for copy/paste functionality
   const [clipboard, setClipboard] = useState<{
@@ -250,6 +353,7 @@ export function Editor() {
       data: {
         waypoints: conn.waypoints || [],
         connectionId: conn.id,
+        signalName: conn.signalName,
       },
     }))
   }, [model, currentConnections])
@@ -278,7 +382,12 @@ export function Editor() {
 
   // Sync React Flow nodes with model state when model or current path changes
   useEffect(() => {
+    console.log('[Editor] useEffect sync - model:', model ? 'exists' : 'null',
+      'currentBlocks:', currentBlocks.length, 'currentConnections:', currentConnections.length,
+      'selectedEdgeId:', selectedEdgeId)
+
     if (!model) {
+      console.log('[Editor] Model is null - clearing nodes and edges')
       setNodes([])
       setEdges([])
       return
@@ -333,11 +442,23 @@ export function Editor() {
       })
       .map((conn) => {
         const isSelected = conn.id === selectedEdgeId
+        const isBranchTarget = conn.id === nearestEdgeForBranch
+        const isHighlighted = highlightedConnections.has(conn.id)
         // Get dimensions from source port
         const sourceBlock = currentBlocks.find(b => b.id === conn.sourceBlockId)
         const sourcePort = sourceBlock?.outputPorts.find(p => p.id === conn.sourcePortId)
         const dims = sourcePort?.dimensions || [1]
         const dimLabel = dims.length === 1 && dims[0] === 1 ? '1' : dims.join('×')
+
+        // Determine edge style: branch target (green), highlighted (yellow), selected (cyan), or default
+        let edgeStyle: React.CSSProperties | undefined
+        if (isBranchTarget) {
+          edgeStyle = { stroke: '#22c55e', strokeWidth: 3 } // Green for branch target
+        } else if (isHighlighted) {
+          edgeStyle = { stroke: '#eab308', strokeWidth: 3 } // Yellow for signal tracing highlight
+        } else if (isSelected) {
+          edgeStyle = { stroke: '#22d3ee', strokeWidth: 2 }
+        }
 
         return {
           id: conn.id,
@@ -351,8 +472,12 @@ export function Editor() {
           data: {
             waypoints: conn.waypoints || [],
             connectionId: conn.id,
+            signalName: conn.signalName,
+            isBranchTarget, // Pass to CustomEdge for additional visual feedback
+            isHighlighted, // Pass for signal tracing highlighting
+            onDragStateChange: setIsEdgeDragging, // Callback to track edge drag state
           },
-          style: isSelected ? { stroke: '#22d3ee', strokeWidth: 2 } : undefined,
+          style: edgeStyle,
           label: isSelected ? dimLabel : undefined,
           labelStyle: isSelected ? {
             fill: '#fff',
@@ -368,9 +493,10 @@ export function Editor() {
         }
       })
 
+    console.log('[Editor] Setting nodes:', newNodes.length, 'edges:', validEdges.length)
     setNodes(newNodes)
     setEdges(validEdges)
-  }, [model, currentBlocks, currentConnections, selectedEdgeId, selectedBlockIds, setNodes, setEdges])
+  }, [model, currentBlocks, currentConnections, selectedEdgeId, selectedBlockIds, nearestEdgeForBranch, highlightedConnections, setNodes, setEdges])
 
   // Sync React Flow state back to model store
   const onNodeDragStart = useCallback(
@@ -405,15 +531,68 @@ export function Editor() {
     [addConnection, pushHistory]
   )
 
-  // Handle connection end for auto-expanding Scope inputs
-  // This handles two cases:
-  // 1. Dropping on Scope body (invalid connection) - auto-expand and connect
-  // 2. Dropping on already-connected Scope port - auto-expand and connect to new port
+  // Track connection start info for branching detection
+  const connectStartRef = useRef<{
+    nodeId: string | null
+    handleId: string | null
+    handleType: 'source' | 'target' | null
+  }>({ nodeId: null, handleId: null, handleType: null })
+
+  // Handle connection start - track where connection started from
+  const onConnectStart: OnConnectStart = useCallback(
+    (_, { nodeId, handleId, handleType }) => {
+      connectStartRef.current = { nodeId, handleId, handleType }
+      setIsDraggingFromInput(handleType === 'target')
+      console.log('[Editor] onConnectStart:', { nodeId, handleId, handleType })
+    },
+    []
+  )
+
+  // Handle connection end for:
+  // 1. Branching - dragging from input port to existing line
+  // 2. Auto-expanding Scope inputs
   const onConnectEnd: OnConnectEnd = useCallback(
     (event, connectionState) => {
+      // Reset visual feedback state
+      setIsDraggingFromInput(false)
+      setNearestEdgeForBranch(null)
+
       const fromNodeId = connectionState.fromNode?.id
       const fromHandleId = connectionState.fromHandle?.id
       if (!fromNodeId || !fromHandleId) return
+
+      const mouseEvent = event as MouseEvent
+      const dropPosition = screenToFlowPosition({
+        x: mouseEvent.clientX,
+        y: mouseEvent.clientY,
+      })
+
+      // Check if we're dragging FROM an input port (target handle)
+      // This is the Simulink behavior for creating branches
+      const startInfo = connectStartRef.current
+      const isDraggingFromInput = startInfo.handleType === 'target'
+
+      // Case: Branching - dragging from input port to existing line
+      if (isDraggingFromInput && !connectionState.isValid) {
+        console.log('[Editor] Checking for branch - dragging from input port')
+
+        // Find if dropped near an existing edge
+        const nearestEdge = findNearestEdge(dropPosition, currentConnections, currentBlocks, 30)
+
+        if (nearestEdge) {
+          console.log('[Editor] Found nearby edge for branching:', nearestEdge.connection.id, 'distance:', nearestEdge.distance)
+
+          // Create a branch: connect the edge's source to this input port
+          pushHistory()
+          addConnection({
+            sourceBlockId: nearestEdge.connection.sourceBlockId,
+            sourcePortId: nearestEdge.connection.sourcePortId,
+            targetBlockId: fromNodeId,
+            targetPortId: fromHandleId,
+          })
+          return
+        }
+      }
 
       // Case 1: Invalid connection - check if dropped on Scope body
       if (!connectionState.isValid) {
@@ -482,11 +661,12 @@ export function Editor() {
         }
       }, 10) // Small delay to ensure onConnect has completed
     },
-    [currentBlocks, addScopeInput, addConnection, getCurrentConnections]
+    [currentBlocks, currentConnections, addScopeInput, addConnection, getCurrentConnections, screenToFlowPosition, pushHistory]
   )
 
   const onNodesDelete = useCallback(
     (deleted: Node[]) => {
+      console.log('[Editor] onNodesDelete triggered, nodes:', deleted.map(n => n.id))
       deleted.forEach((node) => removeBlock(node.id))
     },
     [removeBlock]
@@ -494,10 +674,14 @@ export function Editor() {
 
   const onEdgesDelete = useCallback(
     (deleted: Edge[]) => {
+      console.log('[Editor] onEdgesDelete triggered, edges:', deleted.map(e => e.id))
       deleted.forEach((edge) => removeConnection(edge.id))
     },
     [removeConnection]
   )
+
+  // Track when edge segment/waypoint is being dragged
+  const [isEdgeDragging, setIsEdgeDragging] = useState(false)
 
   // Handle edge click to show signal dimensions
   const onEdgeClick = useCallback(
@@ -508,10 +692,16 @@ export function Editor() {
     []
   )
 
-  // Deselect edge when clicking on the pane
+  // Deselect edge when clicking on the pane (but not during segment/waypoint drag)
   const onPaneClick = useCallback(() => {
+    // Don't deselect if we're dragging an edge segment or waypoint
+    if (isEdgeDragging) {
+      console.log('[Editor] onPaneClick - ignoring, edge drag in progress')
+      return
+    }
+    console.log('[Editor] onPaneClick - deselecting edge')
     setSelectedEdgeId(null)
-  }, [])
+  }, [isEdgeDragging])
 
   const onSelectionChange = useCallback(
     ({ nodes: selectedNodes }: { nodes: Node[] }) => {
@@ -602,6 +792,96 @@ export function Editor() {
 
   const handleCloseContextMenu = useCallback(() => {
     setContextMenu(null)
+    setSignalContextMenu(null)
+  }, [])
+
+  // Signal context menu handlers
+  const handleSignalContextMenu = useCallback(
+    (event: React.MouseEvent, edge: Edge) => {
+      event.preventDefault()
+      event.stopPropagation()
+      const connectionId = (edge.data as { connectionId?: string })?.connectionId || edge.id
+      setSignalContextMenu({
+        x: event.clientX,
+        y: event.clientY,
+        edgeId: edge.id,
+        connectionId,
+      })
+      setContextMenu(null) // Close block context menu if open
+    },
+    []
+  )
+
+  const handleDeleteSignal = useCallback(() => {
+    if (signalContextMenu) {
+      pushHistory()
+      removeConnection(signalContextMenu.connectionId)
+      setSignalContextMenu(null)
+      setSelectedEdgeId(null)
+    }
+  }, [signalContextMenu, removeConnection, pushHistory])
+
+  const handleDeleteSignalLabel = useCallback(() => {
+    if (signalContextMenu) {
+      pushHistory()
+      useModelStore.getState().updateConnectionSignalName(signalContextMenu.connectionId, undefined)
+      setSignalContextMenu(null)
+    }
+  }, [signalContextMenu, pushHistory])
+
+  const handleAutoRouteSignal = useCallback(() => {
+    if (signalContextMenu) {
+      pushHistory()
+      // Clear waypoints to trigger auto-routing
+      useModelStore.getState().clearConnectionWaypoints(signalContextMenu.connectionId)
+      setSignalContextMenu(null)
+    }
+  }, [signalContextMenu, pushHistory])
+
+  const handleHighlightToSource = useCallback(() => {
+    if (!signalContextMenu) return
+    const conn = currentConnections.find(c => c.id === signalContextMenu.connectionId)
+    if (!conn) return
+
+    // Find all connections that share this source (including this one)
+    const sourceBranchIds = currentConnections
+      .filter(c => c.sourceBlockId === conn.sourceBlockId && c.sourcePortId === conn.sourcePortId)
+      .map(c => c.id)
+
+    setHighlightedConnections(new Set(sourceBranchIds))
+    setSignalContextMenu(null)
+  }, [signalContextMenu, currentConnections])
+
+  const handleHighlightToDestination = useCallback(() => {
+    if (!signalContextMenu) return
+    const conn = currentConnections.find(c => c.id === signalContextMenu.connectionId)
+    if (!conn) return
+
+    // Find all connections downstream from this target block
+    const visited = new Set<string>()
+    const toVisit = [conn.targetBlockId]
+    const highlightIds = new Set<string>([conn.id])
+
+    while (toVisit.length > 0) {
+      const blockId = toVisit.shift()!
+      if (visited.has(blockId)) continue
+      visited.add(blockId)
+
+      // Find all connections from this block's outputs
+      const outgoing = currentConnections.filter(c => c.sourceBlockId === blockId)
+      outgoing.forEach(c => {
+        highlightIds.add(c.id)
+        toVisit.push(c.targetBlockId)
+      })
+    }
+
+    setHighlightedConnections(highlightIds)
+    setSignalContextMenu(null)
+  }, [signalContextMenu, currentConnections])
+
+  const handleRemoveHighlighting = useCallback(() => {
+    setHighlightedConnections(new Set())
+    setSignalContextMenu(null)
   }, [])
 
   const handleCreateSubsystem = useCallback(() => {
@@ -730,6 +1010,47 @@ export function Editor() {
       if (isCtrlOrCmd && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
         e.preventDefault()
         redo()
+      }
+
+      // Signal highlighting shortcuts (when edge is selected)
+      if (isCtrlOrCmd && e.shiftKey && selectedEdgeId) {
+        // Ctrl+Shift+S - Highlight to Source
+        if (e.key === 'S' || e.key === 's') {
+          e.preventDefault()
+          const conn = currentConnections.find(c => c.id === selectedEdgeId)
+          if (conn) {
+            const sourceBranchIds = currentConnections
+              .filter(c => c.sourceBlockId === conn.sourceBlockId && c.sourcePortId === conn.sourcePortId)
+              .map(c => c.id)
+            setHighlightedConnections(new Set(sourceBranchIds))
+          }
+        }
+        // Ctrl+Shift+D - Highlight to Destination
+        if (e.key === 'D' || e.key === 'd') {
+          e.preventDefault()
+          const conn = currentConnections.find(c => c.id === selectedEdgeId)
+          if (conn) {
+            const visited = new Set<string>()
+            const toVisit = [conn.targetBlockId]
+            const highlightIds = new Set<string>([conn.id])
+            while (toVisit.length > 0) {
+              const blockId = toVisit.shift()!
+              if (visited.has(blockId)) continue
+              visited.add(blockId)
+              const outgoing = currentConnections.filter(c => c.sourceBlockId === blockId)
+              outgoing.forEach(c => {
+                highlightIds.add(c.id)
+                toVisit.push(c.targetBlockId)
+              })
+            }
+            setHighlightedConnections(highlightIds)
+          }
+        }
+        // Ctrl+Shift+H - Remove Highlighting
+        if (e.key === 'H' || e.key === 'h') {
+          e.preventDefault()
+          setHighlightedConnections(new Set())
+        }
       }
 
       // Ctrl+C - Copy selected blocks and their internal connections
@@ -887,6 +1208,23 @@ export function Editor() {
     pushHistory,
   ])
 
+  // Track nearest edge during branching drag for visual feedback
+  useEffect(() => {
+    if (!isDraggingFromInput) {
+      setNearestEdgeForBranch(null)
+      return
+    }
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const position = screenToFlowPosition({ x: e.clientX, y: e.clientY })
+      const nearest = findNearestEdge(position, currentConnections, currentBlocks, 30)
+      setNearestEdgeForBranch(nearest?.connection.id || null)
+    }
+
+    window.addEventListener('mousemove', handleMouseMove)
+    return () => window.removeEventListener('mousemove', handleMouseMove)
+  }, [isDraggingFromInput, currentConnections, currentBlocks, screenToFlowPosition])
+
   if (!model) {
     return (
       <div className="flex-1 flex items-center justify-center bg-editor-bg text-gray-400">
@@ -906,12 +1244,14 @@ export function Editor() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onConnectStart={onConnectStart}
         onConnectEnd={onConnectEnd}
         onNodeDragStart={onNodeDragStart}
         onNodeDragStop={onNodeDragStop}
         onNodesDelete={onNodesDelete}
         onEdgesDelete={onEdgesDelete}
         onEdgeClick={onEdgeClick}
+        onEdgeContextMenu={handleSignalContextMenu}
         onPaneClick={onPaneClick}
         onSelectionChange={onSelectionChange}
         onNodeDoubleClick={onNodeDoubleClick}
@@ -1067,6 +1407,96 @@ export function Editor() {
               </button>
             </>
           )}
+        </div>
+      )}
+
+      {/* Signal Context Menu (right-click on edge) */}
+      {signalContextMenu && (
+        <div
+          className="absolute z-50 bg-slate-800 border border-slate-600 rounded-lg shadow-xl py-1 min-w-[200px]"
+          style={{ left: signalContextMenu.x, top: signalContextMenu.y }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Delete Signal */}
+          <button
+            className="w-full px-4 py-2 text-left text-sm text-white hover:bg-slate-700 flex items-center gap-2"
+            onClick={handleDeleteSignal}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            <span>Delete</span>
+            <span className="ml-auto text-slate-400 text-xs">Del</span>
+          </button>
+
+          {/* Delete Label - only show if signal has a name */}
+          {(() => {
+            const conn = currentConnections.find(c => c.id === signalContextMenu.connectionId)
+            return conn?.signalName ? (
+              <button
+                className="w-full px-4 py-2 text-left text-sm text-white hover:bg-slate-700 flex items-center gap-2"
+                onClick={handleDeleteSignalLabel}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                </svg>
+                <span>Delete Label</span>
+              </button>
+            ) : null
+          })()}
+
+          <div className="border-t border-slate-600 my-1" />
+
+          {/* Highlight to Source */}
+          <button
+            className="w-full px-4 py-2 text-left text-sm text-white hover:bg-slate-700 flex items-center gap-2"
+            onClick={handleHighlightToSource}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+            </svg>
+            <span>Highlight to Source</span>
+            <span className="ml-auto text-slate-400 text-xs">Ctrl+Shift+S</span>
+          </button>
+
+          {/* Highlight to Destination */}
+          <button
+            className="w-full px-4 py-2 text-left text-sm text-white hover:bg-slate-700 flex items-center gap-2"
+            onClick={handleHighlightToDestination}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+            </svg>
+            <span>Highlight to Destination</span>
+            <span className="ml-auto text-slate-400 text-xs">Ctrl+Shift+D</span>
+          </button>
+
+          {/* Remove Highlighting - only show if there are highlighted connections */}
+          {highlightedConnections.size > 0 && (
+            <button
+              className="w-full px-4 py-2 text-left text-sm text-white hover:bg-slate-700 flex items-center gap-2"
+              onClick={handleRemoveHighlighting}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              <span>Remove Highlighting</span>
+              <span className="ml-auto text-slate-400 text-xs">Ctrl+Shift+H</span>
+            </button>
+          )}
+
+          <div className="border-t border-slate-600 my-1" />
+
+          {/* Auto-route Line */}
+          <button
+            className="w-full px-4 py-2 text-left text-sm text-white hover:bg-slate-700 flex items-center gap-2"
+            onClick={handleAutoRouteSignal}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span>Auto-route Line</span>
+          </button>
         </div>
       )}
     </div>

@@ -95,6 +95,7 @@ interface ModelState {
   addBlock: (definition: BlockDefinition, position: { x: number; y: number }) => string
   removeBlock: (blockId: string) => void
   updateBlockPosition: (blockId: string, position: { x: number; y: number }) => void
+  updateBlockSize: (blockId: string, size: { width: number; height: number }) => void
   updateBlockParameters: (blockId: string, parameters: Record<string, unknown>) => void
   renameBlock: (blockId: string, name: string) => void
   addScopeInput: (blockId: string) => string | null // Returns the new port ID
@@ -102,6 +103,11 @@ interface ModelState {
   // Connection operations
   addConnection: (connection: Omit<Connection, 'id'>) => string | null
   removeConnection: (connectionId: string) => void
+  addConnectionWaypoint: (connectionId: string, point: { x: number; y: number }, index?: number) => void
+  updateConnectionWaypoint: (connectionId: string, waypointIndex: number, point: { x: number; y: number }) => void
+  removeConnectionWaypoint: (connectionId: string, waypointIndex: number) => void
+  clearConnectionWaypoints: (connectionId: string) => void
+  updateConnectionSignalName: (connectionId: string, signalName: string | undefined) => void
 
   // Selection operations
   selectBlocks: (blockIds: string[]) => void
@@ -270,6 +276,100 @@ function removeConnectionInHierarchy(
           return {
             ...b,
             childConnections: (b.childConnections || []).filter(c => c.id !== connectionId)
+          }
+        } else {
+          // Go deeper
+          return {
+            ...b,
+            children: updateSubsystem(b.children || [], rest)
+          }
+        }
+      }
+      return b
+    })
+  }
+
+  return { ...model, blocks: updateSubsystem(model.blocks, path) }
+}
+
+/**
+ * Update a connection's waypoints at the current path level.
+ * Returns a new model with the connection's waypoints updated.
+ */
+function updateConnectionWaypointsInHierarchy(
+  model: Model,
+  path: SubsystemPathItem[],
+  connectionId: string,
+  updateFn: (waypoints: Array<{ x: number; y: number }>) => Array<{ x: number; y: number }>
+): Model {
+  const updateConnection = (conn: Connection): Connection => {
+    if (conn.id !== connectionId) return conn
+    return { ...conn, waypoints: updateFn(conn.waypoints || []) }
+  }
+
+  if (path.length === 0) {
+    return { ...model, connections: model.connections.map(updateConnection) }
+  }
+
+  // Need to update connection inside a subsystem
+  const updateSubsystem = (blocks: BlockInstance[], remainingPath: SubsystemPathItem[]): BlockInstance[] => {
+    if (remainingPath.length === 0) return blocks
+
+    const [first, ...rest] = remainingPath
+    return blocks.map(b => {
+      if (b.id === first.id && b.type === 'subsystem') {
+        if (rest.length === 0) {
+          // This is the target subsystem
+          return {
+            ...b,
+            childConnections: (b.childConnections || []).map(updateConnection)
+          }
+        } else {
+          // Go deeper
+          return {
+            ...b,
+            children: updateSubsystem(b.children || [], rest)
+          }
+        }
+      }
+      return b
+    })
+  }
+
+  return { ...model, blocks: updateSubsystem(model.blocks, path) }
+}
+
+/**
+ * Update a connection's signal name at the current path level.
+ * Returns a new model with the connection's signalName updated.
+ */
+function updateConnectionSignalNameInHierarchy(
+  model: Model,
+  path: SubsystemPathItem[],
+  connectionId: string,
+  signalName: string | undefined
+): Model {
+  const updateConnection = (conn: Connection): Connection => {
+    if (conn.id !== connectionId) return conn
+    return { ...conn, signalName }
+  }
+
+  if (path.length === 0) {
+    return { ...model, connections: model.connections.map(updateConnection) }
+  }
+
+  // Need to update connection inside a subsystem
+  const updateSubsystem = (blocks: BlockInstance[], remainingPath: SubsystemPathItem[]): BlockInstance[] => {
+    if (remainingPath.length === 0) return blocks
+
+    const [first, ...rest] = remainingPath
+    return blocks.map(b => {
+      if (b.id === first.id && b.type === 'subsystem') {
+        if (rest.length === 0) {
+          // This is the target subsystem
+          return {
+            ...b,
+            childConnections: (b.childConnections || []).map(updateConnection)
           }
         } else {
           // Go deeper
@@ -530,6 +630,7 @@ export const useModelStore = create<ModelState>((set, get) => ({
   },
 
   removeBlock: (blockId: string) => {
+    console.log('[modelStore] removeBlock called for:', blockId, new Error().stack)
     const { model, currentPath } = get()
     if (!model) return
 
@@ -594,6 +695,19 @@ export const useModelStore = create<ModelState>((set, get) => ({
       model: {
         ...model,
         blocks: updateBlockInHierarchy(model.blocks, currentPath, blockId, (b) => ({ ...b, position })),
+      },
+      isDirty: true,
+    })
+  },
+
+  updateBlockSize: (blockId: string, size: { width: number; height: number }) => {
+    const { model, currentPath } = get()
+    if (!model) return
+
+    set({
+      model: {
+        ...model,
+        blocks: updateBlockInHierarchy(model.blocks, currentPath, blockId, (b) => ({ ...b, size })),
       },
       isDirty: true,
     })
@@ -917,6 +1031,7 @@ export const useModelStore = create<ModelState>((set, get) => ({
   },
 
   removeConnection: (connectionId: string) => {
+    console.log('[modelStore] removeConnection called for:', connectionId, new Error().stack)
     const { model, currentPath } = get()
     if (!model) return
 
@@ -924,6 +1039,71 @@ export const useModelStore = create<ModelState>((set, get) => ({
       model: removeConnectionInHierarchy(model, currentPath, connectionId),
       isDirty: true,
       selectedConnectionIds: get().selectedConnectionIds.filter((id) => id !== connectionId),
+    })
+  },
+
+  addConnectionWaypoint: (connectionId: string, point: { x: number; y: number }, index?: number) => {
+    const { model, currentPath } = get()
+    if (!model) return
+
+    set({
+      model: updateConnectionWaypointsInHierarchy(model, currentPath, connectionId, (waypoints) => {
+        const newWaypoints = [...waypoints]
+        const insertIndex = index !== undefined ? index : newWaypoints.length
+        newWaypoints.splice(insertIndex, 0, point)
+        return newWaypoints
+      }),
+      isDirty: true,
+    })
+  },
+
+  updateConnectionWaypoint: (connectionId: string, waypointIndex: number, point: { x: number; y: number }) => {
+    const { model, currentPath } = get()
+    if (!model) return
+
+    set({
+      model: updateConnectionWaypointsInHierarchy(model, currentPath, connectionId, (waypoints) => {
+        if (waypointIndex < 0 || waypointIndex >= waypoints.length) return waypoints
+        const newWaypoints = [...waypoints]
+        newWaypoints[waypointIndex] = point
+        return newWaypoints
+      }),
+      isDirty: true,
+    })
+  },
+
+  removeConnectionWaypoint: (connectionId: string, waypointIndex: number) => {
+    const { model, currentPath } = get()
+    if (!model) return
+
+    set({
+      model: updateConnectionWaypointsInHierarchy(model, currentPath, connectionId, (waypoints) => {
+        if (waypointIndex < 0 || waypointIndex >= waypoints.length) return waypoints
+        const newWaypoints = [...waypoints]
+        newWaypoints.splice(waypointIndex, 1)
+        return newWaypoints
+      }),
+      isDirty: true,
+    })
+  },
+
+  clearConnectionWaypoints: (connectionId: string) => {
+    const { model, currentPath } = get()
+    if (!model) return
+
+    set({
+      model: updateConnectionWaypointsInHierarchy(model, currentPath, connectionId, () => []),
+      isDirty: true,
+    })
+  },
+
+  updateConnectionSignalName: (connectionId: string, signalName: string | undefined) => {
+    const { model, currentPath } = get()
+    if (!model) return
+
+    set({
+      model: updateConnectionSignalNameInHierarchy(model, currentPath, connectionId, signalName),
+      isDirty: true,
     })
   },
 

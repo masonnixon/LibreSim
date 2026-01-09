@@ -59,6 +59,7 @@ export interface BlockInstance {
   type: string
   name: string
   position: { x: number; y: number }
+  size?: { width: number; height: number }
   rotation?: BlockRotation
   parameters: Record<string, unknown>
   inputPorts: Port[]
@@ -75,4 +76,8 @@ export interface Connection {
   sourcePortId: string
   targetBlockId: string
   targetPortId: string
+  // Optional waypoints for manual edge routing
+  waypoints?: Array<{ x: number; y: number }>
+  // Optional signal name (displayed on double-click edit, per Simulink behavior)
+  signalName?: string
 }

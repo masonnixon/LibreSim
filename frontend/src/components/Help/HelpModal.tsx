@@ -254,6 +254,13 @@ const shortcuts = {
     { keys: 'Delete', action: 'Delete selected blocks' },
     { keys: 'Backspace', action: 'Delete selected blocks' },
   ],
+  signals: [
+    { keys: 'Double-click line', action: 'Edit signal name' },
+    { keys: 'Ctrl+Shift+S', action: 'Highlight signal to source' },
+    { keys: 'Ctrl+Shift+D', action: 'Highlight signal to destination' },
+    { keys: 'Ctrl+Shift+H', action: 'Clear signal highlighting' },
+    { keys: 'Right-click line', action: 'Open signal context menu' },
+  ],
   layout: [
     { keys: 'Space', action: 'Fit view to content' },
     { keys: 'Ctrl+R', action: 'Rotate selected blocks 90°' },
@@ -307,6 +314,18 @@ function ShortcutsTab() {
         <table className="w-full">
           <tbody>
             {shortcuts.editing.map((s) => (
+              <ShortcutRow key={s.keys} keys={s.keys} action={s.action} />
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Signal Lines */}
+      <div>
+        <h3 className="text-sm font-semibold text-blue-400 uppercase mb-3">Signal Lines</h3>
+        <table className="w-full">
+          <tbody>
+            {shortcuts.signals.map((s) => (
               <ShortcutRow key={s.keys} keys={s.keys} action={s.action} />
             ))}
           </tbody>
