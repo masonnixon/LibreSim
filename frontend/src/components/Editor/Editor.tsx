@@ -300,6 +300,14 @@ export function Editor() {
     connectionId: string
   } | null>(null)
 
+  // Signal renaming state (inline text input)
+  const [renamingSignal, setRenamingSignal] = useState<{
+    connectionId: string
+    x: number
+    y: number
+  } | null>(null)
+  const signalNameInputRef = useRef<HTMLInputElement>(null)
+
   // Highlighted connections for signal tracing
   const [highlightedConnections, setHighlightedConnections] = useState<Set<string>>(new Set())
 
@@ -307,7 +315,19 @@ export function Editor() {
   const [, setSelectionBounds] = useState<{ x: number; y: number; width: number; height: number } | null>(null)
 
   // Selected edge ID for showing signal dimensions
-  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
+  const [selectedEdgeId, setSelectedEdgeIdInternal] = useState<string | null>(null)
+
+  // Wrap setSelectedEdgeId to log all changes with stack trace
+  const setSelectedEdgeId = useCallback((value: string | null | ((prev: string | null) => string | null)) => {
+    setSelectedEdgeIdInternal(prev => {
+      const newValue = typeof value === 'function' ? value(prev) : value
+      if (newValue !== prev) {
+        console.log('[Editor] setSelectedEdgeId:', prev, '->', newValue)
+        console.trace('[Editor] setSelectedEdgeId stack')
+      }
+      return newValue
+    })
+  }, [])
 
   // Track if we're dragging from an input port (for visual feedback)
   const [isDraggingFromInput, setIsDraggingFromInput] = useState(false)
@@ -359,7 +379,27 @@ export function Editor() {
   }, [model, currentConnections])
 
   const [nodes, setNodes, onNodesChangeBase] = useNodesState(initialNodes)
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
+  const [edges, setEdges, onEdgesChangeBase] = useEdgesState(initialEdges)
+
+  // Wrap onEdgesChange to log and filter edge changes
+  const onEdgesChange = useCallback(
+    (changes: Parameters<typeof onEdgesChangeBase>[0]) => {
+      // Log all edge changes to understand what's happening
+      const removeChanges = changes.filter((c) => c.type === 'remove')
+      if (removeChanges.length > 0) {
+        console.log('[Editor] onEdgesChange - REMOVE changes:', removeChanges)
+        console.trace('[Editor] onEdgesChange remove stack')
+        // Don't process remove changes from ReactFlow - let our model handle deletion
+        const nonRemoveChanges = changes.filter((c) => c.type !== 'remove')
+        if (nonRemoveChanges.length > 0) {
+          onEdgesChangeBase(nonRemoveChanges)
+        }
+        return
+      }
+      onEdgesChangeBase(changes)
+    },
+    [onEdgesChangeBase]
+  )
 
   // Wrap onNodesChange to prevent selection changes when input is focused
   const onNodesChange = useCallback(
@@ -675,6 +715,7 @@ export function Editor() {
   const onEdgesDelete = useCallback(
     (deleted: Edge[]) => {
       console.log('[Editor] onEdgesDelete triggered, edges:', deleted.map(e => e.id))
+      console.trace('[Editor] onEdgesDelete stack trace')
       deleted.forEach((edge) => removeConnection(edge.id))
     },
     [removeConnection]
@@ -683,20 +724,62 @@ export function Editor() {
   // Track when edge segment/waypoint is being dragged
   const [isEdgeDragging, setIsEdgeDragging] = useState(false)
 
+  // Track click timing to detect double-clicks in onEdgeClick
+  const lastEdgeClickRef = useRef<{ edgeId: string; time: number } | null>(null)
+
   // Handle edge click to show signal dimensions
   const onEdgeClick = useCallback(
     (_: React.MouseEvent, edge: Edge) => {
-      // Toggle selection - if clicking same edge, deselect it
-      setSelectedEdgeId(prev => prev === edge.id ? null : edge.id)
+      const now = Date.now()
+      const lastClick = lastEdgeClickRef.current
+
+      // If this is a rapid click on the same edge (within 500ms), ignore it
+      // This handles double-clicks, triple-clicks, and rapid clicking
+      if (lastClick && lastClick.edgeId === edge.id && (now - lastClick.time) < 500) {
+        console.log('[Editor] onEdgeClick - ignoring rapid click on same edge')
+        // Update timestamp but don't change selection
+        lastEdgeClickRef.current = { edgeId: edge.id, time: now }
+        return
+      }
+
+      lastEdgeClickRef.current = { edgeId: edge.id, time: now }
+
+      // Select the edge (don't toggle - clicking a selected edge keeps it selected)
+      // To deselect, click elsewhere on the canvas
+      setSelectedEdgeId(edge.id)
     },
     []
   )
 
-  // Deselect edge when clicking on the pane (but not during segment/waypoint drag)
+  // Track double-click timing to ignore pane clicks that follow edge double-clicks
+  const lastEdgeDoubleClickRef = useRef<number>(0)
+
+  // Handle edge double-click - prevent default behavior (which can cause deletion)
+  const onEdgeDoubleClick = useCallback(
+    (event: React.MouseEvent, _edge: Edge) => {
+      // Prevent any default ReactFlow behavior on double-click
+      event.stopPropagation()
+      event.preventDefault()
+      // Record timestamp so paneClick can ignore events too close to this
+      lastEdgeDoubleClickRef.current = Date.now()
+      console.log('[Editor] onEdgeDoubleClick - prevented default behavior')
+    },
+    []
+  )
+
+  // Deselect edge when clicking on the pane (but not during segment/waypoint drag or after edge click)
   const onPaneClick = useCallback(() => {
     // Don't deselect if we're dragging an edge segment or waypoint
     if (isEdgeDragging) {
       console.log('[Editor] onPaneClick - ignoring, edge drag in progress')
+      return
+    }
+    // Don't deselect if this click is immediately after any edge click/double-click
+    // (clicks can propagate through in some edge cases)
+    const timeSinceDoubleClick = Date.now() - lastEdgeDoubleClickRef.current
+    const timeSinceEdgeClick = lastEdgeClickRef.current ? Date.now() - lastEdgeClickRef.current.time : Infinity
+    if (timeSinceDoubleClick < 500 || timeSinceEdgeClick < 500) {
+      console.log('[Editor] onPaneClick - ignoring, too close to edge interaction')
       return
     }
     console.log('[Editor] onPaneClick - deselecting edge')
@@ -837,6 +920,34 @@ export function Editor() {
       setSignalContextMenu(null)
     }
   }, [signalContextMenu, pushHistory])
+
+  const handleRenameSignal = useCallback(() => {
+    if (signalContextMenu) {
+      setRenamingSignal({
+        connectionId: signalContextMenu.connectionId,
+        x: signalContextMenu.x,
+        y: signalContextMenu.y,
+      })
+      setSignalContextMenu(null)
+    }
+  }, [signalContextMenu])
+
+  const handleSaveSignalName = useCallback((newName: string) => {
+    if (renamingSignal) {
+      const trimmedName = newName.trim()
+      pushHistory()
+      useModelStore.getState().updateConnectionSignalName(renamingSignal.connectionId, trimmedName || undefined)
+      setRenamingSignal(null)
+    }
+  }, [renamingSignal, pushHistory])
+
+  // Focus input when renaming starts
+  useEffect(() => {
+    if (renamingSignal && signalNameInputRef.current) {
+      signalNameInputRef.current.focus()
+      signalNameInputRef.current.select()
+    }
+  }, [renamingSignal])
 
   const handleHighlightToSource = useCallback(() => {
     if (!signalContextMenu) return
@@ -1251,6 +1362,7 @@ export function Editor() {
         onNodesDelete={onNodesDelete}
         onEdgesDelete={onEdgesDelete}
         onEdgeClick={onEdgeClick}
+        onEdgeDoubleClick={onEdgeDoubleClick}
         onEdgeContextMenu={handleSignalContextMenu}
         onPaneClick={onPaneClick}
         onSelectionChange={onSelectionChange}
@@ -1417,6 +1529,17 @@ export function Editor() {
           style={{ left: signalContextMenu.x, top: signalContextMenu.y }}
           onClick={(e) => e.stopPropagation()}
         >
+          {/* Rename Signal */}
+          <button
+            className="w-full px-4 py-2 text-left text-sm text-white hover:bg-slate-700 flex items-center gap-2"
+            onClick={handleRenameSignal}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            <span>Rename Signal</span>
+          </button>
+
           {/* Delete Signal */}
           <button
             className="w-full px-4 py-2 text-left text-sm text-white hover:bg-slate-700 flex items-center gap-2"
@@ -1497,6 +1620,32 @@ export function Editor() {
             </svg>
             <span>Auto-route Line</span>
           </button>
+        </div>
+      )}
+
+      {/* Signal Rename Input (inline text editor) */}
+      {renamingSignal && (
+        <div
+          className="absolute z-50"
+          style={{ left: renamingSignal.x, top: renamingSignal.y }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <input
+            ref={signalNameInputRef}
+            type="text"
+            defaultValue={currentConnections.find(c => c.id === renamingSignal.connectionId)?.signalName || ''}
+            onKeyDown={(e) => {
+              e.stopPropagation()
+              if (e.key === 'Enter') {
+                handleSaveSignalName(e.currentTarget.value)
+              } else if (e.key === 'Escape') {
+                setRenamingSignal(null)
+              }
+            }}
+            onBlur={(e) => handleSaveSignalName(e.currentTarget.value)}
+            className="px-2 py-1 text-sm border border-blue-500 rounded bg-slate-800 text-white outline-none min-w-[120px]"
+            placeholder="Signal name"
+          />
         </div>
       )}
     </div>

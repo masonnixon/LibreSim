@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useMemo, useState, useRef, useEffect } from 'react'
+import React, { memo, useCallback, useMemo, useState, useRef } from 'react'
 import { BaseEdge, EdgeLabelRenderer, EdgeProps, useReactFlow } from '@xyflow/react'
 import { useModelStore } from '../../store/modelStore'
 
@@ -151,6 +151,15 @@ function generateOrthogonalPath(
 }
 
 
+// Snap position to grid - normal grid is 10px, fine grid (Alt key) is 1px
+function snapToGrid(position: { x: number; y: number }, useFineGrid: boolean): { x: number; y: number } {
+  const gridSize = useFineGrid ? 1 : 10
+  return {
+    x: Math.round(position.x / gridSize) * gridSize,
+    y: Math.round(position.y / gridSize) * gridSize,
+  }
+}
+
 // Draggable waypoint handle component (the bend point circles)
 // Per Simulink behavior: drag to move, NO double-click to delete
 function WaypointHandle({
@@ -198,10 +207,12 @@ function WaypointHandle({
           pushHistory()
         }
 
-        const position = screenToFlowPosition({
+        const rawPosition = screenToFlowPosition({
           x: moveEvent.clientX,
           y: moveEvent.clientY,
         })
+        // Alt key = fine grid (1px), otherwise normal grid (10px)
+        const position = snapToGrid(rawPosition, moveEvent.altKey)
         updateConnectionWaypoint(connectionId, index, position)
       }
 
@@ -230,6 +241,11 @@ function WaypointHandle({
       strokeWidth={2}
       style={{ cursor: 'grab', pointerEvents: 'all' }}
       onMouseDown={handleMouseDown}
+      onDoubleClick={(e) => {
+        // Prevent double-click from propagating
+        e.stopPropagation()
+        e.preventDefault()
+      }}
     >
       <title>Drag to move waypoint</title>
     </circle>
@@ -256,6 +272,8 @@ function DraggableSegment({
   const { screenToFlowPosition } = useReactFlow()
   const [isDragging, setIsDragging] = useState(false)
   const waypointCreatedRef = useRef(false)
+  // Track last mousedown time to detect double-clicks
+  const lastMouseDownRef = useRef(0)
 
   // Use refs to access current waypoints in mouse handlers (avoids stale closure)
   const waypointsRef = useRef(waypoints)
@@ -280,6 +298,23 @@ function DraggableSegment({
       e.preventDefault()
       e.nativeEvent.stopImmediatePropagation()
 
+      // Check if this is part of a double-click using the event's detail property
+      // detail === 1 for single click, detail === 2 for double-click
+      if (e.detail >= 2) {
+        console.log('[DraggableSegment] Ignoring mouseDown - part of double-click (detail=' + e.detail + ')')
+        return
+      }
+
+      // Also check timing as a backup (in case component just mounted)
+      const now = Date.now()
+      const timeSinceLastMouseDown = now - lastMouseDownRef.current
+      lastMouseDownRef.current = now
+
+      if (timeSinceLastMouseDown < 300) {
+        console.log('[DraggableSegment] Ignoring mouseDown - too fast (likely double-click)')
+        return
+      }
+
       setIsDragging(true)
       onDragStart()
       waypointCreatedRef.current = false
@@ -292,10 +327,12 @@ function DraggableSegment({
         'waypoints:', waypoints.length)
 
       const handleMouseMove = (moveEvent: MouseEvent) => {
-        const currentPos = screenToFlowPosition({
+        const rawPos = screenToFlowPosition({
           x: moveEvent.clientX,
           y: moveEvent.clientY,
         })
+        // Alt key = fine grid (1px), otherwise normal grid (10px)
+        const currentPos = snapToGrid(rawPos, moveEvent.altKey)
 
         const currentWaypoints = waypointsRef.current
         const currentSegment = segmentRef.current
@@ -315,11 +352,11 @@ function DraggableSegment({
           if (coord === 'y') {
             // Horizontal segment - create waypoint with X at segment midpoint, Y at mouse position
             const midX = (currentSegment.x1 + currentSegment.x2) / 2
-            newWp = { x: midX, y: currentPos.y }
+            newWp = { x: snapToGrid({ x: midX, y: 0 }, moveEvent.altKey).x, y: currentPos.y }
           } else {
             // Vertical segment - create waypoint with X at mouse position, Y at segment midpoint
             const midY = (currentSegment.y1 + currentSegment.y2) / 2
-            newWp = { x: currentPos.x, y: midY }
+            newWp = { x: currentPos.x, y: snapToGrid({ x: 0, y: midY }, moveEvent.altKey).y }
           }
           addConnectionWaypoint(connectionId, newWp, insertAt)
           waypointCreatedRef.current = true
@@ -377,6 +414,11 @@ function DraggableSegment({
       strokeWidth={12}
       style={{ cursor: segment.type === 'h' ? 'ns-resize' : 'ew-resize' }}
       onMouseDown={handleMouseDown}
+      onDoubleClick={(e) => {
+        // Prevent double-click from doing anything
+        e.stopPropagation()
+        e.preventDefault()
+      }}
     >
       <title>Drag to move segment</title>
     </line>
@@ -399,13 +441,7 @@ function CustomEdgeComponent({
   labelBgPadding,
   labelBgBorderRadius,
 }: EdgeProps) {
-  const updateConnectionSignalName = useModelStore((state) => state.updateConnectionSignalName)
-  const pushHistory = useModelStore((state) => state.pushHistory)
-  const { screenToFlowPosition } = useReactFlow()
   const [isWaypointDragging, setIsWaypointDragging] = useState(false)
-  const [isEditingName, setIsEditingName] = useState(false)
-  const [editPosition, setEditPosition] = useState<{ x: number; y: number } | null>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
 
   const waypointData = data as WaypointData | undefined
   const waypoints = useMemo(
@@ -427,74 +463,23 @@ function CustomEdgeComponent({
     return generateOrthogonalPath(sourceX, sourceY, targetX, targetY, waypoints)
   }, [sourceX, sourceY, targetX, targetY, waypoints])
 
-  // Handle double-click on edge to open signal name editor (Simulink behavior)
-  const handleEdgeDoubleClick = useCallback(
-    (e: React.MouseEvent) => {
-      // Stop ALL event propagation to prevent ReactFlow from handling this
-      e.stopPropagation()
-      e.preventDefault()
-      e.nativeEvent.stopImmediatePropagation()
-
-      // Get click position in flow coordinates for positioning the editor
-      const position = screenToFlowPosition({
-        x: e.clientX,
-        y: e.clientY,
-      })
-
-      console.log('[CustomEdge] Double-click to edit signal name at', position)
-
-      setEditPosition(position)
-      setIsEditingName(true)
-    },
-    [screenToFlowPosition]
-  )
-
-  // Focus input when editing starts
-  useEffect(() => {
-    if (isEditingName && inputRef.current) {
-      inputRef.current.focus()
-      inputRef.current.select()
-    }
-  }, [isEditingName])
-
-  // Handle signal name save
-  const handleSaveSignalName = useCallback((newName: string) => {
-    const trimmedName = newName.trim()
-    pushHistory()
-    updateConnectionSignalName(connectionId, trimmedName || undefined)
-    setIsEditingName(false)
-    setEditPosition(null)
-  }, [connectionId, pushHistory, updateConnectionSignalName])
-
-  // Handle input key events
-  const handleInputKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
-    e.stopPropagation()
-    if (e.key === 'Enter') {
-      handleSaveSignalName(e.currentTarget.value)
-    } else if (e.key === 'Escape') {
-      setIsEditingName(false)
-      setEditPosition(null)
-    }
-  }, [handleSaveSignalName])
-
-  // Handle input blur
-  const handleInputBlur = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
-    handleSaveSignalName(e.currentTarget.value)
-  }, [handleSaveSignalName])
-
   return (
     <g className="react-flow__edge-custom">
-      {/* Invisible wider path for easier clicking/selection and double-click to name signal */}
+      {/* Invisible wider path for easier clicking/selection */}
       <path
         d={edgePath}
         fill="none"
         stroke="rgba(100,100,100,0.01)"
         strokeWidth={20}
-        onDoubleClick={handleEdgeDoubleClick}
         className="react-flow__edge-interaction"
         style={{
           cursor: 'pointer',
           pointerEvents: 'all',
+        }}
+        onDoubleClick={(e) => {
+          // Stop propagation to prevent any default behavior
+          e.stopPropagation()
+          e.preventDefault()
         }}
       />
       {/* Visible edge path */}
@@ -547,64 +532,34 @@ function CustomEdgeComponent({
       ))}
       {/* Signal name label - show always if name exists, or show dimension label when selected */}
       <EdgeLabelRenderer>
-        {/* Signal name input editor (on double-click) */}
-        {isEditingName && editPosition && (
+        {/* Signal name display (always visible if set) - positioned above the trace */}
+        {signalName && (
           <div
             style={{
               position: 'absolute',
-              transform: `translate(-50%, -50%) translate(${editPosition.x}px,${editPosition.y}px)`,
-              pointerEvents: 'all',
-              zIndex: 1000,
-            }}
-            className="nodrag nopan"
-          >
-            <input
-              ref={inputRef}
-              type="text"
-              defaultValue={signalName}
-              onKeyDown={handleInputKeyDown}
-              onBlur={handleInputBlur}
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                padding: '2px 6px',
-                fontSize: '12px',
-                border: '1px solid #3b82f6',
-                borderRadius: '3px',
-                outline: 'none',
-                backgroundColor: '#1e1e2e',
-                color: '#cdd6f4',
-                minWidth: '80px',
-              }}
-              placeholder="Signal name"
-            />
-          </div>
-        )}
-        {/* Signal name display (always visible if set) */}
-        {!isEditingName && signalName && (
-          <div
-            style={{
-              position: 'absolute',
-              transform: `translate(-50%, -100%) translate(${labelX}px,${labelY - 8}px)`,
+              transform: `translate(-50%, -100%) translate(${labelX}px,${labelY - 4}px)`,
               pointerEvents: 'none',
-              padding: '1px 4px',
+              padding: '2px 6px',
               borderRadius: 3,
-              backgroundColor: 'rgba(30, 30, 46, 0.9)',
+              backgroundColor: '#1e1e2e',
+              border: '1px solid #313244',
               color: '#89b4fa',
               fontSize: '11px',
               fontWeight: 500,
               whiteSpace: 'nowrap',
+              zIndex: 10,
             }}
             className="nodrag nopan"
           >
             {signalName}
           </div>
         )}
-        {/* Dimension label when selected (signal dimension count) - offset below the trace */}
-        {selected && label && !isWaypointDragging && !isEditingName && (
+        {/* Dimension label when selected (signal dimension count) - positioned just below the trace */}
+        {selected && label && !isWaypointDragging && (
           <div
             style={{
               position: 'absolute',
-              transform: `translate(-50%, 0%) translate(${labelX}px,${labelY + 12}px)`,
+              transform: `translate(-50%, 0%) translate(${labelX}px,${labelY + 2}px)`,
               pointerEvents: 'none',
               padding: `${padY}px ${padX}px`,
               borderRadius: labelBgBorderRadius || 4,
