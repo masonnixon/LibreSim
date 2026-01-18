@@ -13,68 +13,225 @@
       "id": "sine",
       "type": "sine_wave",
       "name": "5 Hz Signal",
-      "position": { "x": 50, "y": 100 },
-      "parameters": { "amplitude": 1.0, "frequency": 5.0, "phase": 0.0 },
+      "position": {
+        "x": 50,
+        "y": 100
+      },
+      "parameters": {
+        "amplitude": 1.0,
+        "frequency": 5.0,
+        "phase": 0.0
+      },
       "inputPorts": [],
-      "outputPorts": [{ "id": "sine-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "outputPorts": [
+        {
+          "id": "sine-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "noise",
       "type": "white_noise",
       "name": "White Noise",
-      "position": { "x": 50, "y": 200 },
-      "parameters": { "power": 0.1, "sampleTime": 0.001, "seed": 12345 },
+      "position": {
+        "x": 50,
+        "y": 200
+      },
+      "parameters": {
+        "power": 0.1,
+        "sampleTime": 0.001,
+        "seed": 12345
+      },
       "inputPorts": [],
-      "outputPorts": [{ "id": "noise-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "outputPorts": [
+        {
+          "id": "noise-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "sum_noisy",
       "type": "sum",
       "name": "Add Noise",
-      "position": { "x": 200, "y": 150 },
-      "parameters": { "inputs": "++", "collapse": "all" },
+      "position": {
+        "x": 200,
+        "y": 150
+      },
+      "parameters": {
+        "inputs": "++",
+        "collapse": "all"
+      },
       "inputPorts": [
-        { "id": "sum_noisy-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
-        { "id": "sum_noisy-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "sum_noisy-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "sum_noisy-in2",
+          "name": "in2",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
-      "outputPorts": [{ "id": "sum_noisy-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "outputPorts": [
+        {
+          "id": "sum_noisy-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "fir",
       "type": "fir_filter",
       "name": "FIR Lowpass",
-      "position": { "x": 350, "y": 150 },
-      "parameters": { "coefficients": [0.1, 0.15, 0.2, 0.3, 0.2, 0.15, 0.1] },
-      "inputPorts": [{ "id": "fir-in", "name": "in", "dataType": "double", "dimensions": [1] }],
-      "outputPorts": [{ "id": "fir-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "position": {
+        "x": 350,
+        "y": 150
+      },
+      "parameters": {
+        "coefficients": [
+          0.1,
+          0.15,
+          0.2,
+          0.3,
+          0.2,
+          0.15,
+          0.1
+        ]
+      },
+      "inputPorts": [
+        {
+          "id": "fir-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
+      "outputPorts": [
+        {
+          "id": "fir-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "mean",
       "type": "mean",
       "name": "Running Mean",
-      "position": { "x": 350, "y": 280 },
-      "parameters": { "windowSize": 20 },
-      "inputPorts": [{ "id": "mean-in", "name": "in", "dataType": "double", "dimensions": [1] }],
-      "outputPorts": [{ "id": "mean-out", "name": "mean", "dataType": "double", "dimensions": [1] }]
+      "position": {
+        "x": 350,
+        "y": 280
+      },
+      "parameters": {
+        "windowSize": 20
+      },
+      "inputPorts": [
+        {
+          "id": "mean-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
+      "outputPorts": [
+        {
+          "id": "mean-out",
+          "name": "mean",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "rms",
       "type": "rms",
       "name": "RMS",
-      "position": { "x": 350, "y": 380 },
-      "parameters": { "windowSize": 50 },
-      "inputPorts": [{ "id": "rms-in", "name": "in", "dataType": "double", "dimensions": [1] }],
-      "outputPorts": [{ "id": "rms-out", "name": "rms", "dataType": "double", "dimensions": [1] }]
+      "position": {
+        "x": 350,
+        "y": 380
+      },
+      "parameters": {
+        "windowSize": 50
+      },
+      "inputPorts": [
+        {
+          "id": "rms-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
+      "outputPorts": [
+        {
+          "id": "rms-out",
+          "name": "rms",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "scope_compare",
       "type": "scope",
       "name": "Raw vs Filtered",
-      "position": { "x": 550, "y": 100 },
-      "parameters": { "numInputs": 2 },
+      "position": {
+        "x": 550,
+        "y": 100
+      },
+      "parameters": {
+        "numInputs": 2
+      },
       "inputPorts": [
-        { "id": "scope_compare-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
-        { "id": "scope_compare-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "scope_compare-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "scope_compare-in2",
+          "name": "in2",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": []
     },
@@ -82,25 +239,108 @@
       "id": "scope_stats",
       "type": "scope",
       "name": "Statistics",
-      "position": { "x": 550, "y": 330 },
-      "parameters": { "numInputs": 2 },
+      "position": {
+        "x": 550,
+        "y": 330
+      },
+      "parameters": {
+        "numInputs": 2
+      },
       "inputPorts": [
-        { "id": "scope_stats-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
-        { "id": "scope_stats-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "scope_stats-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "scope_stats-in2",
+          "name": "in2",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": []
     }
   ],
   "connections": [
-    { "id": "c1", "sourceBlockId": "sine", "sourcePortId": "sine-out", "targetBlockId": "sum_noisy", "targetPortId": "sum_noisy-in1" },
-    { "id": "c2", "sourceBlockId": "noise", "sourcePortId": "noise-out", "targetBlockId": "sum_noisy", "targetPortId": "sum_noisy-in2" },
-    { "id": "c3", "sourceBlockId": "sum_noisy", "sourcePortId": "sum_noisy-out", "targetBlockId": "fir", "targetPortId": "fir-in" },
-    { "id": "c4", "sourceBlockId": "sum_noisy", "sourcePortId": "sum_noisy-out", "targetBlockId": "mean", "targetPortId": "mean-in" },
-    { "id": "c5", "sourceBlockId": "sum_noisy", "sourcePortId": "sum_noisy-out", "targetBlockId": "rms", "targetPortId": "rms-in" },
-    { "id": "c6", "sourceBlockId": "sum_noisy", "sourcePortId": "sum_noisy-out", "targetBlockId": "scope_compare", "targetPortId": "scope_compare-in1" },
-    { "id": "c7", "sourceBlockId": "fir", "sourcePortId": "fir-out", "targetBlockId": "scope_compare", "targetPortId": "scope_compare-in2" },
-    { "id": "c8", "sourceBlockId": "mean", "sourcePortId": "mean-out", "targetBlockId": "scope_stats", "targetPortId": "scope_stats-in1" },
-    { "id": "c9", "sourceBlockId": "rms", "sourcePortId": "rms-out", "targetBlockId": "scope_stats", "targetPortId": "scope_stats-in2" }
+    {
+      "id": "c1",
+      "sourceBlockId": "sine",
+      "sourcePortId": "sine-out",
+      "targetBlockId": "sum_noisy",
+      "targetPortId": "sum_noisy-in1"
+    },
+    {
+      "id": "c2",
+      "sourceBlockId": "noise",
+      "sourcePortId": "noise-out",
+      "targetBlockId": "sum_noisy",
+      "targetPortId": "sum_noisy-in2"
+    },
+    {
+      "id": "c3",
+      "sourceBlockId": "sum_noisy",
+      "sourcePortId": "sum_noisy-out",
+      "targetBlockId": "fir",
+      "targetPortId": "fir-in"
+    },
+    {
+      "id": "c4",
+      "sourceBlockId": "sum_noisy",
+      "sourcePortId": "sum_noisy-out",
+      "targetBlockId": "mean",
+      "targetPortId": "mean-in"
+    },
+    {
+      "id": "c5",
+      "sourceBlockId": "sum_noisy",
+      "sourcePortId": "sum_noisy-out",
+      "targetBlockId": "rms",
+      "targetPortId": "rms-in"
+    },
+    {
+      "id": "c6",
+      "sourceBlockId": "sum_noisy",
+      "sourcePortId": "sum_noisy-out",
+      "targetBlockId": "scope_compare",
+      "targetPortId": "scope_compare-in1",
+      "waypoints": [
+        {
+          "x": 300,
+          "y": 120
+        },
+        {
+          "x": 530,
+          "y": 120
+        }
+      ]
+    },
+    {
+      "id": "c7",
+      "sourceBlockId": "fir",
+      "sourcePortId": "fir-out",
+      "targetBlockId": "scope_compare",
+      "targetPortId": "scope_compare-in2"
+    },
+    {
+      "id": "c8",
+      "sourceBlockId": "mean",
+      "sourcePortId": "mean-out",
+      "targetBlockId": "scope_stats",
+      "targetPortId": "scope_stats-in1"
+    },
+    {
+      "id": "c9",
+      "sourceBlockId": "rms",
+      "sourcePortId": "rms-out",
+      "targetBlockId": "scope_stats",
+      "targetPortId": "scope_stats-in2"
+    }
   ],
   "simulationConfig": {
     "solver": "rk4",

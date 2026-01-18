@@ -13,77 +13,267 @@
       "id": "setpoint",
       "type": "step",
       "name": "Setpoint",
-      "position": { "x": 50, "y": 200 },
-      "parameters": { "stepTime": 0.5, "initialValue": 0, "finalValue": 1 },
+      "position": {
+        "x": 50,
+        "y": 200
+      },
+      "parameters": {
+        "stepTime": 0.5,
+        "initialValue": 0,
+        "finalValue": 1
+      },
       "inputPorts": [],
-      "outputPorts": [{ "id": "setpoint-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "outputPorts": [
+        {
+          "id": "setpoint-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "zoh",
       "type": "zero_order_hold",
       "name": "ZOH (Sample)",
-      "position": { "x": 150, "y": 200 },
-      "parameters": { "sampleTime": 0.1 },
-      "inputPorts": [{ "id": "zoh-in", "name": "in", "dataType": "double", "dimensions": [1] }],
-      "outputPorts": [{ "id": "zoh-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "position": {
+        "x": 150,
+        "y": 200
+      },
+      "parameters": {
+        "sampleTime": 0.1
+      },
+      "inputPorts": [
+        {
+          "id": "zoh-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
+      "outputPorts": [
+        {
+          "id": "zoh-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "error_sum",
       "type": "sum",
       "name": "Error",
-      "position": { "x": 280, "y": 200 },
-      "parameters": { "signs": "+-" },
+      "position": {
+        "x": 280,
+        "y": 200
+      },
+      "parameters": {
+        "signs": "+-"
+      },
       "inputPorts": [
-        { "id": "error_sum-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
-        { "id": "error_sum-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "error_sum-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "error_sum-in2",
+          "name": "in2",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
-      "outputPorts": [{ "id": "error_sum-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "outputPorts": [
+        {
+          "id": "error_sum-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "discrete_pid",
       "type": "discrete_pid_controller",
       "name": "Discrete PID",
-      "position": { "x": 420, "y": 200 },
-      "parameters": { "Kp": 4.0, "Ki": 2.0, "Kd": 0.5, "N": 50, "sampleTime": 0.1, "method": "trapezoidal" },
-      "inputPorts": [{ "id": "discrete_pid-in", "name": "error", "dataType": "double", "dimensions": [1] }],
-      "outputPorts": [{ "id": "discrete_pid-out", "name": "control", "dataType": "double", "dimensions": [1] }]
+      "position": {
+        "x": 420,
+        "y": 200
+      },
+      "parameters": {
+        "Kp": 4.0,
+        "Ki": 2.0,
+        "Kd": 0.5,
+        "N": 50,
+        "sampleTime": 0.1,
+        "method": "trapezoidal"
+      },
+      "inputPorts": [
+        {
+          "id": "discrete_pid-in",
+          "name": "error",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
+      "outputPorts": [
+        {
+          "id": "discrete_pid-out",
+          "name": "control",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "zoh_output",
       "type": "zero_order_hold",
       "name": "ZOH (Hold)",
-      "position": { "x": 570, "y": 200 },
-      "parameters": { "sampleTime": 0.1 },
-      "inputPorts": [{ "id": "zoh_output-in", "name": "in", "dataType": "double", "dimensions": [1] }],
-      "outputPorts": [{ "id": "zoh_output-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "position": {
+        "x": 570,
+        "y": 200
+      },
+      "parameters": {
+        "sampleTime": 0.1
+      },
+      "inputPorts": [
+        {
+          "id": "zoh_output-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
+      "outputPorts": [
+        {
+          "id": "zoh_output-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "plant",
       "type": "transfer_function",
       "name": "Continuous Plant",
-      "position": { "x": 720, "y": 200 },
-      "parameters": { "numerator": [1], "denominator": [1, 1, 1] },
-      "inputPorts": [{ "id": "plant-in", "name": "in", "dataType": "double", "dimensions": [1] }],
-      "outputPorts": [{ "id": "plant-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "position": {
+        "x": 720,
+        "y": 200
+      },
+      "parameters": {
+        "numerator": [
+          1
+        ],
+        "denominator": [
+          1,
+          1,
+          1
+        ]
+      },
+      "inputPorts": [
+        {
+          "id": "plant-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
+      "outputPorts": [
+        {
+          "id": "plant-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "sensor",
       "type": "zero_order_hold",
       "name": "Sensor (Sample)",
-      "position": { "x": 720, "y": 350 },
-      "parameters": { "sampleTime": 0.1 },
-      "inputPorts": [{ "id": "sensor-in", "name": "in", "dataType": "double", "dimensions": [1] }],
-      "outputPorts": [{ "id": "sensor-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "position": {
+        "x": 720,
+        "y": 350
+      },
+      "parameters": {
+        "sampleTime": 0.1
+      },
+      "inputPorts": [
+        {
+          "id": "sensor-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
+      "outputPorts": [
+        {
+          "id": "sensor-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "scope_response",
       "type": "scope",
       "name": "System Response",
-      "position": { "x": 900, "y": 200 },
-      "parameters": { "numInputs": 2 },
+      "position": {
+        "x": 900,
+        "y": 200
+      },
+      "parameters": {
+        "numInputs": 2
+      },
       "inputPorts": [
-        { "id": "scope_response-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
-        { "id": "scope_response-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "scope_response-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "scope_response-in2",
+          "name": "in2",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": []
     },
@@ -91,23 +281,127 @@
       "id": "scope_control",
       "type": "scope",
       "name": "Control Signal",
-      "position": { "x": 570, "y": 320 },
-      "parameters": { "numInputs": 1 },
-      "inputPorts": [{ "id": "scope_control-in1", "name": "in1", "dataType": "double", "dimensions": [1] }],
+      "position": {
+        "x": 570,
+        "y": 320
+      },
+      "parameters": {
+        "numInputs": 1
+      },
+      "inputPorts": [
+        {
+          "id": "scope_control-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
       "outputPorts": []
     }
   ],
   "connections": [
-    { "id": "c1", "sourceBlockId": "setpoint", "sourcePortId": "setpoint-out", "targetBlockId": "zoh", "targetPortId": "zoh-in" },
-    { "id": "c2", "sourceBlockId": "zoh", "sourcePortId": "zoh-out", "targetBlockId": "error_sum", "targetPortId": "error_sum-in1" },
-    { "id": "c3", "sourceBlockId": "error_sum", "sourcePortId": "error_sum-out", "targetBlockId": "discrete_pid", "targetPortId": "discrete_pid-in" },
-    { "id": "c4", "sourceBlockId": "discrete_pid", "sourcePortId": "discrete_pid-out", "targetBlockId": "zoh_output", "targetPortId": "zoh_output-in" },
-    { "id": "c5", "sourceBlockId": "zoh_output", "sourcePortId": "zoh_output-out", "targetBlockId": "plant", "targetPortId": "plant-in" },
-    { "id": "c6", "sourceBlockId": "plant", "sourcePortId": "plant-out", "targetBlockId": "sensor", "targetPortId": "sensor-in" },
-    { "id": "c7", "sourceBlockId": "sensor", "sourcePortId": "sensor-out", "targetBlockId": "error_sum", "targetPortId": "error_sum-in2" },
-    { "id": "c8", "sourceBlockId": "setpoint", "sourcePortId": "setpoint-out", "targetBlockId": "scope_response", "targetPortId": "scope_response-in1" },
-    { "id": "c9", "sourceBlockId": "plant", "sourcePortId": "plant-out", "targetBlockId": "scope_response", "targetPortId": "scope_response-in2" },
-    { "id": "c10", "sourceBlockId": "discrete_pid", "sourcePortId": "discrete_pid-out", "targetBlockId": "scope_control", "targetPortId": "scope_control-in1" }
+    {
+      "id": "c1",
+      "sourceBlockId": "setpoint",
+      "sourcePortId": "setpoint-out",
+      "targetBlockId": "zoh",
+      "targetPortId": "zoh-in"
+    },
+    {
+      "id": "c2",
+      "sourceBlockId": "zoh",
+      "sourcePortId": "zoh-out",
+      "targetBlockId": "error_sum",
+      "targetPortId": "error_sum-in1"
+    },
+    {
+      "id": "c3",
+      "sourceBlockId": "error_sum",
+      "sourcePortId": "error_sum-out",
+      "targetBlockId": "discrete_pid",
+      "targetPortId": "discrete_pid-in"
+    },
+    {
+      "id": "c4",
+      "sourceBlockId": "discrete_pid",
+      "sourcePortId": "discrete_pid-out",
+      "targetBlockId": "zoh_output",
+      "targetPortId": "zoh_output-in"
+    },
+    {
+      "id": "c5",
+      "sourceBlockId": "zoh_output",
+      "sourcePortId": "zoh_output-out",
+      "targetBlockId": "plant",
+      "targetPortId": "plant-in"
+    },
+    {
+      "id": "c6",
+      "sourceBlockId": "plant",
+      "sourcePortId": "plant-out",
+      "targetBlockId": "sensor",
+      "targetPortId": "sensor-in",
+      "waypoints": [
+        {
+          "x": 820,
+          "y": 400
+        },
+        {
+          "x": 700,
+          "y": 400
+        }
+      ]
+    },
+    {
+      "id": "c7",
+      "sourceBlockId": "sensor",
+      "sourcePortId": "sensor-out",
+      "targetBlockId": "error_sum",
+      "targetPortId": "error_sum-in2",
+      "waypoints": [
+        {
+          "x": 820,
+          "y": 420
+        },
+        {
+          "x": 260,
+          "y": 420
+        }
+      ]
+    },
+    {
+      "id": "c8",
+      "sourceBlockId": "setpoint",
+      "sourcePortId": "setpoint-out",
+      "targetBlockId": "scope_response",
+      "targetPortId": "scope_response-in1",
+      "waypoints": [
+        {
+          "x": 250,
+          "y": 160
+        },
+        {
+          "x": 880,
+          "y": 160
+        }
+      ]
+    },
+    {
+      "id": "c9",
+      "sourceBlockId": "plant",
+      "sourcePortId": "plant-out",
+      "targetBlockId": "scope_response",
+      "targetPortId": "scope_response-in2"
+    },
+    {
+      "id": "c10",
+      "sourceBlockId": "discrete_pid",
+      "sourcePortId": "discrete_pid-out",
+      "targetBlockId": "scope_control",
+      "targetPortId": "scope_control-in1"
+    }
   ],
   "simulationConfig": {
     "solver": "rk4",

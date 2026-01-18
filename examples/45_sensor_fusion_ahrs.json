@@ -13,211 +13,714 @@
       "id": "true_roll_rate",
       "type": "sine_wave",
       "name": "True Roll Rate",
-      "position": { "x": 50, "y": 80 },
-      "parameters": { "amplitude": 0.1, "frequency": 0.2, "phase": 0.0 },
+      "position": {
+        "x": 50,
+        "y": 80
+      },
+      "parameters": {
+        "amplitude": 0.1,
+        "frequency": 0.2,
+        "phase": 0.0
+      },
       "inputPorts": [],
-      "outputPorts": [{ "id": "true_roll_rate-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "outputPorts": [
+        {
+          "id": "true_roll_rate-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "true_pitch_rate",
       "type": "sine_wave",
       "name": "True Pitch Rate",
-      "position": { "x": 50, "y": 160 },
-      "parameters": { "amplitude": 0.05, "frequency": 0.1, "phase": 1.57 },
+      "position": {
+        "x": 50,
+        "y": 160
+      },
+      "parameters": {
+        "amplitude": 0.05,
+        "frequency": 0.1,
+        "phase": 1.57
+      },
       "inputPorts": [],
-      "outputPorts": [{ "id": "true_pitch_rate-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "outputPorts": [
+        {
+          "id": "true_pitch_rate-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "true_yaw_rate",
       "type": "constant",
       "name": "True Yaw Rate",
-      "position": { "x": 50, "y": 240 },
-      "parameters": { "value": 0.02 },
+      "position": {
+        "x": 50,
+        "y": 240
+      },
+      "parameters": {
+        "value": 0.02
+      },
       "inputPorts": [],
-      "outputPorts": [{ "id": "true_yaw_rate-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "outputPorts": [
+        {
+          "id": "true_yaw_rate-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "mux_gyro_true",
       "type": "mux",
       "name": "True Gyro",
-      "position": { "x": 200, "y": 160 },
-      "parameters": { "numInputs": 3 },
+      "position": {
+        "x": 200,
+        "y": 160
+      },
+      "parameters": {
+        "numInputs": 3
+      },
       "inputPorts": [
-        { "id": "mux_gyro_true-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
-        { "id": "mux_gyro_true-in2", "name": "in2", "dataType": "double", "dimensions": [1] },
-        { "id": "mux_gyro_true-in3", "name": "in3", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "mux_gyro_true-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "mux_gyro_true-in2",
+          "name": "in2",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "mux_gyro_true-in3",
+          "name": "in3",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
-      "outputPorts": [{ "id": "mux_gyro_true-out", "name": "out", "dataType": "double", "dimensions": [3] }]
+      "outputPorts": [
+        {
+          "id": "mux_gyro_true-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            3
+          ]
+        }
+      ]
     },
     {
       "id": "gravity_x",
       "type": "constant",
       "name": "Gravity X",
-      "position": { "x": 50, "y": 350 },
-      "parameters": { "value": 0.0 },
+      "position": {
+        "x": 50,
+        "y": 350
+      },
+      "parameters": {
+        "value": 0.0
+      },
       "inputPorts": [],
-      "outputPorts": [{ "id": "gravity_x-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "outputPorts": [
+        {
+          "id": "gravity_x-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "gravity_y",
       "type": "constant",
       "name": "Gravity Y",
-      "position": { "x": 50, "y": 420 },
-      "parameters": { "value": 0.0 },
+      "position": {
+        "x": 50,
+        "y": 420
+      },
+      "parameters": {
+        "value": 0.0
+      },
       "inputPorts": [],
-      "outputPorts": [{ "id": "gravity_y-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "outputPorts": [
+        {
+          "id": "gravity_y-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "gravity_z",
       "type": "constant",
       "name": "Gravity Z",
-      "position": { "x": 50, "y": 490 },
-      "parameters": { "value": 9.81 },
+      "position": {
+        "x": 50,
+        "y": 490
+      },
+      "parameters": {
+        "value": 9.81
+      },
       "inputPorts": [],
-      "outputPorts": [{ "id": "gravity_z-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "outputPorts": [
+        {
+          "id": "gravity_z-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "mux_accel_true",
       "type": "mux",
       "name": "True Accel",
-      "position": { "x": 200, "y": 420 },
-      "parameters": { "numInputs": 3 },
+      "position": {
+        "x": 200,
+        "y": 420
+      },
+      "parameters": {
+        "numInputs": 3
+      },
       "inputPorts": [
-        { "id": "mux_accel_true-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
-        { "id": "mux_accel_true-in2", "name": "in2", "dataType": "double", "dimensions": [1] },
-        { "id": "mux_accel_true-in3", "name": "in3", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "mux_accel_true-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "mux_accel_true-in2",
+          "name": "in2",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "mux_accel_true-in3",
+          "name": "in3",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
-      "outputPorts": [{ "id": "mux_accel_true-out", "name": "out", "dataType": "double", "dimensions": [3] }]
+      "outputPorts": [
+        {
+          "id": "mux_accel_true-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            3
+          ]
+        }
+      ]
     },
     {
       "id": "imu",
       "type": "imu_sensor",
       "name": "IMU Sensor",
-      "position": { "x": 350, "y": 290 },
+      "position": {
+        "x": 350,
+        "y": 290
+      },
       "parameters": {
         "accelNoise": 0.1,
         "gyroNoise": 0.01,
-        "accelBias": [0.02, -0.01, 0.03],
-        "gyroBias": [0.001, -0.002, 0.001],
+        "accelBias": [
+          0.02,
+          -0.01,
+          0.03
+        ],
+        "gyroBias": [
+          0.001,
+          -0.002,
+          0.001
+        ],
         "seed": 42
       },
       "inputPorts": [
-        { "id": "imu-accel", "name": "trueAccel", "dataType": "double", "dimensions": [3] },
-        { "id": "imu-gyro", "name": "trueGyro", "dataType": "double", "dimensions": [3] }
+        {
+          "id": "imu-accel",
+          "name": "trueAccel",
+          "dataType": "double",
+          "dimensions": [
+            3
+          ]
+        },
+        {
+          "id": "imu-gyro",
+          "name": "trueGyro",
+          "dataType": "double",
+          "dimensions": [
+            3
+          ]
+        }
       ],
-      "outputPorts": [{ "id": "imu-out", "name": "imuData", "dataType": "double", "dimensions": [6] }]
+      "outputPorts": [
+        {
+          "id": "imu-out",
+          "name": "imuData",
+          "dataType": "double",
+          "dimensions": [
+            6
+          ]
+        }
+      ]
     },
     {
       "id": "demux_imu",
       "type": "demux",
       "name": "Split IMU Data",
-      "position": { "x": 500, "y": 290 },
-      "parameters": { "numOutputs": 2, "outputWidths": [3, 3] },
-      "inputPorts": [{ "id": "demux_imu-in", "name": "in", "dataType": "double", "dimensions": [6] }],
+      "position": {
+        "x": 500,
+        "y": 290
+      },
+      "parameters": {
+        "numOutputs": 2,
+        "outputWidths": [
+          3,
+          3
+        ]
+      },
+      "inputPorts": [
+        {
+          "id": "demux_imu-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            6
+          ]
+        }
+      ],
       "outputPorts": [
-        { "id": "demux_imu-accel", "name": "out1", "dataType": "double", "dimensions": [3] },
-        { "id": "demux_imu-gyro", "name": "out2", "dataType": "double", "dimensions": [3] }
+        {
+          "id": "demux_imu-accel",
+          "name": "out1",
+          "dataType": "double",
+          "dimensions": [
+            3
+          ]
+        },
+        {
+          "id": "demux_imu-gyro",
+          "name": "out2",
+          "dataType": "double",
+          "dimensions": [
+            3
+          ]
+        }
       ]
     },
     {
       "id": "madgwick",
       "type": "madgwick_filter",
       "name": "Madgwick AHRS",
-      "position": { "x": 650, "y": 250 },
-      "parameters": { "beta": 0.1 },
+      "position": {
+        "x": 650,
+        "y": 250
+      },
+      "parameters": {
+        "beta": 0.1
+      },
       "inputPorts": [
-        { "id": "madgwick-accel", "name": "accel", "dataType": "double", "dimensions": [3] },
-        { "id": "madgwick-gyro", "name": "gyro", "dataType": "double", "dimensions": [3] }
+        {
+          "id": "madgwick-accel",
+          "name": "accel",
+          "dataType": "double",
+          "dimensions": [
+            3
+          ]
+        },
+        {
+          "id": "madgwick-gyro",
+          "name": "gyro",
+          "dataType": "double",
+          "dimensions": [
+            3
+          ]
+        }
       ],
-      "outputPorts": [{ "id": "madgwick-out", "name": "quaternion", "dataType": "double", "dimensions": [4] }]
+      "outputPorts": [
+        {
+          "id": "madgwick-out",
+          "name": "quaternion",
+          "dataType": "double",
+          "dimensions": [
+            4
+          ]
+        }
+      ]
     },
     {
       "id": "comp_filter",
       "type": "complementary_filter",
       "name": "Complementary Filter",
-      "position": { "x": 650, "y": 380 },
-      "parameters": { "alpha": 0.98 },
+      "position": {
+        "x": 650,
+        "y": 380
+      },
+      "parameters": {
+        "alpha": 0.98
+      },
       "inputPorts": [
-        { "id": "comp_filter-accel", "name": "accel", "dataType": "double", "dimensions": [3] },
-        { "id": "comp_filter-gyro", "name": "gyro", "dataType": "double", "dimensions": [3] }
+        {
+          "id": "comp_filter-accel",
+          "name": "accel",
+          "dataType": "double",
+          "dimensions": [
+            3
+          ]
+        },
+        {
+          "id": "comp_filter-gyro",
+          "name": "gyro",
+          "dataType": "double",
+          "dimensions": [
+            3
+          ]
+        }
       ],
-      "outputPorts": [{ "id": "comp_filter-out", "name": "euler", "dataType": "double", "dimensions": [3] }]
+      "outputPorts": [
+        {
+          "id": "comp_filter-out",
+          "name": "euler",
+          "dataType": "double",
+          "dimensions": [
+            3
+          ]
+        }
+      ]
     },
     {
       "id": "quat_to_euler",
       "type": "quaternion_to_euler",
       "name": "Q to Euler",
-      "position": { "x": 800, "y": 250 },
+      "position": {
+        "x": 800,
+        "y": 250
+      },
       "parameters": {},
-      "inputPorts": [{ "id": "quat_to_euler-in", "name": "q", "dataType": "double", "dimensions": [4] }],
-      "outputPorts": [{ "id": "quat_to_euler-out", "name": "euler", "dataType": "double", "dimensions": [3] }]
+      "inputPorts": [
+        {
+          "id": "quat_to_euler-in",
+          "name": "q",
+          "dataType": "double",
+          "dimensions": [
+            4
+          ]
+        }
+      ],
+      "outputPorts": [
+        {
+          "id": "quat_to_euler-out",
+          "name": "euler",
+          "dataType": "double",
+          "dimensions": [
+            3
+          ]
+        }
+      ]
     },
     {
       "id": "rad2deg_madg",
       "type": "gain",
       "name": "Rad to Deg",
-      "position": { "x": 950, "y": 250 },
-      "parameters": { "gain": 57.2957795 },
-      "inputPorts": [{ "id": "rad2deg_madg-in", "name": "in", "dataType": "double", "dimensions": [1] }],
-      "outputPorts": [{ "id": "rad2deg_madg-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "position": {
+        "x": 950,
+        "y": 250
+      },
+      "parameters": {
+        "gain": 57.2957795
+      },
+      "inputPorts": [
+        {
+          "id": "rad2deg_madg-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
+      "outputPorts": [
+        {
+          "id": "rad2deg_madg-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "rad2deg_comp",
       "type": "gain",
       "name": "Rad to Deg",
-      "position": { "x": 800, "y": 380 },
-      "parameters": { "gain": 57.2957795 },
-      "inputPorts": [{ "id": "rad2deg_comp-in", "name": "in", "dataType": "double", "dimensions": [1] }],
-      "outputPorts": [{ "id": "rad2deg_comp-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "position": {
+        "x": 800,
+        "y": 380
+      },
+      "parameters": {
+        "gain": 57.2957795
+      },
+      "inputPorts": [
+        {
+          "id": "rad2deg_comp-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
+      "outputPorts": [
+        {
+          "id": "rad2deg_comp-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "scope_madgwick",
       "type": "scope",
       "name": "Madgwick Attitude (deg)",
-      "position": { "x": 1100, "y": 250 },
-      "parameters": { "numInputs": 1 },
-      "inputPorts": [{ "id": "scope_madgwick-in1", "name": "in1", "dataType": "double", "dimensions": [1] }],
+      "position": {
+        "x": 1100,
+        "y": 250
+      },
+      "parameters": {
+        "numInputs": 1
+      },
+      "inputPorts": [
+        {
+          "id": "scope_madgwick-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
       "outputPorts": []
     },
     {
       "id": "scope_comp",
       "type": "scope",
       "name": "Complementary (deg)",
-      "position": { "x": 950, "y": 380 },
-      "parameters": { "numInputs": 1 },
-      "inputPorts": [{ "id": "scope_comp-in1", "name": "in1", "dataType": "double", "dimensions": [1] }],
+      "position": {
+        "x": 950,
+        "y": 380
+      },
+      "parameters": {
+        "numInputs": 1
+      },
+      "inputPorts": [
+        {
+          "id": "scope_comp-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
       "outputPorts": []
     },
     {
       "id": "scope_quat",
       "type": "scope",
       "name": "Quaternion",
-      "position": { "x": 800, "y": 130 },
-      "parameters": { "numInputs": 1 },
-      "inputPorts": [{ "id": "scope_quat-in1", "name": "in1", "dataType": "double", "dimensions": [1] }],
+      "position": {
+        "x": 800,
+        "y": 130
+      },
+      "parameters": {
+        "numInputs": 1
+      },
+      "inputPorts": [
+        {
+          "id": "scope_quat-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
       "outputPorts": []
     }
   ],
   "connections": [
-    { "id": "c1", "sourceBlockId": "true_roll_rate", "sourcePortId": "true_roll_rate-out", "targetBlockId": "mux_gyro_true", "targetPortId": "mux_gyro_true-in1" },
-    { "id": "c2", "sourceBlockId": "true_pitch_rate", "sourcePortId": "true_pitch_rate-out", "targetBlockId": "mux_gyro_true", "targetPortId": "mux_gyro_true-in2" },
-    { "id": "c3", "sourceBlockId": "true_yaw_rate", "sourcePortId": "true_yaw_rate-out", "targetBlockId": "mux_gyro_true", "targetPortId": "mux_gyro_true-in3" },
-    { "id": "c4", "sourceBlockId": "gravity_x", "sourcePortId": "gravity_x-out", "targetBlockId": "mux_accel_true", "targetPortId": "mux_accel_true-in1" },
-    { "id": "c5", "sourceBlockId": "gravity_y", "sourcePortId": "gravity_y-out", "targetBlockId": "mux_accel_true", "targetPortId": "mux_accel_true-in2" },
-    { "id": "c6", "sourceBlockId": "gravity_z", "sourcePortId": "gravity_z-out", "targetBlockId": "mux_accel_true", "targetPortId": "mux_accel_true-in3" },
-    { "id": "c7", "sourceBlockId": "mux_accel_true", "sourcePortId": "mux_accel_true-out", "targetBlockId": "imu", "targetPortId": "imu-accel" },
-    { "id": "c8", "sourceBlockId": "mux_gyro_true", "sourcePortId": "mux_gyro_true-out", "targetBlockId": "imu", "targetPortId": "imu-gyro" },
-    { "id": "c9", "sourceBlockId": "imu", "sourcePortId": "imu-out", "targetBlockId": "demux_imu", "targetPortId": "demux_imu-in" },
-    { "id": "c10", "sourceBlockId": "demux_imu", "sourcePortId": "demux_imu-accel", "targetBlockId": "madgwick", "targetPortId": "madgwick-accel" },
-    { "id": "c11", "sourceBlockId": "demux_imu", "sourcePortId": "demux_imu-gyro", "targetBlockId": "madgwick", "targetPortId": "madgwick-gyro" },
-    { "id": "c12", "sourceBlockId": "demux_imu", "sourcePortId": "demux_imu-accel", "targetBlockId": "comp_filter", "targetPortId": "comp_filter-accel" },
-    { "id": "c13", "sourceBlockId": "demux_imu", "sourcePortId": "demux_imu-gyro", "targetBlockId": "comp_filter", "targetPortId": "comp_filter-gyro" },
-    { "id": "c14", "sourceBlockId": "madgwick", "sourcePortId": "madgwick-out", "targetBlockId": "quat_to_euler", "targetPortId": "quat_to_euler-in" },
-    { "id": "c15", "sourceBlockId": "madgwick", "sourcePortId": "madgwick-out", "targetBlockId": "scope_quat", "targetPortId": "scope_quat-in1" },
-    { "id": "c16", "sourceBlockId": "quat_to_euler", "sourcePortId": "quat_to_euler-out", "targetBlockId": "rad2deg_madg", "targetPortId": "rad2deg_madg-in" },
-    { "id": "c17", "sourceBlockId": "rad2deg_madg", "sourcePortId": "rad2deg_madg-out", "targetBlockId": "scope_madgwick", "targetPortId": "scope_madgwick-in1" },
-    { "id": "c18", "sourceBlockId": "comp_filter", "sourcePortId": "comp_filter-out", "targetBlockId": "rad2deg_comp", "targetPortId": "rad2deg_comp-in" },
-    { "id": "c19", "sourceBlockId": "rad2deg_comp", "sourcePortId": "rad2deg_comp-out", "targetBlockId": "scope_comp", "targetPortId": "scope_comp-in1" }
+    {
+      "id": "c1",
+      "sourceBlockId": "true_roll_rate",
+      "sourcePortId": "true_roll_rate-out",
+      "targetBlockId": "mux_gyro_true",
+      "targetPortId": "mux_gyro_true-in1"
+    },
+    {
+      "id": "c2",
+      "sourceBlockId": "true_pitch_rate",
+      "sourcePortId": "true_pitch_rate-out",
+      "targetBlockId": "mux_gyro_true",
+      "targetPortId": "mux_gyro_true-in2"
+    },
+    {
+      "id": "c3",
+      "sourceBlockId": "true_yaw_rate",
+      "sourcePortId": "true_yaw_rate-out",
+      "targetBlockId": "mux_gyro_true",
+      "targetPortId": "mux_gyro_true-in3"
+    },
+    {
+      "id": "c4",
+      "sourceBlockId": "gravity_x",
+      "sourcePortId": "gravity_x-out",
+      "targetBlockId": "mux_accel_true",
+      "targetPortId": "mux_accel_true-in1"
+    },
+    {
+      "id": "c5",
+      "sourceBlockId": "gravity_y",
+      "sourcePortId": "gravity_y-out",
+      "targetBlockId": "mux_accel_true",
+      "targetPortId": "mux_accel_true-in2"
+    },
+    {
+      "id": "c6",
+      "sourceBlockId": "gravity_z",
+      "sourcePortId": "gravity_z-out",
+      "targetBlockId": "mux_accel_true",
+      "targetPortId": "mux_accel_true-in3"
+    },
+    {
+      "id": "c7",
+      "sourceBlockId": "mux_accel_true",
+      "sourcePortId": "mux_accel_true-out",
+      "targetBlockId": "imu",
+      "targetPortId": "imu-accel"
+    },
+    {
+      "id": "c8",
+      "sourceBlockId": "mux_gyro_true",
+      "sourcePortId": "mux_gyro_true-out",
+      "targetBlockId": "imu",
+      "targetPortId": "imu-gyro"
+    },
+    {
+      "id": "c9",
+      "sourceBlockId": "imu",
+      "sourcePortId": "imu-out",
+      "targetBlockId": "demux_imu",
+      "targetPortId": "demux_imu-in"
+    },
+    {
+      "id": "c10",
+      "sourceBlockId": "demux_imu",
+      "sourcePortId": "demux_imu-accel",
+      "targetBlockId": "madgwick",
+      "targetPortId": "madgwick-accel"
+    },
+    {
+      "id": "c11",
+      "sourceBlockId": "demux_imu",
+      "sourcePortId": "demux_imu-gyro",
+      "targetBlockId": "madgwick",
+      "targetPortId": "madgwick-gyro"
+    },
+    {
+      "id": "c12",
+      "sourceBlockId": "demux_imu",
+      "sourcePortId": "demux_imu-accel",
+      "targetBlockId": "comp_filter",
+      "targetPortId": "comp_filter-accel"
+    },
+    {
+      "id": "c13",
+      "sourceBlockId": "demux_imu",
+      "sourcePortId": "demux_imu-gyro",
+      "targetBlockId": "comp_filter",
+      "targetPortId": "comp_filter-gyro"
+    },
+    {
+      "id": "c14",
+      "sourceBlockId": "madgwick",
+      "sourcePortId": "madgwick-out",
+      "targetBlockId": "quat_to_euler",
+      "targetPortId": "quat_to_euler-in"
+    },
+    {
+      "id": "c15",
+      "sourceBlockId": "madgwick",
+      "sourcePortId": "madgwick-out",
+      "targetBlockId": "scope_quat",
+      "targetPortId": "scope_quat-in1"
+    },
+    {
+      "id": "c16",
+      "sourceBlockId": "quat_to_euler",
+      "sourcePortId": "quat_to_euler-out",
+      "targetBlockId": "rad2deg_madg",
+      "targetPortId": "rad2deg_madg-in"
+    },
+    {
+      "id": "c17",
+      "sourceBlockId": "rad2deg_madg",
+      "sourcePortId": "rad2deg_madg-out",
+      "targetBlockId": "scope_madgwick",
+      "targetPortId": "scope_madgwick-in1"
+    },
+    {
+      "id": "c18",
+      "sourceBlockId": "comp_filter",
+      "sourcePortId": "comp_filter-out",
+      "targetBlockId": "rad2deg_comp",
+      "targetPortId": "rad2deg_comp-in"
+    },
+    {
+      "id": "c19",
+      "sourceBlockId": "rad2deg_comp",
+      "sourcePortId": "rad2deg_comp-out",
+      "targetBlockId": "scope_comp",
+      "targetPortId": "scope_comp-in1"
+    }
   ],
   "simulationConfig": {
     "solver": "rk4",

@@ -13,7 +13,10 @@
       "id": "sine1",
       "type": "sine_wave",
       "name": "Command",
-      "position": { "x": 50, "y": 150 },
+      "position": {
+        "x": 50,
+        "y": 150
+      },
       "parameters": {
         "amplitude": 5.0,
         "frequency": 2.0,
@@ -22,84 +25,190 @@
       },
       "inputPorts": [],
       "outputPorts": [
-        { "id": "sine1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "sine1-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "rate_lim",
       "type": "rate_limiter",
       "name": "Rate Limiter",
-      "position": { "x": 250, "y": 100 },
+      "position": {
+        "x": 250,
+        "y": 100
+      },
       "parameters": {
         "risingLimit": 10,
         "fallingLimit": -10
       },
       "inputPorts": [
-        { "id": "rate_lim-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "rate_lim-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "rate_lim-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "rate_lim-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "quant1",
       "type": "quantizer",
       "name": "Quantizer",
-      "position": { "x": 250, "y": 220 },
+      "position": {
+        "x": 250,
+        "y": 220
+      },
       "parameters": {
         "interval": 0.5
       },
       "inputPorts": [
-        { "id": "quant1-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "quant1-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "quant1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "quant1-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "rate_quant",
       "type": "rate_limiter",
       "name": "Rate + Quant",
-      "position": { "x": 420, "y": 320 },
+      "position": {
+        "x": 420,
+        "y": 320
+      },
       "parameters": {
         "risingLimit": 10,
         "fallingLimit": -10
       },
       "inputPorts": [
-        { "id": "rate_quant-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "rate_quant-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "rate_quant-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "rate_quant-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "quant2",
       "type": "quantizer",
       "name": "Then Quant",
-      "position": { "x": 550, "y": 320 },
+      "position": {
+        "x": 550,
+        "y": 320
+      },
       "parameters": {
         "interval": 0.5
       },
       "inputPorts": [
-        { "id": "quant2-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "quant2-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "quant2-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "quant2-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "scope1",
       "type": "scope",
       "name": "Effects",
-      "position": { "x": 700, "y": 180 },
+      "position": {
+        "x": 700,
+        "y": 180
+      },
       "parameters": {
         "numInputs": 4
       },
       "inputPorts": [
-        { "id": "scope1-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
-        { "id": "scope1-in2", "name": "in2", "dataType": "double", "dimensions": [1] },
-        { "id": "scope1-in3", "name": "in3", "dataType": "double", "dimensions": [1] },
-        { "id": "scope1-in4", "name": "in4", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "scope1-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "scope1-in2",
+          "name": "in2",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "scope1-in3",
+          "name": "in3",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "scope1-in4",
+          "name": "in4",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": []
     }
@@ -124,7 +233,17 @@
       "sourceBlockId": "sine1",
       "sourcePortId": "sine1-out",
       "targetBlockId": "rate_quant",
-      "targetPortId": "rate_quant-in"
+      "targetPortId": "rate_quant-in",
+      "waypoints": [
+        {
+          "x": 150,
+          "y": 60
+        },
+        {
+          "x": 400,
+          "y": 60
+        }
+      ]
     },
     {
       "id": "conn4",

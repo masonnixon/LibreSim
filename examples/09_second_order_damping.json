@@ -13,7 +13,10 @@
       "id": "step1",
       "type": "step",
       "name": "Step Input",
-      "position": { "x": 50, "y": 200 },
+      "position": {
+        "x": 50,
+        "y": 200
+      },
       "parameters": {
         "stepTime": 1.0,
         "initialValue": 0,
@@ -21,70 +24,177 @@
       },
       "inputPorts": [],
       "outputPorts": [
-        { "id": "step1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "step1-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "tf_under",
       "type": "transfer_function",
       "name": "Underdamped",
-      "position": { "x": 250, "y": 80 },
+      "position": {
+        "x": 250,
+        "y": 80
+      },
       "parameters": {
-        "numerator": [1],
-        "denominator": [1, 0.4, 1]
+        "numerator": [
+          1
+        ],
+        "denominator": [
+          1,
+          0.4,
+          1
+        ]
       },
       "inputPorts": [
-        { "id": "tf_under-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "tf_under-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "tf_under-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "tf_under-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "tf_crit",
       "type": "transfer_function",
       "name": "Critical",
-      "position": { "x": 250, "y": 200 },
+      "position": {
+        "x": 250,
+        "y": 200
+      },
       "parameters": {
-        "numerator": [1],
-        "denominator": [1, 2, 1]
+        "numerator": [
+          1
+        ],
+        "denominator": [
+          1,
+          2,
+          1
+        ]
       },
       "inputPorts": [
-        { "id": "tf_crit-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "tf_crit-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "tf_crit-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "tf_crit-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "tf_over",
       "type": "transfer_function",
       "name": "Overdamped",
-      "position": { "x": 250, "y": 320 },
+      "position": {
+        "x": 250,
+        "y": 320
+      },
       "parameters": {
-        "numerator": [1],
-        "denominator": [1, 4, 1]
+        "numerator": [
+          1
+        ],
+        "denominator": [
+          1,
+          4,
+          1
+        ]
       },
       "inputPorts": [
-        { "id": "tf_over-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "tf_over-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "tf_over-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "tf_over-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "scope1",
       "type": "scope",
       "name": "Comparison",
-      "position": { "x": 480, "y": 200 },
+      "position": {
+        "x": 480,
+        "y": 200
+      },
       "parameters": {
         "numInputs": 4
       },
       "inputPorts": [
-        { "id": "scope1-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
-        { "id": "scope1-in2", "name": "in2", "dataType": "double", "dimensions": [1] },
-        { "id": "scope1-in3", "name": "in3", "dataType": "double", "dimensions": [1] },
-        { "id": "scope1-in4", "name": "in4", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "scope1-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "scope1-in2",
+          "name": "in2",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "scope1-in3",
+          "name": "in3",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "scope1-in4",
+          "name": "in4",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": []
     }
@@ -116,7 +226,17 @@
       "sourceBlockId": "step1",
       "sourcePortId": "step1-out",
       "targetBlockId": "scope1",
-      "targetPortId": "scope1-in1"
+      "targetPortId": "scope1-in1",
+      "waypoints": [
+        {
+          "x": 150,
+          "y": 160
+        },
+        {
+          "x": 460,
+          "y": 160
+        }
+      ]
     },
     {
       "id": "conn5",

@@ -13,76 +13,247 @@
       "id": "sine_10hz",
       "type": "sine_wave",
       "name": "10 Hz Sine",
-      "position": { "x": 50, "y": 100 },
-      "parameters": { "amplitude": 1.0, "frequency": 10.0, "phase": 0.0 },
+      "position": {
+        "x": 50,
+        "y": 100
+      },
+      "parameters": {
+        "amplitude": 1.0,
+        "frequency": 10.0,
+        "phase": 0.0
+      },
       "inputPorts": [],
-      "outputPorts": [{ "id": "sine_10hz-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "outputPorts": [
+        {
+          "id": "sine_10hz-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "sine_25hz",
       "type": "sine_wave",
       "name": "25 Hz Sine",
-      "position": { "x": 50, "y": 200 },
-      "parameters": { "amplitude": 0.5, "frequency": 25.0, "phase": 0.0 },
+      "position": {
+        "x": 50,
+        "y": 200
+      },
+      "parameters": {
+        "amplitude": 0.5,
+        "frequency": 25.0,
+        "phase": 0.0
+      },
       "inputPorts": [],
-      "outputPorts": [{ "id": "sine_25hz-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "outputPorts": [
+        {
+          "id": "sine_25hz-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "sum_signals",
       "type": "sum",
       "name": "Sum",
-      "position": { "x": 200, "y": 150 },
-      "parameters": { "inputs": "++", "collapse": "all" },
+      "position": {
+        "x": 200,
+        "y": 150
+      },
+      "parameters": {
+        "inputs": "++",
+        "collapse": "all"
+      },
       "inputPorts": [
-        { "id": "sum_signals-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
-        { "id": "sum_signals-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "sum_signals-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "sum_signals-in2",
+          "name": "in2",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
-      "outputPorts": [{ "id": "sum_signals-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "outputPorts": [
+        {
+          "id": "sum_signals-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "window",
       "type": "window_function",
       "name": "Hamming Window",
-      "position": { "x": 350, "y": 150 },
-      "parameters": { "windowType": "hamming" },
-      "inputPorts": [{ "id": "window-in", "name": "in", "dataType": "double", "dimensions": [1] }],
-      "outputPorts": [{ "id": "window-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "position": {
+        "x": 350,
+        "y": 150
+      },
+      "parameters": {
+        "windowType": "hamming"
+      },
+      "inputPorts": [
+        {
+          "id": "window-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
+      "outputPorts": [
+        {
+          "id": "window-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "fft",
       "type": "fft",
       "name": "FFT",
-      "position": { "x": 500, "y": 150 },
-      "parameters": { "nPoints": 64 },
-      "inputPorts": [{ "id": "fft-in", "name": "signal", "dataType": "double", "dimensions": [1] }],
-      "outputPorts": [{ "id": "fft-out", "name": "spectrum", "dataType": "double", "dimensions": [1] }]
+      "position": {
+        "x": 500,
+        "y": 150
+      },
+      "parameters": {
+        "nPoints": 64
+      },
+      "inputPorts": [
+        {
+          "id": "fft-in",
+          "name": "signal",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
+      "outputPorts": [
+        {
+          "id": "fft-out",
+          "name": "spectrum",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "scope_time",
       "type": "scope",
       "name": "Time Domain",
-      "position": { "x": 350, "y": 280 },
-      "parameters": { "numInputs": 1 },
-      "inputPorts": [{ "id": "scope_time-in1", "name": "in1", "dataType": "double", "dimensions": [1] }],
+      "position": {
+        "x": 350,
+        "y": 280
+      },
+      "parameters": {
+        "numInputs": 1
+      },
+      "inputPorts": [
+        {
+          "id": "scope_time-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
       "outputPorts": []
     },
     {
       "id": "scope_freq",
       "type": "scope",
       "name": "Frequency Spectrum",
-      "position": { "x": 650, "y": 150 },
-      "parameters": { "numInputs": 1 },
-      "inputPorts": [{ "id": "scope_freq-in1", "name": "in1", "dataType": "double", "dimensions": [1] }],
+      "position": {
+        "x": 650,
+        "y": 150
+      },
+      "parameters": {
+        "numInputs": 1
+      },
+      "inputPorts": [
+        {
+          "id": "scope_freq-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
       "outputPorts": []
     }
   ],
   "connections": [
-    { "id": "c1", "sourceBlockId": "sine_10hz", "sourcePortId": "sine_10hz-out", "targetBlockId": "sum_signals", "targetPortId": "sum_signals-in1" },
-    { "id": "c2", "sourceBlockId": "sine_25hz", "sourcePortId": "sine_25hz-out", "targetBlockId": "sum_signals", "targetPortId": "sum_signals-in2" },
-    { "id": "c3", "sourceBlockId": "sum_signals", "sourcePortId": "sum_signals-out", "targetBlockId": "window", "targetPortId": "window-in" },
-    { "id": "c4", "sourceBlockId": "window", "sourcePortId": "window-out", "targetBlockId": "fft", "targetPortId": "fft-in" },
-    { "id": "c5", "sourceBlockId": "sum_signals", "sourcePortId": "sum_signals-out", "targetBlockId": "scope_time", "targetPortId": "scope_time-in1" },
-    { "id": "c6", "sourceBlockId": "fft", "sourcePortId": "fft-out", "targetBlockId": "scope_freq", "targetPortId": "scope_freq-in1" }
+    {
+      "id": "c1",
+      "sourceBlockId": "sine_10hz",
+      "sourcePortId": "sine_10hz-out",
+      "targetBlockId": "sum_signals",
+      "targetPortId": "sum_signals-in1"
+    },
+    {
+      "id": "c2",
+      "sourceBlockId": "sine_25hz",
+      "sourcePortId": "sine_25hz-out",
+      "targetBlockId": "sum_signals",
+      "targetPortId": "sum_signals-in2"
+    },
+    {
+      "id": "c3",
+      "sourceBlockId": "sum_signals",
+      "sourcePortId": "sum_signals-out",
+      "targetBlockId": "window",
+      "targetPortId": "window-in"
+    },
+    {
+      "id": "c4",
+      "sourceBlockId": "window",
+      "sourcePortId": "window-out",
+      "targetBlockId": "fft",
+      "targetPortId": "fft-in"
+    },
+    {
+      "id": "c5",
+      "sourceBlockId": "sum_signals",
+      "sourcePortId": "sum_signals-out",
+      "targetBlockId": "scope_time",
+      "targetPortId": "scope_time-in1"
+    },
+    {
+      "id": "c6",
+      "sourceBlockId": "fft",
+      "sourcePortId": "fft-out",
+      "targetBlockId": "scope_freq",
+      "targetPortId": "scope_freq-in1"
+    }
   ],
   "simulationConfig": {
     "solver": "rk4",

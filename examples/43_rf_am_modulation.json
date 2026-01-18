@@ -13,41 +13,120 @@
       "id": "message",
       "type": "sine_wave",
       "name": "Message (1 Hz)",
-      "position": { "x": 50, "y": 100 },
-      "parameters": { "amplitude": 0.8, "frequency": 1.0, "phase": 0.0 },
+      "position": {
+        "x": 50,
+        "y": 100
+      },
+      "parameters": {
+        "amplitude": 0.8,
+        "frequency": 1.0,
+        "phase": 0.0
+      },
       "inputPorts": [],
-      "outputPorts": [{ "id": "message-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "outputPorts": [
+        {
+          "id": "message-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "carrier",
       "type": "sine_wave",
       "name": "Carrier (20 Hz)",
-      "position": { "x": 50, "y": 200 },
-      "parameters": { "amplitude": 1.0, "frequency": 20.0, "phase": 0.0 },
+      "position": {
+        "x": 50,
+        "y": 200
+      },
+      "parameters": {
+        "amplitude": 1.0,
+        "frequency": 20.0,
+        "phase": 0.0
+      },
       "inputPorts": [],
-      "outputPorts": [{ "id": "carrier-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "outputPorts": [
+        {
+          "id": "carrier-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "am_mod",
       "type": "am_modulator",
       "name": "AM Modulator",
-      "position": { "x": 250, "y": 150 },
-      "parameters": { "modulationIndex": 0.8 },
+      "position": {
+        "x": 250,
+        "y": 150
+      },
+      "parameters": {
+        "modulationIndex": 0.8
+      },
       "inputPorts": [
-        { "id": "am_mod-msg", "name": "message", "dataType": "double", "dimensions": [1] },
-        { "id": "am_mod-car", "name": "carrier", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "am_mod-msg",
+          "name": "message",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "am_mod-car",
+          "name": "carrier",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
-      "outputPorts": [{ "id": "am_mod-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "outputPorts": [
+        {
+          "id": "am_mod-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "scope_signals",
       "type": "scope",
       "name": "Message & Carrier",
-      "position": { "x": 250, "y": 300 },
-      "parameters": { "numInputs": 2 },
+      "position": {
+        "x": 250,
+        "y": 300
+      },
+      "parameters": {
+        "numInputs": 2
+      },
       "inputPorts": [
-        { "id": "scope_signals-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
-        { "id": "scope_signals-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "scope_signals-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "scope_signals-in2",
+          "name": "in2",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": []
     },
@@ -55,18 +134,62 @@
       "id": "scope_am",
       "type": "scope",
       "name": "AM Signal",
-      "position": { "x": 450, "y": 150 },
-      "parameters": { "numInputs": 1 },
-      "inputPorts": [{ "id": "scope_am-in1", "name": "in1", "dataType": "double", "dimensions": [1] }],
+      "position": {
+        "x": 450,
+        "y": 150
+      },
+      "parameters": {
+        "numInputs": 1
+      },
+      "inputPorts": [
+        {
+          "id": "scope_am-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
       "outputPorts": []
     }
   ],
   "connections": [
-    { "id": "c1", "sourceBlockId": "message", "sourcePortId": "message-out", "targetBlockId": "am_mod", "targetPortId": "am_mod-msg" },
-    { "id": "c2", "sourceBlockId": "carrier", "sourcePortId": "carrier-out", "targetBlockId": "am_mod", "targetPortId": "am_mod-car" },
-    { "id": "c3", "sourceBlockId": "message", "sourcePortId": "message-out", "targetBlockId": "scope_signals", "targetPortId": "scope_signals-in1" },
-    { "id": "c4", "sourceBlockId": "carrier", "sourcePortId": "carrier-out", "targetBlockId": "scope_signals", "targetPortId": "scope_signals-in2" },
-    { "id": "c5", "sourceBlockId": "am_mod", "sourcePortId": "am_mod-out", "targetBlockId": "scope_am", "targetPortId": "scope_am-in1" }
+    {
+      "id": "c1",
+      "sourceBlockId": "message",
+      "sourcePortId": "message-out",
+      "targetBlockId": "am_mod",
+      "targetPortId": "am_mod-msg"
+    },
+    {
+      "id": "c2",
+      "sourceBlockId": "carrier",
+      "sourcePortId": "carrier-out",
+      "targetBlockId": "am_mod",
+      "targetPortId": "am_mod-car"
+    },
+    {
+      "id": "c3",
+      "sourceBlockId": "message",
+      "sourcePortId": "message-out",
+      "targetBlockId": "scope_signals",
+      "targetPortId": "scope_signals-in1"
+    },
+    {
+      "id": "c4",
+      "sourceBlockId": "carrier",
+      "sourcePortId": "carrier-out",
+      "targetBlockId": "scope_signals",
+      "targetPortId": "scope_signals-in2"
+    },
+    {
+      "id": "c5",
+      "sourceBlockId": "am_mod",
+      "sourcePortId": "am_mod-out",
+      "targetBlockId": "scope_am",
+      "targetPortId": "scope_am-in1"
+    }
   ],
   "simulationConfig": {
     "solver": "rk4",

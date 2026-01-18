@@ -173,8 +173,64 @@ function segmentIntersectsBlock(
 }
 
 /**
+ * Check if a vertical line at x from y1 to y2 crosses through a block.
+ */
+function verticalLineIntersectsBlock(
+  x: number,
+  y1: number,
+  y2: number,
+  block: BlockInstance,
+  excludeBlockIds: Set<string>,
+  margin: number = 15
+): boolean {
+  if (excludeBlockIds.has(block.id)) return false
+
+  const bounds = getBlockBounds(block, margin)
+
+  // Line must be within horizontal extent of block
+  if (x < bounds.left || x > bounds.right) return false
+
+  // Line must overlap vertically with block
+  const lineTop = Math.min(y1, y2)
+  const lineBottom = Math.max(y1, y2)
+
+  return !(lineBottom < bounds.top || lineTop > bounds.bottom)
+}
+
+/**
+ * Check if a horizontal line at y from x1 to x2 crosses through a block.
+ */
+function horizontalLineIntersectsBlock(
+  x1: number,
+  x2: number,
+  y: number,
+  block: BlockInstance,
+  excludeBlockIds: Set<string>,
+  margin: number = 15
+): boolean {
+  if (excludeBlockIds.has(block.id)) return false
+
+  const bounds = getBlockBounds(block, margin)
+
+  // Line must be within vertical extent of block
+  if (y < bounds.top || y > bounds.bottom) return false
+
+  // Line must overlap horizontally with block
+  const lineLeft = Math.min(x1, x2)
+  const lineRight = Math.max(x1, x2)
+
+  return !(lineRight < bounds.left || lineLeft > bounds.right)
+}
+
+/**
  * Generate smart waypoints for a connection that avoids intersecting blocks.
  * Returns waypoints array (empty if direct path is clear).
+ *
+ * Routing preferences (matching Simulink convention):
+ * - Feedback loops (backwards connections): Route BELOW all blocks
+ * - Forward connections crossing blocks: Route ABOVE the blocking blocks
+ *
+ * Also checks vertical segments to ensure they don't cross blocks.
  */
 function generateSmartWaypoints(
   sourceX: number,
@@ -184,99 +240,266 @@ function generateSmartWaypoints(
   sourceBlockId: string,
   targetBlockId: string,
   allBlocks: BlockInstance[],
-  margin: number = 20
+  allConnections: ConnectionType[],
+  margin: number = 15
 ): Array<{ x: number; y: number }> {
   const excludeBlockIds = new Set([sourceBlockId, targetBlockId])
+  const LINE_SPACING = 20
 
   // Calculate the default midpoint path (no waypoints = 3-segment path)
   const midX = (sourceX + targetX) / 2
 
   // Check if the simple 3-segment path intersects any blocks
-  // Segment 1: horizontal from source to midX
-  // Segment 2: vertical from sourceY to targetY at midX
-  // Segment 3: horizontal from midX to target
-
-  const blocksInWay: BlockInstance[] = []
+  let hasCollision = false
   for (const block of allBlocks) {
     if (excludeBlockIds.has(block.id)) continue
 
     // Check segment 1 (horizontal: sourceX,sourceY to midX,sourceY)
     if (segmentIntersectsBlock(sourceX, sourceY, midX, sourceY, block, excludeBlockIds, margin)) {
-      blocksInWay.push(block)
-      continue
+      hasCollision = true
+      break
     }
     // Check segment 2 (vertical: midX,sourceY to midX,targetY)
     if (segmentIntersectsBlock(midX, sourceY, midX, targetY, block, excludeBlockIds, margin)) {
-      blocksInWay.push(block)
-      continue
+      hasCollision = true
+      break
     }
     // Check segment 3 (horizontal: midX,targetY to targetX,targetY)
     if (segmentIntersectsBlock(midX, targetY, targetX, targetY, block, excludeBlockIds, margin)) {
-      blocksInWay.push(block)
+      hasCollision = true
+      break
     }
   }
 
-  // If no blocks in the way, return empty (use default 3-segment path)
-  if (blocksInWay.length === 0) {
+  // For forward connections with no collision, return empty
+  if (!hasCollision && targetX > sourceX) {
     return []
   }
 
-  // Find the bounding box of all blocking blocks
-  let minBlockY = Infinity
-  let maxBlockY = -Infinity
-  let minBlockX = Infinity
-  let maxBlockX = -Infinity
-
-  for (const block of blocksInWay) {
+  // Find blocking blocks (blocks between source and target)
+  const blockingBlocks: BlockInstance[] = []
+  for (const block of allBlocks) {
+    if (excludeBlockIds.has(block.id)) continue
     const bounds = getBlockBounds(block, margin)
-    minBlockY = Math.min(minBlockY, bounds.top)
-    maxBlockY = Math.max(maxBlockY, bounds.bottom)
-    minBlockX = Math.min(minBlockX, bounds.left)
-    maxBlockX = Math.max(maxBlockX, bounds.right)
-  }
-
-  // Decide whether to route above or below the blocking blocks
-  const distanceAbove = sourceY - minBlockY
-  const distanceBelow = maxBlockY - sourceY
-
-  // Also consider target Y in the decision
-  const avgY = (sourceY + targetY) / 2
-
-  let routeY: number
-  if (avgY < (minBlockY + maxBlockY) / 2) {
-    // Route above (go to minBlockY - margin)
-    routeY = minBlockY - margin
-  } else {
-    // Route below (go to maxBlockY + margin)
-    routeY = maxBlockY + margin
-  }
-
-  // Special case: if source and target are at same Y and blocks are in between,
-  // we need to go around
-  if (Math.abs(sourceY - targetY) < 10) {
-    // Prefer routing above if there's more space
-    if (distanceAbove > distanceBelow) {
-      routeY = minBlockY - margin
-    } else {
-      routeY = maxBlockY + margin
+    // Check if block is between source and target
+    if (Math.min(sourceX, targetX) < bounds.right && Math.max(sourceX, targetX) > bounds.left) {
+      if (Math.min(sourceY, targetY) - margin < bounds.bottom && Math.max(sourceY, targetY) + margin > bounds.top) {
+        blockingBlocks.push(block)
+      }
     }
   }
 
-  // Generate waypoints to route around
-  // We create two waypoints:
-  // 1. One after leaving source block area to drop/rise to routeY
-  // 2. One before entering target block area to return to targetY
+  // For forward connections with no blocking blocks, return empty
+  if (blockingBlocks.length === 0 && targetX > sourceX) {
+    return []
+  }
 
-  const wp1X = Math.min(sourceX + 30, midX)
-  const wp2X = Math.max(targetX - 30, midX)
+  // Get all block bounds for routing calculations
+  const allBounds = allBlocks
+    .filter(b => !excludeBlockIds.has(b.id))
+    .map(b => getBlockBounds(b, margin))
 
-  // Ensure waypoints are snapped to grid (10px)
-  const snap = (v: number) => Math.round(v / 10) * 10
+  // Snap helper
+  const snap = (v: number) => Math.round(v / LINE_SPACING) * LINE_SPACING
 
-  return [
-    { x: snap(wp1X), y: snap(routeY) },
-    { x: snap(wp2X), y: snap(routeY) },
-  ]
+  // Determine routing strategy based on connection direction
+  const isFeedback = targetX < sourceX
+
+  if (isFeedback) {
+    // Backwards connection (feedback loop) - ALWAYS route BELOW all blocks
+    if (allBounds.length === 0) {
+      // No other blocks, simple U-route below
+      const routeY = Math.max(sourceY, targetY) + 60
+      return [
+        { x: snap(sourceX + 20), y: snap(routeY) },
+        { x: snap(targetX - 20), y: snap(routeY) },
+      ]
+    }
+
+    // Find max bottom of all blocks
+    const maxBottom = Math.max(...allBounds.map(b => b.bottom))
+    let routeY = snap(maxBottom + margin + 10)
+
+    // Find X positions for waypoints that don't cross blocks vertically
+    let wp1X = sourceX + 20
+    let wp2X = targetX - 20
+
+    // Check if vertical segment at wp1X crosses any block, adjust if needed
+    for (const block of allBlocks) {
+      if (verticalLineIntersectsBlock(wp1X, sourceY, routeY, block, excludeBlockIds, margin)) {
+        const bounds = getBlockBounds(block, margin)
+        wp1X = bounds.right + 5
+      }
+    }
+
+    // Check if vertical segment at wp2X crosses any block, adjust if needed
+    for (const block of allBlocks) {
+      if (verticalLineIntersectsBlock(wp2X, targetY, routeY, block, excludeBlockIds, margin)) {
+        const bounds = getBlockBounds(block, margin)
+        wp2X = bounds.left - 5
+      }
+    }
+
+    // Check for overlapping lines and adjust Y if needed
+    routeY = findNonOverlappingY(routeY, wp1X, wp2X, sourceX, targetX, allConnections, allBlocks, excludeBlockIds, true, margin)
+
+    return [
+      { x: snap(wp1X), y: routeY },
+      { x: snap(wp2X), y: routeY },
+    ]
+  }
+
+  // Forward connection with blocking blocks - route ABOVE
+  if (blockingBlocks.length > 0) {
+    const blockingBounds = blockingBlocks.map(b => getBlockBounds(b, margin))
+    const minTop = Math.min(...blockingBounds.map(b => b.top))
+    let routeY = snap(minTop - margin - 10)
+
+    // Find a good X for the waypoint that doesn't cause vertical segment collisions
+    let needsTwoWaypoints = false
+    for (const block of allBlocks) {
+      if (verticalLineIntersectsBlock(midX, sourceY, routeY, block, excludeBlockIds, margin)) {
+        needsTwoWaypoints = true
+        break
+      }
+      if (verticalLineIntersectsBlock(midX, routeY, targetY, block, excludeBlockIds, margin)) {
+        needsTwoWaypoints = true
+        break
+      }
+    }
+
+    if (needsTwoWaypoints) {
+      // Use two waypoints to route around blocks
+      let wp1X = sourceX + 20
+      let wp2X = targetX - 20
+
+      // Adjust wp1X if it crosses a block
+      for (const block of allBlocks) {
+        if (verticalLineIntersectsBlock(wp1X, sourceY, routeY, block, excludeBlockIds, margin)) {
+          const bounds = getBlockBounds(block, margin)
+          wp1X = bounds.right + 5
+        }
+      }
+
+      // Adjust wp2X if it crosses a block
+      for (const block of allBlocks) {
+        if (verticalLineIntersectsBlock(wp2X, routeY, targetY, block, excludeBlockIds, margin)) {
+          const bounds = getBlockBounds(block, margin)
+          wp2X = bounds.left - 5
+        }
+      }
+
+      // Check for overlapping lines and adjust Y if needed
+      routeY = findNonOverlappingY(routeY, wp1X, wp2X, sourceX, targetX, allConnections, allBlocks, excludeBlockIds, false, margin)
+
+      return [
+        { x: snap(wp1X), y: routeY },
+        { x: snap(wp2X), y: routeY },
+      ]
+    }
+
+    // Check for overlapping lines and adjust Y if needed
+    routeY = findNonOverlappingY(routeY, midX, midX, sourceX, targetX, allConnections, allBlocks, excludeBlockIds, false, margin)
+
+    return [
+      { x: snap(midX), y: routeY },
+    ]
+  }
+
+  return []
+}
+
+/**
+ * Find a Y level that doesn't overlap with existing connection routes and doesn't cross blocks.
+ */
+function findNonOverlappingY(
+  baseY: number,
+  wp1X: number,
+  wp2X: number,
+  sourceX: number,
+  targetX: number,
+  allConnections: ConnectionType[],
+  allBlocks: BlockInstance[],
+  excludeBlockIds: Set<string>,
+  isFeedback: boolean,
+  margin: number
+): number {
+  const LINE_SPACING = 20
+  let routeY = Math.round(baseY / LINE_SPACING) * LINE_SPACING
+
+  // Calculate x-range this route spans
+  const allX = [wp1X, wp2X, sourceX, targetX]
+  const xMin = Math.min(...allX)
+  const xMax = Math.max(...allX)
+
+  // Check if this Y level overlaps with existing connections
+  const hasOverlap = (yLevel: number): boolean => {
+    for (const conn of allConnections) {
+      if (!conn.waypoints || conn.waypoints.length === 0) continue
+
+      // Get the Y level of this connection's waypoints
+      const connY = conn.waypoints[0].y
+
+      // Check if Y levels are the same (within tolerance)
+      if (Math.abs(connY - yLevel) > LINE_SPACING / 2) continue
+
+      // Check if X ranges overlap
+      const connXs = conn.waypoints.map(wp => wp.x)
+      const connXMin = Math.min(...connXs)
+      const connXMax = Math.max(...connXs)
+
+      if (!(xMax < connXMin - 10 || xMin > connXMax + 10)) {
+        return true
+      }
+    }
+    return false
+  }
+
+  // Check if routing at this Y level would cross any blocks
+  const crossesBlock = (yLevel: number): boolean => {
+    for (const block of allBlocks) {
+      if (horizontalLineIntersectsBlock(xMin, xMax, yLevel, block, excludeBlockIds, margin)) {
+        return true
+      }
+      // Also check vertical segments
+      if (verticalLineIntersectsBlock(wp1X, isFeedback ? targetX : sourceX, yLevel, block, excludeBlockIds, margin)) {
+        return true
+      }
+      if (verticalLineIntersectsBlock(wp2X, yLevel, isFeedback ? sourceX : targetX, block, excludeBlockIds, margin)) {
+        return true
+      }
+    }
+    return false
+  }
+
+  // Find a Y level without overlap and without crossing blocks
+  const maxIterations = 50
+  let iterations = 0
+
+  while ((hasOverlap(routeY) || crossesBlock(routeY)) && iterations < maxIterations) {
+    if (isFeedback) {
+      routeY += LINE_SPACING // Go further down for feedback
+    } else {
+      routeY -= LINE_SPACING // Go further up for forward connections
+    }
+    iterations++
+  }
+
+  // If we couldn't find a good level, try the other direction
+  if (iterations >= maxIterations) {
+    routeY = Math.round(baseY / LINE_SPACING) * LINE_SPACING
+    iterations = 0
+    while ((hasOverlap(routeY) || crossesBlock(routeY)) && iterations < maxIterations) {
+      if (isFeedback) {
+        routeY -= LINE_SPACING
+      } else {
+        routeY += LINE_SPACING
+      }
+      iterations++
+    }
+  }
+
+  return routeY
 }
 
 /**
@@ -753,7 +976,8 @@ export function Editor() {
             sourceX, sourceY,
             targetX, targetY,
             params.source, params.target,
-            currentBlocks
+            currentBlocks,
+            currentConnections
           )
 
           if (smartWaypoints.length > 0) {
@@ -771,7 +995,7 @@ export function Editor() {
         })
       }
     },
-    [addConnection, pushHistory, currentBlocks]
+    [addConnection, pushHistory, currentBlocks, currentConnections]
   )
 
   // Track connection start info for branching detection
@@ -951,7 +1175,7 @@ export function Editor() {
       // To deselect, click elsewhere on the canvas
       setSelectedEdgeId(edge.id)
     },
-    []
+    [setSelectedEdgeId]
   )
 
   // Track double-click timing to ignore pane clicks that follow edge double-clicks
@@ -987,7 +1211,7 @@ export function Editor() {
     }
     console.log('[Editor] onPaneClick - deselecting edge')
     setSelectedEdgeId(null)
-  }, [isEdgeDragging])
+  }, [isEdgeDragging, setSelectedEdgeId])
 
   const onSelectionChange = useCallback(
     ({ nodes: selectedNodes }: { nodes: Node[] }) => {
@@ -1105,7 +1329,7 @@ export function Editor() {
       setSignalContextMenu(null)
       setSelectedEdgeId(null)
     }
-  }, [signalContextMenu, removeConnection, pushHistory])
+  }, [signalContextMenu, removeConnection, pushHistory, setSelectedEdgeId])
 
   const handleDeleteSignalLabel = useCallback(() => {
     if (signalContextMenu) {
@@ -1117,12 +1341,60 @@ export function Editor() {
 
   const handleAutoRouteSignal = useCallback(() => {
     if (signalContextMenu) {
+      // Find the connection
+      const conn = currentConnections.find(c => c.id === signalContextMenu.connectionId)
+      if (!conn) {
+        setSignalContextMenu(null)
+        return
+      }
+
+      // Find source and target blocks
+      const sourceBlock = currentBlocks.find(b => b.id === conn.sourceBlockId)
+      const targetBlock = currentBlocks.find(b => b.id === conn.targetBlockId)
+
+      if (!sourceBlock || !targetBlock) {
+        setSignalContextMenu(null)
+        return
+      }
+
+      // Calculate source port position
+      const sourcePort = sourceBlock.outputPorts.find(p => p.id === conn.sourcePortId)
+      const sourcePortIndex = sourcePort ? sourceBlock.outputPorts.indexOf(sourcePort) : 0
+      const sourcePortCount = sourceBlock.outputPorts.length
+      const sourceX = sourceBlock.position.x + (sourceBlock.size?.width || 100)
+      const sourceY = sourceBlock.position.y + ((sourcePortIndex + 1) / (sourcePortCount + 1)) * (sourceBlock.size?.height || 50)
+
+      // Calculate target port position
+      const targetPort = targetBlock.inputPorts.find(p => p.id === conn.targetPortId)
+      const targetPortIndex = targetPort ? targetBlock.inputPorts.indexOf(targetPort) : 0
+      const targetPortCount = targetBlock.inputPorts.length
+      const targetX = targetBlock.position.x
+      const targetY = targetBlock.position.y + ((targetPortIndex + 1) / (targetPortCount + 1)) * (targetBlock.size?.height || 50)
+
+      // Generate smart waypoints (excluding this connection from overlap check)
+      const otherConnections = currentConnections.filter(c => c.id !== conn.id)
+      const smartWaypoints = generateSmartWaypoints(
+        sourceX, sourceY,
+        targetX, targetY,
+        conn.sourceBlockId, conn.targetBlockId,
+        currentBlocks,
+        otherConnections
+      )
+
       pushHistory()
-      // Clear waypoints to trigger auto-routing
-      useModelStore.getState().clearConnectionWaypoints(signalContextMenu.connectionId)
+
+      // Update the connection with smart waypoints
+      if (smartWaypoints.length > 0) {
+        // Set the new waypoints
+        useModelStore.getState().updateConnectionWaypoints(signalContextMenu.connectionId, smartWaypoints)
+      } else {
+        // No waypoints needed - clear existing ones
+        useModelStore.getState().clearConnectionWaypoints(signalContextMenu.connectionId)
+      }
+
       setSignalContextMenu(null)
     }
-  }, [signalContextMenu, pushHistory])
+  }, [signalContextMenu, pushHistory, currentBlocks, currentConnections])
 
   const handleRenameSignal = useCallback(() => {
     if (signalContextMenu) {
@@ -1520,6 +1792,7 @@ export function Editor() {
     undo,
     redo,
     pushHistory,
+    setSelectedEdgeId,
   ])
 
   // Track nearest edge during branching drag for visual feedback

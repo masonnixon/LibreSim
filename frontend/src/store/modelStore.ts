@@ -107,6 +107,7 @@ interface ModelState {
   updateConnectionWaypoint: (connectionId: string, waypointIndex: number, point: { x: number; y: number }) => void
   removeConnectionWaypoint: (connectionId: string, waypointIndex: number) => void
   clearConnectionWaypoints: (connectionId: string) => void
+  updateConnectionWaypoints: (connectionId: string, waypoints: Array<{ x: number; y: number }>) => void
   updateConnectionSignalName: (connectionId: string, signalName: string | undefined) => void
   updateConnectionLabelOffset: (connectionId: string, offset: { t: number; perpOffset: number } | undefined) => void
 
@@ -1141,6 +1142,16 @@ export const useModelStore = create<ModelState>((set, get) => ({
 
     set({
       model: updateConnectionWaypointsInHierarchy(model, currentPath, connectionId, () => []),
+      isDirty: true,
+    })
+  },
+
+  updateConnectionWaypoints: (connectionId: string, waypoints: Array<{ x: number; y: number }>) => {
+    const { model, currentPath } = get()
+    if (!model) return
+
+    set({
+      model: updateConnectionWaypointsInHierarchy(model, currentPath, connectionId, () => [...waypoints]),
       isDirty: true,
     })
   },

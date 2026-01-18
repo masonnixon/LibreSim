@@ -13,7 +13,10 @@
       "id": "ramp1",
       "type": "ramp",
       "name": "Speed Command",
-      "position": { "x": 50, "y": 180 },
+      "position": {
+        "x": 50,
+        "y": 180
+      },
       "parameters": {
         "slope": 100,
         "startTime": 0,
@@ -21,80 +24,213 @@
       },
       "inputPorts": [],
       "outputPorts": [
-        { "id": "ramp1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "ramp1-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "lut_torque",
       "type": "lookup_table_1d",
       "name": "Torque vs Speed",
-      "position": { "x": 250, "y": 100 },
+      "position": {
+        "x": 250,
+        "y": 100
+      },
       "parameters": {
-        "xData": [0, 200, 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000],
-        "yData": [10.0, 9.8, 9.5, 9.0, 8.3, 7.5, 6.5, 5.3, 4.0, 2.5, 1.0]
+        "xData": [
+          0,
+          200,
+          400,
+          600,
+          800,
+          1000,
+          1200,
+          1400,
+          1600,
+          1800,
+          2000
+        ],
+        "yData": [
+          10.0,
+          9.8,
+          9.5,
+          9.0,
+          8.3,
+          7.5,
+          6.5,
+          5.3,
+          4.0,
+          2.5,
+          1.0
+        ]
       },
       "inputPorts": [
-        { "id": "lut_torque-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "lut_torque-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "lut_torque-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "lut_torque-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "lut_efficiency",
       "type": "lookup_table_1d",
       "name": "Efficiency vs Speed",
-      "position": { "x": 250, "y": 260 },
+      "position": {
+        "x": 250,
+        "y": 260
+      },
       "parameters": {
-        "xData": [0, 200, 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000],
-        "yData": [0.0, 0.45, 0.70, 0.82, 0.88, 0.92, 0.90, 0.85, 0.78, 0.68, 0.55]
+        "xData": [
+          0,
+          200,
+          400,
+          600,
+          800,
+          1000,
+          1200,
+          1400,
+          1600,
+          1800,
+          2000
+        ],
+        "yData": [
+          0.0,
+          0.45,
+          0.7,
+          0.82,
+          0.88,
+          0.92,
+          0.9,
+          0.85,
+          0.78,
+          0.68,
+          0.55
+        ]
       },
       "inputPorts": [
-        { "id": "lut_efficiency-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "lut_efficiency-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "lut_efficiency-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "lut_efficiency-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "product1",
       "type": "product",
       "name": "Power",
-      "position": { "x": 450, "y": 180 },
+      "position": {
+        "x": 450,
+        "y": 180
+      },
       "parameters": {
         "inputs": "**"
       },
       "inputPorts": [
-        { "id": "product1-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
-        { "id": "product1-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "product1-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "product1-in2",
+          "name": "in2",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "product1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "product1-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "scope_speed",
       "type": "scope",
       "name": "Speed (RPM)",
-      "position": { "x": 620, "y": 50 },
+      "position": {
+        "x": 620,
+        "y": 50
+      },
       "parameters": {
         "numInputs": 1
       },
       "inputPorts": [
-        { "id": "scope_speed-in1", "name": "Speed", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "scope_speed-in1",
+          "name": "Speed",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": []
     },
     {
       "id": "scope_torque",
       "type": "scope",
-      "name": "Torque (N·m)",
-      "position": { "x": 620, "y": 130 },
+      "name": "Torque (N\u00b7m)",
+      "position": {
+        "x": 620,
+        "y": 130
+      },
       "parameters": {
         "numInputs": 1
       },
       "inputPorts": [
-        { "id": "scope_torque-in1", "name": "Torque", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "scope_torque-in1",
+          "name": "Torque",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": []
     },
@@ -102,25 +238,45 @@
       "id": "scope_efficiency",
       "type": "scope",
       "name": "Efficiency (0-1)",
-      "position": { "x": 620, "y": 210 },
+      "position": {
+        "x": 620,
+        "y": 210
+      },
       "parameters": {
         "numInputs": 1
       },
       "inputPorts": [
-        { "id": "scope_efficiency-in1", "name": "Efficiency", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "scope_efficiency-in1",
+          "name": "Efficiency",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": []
     },
     {
       "id": "scope_power",
       "type": "scope",
-      "name": "Power (T×η)",
-      "position": { "x": 620, "y": 290 },
+      "name": "Power (T\u00d7\u03b7)",
+      "position": {
+        "x": 620,
+        "y": 290
+      },
       "parameters": {
         "numInputs": 1
       },
       "inputPorts": [
-        { "id": "scope_power-in1", "name": "Power", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "scope_power-in1",
+          "name": "Power",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": []
     }
@@ -173,7 +329,17 @@
       "sourceBlockId": "lut_efficiency",
       "sourcePortId": "lut_efficiency-out",
       "targetBlockId": "scope_efficiency",
-      "targetPortId": "scope_efficiency-in1"
+      "targetPortId": "scope_efficiency-in1",
+      "waypoints": [
+        {
+          "x": 350,
+          "y": 20
+        },
+        {
+          "x": 600,
+          "y": 20
+        }
+      ]
     },
     {
       "id": "conn8",

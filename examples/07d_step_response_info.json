@@ -13,99 +13,219 @@
       "id": "tf_overdamped",
       "type": "transfer_function",
       "name": "Overdamped TF",
-      "position": { "x": 50, "y": 80 },
+      "position": {
+        "x": 50,
+        "y": 80
+      },
       "parameters": {
-        "numerator": [1],
-        "denominator": [1, 4, 1]
+        "numerator": [
+          1
+        ],
+        "denominator": [
+          1,
+          4,
+          1
+        ]
       },
       "inputPorts": [
-        { "id": "tf_overdamped-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "tf_overdamped-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "tf_overdamped-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "tf_overdamped-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "step_overdamped",
       "type": "step_info",
       "name": "Overdamped (zeta=2)",
-      "position": { "x": 200, "y": 80 },
+      "position": {
+        "x": 200,
+        "y": 80
+      },
       "parameters": {
         "simulationTime": 20,
         "numPoints": 1000,
         "settlingPercent": 2
       },
       "inputPorts": [
-        { "id": "step_overdamped-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "step_overdamped-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "step_overdamped-out", "name": "settlingTime", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "step_overdamped-out",
+          "name": "settlingTime",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "tf_critical",
       "type": "transfer_function",
       "name": "Critical TF",
-      "position": { "x": 50, "y": 180 },
+      "position": {
+        "x": 50,
+        "y": 180
+      },
       "parameters": {
-        "numerator": [1],
-        "denominator": [1, 2, 1]
+        "numerator": [
+          1
+        ],
+        "denominator": [
+          1,
+          2,
+          1
+        ]
       },
       "inputPorts": [
-        { "id": "tf_critical-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "tf_critical-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "tf_critical-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "tf_critical-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "step_critical",
       "type": "step_info",
       "name": "Critical (zeta=1)",
-      "position": { "x": 200, "y": 180 },
+      "position": {
+        "x": 200,
+        "y": 180
+      },
       "parameters": {
         "simulationTime": 15,
         "numPoints": 1000,
         "settlingPercent": 2
       },
       "inputPorts": [
-        { "id": "step_critical-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "step_critical-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "step_critical-out", "name": "settlingTime", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "step_critical-out",
+          "name": "settlingTime",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "tf_underdamped",
       "type": "transfer_function",
       "name": "Underdamped TF",
-      "position": { "x": 50, "y": 280 },
+      "position": {
+        "x": 50,
+        "y": 280
+      },
       "parameters": {
-        "numerator": [1],
-        "denominator": [1, 0.6, 1]
+        "numerator": [
+          1
+        ],
+        "denominator": [
+          1,
+          0.6,
+          1
+        ]
       },
       "inputPorts": [
-        { "id": "tf_underdamped-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "tf_underdamped-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "tf_underdamped-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "tf_underdamped-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "step_underdamped",
       "type": "step_info",
       "name": "Underdamped (zeta=0.3)",
-      "position": { "x": 200, "y": 280 },
+      "position": {
+        "x": 200,
+        "y": 280
+      },
       "parameters": {
         "simulationTime": 20,
         "numPoints": 1000,
         "settlingPercent": 2
       },
       "inputPorts": [
-        { "id": "step_underdamped-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "step_underdamped-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "step_underdamped-out", "name": "settlingTime", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "step_underdamped-out",
+          "name": "settlingTime",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     }
   ],

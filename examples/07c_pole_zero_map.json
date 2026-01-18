@@ -13,87 +13,207 @@
       "id": "tf_stable",
       "type": "transfer_function",
       "name": "Stable TF",
-      "position": { "x": 50, "y": 80 },
+      "position": {
+        "x": 50,
+        "y": 80
+      },
       "parameters": {
-        "numerator": [1],
-        "denominator": [1, 2, 5]
+        "numerator": [
+          1
+        ],
+        "denominator": [
+          1,
+          2,
+          5
+        ]
       },
       "inputPorts": [
-        { "id": "tf_stable-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "tf_stable-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "tf_stable-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "tf_stable-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "pz_stable",
       "type": "pole_zero_map",
       "name": "Stable System",
-      "position": { "x": 200, "y": 80 },
+      "position": {
+        "x": 200,
+        "y": 80
+      },
       "parameters": {},
       "inputPorts": [
-        { "id": "pz_stable-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "pz_stable-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "pz_stable-out", "name": "isStable", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "pz_stable-out",
+          "name": "isStable",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "tf_marginal",
       "type": "transfer_function",
       "name": "Marginal TF",
-      "position": { "x": 50, "y": 180 },
+      "position": {
+        "x": 50,
+        "y": 180
+      },
       "parameters": {
-        "numerator": [1],
-        "denominator": [1, 0, 1]
+        "numerator": [
+          1
+        ],
+        "denominator": [
+          1,
+          0,
+          1
+        ]
       },
       "inputPorts": [
-        { "id": "tf_marginal-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "tf_marginal-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "tf_marginal-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "tf_marginal-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "pz_marginal",
       "type": "pole_zero_map",
       "name": "Marginally Stable",
-      "position": { "x": 200, "y": 180 },
+      "position": {
+        "x": 200,
+        "y": 180
+      },
       "parameters": {},
       "inputPorts": [
-        { "id": "pz_marginal-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "pz_marginal-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "pz_marginal-out", "name": "isStable", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "pz_marginal-out",
+          "name": "isStable",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "tf_unstable",
       "type": "transfer_function",
       "name": "Unstable TF",
-      "position": { "x": 50, "y": 280 },
+      "position": {
+        "x": 50,
+        "y": 280
+      },
       "parameters": {
-        "numerator": [1],
-        "denominator": [1, -1, -2]
+        "numerator": [
+          1
+        ],
+        "denominator": [
+          1,
+          -1,
+          -2
+        ]
       },
       "inputPorts": [
-        { "id": "tf_unstable-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "tf_unstable-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "tf_unstable-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "tf_unstable-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "pz_unstable",
       "type": "pole_zero_map",
       "name": "Unstable System",
-      "position": { "x": 200, "y": 280 },
+      "position": {
+        "x": 200,
+        "y": 280
+      },
       "parameters": {},
       "inputPorts": [
-        { "id": "pz_unstable-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "pz_unstable-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "pz_unstable-out", "name": "isStable", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "pz_unstable-out",
+          "name": "isStable",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     }
   ],

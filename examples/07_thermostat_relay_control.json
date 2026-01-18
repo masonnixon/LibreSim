@@ -13,36 +13,73 @@
       "id": "setpoint",
       "type": "constant",
       "name": "Setpoint (20C)",
-      "position": { "x": 50, "y": 100 },
+      "position": {
+        "x": 50,
+        "y": 100
+      },
       "parameters": {
         "value": 20
       },
       "inputPorts": [],
       "outputPorts": [
-        { "id": "setpoint-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "setpoint-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "error_sum",
       "type": "sum",
       "name": "Error",
-      "position": { "x": 180, "y": 150 },
+      "position": {
+        "x": 180,
+        "y": 150
+      },
       "parameters": {
         "signs": "+-"
       },
       "inputPorts": [
-        { "id": "error_sum-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
-        { "id": "error_sum-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "error_sum-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "error_sum-in2",
+          "name": "in2",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "error_sum-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "error_sum-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "relay1",
       "type": "relay",
       "name": "Thermostat",
-      "position": { "x": 310, "y": 150 },
+      "position": {
+        "x": 310,
+        "y": 150
+      },
       "parameters": {
         "switchOn": -2,
         "switchOff": 2,
@@ -50,70 +87,166 @@
         "outputOff": 0
       },
       "inputPorts": [
-        { "id": "relay1-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "relay1-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "relay1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "relay1-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "heat_loss",
       "type": "gain",
       "name": "Heat Loss",
-      "position": { "x": 310, "y": 280 },
+      "position": {
+        "x": 310,
+        "y": 280
+      },
       "parameters": {
         "gain": -0.1
       },
       "inputPorts": [
-        { "id": "heat_loss-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "heat_loss-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "heat_loss-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "heat_loss-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "net_heat",
       "type": "sum",
       "name": "Net Heat",
-      "position": { "x": 450, "y": 200 },
+      "position": {
+        "x": 450,
+        "y": 200
+      },
       "parameters": {
         "signs": "++"
       },
       "inputPorts": [
-        { "id": "net_heat-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
-        { "id": "net_heat-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "net_heat-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "net_heat-in2",
+          "name": "in2",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "net_heat-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "net_heat-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "room",
       "type": "integrator",
       "name": "Room Temp",
-      "position": { "x": 580, "y": 200 },
+      "position": {
+        "x": 580,
+        "y": 200
+      },
       "parameters": {
         "initialCondition": 15
       },
       "inputPorts": [
-        { "id": "room-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "room-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "room-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "room-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "scope1",
       "type": "scope",
       "name": "Temperature",
-      "position": { "x": 750, "y": 150 },
+      "position": {
+        "x": 750,
+        "y": 150
+      },
       "parameters": {
         "numInputs": 3
       },
       "inputPorts": [
-        { "id": "scope1-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
-        { "id": "scope1-in2", "name": "in2", "dataType": "double", "dimensions": [1] },
-        { "id": "scope1-in3", "name": "in3", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "scope1-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "scope1-in2",
+          "name": "in2",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "scope1-in3",
+          "name": "in3",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": []
     }
@@ -131,7 +264,17 @@
       "sourceBlockId": "room",
       "sourcePortId": "room-out",
       "targetBlockId": "error_sum",
-      "targetPortId": "error_sum-in2"
+      "targetPortId": "error_sum-in2",
+      "waypoints": [
+        {
+          "x": 680,
+          "y": 360
+        },
+        {
+          "x": 160,
+          "y": 360
+        }
+      ]
     },
     {
       "id": "conn3",
@@ -152,7 +295,17 @@
       "sourceBlockId": "room",
       "sourcePortId": "room-out",
       "targetBlockId": "heat_loss",
-      "targetPortId": "heat_loss-in"
+      "targetPortId": "heat_loss-in",
+      "waypoints": [
+        {
+          "x": 680,
+          "y": 280
+        },
+        {
+          "x": 290,
+          "y": 280
+        }
+      ]
     },
     {
       "id": "conn6",
@@ -187,7 +340,17 @@
       "sourceBlockId": "relay1",
       "sourcePortId": "relay1-out",
       "targetBlockId": "scope1",
-      "targetPortId": "scope1-in3"
+      "targetPortId": "scope1-in3",
+      "waypoints": [
+        {
+          "x": 410,
+          "y": 160
+        },
+        {
+          "x": 730,
+          "y": 160
+        }
+      ]
     }
   ],
   "simulationConfig": {

@@ -13,90 +13,326 @@
       "id": "setpoint",
       "type": "step",
       "name": "Large Setpoint",
-      "position": { "x": 50, "y": 200 },
-      "parameters": { "stepTime": 1, "initialValue": 0, "finalValue": 10 },
+      "position": {
+        "x": 50,
+        "y": 200
+      },
+      "parameters": {
+        "stepTime": 1,
+        "initialValue": 0,
+        "finalValue": 10
+      },
       "inputPorts": [],
-      "outputPorts": [{ "id": "setpoint-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "outputPorts": [
+        {
+          "id": "setpoint-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "error_aw",
       "type": "sum",
       "name": "Error (AW)",
-      "position": { "x": 180, "y": 120 },
-      "parameters": { "signs": "+-" },
+      "position": {
+        "x": 180,
+        "y": 120
+      },
+      "parameters": {
+        "signs": "+-"
+      },
       "inputPorts": [
-        { "id": "error_aw-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
-        { "id": "error_aw-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "error_aw-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "error_aw-in2",
+          "name": "in2",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
-      "outputPorts": [{ "id": "error_aw-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "outputPorts": [
+        {
+          "id": "error_aw-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "pid_aw",
       "type": "anti_windup_pid",
       "name": "Anti-Windup PID",
-      "position": { "x": 320, "y": 120 },
-      "parameters": { "Kp": 5, "Ki": 2, "Kd": 0.5, "N": 100, "Kb": 2, "upperLimit": 5, "lowerLimit": -5 },
-      "inputPorts": [{ "id": "pid_aw-in", "name": "error", "dataType": "double", "dimensions": [1] }],
-      "outputPorts": [{ "id": "pid_aw-out", "name": "u", "dataType": "double", "dimensions": [1] }]
+      "position": {
+        "x": 320,
+        "y": 120
+      },
+      "parameters": {
+        "Kp": 5,
+        "Ki": 2,
+        "Kd": 0.5,
+        "N": 100,
+        "Kb": 2,
+        "upperLimit": 5,
+        "lowerLimit": -5
+      },
+      "inputPorts": [
+        {
+          "id": "pid_aw-in",
+          "name": "error",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
+      "outputPorts": [
+        {
+          "id": "pid_aw-out",
+          "name": "u",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "plant_aw",
       "type": "transfer_function",
       "name": "Plant (AW)",
-      "position": { "x": 500, "y": 120 },
-      "parameters": { "numerator": [1], "denominator": [1, 1] },
-      "inputPorts": [{ "id": "plant_aw-in", "name": "in", "dataType": "double", "dimensions": [1] }],
-      "outputPorts": [{ "id": "plant_aw-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "position": {
+        "x": 500,
+        "y": 120
+      },
+      "parameters": {
+        "numerator": [
+          1
+        ],
+        "denominator": [
+          1,
+          1
+        ]
+      },
+      "inputPorts": [
+        {
+          "id": "plant_aw-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
+      "outputPorts": [
+        {
+          "id": "plant_aw-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "error_std",
       "type": "sum",
       "name": "Error (Std)",
-      "position": { "x": 180, "y": 280 },
-      "parameters": { "signs": "+-" },
+      "position": {
+        "x": 180,
+        "y": 280
+      },
+      "parameters": {
+        "signs": "+-"
+      },
       "inputPorts": [
-        { "id": "error_std-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
-        { "id": "error_std-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "error_std-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "error_std-in2",
+          "name": "in2",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
-      "outputPorts": [{ "id": "error_std-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "outputPorts": [
+        {
+          "id": "error_std-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "pid_std",
       "type": "pid_controller",
       "name": "Standard PID",
-      "position": { "x": 320, "y": 280 },
-      "parameters": { "Kp": 5, "Ki": 2, "Kd": 0.5, "N": 100, "initialConditionI": 0 },
-      "inputPorts": [{ "id": "pid_std-in", "name": "in", "dataType": "double", "dimensions": [1] }],
-      "outputPorts": [{ "id": "pid_std-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "position": {
+        "x": 320,
+        "y": 280
+      },
+      "parameters": {
+        "Kp": 5,
+        "Ki": 2,
+        "Kd": 0.5,
+        "N": 100,
+        "initialConditionI": 0
+      },
+      "inputPorts": [
+        {
+          "id": "pid_std-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
+      "outputPorts": [
+        {
+          "id": "pid_std-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "sat_std",
       "type": "saturation",
       "name": "Actuator Limit",
-      "position": { "x": 460, "y": 280 },
-      "parameters": { "upperLimit": 5, "lowerLimit": -5 },
-      "inputPorts": [{ "id": "sat_std-in", "name": "in", "dataType": "double", "dimensions": [1] }],
-      "outputPorts": [{ "id": "sat_std-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "position": {
+        "x": 460,
+        "y": 280
+      },
+      "parameters": {
+        "upperLimit": 5,
+        "lowerLimit": -5
+      },
+      "inputPorts": [
+        {
+          "id": "sat_std-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
+      "outputPorts": [
+        {
+          "id": "sat_std-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "plant_std",
       "type": "transfer_function",
       "name": "Plant (Std)",
-      "position": { "x": 600, "y": 280 },
-      "parameters": { "numerator": [1], "denominator": [1, 1] },
-      "inputPorts": [{ "id": "plant_std-in", "name": "in", "dataType": "double", "dimensions": [1] }],
-      "outputPorts": [{ "id": "plant_std-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "position": {
+        "x": 600,
+        "y": 280
+      },
+      "parameters": {
+        "numerator": [
+          1
+        ],
+        "denominator": [
+          1,
+          1
+        ]
+      },
+      "inputPorts": [
+        {
+          "id": "plant_std-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
+      "outputPorts": [
+        {
+          "id": "plant_std-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "scope_output",
       "type": "scope",
       "name": "Output Comparison",
-      "position": { "x": 780, "y": 200 },
-      "parameters": { "numInputs": 3 },
+      "position": {
+        "x": 780,
+        "y": 200
+      },
+      "parameters": {
+        "numInputs": 3
+      },
       "inputPorts": [
-        { "id": "scope_output-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
-        { "id": "scope_output-in2", "name": "in2", "dataType": "double", "dimensions": [1] },
-        { "id": "scope_output-in3", "name": "in3", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "scope_output-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "scope_output-in2",
+          "name": "in2",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "scope_output-in3",
+          "name": "in3",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": []
     },
@@ -104,30 +340,173 @@
       "id": "scope_control",
       "type": "scope",
       "name": "Control Signals",
-      "position": { "x": 500, "y": 400 },
-      "parameters": { "numInputs": 2 },
+      "position": {
+        "x": 500,
+        "y": 400
+      },
+      "parameters": {
+        "numInputs": 2
+      },
       "inputPorts": [
-        { "id": "scope_control-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
-        { "id": "scope_control-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "scope_control-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "scope_control-in2",
+          "name": "in2",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": []
     }
   ],
   "connections": [
-    { "id": "c1", "sourceBlockId": "setpoint", "sourcePortId": "setpoint-out", "targetBlockId": "error_aw", "targetPortId": "error_aw-in1" },
-    { "id": "c2", "sourceBlockId": "error_aw", "sourcePortId": "error_aw-out", "targetBlockId": "pid_aw", "targetPortId": "pid_aw-in" },
-    { "id": "c3", "sourceBlockId": "pid_aw", "sourcePortId": "pid_aw-out", "targetBlockId": "plant_aw", "targetPortId": "plant_aw-in" },
-    { "id": "c4", "sourceBlockId": "plant_aw", "sourcePortId": "plant_aw-out", "targetBlockId": "error_aw", "targetPortId": "error_aw-in2" },
-    { "id": "c5", "sourceBlockId": "setpoint", "sourcePortId": "setpoint-out", "targetBlockId": "error_std", "targetPortId": "error_std-in1" },
-    { "id": "c6", "sourceBlockId": "error_std", "sourcePortId": "error_std-out", "targetBlockId": "pid_std", "targetPortId": "pid_std-in" },
-    { "id": "c7", "sourceBlockId": "pid_std", "sourcePortId": "pid_std-out", "targetBlockId": "sat_std", "targetPortId": "sat_std-in" },
-    { "id": "c8", "sourceBlockId": "sat_std", "sourcePortId": "sat_std-out", "targetBlockId": "plant_std", "targetPortId": "plant_std-in" },
-    { "id": "c9", "sourceBlockId": "plant_std", "sourcePortId": "plant_std-out", "targetBlockId": "error_std", "targetPortId": "error_std-in2" },
-    { "id": "c10", "sourceBlockId": "setpoint", "sourcePortId": "setpoint-out", "targetBlockId": "scope_output", "targetPortId": "scope_output-in1" },
-    { "id": "c11", "sourceBlockId": "plant_aw", "sourcePortId": "plant_aw-out", "targetBlockId": "scope_output", "targetPortId": "scope_output-in2" },
-    { "id": "c12", "sourceBlockId": "plant_std", "sourcePortId": "plant_std-out", "targetBlockId": "scope_output", "targetPortId": "scope_output-in3" },
-    { "id": "c13", "sourceBlockId": "pid_aw", "sourcePortId": "pid_aw-out", "targetBlockId": "scope_control", "targetPortId": "scope_control-in1" },
-    { "id": "c14", "sourceBlockId": "pid_std", "sourcePortId": "pid_std-out", "targetBlockId": "scope_control", "targetPortId": "scope_control-in2" }
+    {
+      "id": "c1",
+      "sourceBlockId": "setpoint",
+      "sourcePortId": "setpoint-out",
+      "targetBlockId": "error_aw",
+      "targetPortId": "error_aw-in1"
+    },
+    {
+      "id": "c2",
+      "sourceBlockId": "error_aw",
+      "sourcePortId": "error_aw-out",
+      "targetBlockId": "pid_aw",
+      "targetPortId": "pid_aw-in"
+    },
+    {
+      "id": "c3",
+      "sourceBlockId": "pid_aw",
+      "sourcePortId": "pid_aw-out",
+      "targetBlockId": "plant_aw",
+      "targetPortId": "plant_aw-in"
+    },
+    {
+      "id": "c4",
+      "sourceBlockId": "plant_aw",
+      "sourcePortId": "plant_aw-out",
+      "targetBlockId": "error_aw",
+      "targetPortId": "error_aw-in2",
+      "waypoints": [
+        {
+          "x": 700,
+          "y": 480
+        },
+        {
+          "x": 160,
+          "y": 480
+        }
+      ]
+    },
+    {
+      "id": "c5",
+      "sourceBlockId": "setpoint",
+      "sourcePortId": "setpoint-out",
+      "targetBlockId": "error_std",
+      "targetPortId": "error_std-in1"
+    },
+    {
+      "id": "c6",
+      "sourceBlockId": "error_std",
+      "sourcePortId": "error_std-out",
+      "targetBlockId": "pid_std",
+      "targetPortId": "pid_std-in"
+    },
+    {
+      "id": "c7",
+      "sourceBlockId": "pid_std",
+      "sourcePortId": "pid_std-out",
+      "targetBlockId": "sat_std",
+      "targetPortId": "sat_std-in"
+    },
+    {
+      "id": "c8",
+      "sourceBlockId": "sat_std",
+      "sourcePortId": "sat_std-out",
+      "targetBlockId": "plant_std",
+      "targetPortId": "plant_std-in"
+    },
+    {
+      "id": "c9",
+      "sourceBlockId": "plant_std",
+      "sourcePortId": "plant_std-out",
+      "targetBlockId": "error_std",
+      "targetPortId": "error_std-in2",
+      "waypoints": [
+        {
+          "x": 700,
+          "y": 500
+        },
+        {
+          "x": 160,
+          "y": 500
+        }
+      ]
+    },
+    {
+      "id": "c10",
+      "sourceBlockId": "setpoint",
+      "sourcePortId": "setpoint-out",
+      "targetBlockId": "scope_output",
+      "targetPortId": "scope_output-in1"
+    },
+    {
+      "id": "c11",
+      "sourceBlockId": "plant_aw",
+      "sourcePortId": "plant_aw-out",
+      "targetBlockId": "scope_output",
+      "targetPortId": "scope_output-in2"
+    },
+    {
+      "id": "c12",
+      "sourceBlockId": "plant_std",
+      "sourcePortId": "plant_std-out",
+      "targetBlockId": "scope_output",
+      "targetPortId": "scope_output-in3"
+    },
+    {
+      "id": "c13",
+      "sourceBlockId": "pid_aw",
+      "sourcePortId": "pid_aw-out",
+      "targetBlockId": "scope_control",
+      "targetPortId": "scope_control-in1",
+      "waypoints": [
+        {
+          "x": 420,
+          "y": 80
+        },
+        {
+          "x": 440,
+          "y": 80
+        }
+      ]
+    },
+    {
+      "id": "c14",
+      "sourceBlockId": "pid_std",
+      "sourcePortId": "pid_std-out",
+      "targetBlockId": "scope_control",
+      "targetPortId": "scope_control-in2",
+      "waypoints": [
+        {
+          "x": 420,
+          "y": 240
+        },
+        {
+          "x": 440,
+          "y": 240
+        }
+      ]
+    }
   ],
   "simulationConfig": {
     "solver": "rk4",

@@ -13,7 +13,10 @@
       "id": "sine_x",
       "type": "sine_wave",
       "name": "X Motion",
-      "position": { "x": 50, "y": 100 },
+      "position": {
+        "x": 50,
+        "y": 100
+      },
       "parameters": {
         "amplitude": 2,
         "frequency": 0.5,
@@ -22,14 +25,24 @@
       },
       "inputPorts": [],
       "outputPorts": [
-        { "id": "sine_x-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "sine_x-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "sine_y",
       "type": "sine_wave",
       "name": "Y Motion",
-      "position": { "x": 50, "y": 200 },
+      "position": {
+        "x": 50,
+        "y": 200
+      },
       "parameters": {
         "amplitude": 1.5,
         "frequency": 1,
@@ -38,14 +51,24 @@
       },
       "inputPorts": [],
       "outputPorts": [
-        { "id": "sine_y-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "sine_y-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "ramp_z",
       "type": "ramp",
       "name": "Z Motion",
-      "position": { "x": 50, "y": 300 },
+      "position": {
+        "x": 50,
+        "y": 300
+      },
       "parameters": {
         "slope": 0.2,
         "startTime": 0,
@@ -53,160 +76,379 @@
       },
       "inputPorts": [],
       "outputPorts": [
-        { "id": "ramp_z-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "ramp_z-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "mux1",
       "type": "mux",
       "name": "Position [X,Y,Z]",
-      "position": { "x": 200, "y": 200 },
+      "position": {
+        "x": 200,
+        "y": 200
+      },
       "parameters": {
         "numInputs": 3
       },
       "inputPorts": [
-        { "id": "mux1-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
-        { "id": "mux1-in2", "name": "in2", "dataType": "double", "dimensions": [1] },
-        { "id": "mux1-in3", "name": "in3", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "mux1-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "mux1-in2",
+          "name": "in2",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "mux1-in3",
+          "name": "in3",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "mux1-out", "name": "out", "dataType": "double", "dimensions": [3] }
+        {
+          "id": "mux1-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            3
+          ]
+        }
       ]
     },
     {
       "id": "gain_scale",
       "type": "gain",
       "name": "Scale x2",
-      "position": { "x": 350, "y": 200 },
+      "position": {
+        "x": 350,
+        "y": 200
+      },
       "parameters": {
         "gain": 2
       },
       "inputPorts": [
-        { "id": "gain_scale-in", "name": "in", "dataType": "double", "dimensions": [3] }
+        {
+          "id": "gain_scale-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            3
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "gain_scale-out", "name": "out", "dataType": "double", "dimensions": [3] }
+        {
+          "id": "gain_scale-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            3
+          ]
+        }
       ]
     },
     {
       "id": "demux1",
       "type": "demux",
       "name": "Split XYZ",
-      "position": { "x": 500, "y": 200 },
+      "position": {
+        "x": 500,
+        "y": 200
+      },
       "parameters": {
         "numOutputs": 3
       },
       "inputPorts": [
-        { "id": "demux1-in", "name": "in", "dataType": "double", "dimensions": [3] }
+        {
+          "id": "demux1-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            3
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "demux1-out1", "name": "out1", "dataType": "double", "dimensions": [1] },
-        { "id": "demux1-out2", "name": "out2", "dataType": "double", "dimensions": [1] },
-        { "id": "demux1-out3", "name": "out3", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "demux1-out1",
+          "name": "out1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "demux1-out2",
+          "name": "out2",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "demux1-out3",
+          "name": "out3",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "scope_xyz",
       "type": "scope",
       "name": "XYZ Components",
-      "position": { "x": 700, "y": 100 },
+      "position": {
+        "x": 700,
+        "y": 100
+      },
       "parameters": {
         "numInputs": 3
       },
       "inputPorts": [
-        { "id": "scope_xyz-in1", "name": "X", "dataType": "double", "dimensions": [1] },
-        { "id": "scope_xyz-in2", "name": "Y", "dataType": "double", "dimensions": [1] },
-        { "id": "scope_xyz-in3", "name": "Z", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "scope_xyz-in1",
+          "name": "X",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "scope_xyz-in2",
+          "name": "Y",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "scope_xyz-in3",
+          "name": "Z",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": []
     },
     {
       "id": "square_x",
       "type": "math_function",
-      "name": "X²",
-      "position": { "x": 500, "y": 400 },
+      "name": "X\u00b2",
+      "position": {
+        "x": 500,
+        "y": 400
+      },
       "parameters": {
         "function": "square"
       },
       "inputPorts": [
-        { "id": "square_x-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "square_x-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "square_x-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "square_x-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "square_y",
       "type": "math_function",
-      "name": "Y²",
-      "position": { "x": 500, "y": 480 },
+      "name": "Y\u00b2",
+      "position": {
+        "x": 500,
+        "y": 480
+      },
       "parameters": {
         "function": "square"
       },
       "inputPorts": [
-        { "id": "square_y-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "square_y-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "square_y-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "square_y-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "square_z",
       "type": "math_function",
-      "name": "Z²",
-      "position": { "x": 500, "y": 560 },
+      "name": "Z\u00b2",
+      "position": {
+        "x": 500,
+        "y": 560
+      },
       "parameters": {
         "function": "square"
       },
       "inputPorts": [
-        { "id": "square_z-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "square_z-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "square_z-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "square_z-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "sum_squares",
       "type": "sum",
-      "name": "X²+Y²+Z²",
-      "position": { "x": 620, "y": 480 },
+      "name": "X\u00b2+Y\u00b2+Z\u00b2",
+      "position": {
+        "x": 620,
+        "y": 480
+      },
       "parameters": {
         "signs": "+++"
       },
       "inputPorts": [
-        { "id": "sum_squares-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
-        { "id": "sum_squares-in2", "name": "in2", "dataType": "double", "dimensions": [1] },
-        { "id": "sum_squares-in3", "name": "in3", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "sum_squares-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "sum_squares-in2",
+          "name": "in2",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "sum_squares-in3",
+          "name": "in3",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "sum_squares-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "sum_squares-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "sqrt_mag",
       "type": "math_function",
-      "name": "√(sum)",
-      "position": { "x": 740, "y": 480 },
+      "name": "\u221a(sum)",
+      "position": {
+        "x": 740,
+        "y": 480
+      },
       "parameters": {
         "function": "sqrt"
       },
       "inputPorts": [
-        { "id": "sqrt_mag-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "sqrt_mag-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "sqrt_mag-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "sqrt_mag-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "scope_magnitude",
       "type": "scope",
       "name": "Vector Magnitude",
-      "position": { "x": 870, "y": 480 },
+      "position": {
+        "x": 870,
+        "y": 480
+      },
       "parameters": {
         "numInputs": 1
       },
       "inputPorts": [
-        { "id": "scope_magnitude-in1", "name": "in1", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "scope_magnitude-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": []
     }
@@ -273,21 +515,51 @@
       "sourceBlockId": "demux1",
       "sourcePortId": "demux1-out1",
       "targetBlockId": "square_x",
-      "targetPortId": "square_x-in"
+      "targetPortId": "square_x-in",
+      "waypoints": [
+        {
+          "x": 600,
+          "y": 640
+        },
+        {
+          "x": 480,
+          "y": 640
+        }
+      ]
     },
     {
       "id": "conn10",
       "sourceBlockId": "demux1",
       "sourcePortId": "demux1-out2",
       "targetBlockId": "square_y",
-      "targetPortId": "square_y-in"
+      "targetPortId": "square_y-in",
+      "waypoints": [
+        {
+          "x": 600,
+          "y": 660
+        },
+        {
+          "x": 480,
+          "y": 660
+        }
+      ]
     },
     {
       "id": "conn11",
       "sourceBlockId": "demux1",
       "sourcePortId": "demux1-out3",
       "targetBlockId": "square_z",
-      "targetPortId": "square_z-in"
+      "targetPortId": "square_z-in",
+      "waypoints": [
+        {
+          "x": 600,
+          "y": 560
+        },
+        {
+          "x": 480,
+          "y": 560
+        }
+      ]
     },
     {
       "id": "conn12",

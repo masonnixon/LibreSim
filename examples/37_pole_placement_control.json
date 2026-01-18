@@ -13,91 +13,347 @@
       "id": "disturbance",
       "type": "step",
       "name": "Disturbance",
-      "position": { "x": 50, "y": 100 },
-      "parameters": { "stepTime": 0.5, "initialValue": 0, "finalValue": 1 },
+      "position": {
+        "x": 50,
+        "y": 100
+      },
+      "parameters": {
+        "stepTime": 0.5,
+        "initialValue": 0,
+        "finalValue": 1
+      },
       "inputPorts": [],
-      "outputPorts": [{ "id": "disturbance-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "outputPorts": [
+        {
+          "id": "disturbance-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "sum_dist",
       "type": "sum",
       "name": "Add Disturbance",
-      "position": { "x": 300, "y": 100 },
-      "parameters": { "signs": "++" },
+      "position": {
+        "x": 300,
+        "y": 100
+      },
+      "parameters": {
+        "signs": "++"
+      },
       "inputPorts": [
-        { "id": "sum_dist-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
-        { "id": "sum_dist-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "sum_dist-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "sum_dist-in2",
+          "name": "in2",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
-      "outputPorts": [{ "id": "sum_dist-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "outputPorts": [
+        {
+          "id": "sum_dist-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "int_x1",
       "type": "integrator",
-      "name": "∫ → x1",
-      "position": { "x": 450, "y": 100 },
-      "parameters": { "initialCondition": 0 },
-      "inputPorts": [{ "id": "int_x1-in", "name": "in", "dataType": "double", "dimensions": [1] }],
-      "outputPorts": [{ "id": "int_x1-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "name": "\u222b \u2192 x1",
+      "position": {
+        "x": 450,
+        "y": 100
+      },
+      "parameters": {
+        "initialCondition": 0
+      },
+      "inputPorts": [
+        {
+          "id": "int_x1-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
+      "outputPorts": [
+        {
+          "id": "int_x1-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "int_x2",
       "type": "integrator",
-      "name": "∫ → x2",
-      "position": { "x": 600, "y": 100 },
-      "parameters": { "initialCondition": 0 },
-      "inputPorts": [{ "id": "int_x2-in", "name": "in", "dataType": "double", "dimensions": [1] }],
-      "outputPorts": [{ "id": "int_x2-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "name": "\u222b \u2192 x2",
+      "position": {
+        "x": 600,
+        "y": 100
+      },
+      "parameters": {
+        "initialCondition": 0
+      },
+      "inputPorts": [
+        {
+          "id": "int_x2-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
+      "outputPorts": [
+        {
+          "id": "int_x2-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "mux_state",
       "type": "mux",
       "name": "State [x1, x2]",
-      "position": { "x": 750, "y": 150 },
-      "parameters": { "numInputs": 2 },
+      "position": {
+        "x": 750,
+        "y": 150
+      },
+      "parameters": {
+        "numInputs": 2
+      },
       "inputPorts": [
-        { "id": "mux_state-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
-        { "id": "mux_state-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "mux_state-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "mux_state-in2",
+          "name": "in2",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
-      "outputPorts": [{ "id": "mux_state-out", "name": "out", "dataType": "double", "dimensions": [2] }]
+      "outputPorts": [
+        {
+          "id": "mux_state-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            2
+          ]
+        }
+      ]
     },
     {
       "id": "pole_place",
       "type": "pole_placement",
       "name": "Pole Placement K",
-      "position": { "x": 750, "y": 280 },
-      "parameters": { "K": [4, 4] },
-      "inputPorts": [{ "id": "pole_place-in", "name": "x", "dataType": "double", "dimensions": [2] }],
-      "outputPorts": [{ "id": "pole_place-out", "name": "u", "dataType": "double", "dimensions": [1] }]
+      "position": {
+        "x": 750,
+        "y": 280
+      },
+      "parameters": {
+        "K": [
+          4,
+          4
+        ]
+      },
+      "inputPorts": [
+        {
+          "id": "pole_place-in",
+          "name": "x",
+          "dataType": "double",
+          "dimensions": [
+            2
+          ]
+        }
+      ],
+      "outputPorts": [
+        {
+          "id": "pole_place-out",
+          "name": "u",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "scope_states",
       "type": "scope",
       "name": "States x1, x2",
-      "position": { "x": 900, "y": 100 },
-      "parameters": { "numInputs": 1 },
-      "inputPorts": [{ "id": "scope_states-in1", "name": "in1", "dataType": "double", "dimensions": [1] }],
+      "position": {
+        "x": 900,
+        "y": 100
+      },
+      "parameters": {
+        "numInputs": 1
+      },
+      "inputPorts": [
+        {
+          "id": "scope_states-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
       "outputPorts": []
     },
     {
       "id": "scope_control",
       "type": "scope",
       "name": "Control u",
-      "position": { "x": 900, "y": 280 },
-      "parameters": { "numInputs": 1 },
-      "inputPorts": [{ "id": "scope_control-in1", "name": "in1", "dataType": "double", "dimensions": [1] }],
+      "position": {
+        "x": 900,
+        "y": 280
+      },
+      "parameters": {
+        "numInputs": 1
+      },
+      "inputPorts": [
+        {
+          "id": "scope_control-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
       "outputPorts": []
     }
   ],
   "connections": [
-    { "id": "c1", "sourceBlockId": "disturbance", "sourcePortId": "disturbance-out", "targetBlockId": "sum_dist", "targetPortId": "sum_dist-in1" },
-    { "id": "c2", "sourceBlockId": "pole_place", "sourcePortId": "pole_place-out", "targetBlockId": "sum_dist", "targetPortId": "sum_dist-in2" },
-    { "id": "c3", "sourceBlockId": "sum_dist", "sourcePortId": "sum_dist-out", "targetBlockId": "int_x1", "targetPortId": "int_x1-in" },
-    { "id": "c4", "sourceBlockId": "int_x1", "sourcePortId": "int_x1-out", "targetBlockId": "int_x2", "targetPortId": "int_x2-in" },
-    { "id": "c5", "sourceBlockId": "int_x1", "sourcePortId": "int_x1-out", "targetBlockId": "mux_state", "targetPortId": "mux_state-in1" },
-    { "id": "c6", "sourceBlockId": "int_x2", "sourcePortId": "int_x2-out", "targetBlockId": "mux_state", "targetPortId": "mux_state-in2" },
-    { "id": "c7", "sourceBlockId": "mux_state", "sourcePortId": "mux_state-out", "targetBlockId": "pole_place", "targetPortId": "pole_place-in" },
-    { "id": "c8", "sourceBlockId": "mux_state", "sourcePortId": "mux_state-out", "targetBlockId": "scope_states", "targetPortId": "scope_states-in1" },
-    { "id": "c9", "sourceBlockId": "pole_place", "sourcePortId": "pole_place-out", "targetBlockId": "scope_control", "targetPortId": "scope_control-in1" }
+    {
+      "id": "c1",
+      "sourceBlockId": "disturbance",
+      "sourcePortId": "disturbance-out",
+      "targetBlockId": "sum_dist",
+      "targetPortId": "sum_dist-in1"
+    },
+    {
+      "id": "c2",
+      "sourceBlockId": "pole_place",
+      "sourcePortId": "pole_place-out",
+      "targetBlockId": "sum_dist",
+      "targetPortId": "sum_dist-in2",
+      "waypoints": [
+        {
+          "x": 850,
+          "y": 360
+        },
+        {
+          "x": 280,
+          "y": 360
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "sourceBlockId": "sum_dist",
+      "sourcePortId": "sum_dist-out",
+      "targetBlockId": "int_x1",
+      "targetPortId": "int_x1-in"
+    },
+    {
+      "id": "c4",
+      "sourceBlockId": "int_x1",
+      "sourcePortId": "int_x1-out",
+      "targetBlockId": "int_x2",
+      "targetPortId": "int_x2-in"
+    },
+    {
+      "id": "c5",
+      "sourceBlockId": "int_x1",
+      "sourcePortId": "int_x1-out",
+      "targetBlockId": "mux_state",
+      "targetPortId": "mux_state-in1",
+      "waypoints": [
+        {
+          "x": 550,
+          "y": 60
+        },
+        {
+          "x": 730,
+          "y": 60
+        }
+      ]
+    },
+    {
+      "id": "c6",
+      "sourceBlockId": "int_x2",
+      "sourcePortId": "int_x2-out",
+      "targetBlockId": "mux_state",
+      "targetPortId": "mux_state-in2"
+    },
+    {
+      "id": "c7",
+      "sourceBlockId": "mux_state",
+      "sourcePortId": "mux_state-out",
+      "targetBlockId": "pole_place",
+      "targetPortId": "pole_place-in",
+      "waypoints": [
+        {
+          "x": 850,
+          "y": 380
+        },
+        {
+          "x": 730,
+          "y": 380
+        }
+      ]
+    },
+    {
+      "id": "c8",
+      "sourceBlockId": "mux_state",
+      "sourcePortId": "mux_state-out",
+      "targetBlockId": "scope_states",
+      "targetPortId": "scope_states-in1"
+    },
+    {
+      "id": "c9",
+      "sourceBlockId": "pole_place",
+      "sourcePortId": "pole_place-out",
+      "targetBlockId": "scope_control",
+      "targetPortId": "scope_control-in1"
+    }
   ],
   "simulationConfig": {
     "solver": "rk4",

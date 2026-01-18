@@ -2,7 +2,7 @@
   "id": "example-mass-spring-damper-underdamped",
   "metadata": {
     "name": "Mass-Spring-Damper System (Underdamped)",
-    "description": "Classic mechanical system: m*x'' + c*x' + k*x = F. Parameters chosen for visible oscillation: m=1kg, c=2 N*s/m, k=100 N/m. This creates an underdamped system (ζ=0.1, ωn=10 rad/s) showing clear oscillatory behavior. Reference: https://www.mathworks.com/help/simscape/ug/mass-spring-damper-in-simulink-and-simscape.html",
+    "description": "Classic mechanical system: m*x'' + c*x' + k*x = F. Parameters chosen for visible oscillation: m=1kg, c=2 N*s/m, k=100 N/m. This creates an underdamped system (\u03b6=0.1, \u03c9n=10 rad/s) showing clear oscillatory behavior. Reference: https://www.mathworks.com/help/simscape/ug/mass-spring-damper-in-simulink-and-simscape.html",
     "author": "LibreSim Examples",
     "createdAt": "2024-01-01T00:00:00Z",
     "modifiedAt": "2024-01-01T00:00:00Z",
@@ -13,7 +13,10 @@
       "id": "force",
       "type": "step",
       "name": "Force F",
-      "position": { "x": 50, "y": 150 },
+      "position": {
+        "x": 50,
+        "y": 150
+      },
       "parameters": {
         "stepTime": 0.0,
         "initialValue": 0,
@@ -21,112 +24,252 @@
       },
       "inputPorts": [],
       "outputPorts": [
-        { "id": "force-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "force-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "sum1",
       "type": "sum",
       "name": "Sum Forces",
-      "position": { "x": 180, "y": 150 },
+      "position": {
+        "x": 180,
+        "y": 150
+      },
       "parameters": {
         "signs": "+--"
       },
       "inputPorts": [
-        { "id": "sum1-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
-        { "id": "sum1-in2", "name": "in2", "dataType": "double", "dimensions": [1] },
-        { "id": "sum1-in3", "name": "in3", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "sum1-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "sum1-in2",
+          "name": "in2",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "sum1-in3",
+          "name": "in3",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "sum1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "sum1-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "mass",
       "type": "gain",
       "name": "1/m",
-      "position": { "x": 300, "y": 150 },
+      "position": {
+        "x": 300,
+        "y": 150
+      },
       "parameters": {
         "gain": 1.0
       },
       "inputPorts": [
-        { "id": "mass-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "mass-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "mass-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "mass-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "int1",
       "type": "integrator",
       "name": "Velocity",
-      "position": { "x": 420, "y": 150 },
+      "position": {
+        "x": 420,
+        "y": 150
+      },
       "parameters": {
         "initialCondition": 0
       },
       "inputPorts": [
-        { "id": "int1-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "int1-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "int1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "int1-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "int2",
       "type": "integrator",
       "name": "Position",
-      "position": { "x": 540, "y": 150 },
+      "position": {
+        "x": 540,
+        "y": 150
+      },
       "parameters": {
         "initialCondition": 0
       },
       "inputPorts": [
-        { "id": "int2-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "int2-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "int2-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "int2-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "damper",
       "type": "gain",
       "name": "Damper c",
-      "position": { "x": 420, "y": 280 },
+      "position": {
+        "x": 420,
+        "y": 280
+      },
       "parameters": {
         "gain": 2
       },
       "inputPorts": [
-        { "id": "damper-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "damper-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "damper-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "damper-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "spring",
       "type": "gain",
       "name": "Spring k",
-      "position": { "x": 540, "y": 280 },
+      "position": {
+        "x": 540,
+        "y": 280
+      },
       "parameters": {
         "gain": 100
       },
       "inputPorts": [
-        { "id": "spring-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "spring-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "spring-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "spring-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "scope1",
       "type": "scope",
       "name": "Outputs",
-      "position": { "x": 700, "y": 150 },
+      "position": {
+        "x": 700,
+        "y": 150
+      },
       "parameters": {
         "numInputs": 2
       },
       "inputPorts": [
-        { "id": "scope1-in1", "name": "Position", "dataType": "double", "dimensions": [1] },
-        { "id": "scope1-in2", "name": "Velocity", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "scope1-in1",
+          "name": "Position",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "scope1-in2",
+          "name": "Velocity",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": []
     }
@@ -165,35 +308,85 @@
       "sourceBlockId": "int1",
       "sourcePortId": "int1-out",
       "targetBlockId": "damper",
-      "targetPortId": "damper-in"
+      "targetPortId": "damper-in",
+      "waypoints": [
+        {
+          "x": 520,
+          "y": 360
+        },
+        {
+          "x": 400,
+          "y": 360
+        }
+      ]
     },
     {
       "id": "conn6",
       "sourceBlockId": "damper",
       "sourcePortId": "damper-out",
       "targetBlockId": "sum1",
-      "targetPortId": "sum1-in2"
+      "targetPortId": "sum1-in2",
+      "waypoints": [
+        {
+          "x": 520,
+          "y": 380
+        },
+        {
+          "x": 160,
+          "y": 380
+        }
+      ]
     },
     {
       "id": "conn7",
       "sourceBlockId": "int2",
       "sourcePortId": "int2-out",
       "targetBlockId": "spring",
-      "targetPortId": "spring-in"
+      "targetPortId": "spring-in",
+      "waypoints": [
+        {
+          "x": 640,
+          "y": 400
+        },
+        {
+          "x": 520,
+          "y": 400
+        }
+      ]
     },
     {
       "id": "conn8",
       "sourceBlockId": "spring",
       "sourcePortId": "spring-out",
       "targetBlockId": "sum1",
-      "targetPortId": "sum1-in3"
+      "targetPortId": "sum1-in3",
+      "waypoints": [
+        {
+          "x": 640,
+          "y": 420
+        },
+        {
+          "x": 160,
+          "y": 420
+        }
+      ]
     },
     {
       "id": "conn9",
       "sourceBlockId": "int1",
       "sourcePortId": "int1-out",
       "targetBlockId": "scope1",
-      "targetPortId": "scope1-in1"
+      "targetPortId": "scope1-in1",
+      "waypoints": [
+        {
+          "x": 520,
+          "y": 120
+        },
+        {
+          "x": 680,
+          "y": 120
+        }
+      ]
     },
     {
       "id": "conn10",

@@ -13,7 +13,10 @@
       "id": "step1",
       "type": "step",
       "name": "Step Input",
-      "position": { "x": 100, "y": 150 },
+      "position": {
+        "x": 100,
+        "y": 150
+      },
       "parameters": {
         "stepTime": 1.0,
         "initialValue": 0,
@@ -21,36 +24,82 @@
       },
       "inputPorts": [],
       "outputPorts": [
-        { "id": "step1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "step1-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "tf1",
       "type": "transfer_function",
       "name": "1/(s+1)",
-      "position": { "x": 300, "y": 150 },
+      "position": {
+        "x": 300,
+        "y": 150
+      },
       "parameters": {
-        "numerator": [1],
-        "denominator": [1, 1]
+        "numerator": [
+          1
+        ],
+        "denominator": [
+          1,
+          1
+        ]
       },
       "inputPorts": [
-        { "id": "tf1-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "tf1-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "tf1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "tf1-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "scope1",
       "type": "scope",
       "name": "Response",
-      "position": { "x": 500, "y": 150 },
+      "position": {
+        "x": 500,
+        "y": 150
+      },
       "parameters": {
         "numInputs": 2
       },
       "inputPorts": [
-        { "id": "scope1-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
-        { "id": "scope1-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "scope1-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "scope1-in2",
+          "name": "in2",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": []
     }
@@ -68,7 +117,17 @@
       "sourceBlockId": "step1",
       "sourcePortId": "step1-out",
       "targetBlockId": "scope1",
-      "targetPortId": "scope1-in1"
+      "targetPortId": "scope1-in1",
+      "waypoints": [
+        {
+          "x": 200,
+          "y": 120
+        },
+        {
+          "x": 480,
+          "y": 120
+        }
+      ]
     },
     {
       "id": "conn3",

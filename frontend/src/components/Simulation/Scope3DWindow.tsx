@@ -212,26 +212,29 @@ export function Scope3DWindow({
 
   // Handle camera changes from user interaction
   const handleRelayout = useCallback((event: PlotRelayoutEvent) => {
+    // Cast to record type to access dynamic scene.camera keys
+    const evt = event as Record<string, unknown>
+
     // Check if this is a camera change event (full camera object)
-    if (event['scene.camera']) {
-      cameraRef.current = event['scene.camera'] as CameraState
+    if (evt['scene.camera']) {
+      cameraRef.current = evt['scene.camera'] as CameraState
       userHasRotated.current = true
     }
     // Also handle individual camera property updates
-    else if (event['scene.camera.eye'] || event['scene.camera.center'] || event['scene.camera.up']) {
+    else if (evt['scene.camera.eye'] || evt['scene.camera.center'] || evt['scene.camera.up']) {
       cameraRef.current = {
         ...cameraRef.current,
-        eye: (event['scene.camera.eye'] as CameraState['eye']) || cameraRef.current?.eye,
-        center: (event['scene.camera.center'] as CameraState['center']) || cameraRef.current?.center,
-        up: (event['scene.camera.up'] as CameraState['up']) || cameraRef.current?.up,
+        eye: (evt['scene.camera.eye'] as CameraState['eye']) || cameraRef.current?.eye,
+        center: (evt['scene.camera.center'] as CameraState['center']) || cameraRef.current?.center,
+        up: (evt['scene.camera.up'] as CameraState['up']) || cameraRef.current?.up,
       }
       userHasRotated.current = true
     }
     // Handle reset camera button
-    if (event['scene.camera'] === undefined &&
-        event['scene.camera.eye'] === undefined &&
-        event['scene.camera.center'] === undefined &&
-        event['scene.camera.up'] === undefined &&
+    if (evt['scene.camera'] === undefined &&
+        evt['scene.camera.eye'] === undefined &&
+        evt['scene.camera.center'] === undefined &&
+        evt['scene.camera.up'] === undefined &&
         Object.keys(event).some(k => k.startsWith('scene'))) {
       // This might be a reset - check for autorange or similar
       userHasRotated.current = false

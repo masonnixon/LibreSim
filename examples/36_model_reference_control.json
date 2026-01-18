@@ -13,63 +13,211 @@
       "id": "command",
       "type": "step",
       "name": "Command",
-      "position": { "x": 50, "y": 200 },
-      "parameters": { "stepTime": 1, "initialValue": 0, "finalValue": 1 },
+      "position": {
+        "x": 50,
+        "y": 200
+      },
+      "parameters": {
+        "stepTime": 1,
+        "initialValue": 0,
+        "finalValue": 1
+      },
       "inputPorts": [],
-      "outputPorts": [{ "id": "command-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "outputPorts": [
+        {
+          "id": "command-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "ref_model",
       "type": "model_reference",
       "name": "Reference Model",
-      "position": { "x": 200, "y": 100 },
+      "position": {
+        "x": 200,
+        "y": 100
+      },
       "parameters": {
         "naturalFrequency": 2.0,
         "dampingRatio": 1.0
       },
-      "inputPorts": [{ "id": "ref_model-in", "name": "r", "dataType": "double", "dimensions": [1] }],
-      "outputPorts": [{ "id": "ref_model-out", "name": "y", "dataType": "double", "dimensions": [1] }]
+      "inputPorts": [
+        {
+          "id": "ref_model-in",
+          "name": "r",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
+      "outputPorts": [
+        {
+          "id": "ref_model-out",
+          "name": "y",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "tracking_error",
       "type": "sum",
       "name": "Tracking Error",
-      "position": { "x": 400, "y": 200 },
-      "parameters": { "signs": "+-" },
+      "position": {
+        "x": 400,
+        "y": 200
+      },
+      "parameters": {
+        "signs": "+-"
+      },
       "inputPorts": [
-        { "id": "tracking_error-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
-        { "id": "tracking_error-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "tracking_error-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "tracking_error-in2",
+          "name": "in2",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
-      "outputPorts": [{ "id": "tracking_error-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "outputPorts": [
+        {
+          "id": "tracking_error-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "pid",
       "type": "pid_controller",
       "name": "Tracking PID",
-      "position": { "x": 550, "y": 200 },
-      "parameters": { "Kp": 10, "Ki": 5, "Kd": 1, "N": 50, "initialConditionI": 0 },
-      "inputPorts": [{ "id": "pid-in", "name": "in", "dataType": "double", "dimensions": [1] }],
-      "outputPorts": [{ "id": "pid-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "position": {
+        "x": 550,
+        "y": 200
+      },
+      "parameters": {
+        "Kp": 10,
+        "Ki": 5,
+        "Kd": 1,
+        "N": 50,
+        "initialConditionI": 0
+      },
+      "inputPorts": [
+        {
+          "id": "pid-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
+      "outputPorts": [
+        {
+          "id": "pid-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "plant",
       "type": "transfer_function",
       "name": "Actual Plant",
-      "position": { "x": 700, "y": 200 },
-      "parameters": { "numerator": [1], "denominator": [1, 3, 2] },
-      "inputPorts": [{ "id": "plant-in", "name": "in", "dataType": "double", "dimensions": [1] }],
-      "outputPorts": [{ "id": "plant-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "position": {
+        "x": 700,
+        "y": 200
+      },
+      "parameters": {
+        "numerator": [
+          1
+        ],
+        "denominator": [
+          1,
+          3,
+          2
+        ]
+      },
+      "inputPorts": [
+        {
+          "id": "plant-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
+      "outputPorts": [
+        {
+          "id": "plant-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "scope_tracking",
       "type": "scope",
       "name": "Reference vs Plant",
-      "position": { "x": 900, "y": 150 },
-      "parameters": { "numInputs": 3 },
+      "position": {
+        "x": 900,
+        "y": 150
+      },
+      "parameters": {
+        "numInputs": 3
+      },
       "inputPorts": [
-        { "id": "scope_tracking-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
-        { "id": "scope_tracking-in2", "name": "in2", "dataType": "double", "dimensions": [1] },
-        { "id": "scope_tracking-in3", "name": "in3", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "scope_tracking-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "scope_tracking-in2",
+          "name": "in2",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "scope_tracking-in3",
+          "name": "in3",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": []
     },
@@ -77,22 +225,106 @@
       "id": "scope_error",
       "type": "scope",
       "name": "Tracking Error",
-      "position": { "x": 550, "y": 320 },
-      "parameters": { "numInputs": 1 },
-      "inputPorts": [{ "id": "scope_error-in1", "name": "in1", "dataType": "double", "dimensions": [1] }],
+      "position": {
+        "x": 550,
+        "y": 320
+      },
+      "parameters": {
+        "numInputs": 1
+      },
+      "inputPorts": [
+        {
+          "id": "scope_error-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
       "outputPorts": []
     }
   ],
   "connections": [
-    { "id": "c1", "sourceBlockId": "command", "sourcePortId": "command-out", "targetBlockId": "ref_model", "targetPortId": "ref_model-in" },
-    { "id": "c2", "sourceBlockId": "ref_model", "sourcePortId": "ref_model-out", "targetBlockId": "tracking_error", "targetPortId": "tracking_error-in1" },
-    { "id": "c3", "sourceBlockId": "plant", "sourcePortId": "plant-out", "targetBlockId": "tracking_error", "targetPortId": "tracking_error-in2" },
-    { "id": "c4", "sourceBlockId": "tracking_error", "sourcePortId": "tracking_error-out", "targetBlockId": "pid", "targetPortId": "pid-in" },
-    { "id": "c5", "sourceBlockId": "pid", "sourcePortId": "pid-out", "targetBlockId": "plant", "targetPortId": "plant-in" },
-    { "id": "c6", "sourceBlockId": "command", "sourcePortId": "command-out", "targetBlockId": "scope_tracking", "targetPortId": "scope_tracking-in1" },
-    { "id": "c7", "sourceBlockId": "ref_model", "sourcePortId": "ref_model-out", "targetBlockId": "scope_tracking", "targetPortId": "scope_tracking-in2" },
-    { "id": "c8", "sourceBlockId": "plant", "sourcePortId": "plant-out", "targetBlockId": "scope_tracking", "targetPortId": "scope_tracking-in3" },
-    { "id": "c9", "sourceBlockId": "tracking_error", "sourcePortId": "tracking_error-out", "targetBlockId": "scope_error", "targetPortId": "scope_error-in1" }
+    {
+      "id": "c1",
+      "sourceBlockId": "command",
+      "sourcePortId": "command-out",
+      "targetBlockId": "ref_model",
+      "targetPortId": "ref_model-in"
+    },
+    {
+      "id": "c2",
+      "sourceBlockId": "ref_model",
+      "sourcePortId": "ref_model-out",
+      "targetBlockId": "tracking_error",
+      "targetPortId": "tracking_error-in1"
+    },
+    {
+      "id": "c3",
+      "sourceBlockId": "plant",
+      "sourcePortId": "plant-out",
+      "targetBlockId": "tracking_error",
+      "targetPortId": "tracking_error-in2",
+      "waypoints": [
+        {
+          "x": 800,
+          "y": 400
+        },
+        {
+          "x": 380,
+          "y": 400
+        }
+      ]
+    },
+    {
+      "id": "c4",
+      "sourceBlockId": "tracking_error",
+      "sourcePortId": "tracking_error-out",
+      "targetBlockId": "pid",
+      "targetPortId": "pid-in"
+    },
+    {
+      "id": "c5",
+      "sourceBlockId": "pid",
+      "sourcePortId": "pid-out",
+      "targetBlockId": "plant",
+      "targetPortId": "plant-in"
+    },
+    {
+      "id": "c6",
+      "sourceBlockId": "command",
+      "sourcePortId": "command-out",
+      "targetBlockId": "scope_tracking",
+      "targetPortId": "scope_tracking-in1",
+      "waypoints": [
+        {
+          "x": 515.0,
+          "y": 60
+        }
+      ]
+    },
+    {
+      "id": "c7",
+      "sourceBlockId": "ref_model",
+      "sourcePortId": "ref_model-out",
+      "targetBlockId": "scope_tracking",
+      "targetPortId": "scope_tracking-in2"
+    },
+    {
+      "id": "c8",
+      "sourceBlockId": "plant",
+      "sourcePortId": "plant-out",
+      "targetBlockId": "scope_tracking",
+      "targetPortId": "scope_tracking-in3"
+    },
+    {
+      "id": "c9",
+      "sourceBlockId": "tracking_error",
+      "sourcePortId": "tracking_error-out",
+      "targetBlockId": "scope_error",
+      "targetPortId": "scope_error-in1"
+    }
   ],
   "simulationConfig": {
     "solver": "rk4",

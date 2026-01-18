@@ -13,7 +13,10 @@
       "id": "step1",
       "type": "step",
       "name": "Reference",
-      "position": { "x": 50, "y": 150 },
+      "position": {
+        "x": 50,
+        "y": 150
+      },
       "parameters": {
         "stepTime": 1.0,
         "initialValue": 0,
@@ -21,30 +24,64 @@
       },
       "inputPorts": [],
       "outputPorts": [
-        { "id": "step1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "step1-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "sum1",
       "type": "sum",
       "name": "Error",
-      "position": { "x": 180, "y": 150 },
+      "position": {
+        "x": 180,
+        "y": 150
+      },
       "parameters": {
         "signs": "+-"
       },
       "inputPorts": [
-        { "id": "sum1-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
-        { "id": "sum1-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "sum1-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "sum1-in2",
+          "name": "in2",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "sum1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "sum1-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "pid1",
       "type": "pid_controller",
       "name": "PID",
-      "position": { "x": 310, "y": 150 },
+      "position": {
+        "x": 310,
+        "y": 150
+      },
       "parameters": {
         "Kp": 10,
         "Ki": 5,
@@ -52,39 +89,93 @@
         "N": 100
       },
       "inputPorts": [
-        { "id": "pid1-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "pid1-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "pid1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "pid1-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "plant1",
       "type": "transfer_function",
       "name": "Plant",
-      "position": { "x": 450, "y": 150 },
+      "position": {
+        "x": 450,
+        "y": 150
+      },
       "parameters": {
-        "numerator": [1],
-        "denominator": [1, 2, 1]
+        "numerator": [
+          1
+        ],
+        "denominator": [
+          1,
+          2,
+          1
+        ]
       },
       "inputPorts": [
-        { "id": "plant1-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "plant1-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "plant1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "plant1-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "scope1",
       "type": "scope",
       "name": "Response",
-      "position": { "x": 620, "y": 150 },
+      "position": {
+        "x": 620,
+        "y": 150
+      },
       "parameters": {
         "numInputs": 2
       },
       "inputPorts": [
-        { "id": "scope1-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
-        { "id": "scope1-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "scope1-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "scope1-in2",
+          "name": "in2",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": []
     }
@@ -116,14 +207,34 @@
       "sourceBlockId": "plant1",
       "sourcePortId": "plant1-out",
       "targetBlockId": "sum1",
-      "targetPortId": "sum1-in2"
+      "targetPortId": "sum1-in2",
+      "waypoints": [
+        {
+          "x": 550,
+          "y": 240
+        },
+        {
+          "x": 160,
+          "y": 240
+        }
+      ]
     },
     {
       "id": "conn5",
       "sourceBlockId": "step1",
       "sourcePortId": "step1-out",
       "targetBlockId": "scope1",
-      "targetPortId": "scope1-in1"
+      "targetPortId": "scope1-in1",
+      "waypoints": [
+        {
+          "x": 150,
+          "y": 120
+        },
+        {
+          "x": 600,
+          "y": 120
+        }
+      ]
     },
     {
       "id": "conn6",

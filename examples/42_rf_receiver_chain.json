@@ -13,110 +13,362 @@
       "id": "rf_input",
       "type": "constant",
       "name": "RF Input (-80 dBm)",
-      "position": { "x": 50, "y": 100 },
-      "parameters": { "value": -80.0 },
+      "position": {
+        "x": 50,
+        "y": 100
+      },
+      "parameters": {
+        "value": -80.0
+      },
       "inputPorts": [],
-      "outputPorts": [{ "id": "rf_input-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "outputPorts": [
+        {
+          "id": "rf_input-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "init_nf",
       "type": "constant",
       "name": "Initial NF (0 dB)",
-      "position": { "x": 50, "y": 200 },
-      "parameters": { "value": 0.0 },
+      "position": {
+        "x": 50,
+        "y": 200
+      },
+      "parameters": {
+        "value": 0.0
+      },
       "inputPorts": [],
-      "outputPorts": [{ "id": "init_nf-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "outputPorts": [
+        {
+          "id": "init_nf-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "lna",
       "type": "rf_budget_element",
       "name": "LNA",
-      "position": { "x": 200, "y": 150 },
-      "parameters": { "gainDb": 15.0, "noiseFigureDb": 1.5 },
+      "position": {
+        "x": 200,
+        "y": 150
+      },
+      "parameters": {
+        "gainDb": 15.0,
+        "noiseFigureDb": 1.5
+      },
       "inputPorts": [
-        { "id": "lna-power", "name": "powerDbm", "dataType": "double", "dimensions": [1] },
-        { "id": "lna-nf", "name": "nfDb", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "lna-power",
+          "name": "powerDbm",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "lna-nf",
+          "name": "nfDb",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "lna-pout", "name": "powerOutDbm", "dataType": "double", "dimensions": [1] },
-        { "id": "lna-nfout", "name": "nfOutDb", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "lna-pout",
+          "name": "powerOutDbm",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "lna-nfout",
+          "name": "nfOutDb",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "filter",
       "type": "rf_budget_element",
       "name": "RF Filter",
-      "position": { "x": 400, "y": 150 },
-      "parameters": { "gainDb": -2.0, "noiseFigureDb": 2.0 },
+      "position": {
+        "x": 400,
+        "y": 150
+      },
+      "parameters": {
+        "gainDb": -2.0,
+        "noiseFigureDb": 2.0
+      },
       "inputPorts": [
-        { "id": "filter-power", "name": "powerDbm", "dataType": "double", "dimensions": [1] },
-        { "id": "filter-nf", "name": "nfDb", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "filter-power",
+          "name": "powerDbm",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "filter-nf",
+          "name": "nfDb",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "filter-pout", "name": "powerOutDbm", "dataType": "double", "dimensions": [1] },
-        { "id": "filter-nfout", "name": "nfOutDb", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "filter-pout",
+          "name": "powerOutDbm",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "filter-nfout",
+          "name": "nfOutDb",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "mixer_stage",
       "type": "rf_budget_element",
       "name": "Mixer",
-      "position": { "x": 600, "y": 150 },
-      "parameters": { "gainDb": -6.0, "noiseFigureDb": 8.0 },
+      "position": {
+        "x": 600,
+        "y": 150
+      },
+      "parameters": {
+        "gainDb": -6.0,
+        "noiseFigureDb": 8.0
+      },
       "inputPorts": [
-        { "id": "mixer_stage-power", "name": "powerDbm", "dataType": "double", "dimensions": [1] },
-        { "id": "mixer_stage-nf", "name": "nfDb", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "mixer_stage-power",
+          "name": "powerDbm",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "mixer_stage-nf",
+          "name": "nfDb",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "mixer_stage-pout", "name": "powerOutDbm", "dataType": "double", "dimensions": [1] },
-        { "id": "mixer_stage-nfout", "name": "nfOutDb", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "mixer_stage-pout",
+          "name": "powerOutDbm",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "mixer_stage-nfout",
+          "name": "nfOutDb",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "if_amp",
       "type": "rf_budget_element",
       "name": "IF Amplifier",
-      "position": { "x": 800, "y": 150 },
-      "parameters": { "gainDb": 20.0, "noiseFigureDb": 4.0 },
+      "position": {
+        "x": 800,
+        "y": 150
+      },
+      "parameters": {
+        "gainDb": 20.0,
+        "noiseFigureDb": 4.0
+      },
       "inputPorts": [
-        { "id": "if_amp-power", "name": "powerDbm", "dataType": "double", "dimensions": [1] },
-        { "id": "if_amp-nf", "name": "nfDb", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "if_amp-power",
+          "name": "powerDbm",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "if_amp-nf",
+          "name": "nfDb",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "if_amp-pout", "name": "powerOutDbm", "dataType": "double", "dimensions": [1] },
-        { "id": "if_amp-nfout", "name": "nfOutDb", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "if_amp-pout",
+          "name": "powerOutDbm",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "if_amp-nfout",
+          "name": "nfOutDb",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "scope_power",
       "type": "scope",
       "name": "Power Level (dBm)",
-      "position": { "x": 1000, "y": 100 },
-      "parameters": { "numInputs": 1 },
-      "inputPorts": [{ "id": "scope_power-in1", "name": "in1", "dataType": "double", "dimensions": [1] }],
+      "position": {
+        "x": 1000,
+        "y": 100
+      },
+      "parameters": {
+        "numInputs": 1
+      },
+      "inputPorts": [
+        {
+          "id": "scope_power-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
       "outputPorts": []
     },
     {
       "id": "scope_nf",
       "type": "scope",
       "name": "Cascaded NF (dB)",
-      "position": { "x": 1000, "y": 200 },
-      "parameters": { "numInputs": 1 },
-      "inputPorts": [{ "id": "scope_nf-in1", "name": "in1", "dataType": "double", "dimensions": [1] }],
+      "position": {
+        "x": 1000,
+        "y": 200
+      },
+      "parameters": {
+        "numInputs": 1
+      },
+      "inputPorts": [
+        {
+          "id": "scope_nf-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
       "outputPorts": []
     }
   ],
   "connections": [
-    { "id": "c1", "sourceBlockId": "rf_input", "sourcePortId": "rf_input-out", "targetBlockId": "lna", "targetPortId": "lna-power" },
-    { "id": "c2", "sourceBlockId": "init_nf", "sourcePortId": "init_nf-out", "targetBlockId": "lna", "targetPortId": "lna-nf" },
-    { "id": "c3", "sourceBlockId": "lna", "sourcePortId": "lna-pout", "targetBlockId": "filter", "targetPortId": "filter-power" },
-    { "id": "c4", "sourceBlockId": "lna", "sourcePortId": "lna-nfout", "targetBlockId": "filter", "targetPortId": "filter-nf" },
-    { "id": "c5", "sourceBlockId": "filter", "sourcePortId": "filter-pout", "targetBlockId": "mixer_stage", "targetPortId": "mixer_stage-power" },
-    { "id": "c6", "sourceBlockId": "filter", "sourcePortId": "filter-nfout", "targetBlockId": "mixer_stage", "targetPortId": "mixer_stage-nf" },
-    { "id": "c7", "sourceBlockId": "mixer_stage", "sourcePortId": "mixer_stage-pout", "targetBlockId": "if_amp", "targetPortId": "if_amp-power" },
-    { "id": "c8", "sourceBlockId": "mixer_stage", "sourcePortId": "mixer_stage-nfout", "targetBlockId": "if_amp", "targetPortId": "if_amp-nf" },
-    { "id": "c9", "sourceBlockId": "if_amp", "sourcePortId": "if_amp-pout", "targetBlockId": "scope_power", "targetPortId": "scope_power-in1" },
-    { "id": "c10", "sourceBlockId": "if_amp", "sourcePortId": "if_amp-nfout", "targetBlockId": "scope_nf", "targetPortId": "scope_nf-in1" }
+    {
+      "id": "c1",
+      "sourceBlockId": "rf_input",
+      "sourcePortId": "rf_input-out",
+      "targetBlockId": "lna",
+      "targetPortId": "lna-power"
+    },
+    {
+      "id": "c2",
+      "sourceBlockId": "init_nf",
+      "sourcePortId": "init_nf-out",
+      "targetBlockId": "lna",
+      "targetPortId": "lna-nf"
+    },
+    {
+      "id": "c3",
+      "sourceBlockId": "lna",
+      "sourcePortId": "lna-pout",
+      "targetBlockId": "filter",
+      "targetPortId": "filter-power"
+    },
+    {
+      "id": "c4",
+      "sourceBlockId": "lna",
+      "sourcePortId": "lna-nfout",
+      "targetBlockId": "filter",
+      "targetPortId": "filter-nf"
+    },
+    {
+      "id": "c5",
+      "sourceBlockId": "filter",
+      "sourcePortId": "filter-pout",
+      "targetBlockId": "mixer_stage",
+      "targetPortId": "mixer_stage-power"
+    },
+    {
+      "id": "c6",
+      "sourceBlockId": "filter",
+      "sourcePortId": "filter-nfout",
+      "targetBlockId": "mixer_stage",
+      "targetPortId": "mixer_stage-nf"
+    },
+    {
+      "id": "c7",
+      "sourceBlockId": "mixer_stage",
+      "sourcePortId": "mixer_stage-pout",
+      "targetBlockId": "if_amp",
+      "targetPortId": "if_amp-power"
+    },
+    {
+      "id": "c8",
+      "sourceBlockId": "mixer_stage",
+      "sourcePortId": "mixer_stage-nfout",
+      "targetBlockId": "if_amp",
+      "targetPortId": "if_amp-nf"
+    },
+    {
+      "id": "c9",
+      "sourceBlockId": "if_amp",
+      "sourcePortId": "if_amp-pout",
+      "targetBlockId": "scope_power",
+      "targetPortId": "scope_power-in1"
+    },
+    {
+      "id": "c10",
+      "sourceBlockId": "if_amp",
+      "sourcePortId": "if_amp-nfout",
+      "targetBlockId": "scope_nf",
+      "targetPortId": "scope_nf-in1"
+    }
   ],
   "simulationConfig": {
     "solver": "euler",

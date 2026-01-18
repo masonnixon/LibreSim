@@ -13,59 +13,202 @@
       "id": "setpoint",
       "type": "step",
       "name": "Speed Setpoint",
-      "position": { "x": 50, "y": 200 },
-      "parameters": { "stepTime": 1, "initialValue": 0, "finalValue": 100 },
+      "position": {
+        "x": 50,
+        "y": 200
+      },
+      "parameters": {
+        "stepTime": 1,
+        "initialValue": 0,
+        "finalValue": 100
+      },
       "inputPorts": [],
-      "outputPorts": [{ "id": "setpoint-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "outputPorts": [
+        {
+          "id": "setpoint-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "error_sum",
       "type": "sum",
       "name": "Error",
-      "position": { "x": 180, "y": 200 },
-      "parameters": { "signs": "+-" },
+      "position": {
+        "x": 180,
+        "y": 200
+      },
+      "parameters": {
+        "signs": "+-"
+      },
       "inputPorts": [
-        { "id": "error_sum-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
-        { "id": "error_sum-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "error_sum-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "error_sum-in2",
+          "name": "in2",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
-      "outputPorts": [{ "id": "error_sum-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "outputPorts": [
+        {
+          "id": "error_sum-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "pid",
       "type": "pid_controller",
       "name": "PID Controller",
-      "position": { "x": 320, "y": 200 },
-      "parameters": { "Kp": 2.0, "Ki": 1.0, "Kd": 0.1, "N": 100, "initialConditionI": 0 },
-      "inputPorts": [{ "id": "pid-in", "name": "in", "dataType": "double", "dimensions": [1] }],
-      "outputPorts": [{ "id": "pid-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "position": {
+        "x": 320,
+        "y": 200
+      },
+      "parameters": {
+        "Kp": 2.0,
+        "Ki": 1.0,
+        "Kd": 0.1,
+        "N": 100,
+        "initialConditionI": 0
+      },
+      "inputPorts": [
+        {
+          "id": "pid-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
+      "outputPorts": [
+        {
+          "id": "pid-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "saturation",
       "type": "saturation",
       "name": "Actuator Limits",
-      "position": { "x": 470, "y": 200 },
-      "parameters": { "upperLimit": 200, "lowerLimit": -200 },
-      "inputPorts": [{ "id": "saturation-in", "name": "in", "dataType": "double", "dimensions": [1] }],
-      "outputPorts": [{ "id": "saturation-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "position": {
+        "x": 470,
+        "y": 200
+      },
+      "parameters": {
+        "upperLimit": 200,
+        "lowerLimit": -200
+      },
+      "inputPorts": [
+        {
+          "id": "saturation-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
+      "outputPorts": [
+        {
+          "id": "saturation-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "motor_tf",
       "type": "transfer_function",
       "name": "DC Motor",
-      "position": { "x": 620, "y": 200 },
-      "parameters": { "numerator": [10], "denominator": [1, 2] },
-      "inputPorts": [{ "id": "motor_tf-in", "name": "in", "dataType": "double", "dimensions": [1] }],
-      "outputPorts": [{ "id": "motor_tf-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "position": {
+        "x": 620,
+        "y": 200
+      },
+      "parameters": {
+        "numerator": [
+          10
+        ],
+        "denominator": [
+          1,
+          2
+        ]
+      },
+      "inputPorts": [
+        {
+          "id": "motor_tf-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
+      "outputPorts": [
+        {
+          "id": "motor_tf-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "scope_response",
       "type": "scope",
       "name": "Speed Response",
-      "position": { "x": 800, "y": 200 },
-      "parameters": { "numInputs": 2 },
+      "position": {
+        "x": 800,
+        "y": 200
+      },
+      "parameters": {
+        "numInputs": 2
+      },
       "inputPorts": [
-        { "id": "scope_response-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
-        { "id": "scope_response-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "scope_response-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "scope_response-in2",
+          "name": "in2",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": []
     },
@@ -73,31 +216,133 @@
       "id": "scope_control",
       "type": "scope",
       "name": "Control Signal",
-      "position": { "x": 620, "y": 320 },
-      "parameters": { "numInputs": 1 },
-      "inputPorts": [{ "id": "scope_control-in1", "name": "in1", "dataType": "double", "dimensions": [1] }],
+      "position": {
+        "x": 620,
+        "y": 320
+      },
+      "parameters": {
+        "numInputs": 1
+      },
+      "inputPorts": [
+        {
+          "id": "scope_control-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
       "outputPorts": []
     },
     {
       "id": "scope_error",
       "type": "scope",
       "name": "Error",
-      "position": { "x": 320, "y": 320 },
-      "parameters": { "numInputs": 1 },
-      "inputPorts": [{ "id": "scope_error-in1", "name": "in1", "dataType": "double", "dimensions": [1] }],
+      "position": {
+        "x": 320,
+        "y": 320
+      },
+      "parameters": {
+        "numInputs": 1
+      },
+      "inputPorts": [
+        {
+          "id": "scope_error-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
       "outputPorts": []
     }
   ],
   "connections": [
-    { "id": "c1", "sourceBlockId": "setpoint", "sourcePortId": "setpoint-out", "targetBlockId": "error_sum", "targetPortId": "error_sum-in1" },
-    { "id": "c2", "sourceBlockId": "error_sum", "sourcePortId": "error_sum-out", "targetBlockId": "pid", "targetPortId": "pid-in" },
-    { "id": "c3", "sourceBlockId": "pid", "sourcePortId": "pid-out", "targetBlockId": "saturation", "targetPortId": "saturation-in" },
-    { "id": "c4", "sourceBlockId": "saturation", "sourcePortId": "saturation-out", "targetBlockId": "motor_tf", "targetPortId": "motor_tf-in" },
-    { "id": "c5", "sourceBlockId": "motor_tf", "sourcePortId": "motor_tf-out", "targetBlockId": "error_sum", "targetPortId": "error_sum-in2" },
-    { "id": "c6", "sourceBlockId": "setpoint", "sourcePortId": "setpoint-out", "targetBlockId": "scope_response", "targetPortId": "scope_response-in1" },
-    { "id": "c7", "sourceBlockId": "motor_tf", "sourcePortId": "motor_tf-out", "targetBlockId": "scope_response", "targetPortId": "scope_response-in2" },
-    { "id": "c8", "sourceBlockId": "saturation", "sourcePortId": "saturation-out", "targetBlockId": "scope_control", "targetPortId": "scope_control-in1" },
-    { "id": "c9", "sourceBlockId": "error_sum", "sourcePortId": "error_sum-out", "targetBlockId": "scope_error", "targetPortId": "scope_error-in1" }
+    {
+      "id": "c1",
+      "sourceBlockId": "setpoint",
+      "sourcePortId": "setpoint-out",
+      "targetBlockId": "error_sum",
+      "targetPortId": "error_sum-in1"
+    },
+    {
+      "id": "c2",
+      "sourceBlockId": "error_sum",
+      "sourcePortId": "error_sum-out",
+      "targetBlockId": "pid",
+      "targetPortId": "pid-in"
+    },
+    {
+      "id": "c3",
+      "sourceBlockId": "pid",
+      "sourcePortId": "pid-out",
+      "targetBlockId": "saturation",
+      "targetPortId": "saturation-in"
+    },
+    {
+      "id": "c4",
+      "sourceBlockId": "saturation",
+      "sourcePortId": "saturation-out",
+      "targetBlockId": "motor_tf",
+      "targetPortId": "motor_tf-in"
+    },
+    {
+      "id": "c5",
+      "sourceBlockId": "motor_tf",
+      "sourcePortId": "motor_tf-out",
+      "targetBlockId": "error_sum",
+      "targetPortId": "error_sum-in2",
+      "waypoints": [
+        {
+          "x": 720,
+          "y": 400
+        },
+        {
+          "x": 160,
+          "y": 400
+        }
+      ]
+    },
+    {
+      "id": "c6",
+      "sourceBlockId": "setpoint",
+      "sourcePortId": "setpoint-out",
+      "targetBlockId": "scope_response",
+      "targetPortId": "scope_response-in1",
+      "waypoints": [
+        {
+          "x": 150,
+          "y": 160
+        },
+        {
+          "x": 780,
+          "y": 160
+        }
+      ]
+    },
+    {
+      "id": "c7",
+      "sourceBlockId": "motor_tf",
+      "sourcePortId": "motor_tf-out",
+      "targetBlockId": "scope_response",
+      "targetPortId": "scope_response-in2"
+    },
+    {
+      "id": "c8",
+      "sourceBlockId": "saturation",
+      "sourcePortId": "saturation-out",
+      "targetBlockId": "scope_control",
+      "targetPortId": "scope_control-in1"
+    },
+    {
+      "id": "c9",
+      "sourceBlockId": "error_sum",
+      "sourcePortId": "error_sum-out",
+      "targetBlockId": "scope_error",
+      "targetPortId": "scope_error-in1"
+    }
   ],
   "simulationConfig": {
     "solver": "rk4",

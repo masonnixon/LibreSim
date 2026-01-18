@@ -13,33 +13,74 @@
       "id": "tf1",
       "type": "transfer_function",
       "name": "G(s)",
-      "position": { "x": 100, "y": 100 },
+      "position": {
+        "x": 100,
+        "y": 100
+      },
       "parameters": {
-        "numerator": [10],
-        "denominator": [1, 3, 2, 0]
+        "numerator": [
+          10
+        ],
+        "denominator": [
+          1,
+          3,
+          2,
+          0
+        ]
       },
       "inputPorts": [
-        { "id": "tf1-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "tf1-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "tf1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "tf1-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "nyquist1",
       "type": "nyquist_plot",
       "name": "Nyquist Plot",
-      "position": { "x": 300, "y": 100 },
+      "position": {
+        "x": 300,
+        "y": 100
+      },
       "parameters": {
         "minFrequency": 0.01,
         "maxFrequency": 100,
         "numPoints": 500
       },
       "inputPorts": [
-        { "id": "nyquist1-in", "name": "in", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "nyquist1-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "nyquist1-out", "name": "encirclements", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "nyquist1-out",
+          "name": "encirclements",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     }
   ],

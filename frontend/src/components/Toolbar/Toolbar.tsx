@@ -711,22 +711,6 @@ export function Toolbar() {
     }
   }
 
-  const handleResetStepMode = async () => {
-    if (!stepModeActive) return
-
-    try {
-      const result = await api.resetStepMode()
-      if (result.success) {
-        clearResults()
-        setProgress(result.currentTime, 0)
-        setStepHistorySize(1)
-        toast.info('Step Mode', 'Simulation reset to start.')
-      }
-    } catch (error) {
-      console.error('Failed to reset step mode:', error)
-    }
-  }
-
   const isRunning = simState.status === 'running'
   const isPaused = simState.status === 'paused'
   const isCompleted = simState.status === 'completed'

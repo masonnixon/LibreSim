@@ -13,7 +13,10 @@
       "id": "ramp1",
       "type": "ramp",
       "name": "True Signal",
-      "position": { "x": 50, "y": 100 },
+      "position": {
+        "x": 50,
+        "y": 100
+      },
       "parameters": {
         "slope": 0.5,
         "startTime": 0,
@@ -21,55 +24,139 @@
       },
       "inputPorts": [],
       "outputPorts": [
-        { "id": "ramp1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "ramp1-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "const1",
       "type": "constant",
       "name": "Control (0)",
-      "position": { "x": 50, "y": 250 },
+      "position": {
+        "x": 50,
+        "y": 250
+      },
       "parameters": {
         "value": 0
       },
       "inputPorts": [],
       "outputPorts": [
-        { "id": "const1-out", "name": "out", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "const1-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "kalman1",
       "type": "kalman_filter",
       "name": "Kalman Filter",
-      "position": { "x": 350, "y": 175 },
+      "position": {
+        "x": 350,
+        "y": 175
+      },
       "parameters": {
-        "A": [[1]],
-        "B": [[0.01]],
-        "C": [[1]],
-        "Q": [[0.001]],
-        "R": [[0.1]],
-        "initialState": [0],
-        "initialP": [[1]]
+        "A": [
+          [
+            1
+          ]
+        ],
+        "B": [
+          [
+            0.01
+          ]
+        ],
+        "C": [
+          [
+            1
+          ]
+        ],
+        "Q": [
+          [
+            0.001
+          ]
+        ],
+        "R": [
+          [
+            0.1
+          ]
+        ],
+        "initialState": [
+          0
+        ],
+        "initialP": [
+          [
+            1
+          ]
+        ]
       },
       "inputPorts": [
-        { "id": "kalman1-in1", "name": "u", "dataType": "double", "dimensions": [1] },
-        { "id": "kalman1-in2", "name": "y", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "kalman1-in1",
+          "name": "u",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "kalman1-in2",
+          "name": "y",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": [
-        { "id": "kalman1-out", "name": "x_hat", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "kalman1-out",
+          "name": "x_hat",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "scope1",
       "type": "scope",
       "name": "Comparison",
-      "position": { "x": 550, "y": 150 },
+      "position": {
+        "x": 550,
+        "y": 150
+      },
       "parameters": {
         "numInputs": 2
       },
       "inputPorts": [
-        { "id": "scope1-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
-        { "id": "scope1-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "scope1-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "scope1-in2",
+          "name": "in2",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": []
     }
@@ -94,7 +181,17 @@
       "sourceBlockId": "ramp1",
       "sourcePortId": "ramp1-out",
       "targetBlockId": "scope1",
-      "targetPortId": "scope1-in1"
+      "targetPortId": "scope1-in1",
+      "waypoints": [
+        {
+          "x": 150,
+          "y": 140
+        },
+        {
+          "x": 530,
+          "y": 140
+        }
+      ]
     },
     {
       "id": "conn4",

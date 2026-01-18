@@ -13,85 +13,283 @@
       "id": "accel",
       "type": "constant",
       "name": "Acceleration (1 m/s^2)",
-      "position": { "x": 50, "y": 100 },
-      "parameters": { "value": 1.0 },
+      "position": {
+        "x": 50,
+        "y": 100
+      },
+      "parameters": {
+        "value": 1.0
+      },
       "inputPorts": [],
-      "outputPorts": [{ "id": "accel-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "outputPorts": [
+        {
+          "id": "accel-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "int_vel",
       "type": "integrator",
       "name": "Velocity",
-      "position": { "x": 200, "y": 100 },
-      "parameters": { "initialCondition": 0.0 },
-      "inputPorts": [{ "id": "int_vel-in", "name": "in", "dataType": "double", "dimensions": [1] }],
-      "outputPorts": [{ "id": "int_vel-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "position": {
+        "x": 200,
+        "y": 100
+      },
+      "parameters": {
+        "initialCondition": 0.0
+      },
+      "inputPorts": [
+        {
+          "id": "int_vel-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
+      "outputPorts": [
+        {
+          "id": "int_vel-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "int_pos",
       "type": "integrator",
       "name": "Position",
-      "position": { "x": 350, "y": 100 },
-      "parameters": { "initialCondition": 0.0 },
-      "inputPorts": [{ "id": "int_pos-in", "name": "in", "dataType": "double", "dimensions": [1] }],
-      "outputPorts": [{ "id": "int_pos-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "position": {
+        "x": 350,
+        "y": 100
+      },
+      "parameters": {
+        "initialCondition": 0.0
+      },
+      "inputPorts": [
+        {
+          "id": "int_pos-in",
+          "name": "in",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
+      "outputPorts": [
+        {
+          "id": "int_pos-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "noise",
       "type": "white_noise",
       "name": "Measurement Noise",
-      "position": { "x": 350, "y": 200 },
-      "parameters": { "power": 1.0, "sampleTime": 0.1 },
+      "position": {
+        "x": 350,
+        "y": 200
+      },
+      "parameters": {
+        "power": 1.0,
+        "sampleTime": 0.1
+      },
       "inputPorts": [],
-      "outputPorts": [{ "id": "noise-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "outputPorts": [
+        {
+          "id": "noise-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "sum_meas",
       "type": "sum",
       "name": "Noisy Measurement",
-      "position": { "x": 500, "y": 150 },
-      "parameters": { "inputs": "++", "collapse": "all" },
+      "position": {
+        "x": 500,
+        "y": 150
+      },
+      "parameters": {
+        "inputs": "++",
+        "collapse": "all"
+      },
       "inputPorts": [
-        { "id": "sum_meas-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
-        { "id": "sum_meas-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "sum_meas-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "sum_meas-in2",
+          "name": "in2",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
-      "outputPorts": [{ "id": "sum_meas-out", "name": "out", "dataType": "double", "dimensions": [1] }]
+      "outputPorts": [
+        {
+          "id": "sum_meas-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
     },
     {
       "id": "ab_filter",
       "type": "alpha_beta_filter",
       "name": "Alpha-Beta Filter",
-      "position": { "x": 650, "y": 100 },
-      "parameters": { "alpha": 0.5, "beta": 0.1, "sampleTime": 0.1 },
-      "inputPorts": [{ "id": "ab_filter-in", "name": "measurement", "dataType": "double", "dimensions": [1] }],
+      "position": {
+        "x": 650,
+        "y": 100
+      },
+      "parameters": {
+        "alpha": 0.5,
+        "beta": 0.1,
+        "sampleTime": 0.1
+      },
+      "inputPorts": [
+        {
+          "id": "ab_filter-in",
+          "name": "measurement",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
       "outputPorts": [
-        { "id": "ab_filter-pos", "name": "position", "dataType": "double", "dimensions": [1] },
-        { "id": "ab_filter-vel", "name": "velocity", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "ab_filter-pos",
+          "name": "position",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "ab_filter-vel",
+          "name": "velocity",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "abg_filter",
       "type": "alpha_beta_gamma_filter",
       "name": "Alpha-Beta-Gamma Filter",
-      "position": { "x": 650, "y": 250 },
-      "parameters": { "alpha": 0.9, "beta": 0.5, "gamma": 0.1, "sampleTime": 0.1 },
-      "inputPorts": [{ "id": "abg_filter-in", "name": "measurement", "dataType": "double", "dimensions": [1] }],
+      "position": {
+        "x": 650,
+        "y": 250
+      },
+      "parameters": {
+        "alpha": 0.9,
+        "beta": 0.5,
+        "gamma": 0.1,
+        "sampleTime": 0.1
+      },
+      "inputPorts": [
+        {
+          "id": "abg_filter-in",
+          "name": "measurement",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ],
       "outputPorts": [
-        { "id": "abg_filter-pos", "name": "position", "dataType": "double", "dimensions": [1] },
-        { "id": "abg_filter-vel", "name": "velocity", "dataType": "double", "dimensions": [1] },
-        { "id": "abg_filter-acc", "name": "acceleration", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "abg_filter-pos",
+          "name": "position",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "abg_filter-vel",
+          "name": "velocity",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "abg_filter-acc",
+          "name": "acceleration",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ]
     },
     {
       "id": "scope_pos",
       "type": "scope",
       "name": "Position Comparison",
-      "position": { "x": 900, "y": 50 },
-      "parameters": { "numInputs": 3 },
+      "position": {
+        "x": 900,
+        "y": 50
+      },
+      "parameters": {
+        "numInputs": 3
+      },
       "inputPorts": [
-        { "id": "scope_pos-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
-        { "id": "scope_pos-in2", "name": "in2", "dataType": "double", "dimensions": [1] },
-        { "id": "scope_pos-in3", "name": "in3", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "scope_pos-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "scope_pos-in2",
+          "name": "in2",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "scope_pos-in3",
+          "name": "in3",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": []
     },
@@ -99,12 +297,38 @@
       "id": "scope_vel",
       "type": "scope",
       "name": "Velocity Comparison",
-      "position": { "x": 900, "y": 180 },
-      "parameters": { "numInputs": 3 },
+      "position": {
+        "x": 900,
+        "y": 180
+      },
+      "parameters": {
+        "numInputs": 3
+      },
       "inputPorts": [
-        { "id": "scope_vel-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
-        { "id": "scope_vel-in2", "name": "in2", "dataType": "double", "dimensions": [1] },
-        { "id": "scope_vel-in3", "name": "in3", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "scope_vel-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "scope_vel-in2",
+          "name": "in2",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "scope_vel-in3",
+          "name": "in3",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": []
     },
@@ -112,30 +336,163 @@
       "id": "scope_acc",
       "type": "scope",
       "name": "Acceleration Estimate",
-      "position": { "x": 900, "y": 320 },
-      "parameters": { "numInputs": 2 },
+      "position": {
+        "x": 900,
+        "y": 320
+      },
+      "parameters": {
+        "numInputs": 2
+      },
       "inputPorts": [
-        { "id": "scope_acc-in1", "name": "in1", "dataType": "double", "dimensions": [1] },
-        { "id": "scope_acc-in2", "name": "in2", "dataType": "double", "dimensions": [1] }
+        {
+          "id": "scope_acc-in1",
+          "name": "in1",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "scope_acc-in2",
+          "name": "in2",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
       ],
       "outputPorts": []
     }
   ],
   "connections": [
-    { "id": "c1", "sourceBlockId": "accel", "sourcePortId": "accel-out", "targetBlockId": "int_vel", "targetPortId": "int_vel-in" },
-    { "id": "c2", "sourceBlockId": "int_vel", "sourcePortId": "int_vel-out", "targetBlockId": "int_pos", "targetPortId": "int_pos-in" },
-    { "id": "c3", "sourceBlockId": "int_pos", "sourcePortId": "int_pos-out", "targetBlockId": "sum_meas", "targetPortId": "sum_meas-in1" },
-    { "id": "c4", "sourceBlockId": "noise", "sourcePortId": "noise-out", "targetBlockId": "sum_meas", "targetPortId": "sum_meas-in2" },
-    { "id": "c5", "sourceBlockId": "sum_meas", "sourcePortId": "sum_meas-out", "targetBlockId": "ab_filter", "targetPortId": "ab_filter-in" },
-    { "id": "c6", "sourceBlockId": "sum_meas", "sourcePortId": "sum_meas-out", "targetBlockId": "abg_filter", "targetPortId": "abg_filter-in" },
-    { "id": "c7", "sourceBlockId": "int_pos", "sourcePortId": "int_pos-out", "targetBlockId": "scope_pos", "targetPortId": "scope_pos-in1" },
-    { "id": "c8", "sourceBlockId": "ab_filter", "sourcePortId": "ab_filter-pos", "targetBlockId": "scope_pos", "targetPortId": "scope_pos-in2" },
-    { "id": "c9", "sourceBlockId": "abg_filter", "sourcePortId": "abg_filter-pos", "targetBlockId": "scope_pos", "targetPortId": "scope_pos-in3" },
-    { "id": "c10", "sourceBlockId": "int_vel", "sourcePortId": "int_vel-out", "targetBlockId": "scope_vel", "targetPortId": "scope_vel-in1" },
-    { "id": "c11", "sourceBlockId": "ab_filter", "sourcePortId": "ab_filter-vel", "targetBlockId": "scope_vel", "targetPortId": "scope_vel-in2" },
-    { "id": "c12", "sourceBlockId": "abg_filter", "sourcePortId": "abg_filter-vel", "targetBlockId": "scope_vel", "targetPortId": "scope_vel-in3" },
-    { "id": "c13", "sourceBlockId": "accel", "sourcePortId": "accel-out", "targetBlockId": "scope_acc", "targetPortId": "scope_acc-in1" },
-    { "id": "c14", "sourceBlockId": "abg_filter", "sourcePortId": "abg_filter-acc", "targetBlockId": "scope_acc", "targetPortId": "scope_acc-in2" }
+    {
+      "id": "c1",
+      "sourceBlockId": "accel",
+      "sourcePortId": "accel-out",
+      "targetBlockId": "int_vel",
+      "targetPortId": "int_vel-in"
+    },
+    {
+      "id": "c2",
+      "sourceBlockId": "int_vel",
+      "sourcePortId": "int_vel-out",
+      "targetBlockId": "int_pos",
+      "targetPortId": "int_pos-in"
+    },
+    {
+      "id": "c3",
+      "sourceBlockId": "int_pos",
+      "sourcePortId": "int_pos-out",
+      "targetBlockId": "sum_meas",
+      "targetPortId": "sum_meas-in1"
+    },
+    {
+      "id": "c4",
+      "sourceBlockId": "noise",
+      "sourcePortId": "noise-out",
+      "targetBlockId": "sum_meas",
+      "targetPortId": "sum_meas-in2"
+    },
+    {
+      "id": "c5",
+      "sourceBlockId": "sum_meas",
+      "sourcePortId": "sum_meas-out",
+      "targetBlockId": "ab_filter",
+      "targetPortId": "ab_filter-in"
+    },
+    {
+      "id": "c6",
+      "sourceBlockId": "sum_meas",
+      "sourcePortId": "sum_meas-out",
+      "targetBlockId": "abg_filter",
+      "targetPortId": "abg_filter-in"
+    },
+    {
+      "id": "c7",
+      "sourceBlockId": "int_pos",
+      "sourcePortId": "int_pos-out",
+      "targetBlockId": "scope_pos",
+      "targetPortId": "scope_pos-in1",
+      "waypoints": [
+        {
+          "x": 450,
+          "y": 60
+        },
+        {
+          "x": 880,
+          "y": 60
+        }
+      ]
+    },
+    {
+      "id": "c8",
+      "sourceBlockId": "ab_filter",
+      "sourcePortId": "ab_filter-pos",
+      "targetBlockId": "scope_pos",
+      "targetPortId": "scope_pos-in2"
+    },
+    {
+      "id": "c9",
+      "sourceBlockId": "abg_filter",
+      "sourcePortId": "abg_filter-pos",
+      "targetBlockId": "scope_pos",
+      "targetPortId": "scope_pos-in3"
+    },
+    {
+      "id": "c10",
+      "sourceBlockId": "int_vel",
+      "sourcePortId": "int_vel-out",
+      "targetBlockId": "scope_vel",
+      "targetPortId": "scope_vel-in1",
+      "waypoints": [
+        {
+          "x": 300,
+          "y": 0
+        },
+        {
+          "x": 880,
+          "y": 0
+        }
+      ]
+    },
+    {
+      "id": "c11",
+      "sourceBlockId": "ab_filter",
+      "sourcePortId": "ab_filter-vel",
+      "targetBlockId": "scope_vel",
+      "targetPortId": "scope_vel-in2"
+    },
+    {
+      "id": "c12",
+      "sourceBlockId": "abg_filter",
+      "sourcePortId": "abg_filter-vel",
+      "targetBlockId": "scope_vel",
+      "targetPortId": "scope_vel-in3"
+    },
+    {
+      "id": "c13",
+      "sourceBlockId": "accel",
+      "sourcePortId": "accel-out",
+      "targetBlockId": "scope_acc",
+      "targetPortId": "scope_acc-in1",
+      "waypoints": [
+        {
+          "x": 150,
+          "y": -20
+        },
+        {
+          "x": 880,
+          "y": -20
+        }
+      ]
+    },
+    {
+      "id": "c14",
+      "sourceBlockId": "abg_filter",
+      "sourcePortId": "abg_filter-acc",
+      "targetBlockId": "scope_acc",
+      "targetPortId": "scope_acc-in2"
+    }
   ],
   "simulationConfig": {
     "solver": "rk4",

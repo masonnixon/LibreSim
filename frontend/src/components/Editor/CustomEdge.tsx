@@ -351,8 +351,8 @@ function DraggableSegment({
 
   // Segments are draggable if:
   // 1. controlsWaypointIndex is not null (null means output port segment, not draggable per Simulink)
-  // 2. Segment is long enough to interact with
-  const isDraggable = segment.controlsWaypointIndex !== null && length >= 10
+  // 2. Segment is long enough to interact with (reduced to 3px to allow dragging close to ports)
+  const isDraggable = segment.controlsWaypointIndex !== null && length >= 3
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
