@@ -80,4 +80,6 @@ export interface Connection {
   waypoints?: Array<{ x: number; y: number }>
   // Optional signal name (displayed on double-click edit, per Simulink behavior)
   signalName?: string
+  // Optional label offset from default center position (for draggable labels)
+  labelOffset?: { x: number; y: number }
 }

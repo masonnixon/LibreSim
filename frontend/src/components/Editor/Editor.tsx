@@ -115,6 +115,171 @@ function findNearestEdge(
 }
 
 /**
+ * Get block bounding box with margin
+ */
+function getBlockBounds(block: BlockInstance, margin: number = 15): {
+  left: number; right: number; top: number; bottom: number
+} {
+  const width = block.size?.width || 100
+  const height = block.size?.height || 50
+  return {
+    left: block.position.x - margin,
+    right: block.position.x + width + margin,
+    top: block.position.y - margin,
+    bottom: block.position.y + height + margin,
+  }
+}
+
+/**
+ * Check if a horizontal or vertical line segment intersects a block's bounding box
+ */
+function segmentIntersectsBlock(
+  x1: number, y1: number,
+  x2: number, y2: number,
+  block: BlockInstance,
+  excludeBlockIds: Set<string>,
+  margin: number = 15
+): boolean {
+  if (excludeBlockIds.has(block.id)) return false
+
+  const bounds = getBlockBounds(block, margin)
+
+  // For horizontal segment (y1 === y2)
+  if (Math.abs(y1 - y2) < 1) {
+    const minX = Math.min(x1, x2)
+    const maxX = Math.max(x1, x2)
+    // Check if the horizontal line passes through the block's Y range
+    if (y1 >= bounds.top && y1 <= bounds.bottom) {
+      // Check if X ranges overlap
+      if (maxX > bounds.left && minX < bounds.right) {
+        return true
+      }
+    }
+  }
+  // For vertical segment (x1 === x2)
+  else if (Math.abs(x1 - x2) < 1) {
+    const minY = Math.min(y1, y2)
+    const maxY = Math.max(y1, y2)
+    // Check if the vertical line passes through the block's X range
+    if (x1 >= bounds.left && x1 <= bounds.right) {
+      // Check if Y ranges overlap
+      if (maxY > bounds.top && minY < bounds.bottom) {
+        return true
+      }
+    }
+  }
+
+  return false
+}
+
+/**
+ * Generate smart waypoints for a connection that avoids intersecting blocks.
+ * Returns waypoints array (empty if direct path is clear).
+ */
+function generateSmartWaypoints(
+  sourceX: number,
+  sourceY: number,
+  targetX: number,
+  targetY: number,
+  sourceBlockId: string,
+  targetBlockId: string,
+  allBlocks: BlockInstance[],
+  margin: number = 20
+): Array<{ x: number; y: number }> {
+  const excludeBlockIds = new Set([sourceBlockId, targetBlockId])
+
+  // Calculate the default midpoint path (no waypoints = 3-segment path)
+  const midX = (sourceX + targetX) / 2
+
+  // Check if the simple 3-segment path intersects any blocks
+  // Segment 1: horizontal from source to midX
+  // Segment 2: vertical from sourceY to targetY at midX
+  // Segment 3: horizontal from midX to target
+
+  const blocksInWay: BlockInstance[] = []
+  for (const block of allBlocks) {
+    if (excludeBlockIds.has(block.id)) continue
+
+    // Check segment 1 (horizontal: sourceX,sourceY to midX,sourceY)
+    if (segmentIntersectsBlock(sourceX, sourceY, midX, sourceY, block, excludeBlockIds, margin)) {
+      blocksInWay.push(block)
+      continue
+    }
+    // Check segment 2 (vertical: midX,sourceY to midX,targetY)
+    if (segmentIntersectsBlock(midX, sourceY, midX, targetY, block, excludeBlockIds, margin)) {
+      blocksInWay.push(block)
+      continue
+    }
+    // Check segment 3 (horizontal: midX,targetY to targetX,targetY)
+    if (segmentIntersectsBlock(midX, targetY, targetX, targetY, block, excludeBlockIds, margin)) {
+      blocksInWay.push(block)
+    }
+  }
+
+  // If no blocks in the way, return empty (use default 3-segment path)
+  if (blocksInWay.length === 0) {
+    return []
+  }
+
+  // Find the bounding box of all blocking blocks
+  let minBlockY = Infinity
+  let maxBlockY = -Infinity
+  let minBlockX = Infinity
+  let maxBlockX = -Infinity
+
+  for (const block of blocksInWay) {
+    const bounds = getBlockBounds(block, margin)
+    minBlockY = Math.min(minBlockY, bounds.top)
+    maxBlockY = Math.max(maxBlockY, bounds.bottom)
+    minBlockX = Math.min(minBlockX, bounds.left)
+    maxBlockX = Math.max(maxBlockX, bounds.right)
+  }
+
+  // Decide whether to route above or below the blocking blocks
+  const distanceAbove = sourceY - minBlockY
+  const distanceBelow = maxBlockY - sourceY
+
+  // Also consider target Y in the decision
+  const avgY = (sourceY + targetY) / 2
+
+  let routeY: number
+  if (avgY < (minBlockY + maxBlockY) / 2) {
+    // Route above (go to minBlockY - margin)
+    routeY = minBlockY - margin
+  } else {
+    // Route below (go to maxBlockY + margin)
+    routeY = maxBlockY + margin
+  }
+
+  // Special case: if source and target are at same Y and blocks are in between,
+  // we need to go around
+  if (Math.abs(sourceY - targetY) < 10) {
+    // Prefer routing above if there's more space
+    if (distanceAbove > distanceBelow) {
+      routeY = minBlockY - margin
+    } else {
+      routeY = maxBlockY + margin
+    }
+  }
+
+  // Generate waypoints to route around
+  // We create two waypoints:
+  // 1. One after leaving source block area to drop/rise to routeY
+  // 2. One before entering target block area to return to targetY
+
+  const wp1X = Math.min(sourceX + 30, midX)
+  const wp2X = Math.max(targetX - 30, midX)
+
+  // Ensure waypoints are snapped to grid (10px)
+  const snap = (v: number) => Math.round(v / 10) * 10
+
+  return [
+    { x: snap(wp1X), y: snap(routeY) },
+    { x: snap(wp2X), y: snap(routeY) },
+  ]
+}
+
+/**
  * Deep copy a subsystem's children and connections with new IDs
  */
 function deepCopySubsystemContents(
@@ -374,6 +539,7 @@ export function Editor() {
         waypoints: conn.waypoints || [],
         connectionId: conn.id,
         signalName: conn.signalName,
+        labelOffset: conn.labelOffset,
       },
     }))
   }, [model, currentConnections])
@@ -513,6 +679,7 @@ export function Editor() {
             waypoints: conn.waypoints || [],
             connectionId: conn.id,
             signalName: conn.signalName,
+            labelOffset: conn.labelOffset,
             isBranchTarget, // Pass to CustomEdge for additional visual feedback
             isHighlighted, // Pass for signal tracing highlighting
             onDragStateChange: setIsEdgeDragging, // Callback to track edge drag state
@@ -559,16 +726,52 @@ export function Editor() {
       if (params.source && params.target && params.sourceHandle && params.targetHandle) {
         // Push history before adding connection
         pushHistory()
+
+        // Calculate smart waypoints to avoid intersecting blocks
+        const sourceBlock = currentBlocks.find(b => b.id === params.source)
+        const targetBlock = currentBlocks.find(b => b.id === params.target)
+
+        let waypoints: Array<{ x: number; y: number }> | undefined
+
+        if (sourceBlock && targetBlock) {
+          // Get source port position (right side of block)
+          const sourcePort = sourceBlock.outputPorts.find(p => p.id === params.sourceHandle)
+          const sourcePortIndex = sourcePort ? sourceBlock.outputPorts.indexOf(sourcePort) : 0
+          const sourcePortCount = sourceBlock.outputPorts.length
+          const sourceX = sourceBlock.position.x + (sourceBlock.size?.width || 100)
+          const sourceY = sourceBlock.position.y + ((sourcePortIndex + 1) / (sourcePortCount + 1)) * (sourceBlock.size?.height || 50)
+
+          // Get target port position (left side of block)
+          const targetPort = targetBlock.inputPorts.find(p => p.id === params.targetHandle)
+          const targetPortIndex = targetPort ? targetBlock.inputPorts.indexOf(targetPort) : 0
+          const targetPortCount = targetBlock.inputPorts.length
+          const targetX = targetBlock.position.x
+          const targetY = targetBlock.position.y + ((targetPortIndex + 1) / (targetPortCount + 1)) * (targetBlock.size?.height || 50)
+
+          // Generate smart waypoints that avoid other blocks
+          const smartWaypoints = generateSmartWaypoints(
+            sourceX, sourceY,
+            targetX, targetY,
+            params.source, params.target,
+            currentBlocks
+          )
+
+          if (smartWaypoints.length > 0) {
+            waypoints = smartWaypoints
+          }
+        }
+
         // Add connection to model - the useEffect will sync edges automatically
         addConnection({
           sourceBlockId: params.source,
           sourcePortId: params.sourceHandle,
           targetBlockId: params.target,
           targetPortId: params.targetHandle,
+          waypoints,
         })
       }
     },
-    [addConnection, pushHistory]
+    [addConnection, pushHistory, currentBlocks]
   )
 
   // Track connection start info for branching detection

@@ -7,6 +7,7 @@ interface WaypointData {
   connectionId?: string
   label?: string
   signalName?: string
+  labelOffset?: { x: number; y: number }
   isBranchTarget?: boolean
   isHighlighted?: boolean
   onDragStateChange?: (isDragging: boolean) => void
@@ -54,6 +55,8 @@ function generateOrthogonalPath(
   waypoints: Array<{ x: number; y: number }>
 ): { path: string; segments: Segment[]; labelX: number; labelY: number } {
   const segments: Segment[] = []
+  // Collect all path points for center calculation
+  const pathPoints: Array<{ x: number; y: number }> = []
 
   if (waypoints.length === 0) {
     // No waypoints - create simple 3-segment orthogonal route
@@ -78,8 +81,10 @@ function generateOrthogonalPath(
       controlsWaypointIndex: -1, controlsCoordinate: 'y', insertWaypointAt: 0
     })
 
-    // Position label on the first horizontal segment (source side), offset below
-    return { path, segments, labelX: (sourceX + midX) / 2, labelY: sourceY }
+    // Calculate center of path (center of vertical segment since it's typically the longest/middle)
+    const labelX = midX
+    const labelY = (sourceY + targetY) / 2
+    return { path, segments, labelX, labelY }
   }
 
   // With waypoints, build a path that goes through each waypoint
@@ -89,12 +94,14 @@ function generateOrthogonalPath(
   let path = `M ${sourceX},${sourceY}`
   let prevX = sourceX
   let prevY = sourceY
+  pathPoints.push({ x: sourceX, y: sourceY })
 
   for (let i = 0; i < waypoints.length; i++) {
     const wp = waypoints[i]
 
     // Horizontal segment: from prevX to wp.x at prevY
     path += ` L ${wp.x},${prevY}`
+    pathPoints.push({ x: wp.x, y: prevY })
     segments.push({
       type: 'h',
       x1: prevX, y1: prevY, x2: wp.x, y2: prevY,
@@ -107,6 +114,7 @@ function generateOrthogonalPath(
 
     // Vertical segment: from prevY to wp.y at wp.x
     path += ` L ${wp.x},${wp.y}`
+    pathPoints.push({ x: wp.x, y: wp.y })
     segments.push({
       type: 'v',
       x1: wp.x, y1: prevY, x2: wp.x, y2: wp.y,
@@ -121,6 +129,7 @@ function generateOrthogonalPath(
 
   // Final horizontal segment: from last waypoint X to target X, at last waypoint's Y
   path += ` L ${targetX},${prevY}`
+  pathPoints.push({ x: targetX, y: prevY })
   segments.push({
     type: 'h',
     x1: prevX, y1: prevY, x2: targetX, y2: prevY,
@@ -132,6 +141,7 @@ function generateOrthogonalPath(
 
   // Final vertical segment: from last waypoint Y to target Y, at target X
   path += ` L ${targetX},${targetY}`
+  pathPoints.push({ x: targetX, y: targetY })
   segments.push({
     type: 'v',
     x1: targetX, y1: prevY, x2: targetX, y2: targetY,
@@ -141,13 +151,58 @@ function generateOrthogonalPath(
     insertWaypointAt: waypoints.length
   })
 
-  // Position label on the first horizontal segment (from source to first waypoint X)
-  // This is always horizontal and visible
-  const firstWp = waypoints[0]
-  const labelX = (sourceX + firstWp.x) / 2
-  const labelY = sourceY
+  // Calculate center of path by finding the point at half the total path length
+  const { labelX, labelY } = calculatePathCenter(pathPoints)
 
   return { path, segments, labelX, labelY }
+}
+
+/**
+ * Calculate the center point along a path (at half the total path length)
+ */
+function calculatePathCenter(points: Array<{ x: number; y: number }>): { labelX: number; labelY: number } {
+  if (points.length < 2) {
+    return { labelX: points[0]?.x || 0, labelY: points[0]?.y || 0 }
+  }
+
+  // Calculate total path length
+  let totalLength = 0
+  const segmentLengths: number[] = []
+  for (let i = 1; i < points.length; i++) {
+    const dx = points[i].x - points[i - 1].x
+    const dy = points[i].y - points[i - 1].y
+    const len = Math.abs(dx) + Math.abs(dy) // Manhattan distance for orthogonal paths
+    segmentLengths.push(len)
+    totalLength += len
+  }
+
+  // Find the point at half the total length
+  const halfLength = totalLength / 2
+  let accumulatedLength = 0
+
+  for (let i = 0; i < segmentLengths.length; i++) {
+    const segLen = segmentLengths[i]
+    if (accumulatedLength + segLen >= halfLength) {
+      // The center is on this segment
+      const remaining = halfLength - accumulatedLength
+      const ratio = segLen > 0 ? remaining / segLen : 0
+      const p1 = points[i]
+      const p2 = points[i + 1]
+      return {
+        labelX: p1.x + (p2.x - p1.x) * ratio,
+        labelY: p1.y + (p2.y - p1.y) * ratio
+      }
+    }
+    accumulatedLength += segLen
+  }
+
+  // Fallback: return midpoint of last segment
+  const last = points[points.length - 1]
+  const secondLast = points[points.length - 2]
+  return {
+    labelX: (last.x + secondLast.x) / 2,
+    labelY: (last.y + secondLast.y) / 2
+  }
 }
 
 
@@ -425,6 +480,111 @@ function DraggableSegment({
   )
 }
 
+// Draggable label component for signal names
+function DraggableLabel({
+  connectionId,
+  labelX,
+  labelY,
+  offset,
+  signalName,
+  onDragStart,
+  onDragEnd,
+}: {
+  connectionId: string
+  labelX: number
+  labelY: number
+  offset: { x: number; y: number }
+  signalName: string
+  onDragStart: () => void
+  onDragEnd: () => void
+}) {
+  const updateConnectionLabelOffset = useModelStore((state) => state.updateConnectionLabelOffset)
+  const pushHistory = useModelStore((state) => state.pushHistory)
+  const { screenToFlowPosition } = useReactFlow()
+  const [isDragging, setIsDragging] = useState(false)
+
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+      e.preventDefault()
+
+      const startClientX = e.clientX
+      const startClientY = e.clientY
+      const startOffset = { ...offset }
+      let hasMoved = false
+
+      const handleMouseMove = (moveEvent: MouseEvent) => {
+        const dx = moveEvent.clientX - startClientX
+        const dy = moveEvent.clientY - startClientY
+
+        if (!hasMoved && Math.abs(dx) < 3 && Math.abs(dy) < 3) {
+          return
+        }
+
+        if (!hasMoved) {
+          hasMoved = true
+          setIsDragging(true)
+          onDragStart()
+          pushHistory()
+        }
+
+        // Convert screen delta to flow delta (accounts for zoom)
+        const startFlowPos = screenToFlowPosition({ x: startClientX, y: startClientY })
+        const currentFlowPos = screenToFlowPosition({ x: moveEvent.clientX, y: moveEvent.clientY })
+        const flowDx = currentFlowPos.x - startFlowPos.x
+        const flowDy = currentFlowPos.y - startFlowPos.y
+
+        const newOffset = {
+          x: startOffset.x + flowDx,
+          y: startOffset.y + flowDy,
+        }
+        updateConnectionLabelOffset(connectionId, newOffset)
+      }
+
+      const handleMouseUp = () => {
+        if (hasMoved) {
+          setIsDragging(false)
+          onDragEnd()
+        }
+        document.removeEventListener('mousemove', handleMouseMove)
+        document.removeEventListener('mouseup', handleMouseUp)
+      }
+
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+    },
+    [connectionId, offset, screenToFlowPosition, updateConnectionLabelOffset, pushHistory, onDragStart, onDragEnd]
+  )
+
+  const finalX = labelX + offset.x
+  const finalY = labelY + offset.y
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        transform: `translate(-50%, -100%) translate(${finalX}px,${finalY - 4}px)`,
+        cursor: isDragging ? 'grabbing' : 'grab',
+        padding: '2px 6px',
+        borderRadius: 3,
+        backgroundColor: isDragging ? '#2d2d3d' : '#1e1e2e',
+        border: `1px solid ${isDragging ? '#89b4fa' : '#313244'}`,
+        color: '#89b4fa',
+        fontSize: '11px',
+        fontWeight: 500,
+        whiteSpace: 'nowrap',
+        zIndex: 10,
+        userSelect: 'none',
+        pointerEvents: 'all', // Required for EdgeLabelRenderer children to be interactive
+      }}
+      className="nodrag nopan"
+      onMouseDown={handleMouseDown}
+    >
+      {signalName}
+    </div>
+  )
+}
+
 function CustomEdgeComponent({
   id,
   sourceX,
@@ -442,6 +602,7 @@ function CustomEdgeComponent({
   labelBgBorderRadius,
 }: EdgeProps) {
   const [isWaypointDragging, setIsWaypointDragging] = useState(false)
+  const [isLabelDragging, setIsLabelDragging] = useState(false)
 
   const waypointData = data as WaypointData | undefined
   const waypoints = useMemo(
@@ -450,6 +611,7 @@ function CustomEdgeComponent({
   )
   const connectionId = waypointData?.connectionId || id
   const signalName = waypointData?.signalName || ''
+  const labelOffset = waypointData?.labelOffset || { x: 0, y: 0 }
   const isBranchTarget = waypointData?.isBranchTarget || false
   const isHighlighted = waypointData?.isHighlighted || false
   const onDragStateChange = waypointData?.onDragStateChange
@@ -532,34 +694,30 @@ function CustomEdgeComponent({
       ))}
       {/* Signal name label - show always if name exists, or show dimension label when selected */}
       <EdgeLabelRenderer>
-        {/* Signal name display (always visible if set) - positioned above the trace */}
+        {/* Signal name display (always visible if set) - positioned above the trace, draggable */}
         {signalName && (
-          <div
-            style={{
-              position: 'absolute',
-              transform: `translate(-50%, -100%) translate(${labelX}px,${labelY - 4}px)`,
-              pointerEvents: 'none',
-              padding: '2px 6px',
-              borderRadius: 3,
-              backgroundColor: '#1e1e2e',
-              border: '1px solid #313244',
-              color: '#89b4fa',
-              fontSize: '11px',
-              fontWeight: 500,
-              whiteSpace: 'nowrap',
-              zIndex: 10,
+          <DraggableLabel
+            connectionId={connectionId}
+            labelX={labelX}
+            labelY={labelY}
+            offset={labelOffset}
+            signalName={signalName}
+            onDragStart={() => {
+              setIsLabelDragging(true)
+              onDragStateChange?.(true)
             }}
-            className="nodrag nopan"
-          >
-            {signalName}
-          </div>
+            onDragEnd={() => {
+              setIsLabelDragging(false)
+              onDragStateChange?.(false)
+            }}
+          />
         )}
         {/* Dimension label when selected (signal dimension count) - positioned just below the trace */}
-        {selected && label && !isWaypointDragging && (
+        {selected && label && !isWaypointDragging && !isLabelDragging && (
           <div
             style={{
               position: 'absolute',
-              transform: `translate(-50%, 0%) translate(${labelX}px,${labelY + 2}px)`,
+              transform: `translate(-50%, 0%) translate(${labelX + labelOffset.x}px,${labelY + labelOffset.y + 2}px)`,
               pointerEvents: 'none',
               padding: `${padY}px ${padX}px`,
               borderRadius: labelBgBorderRadius || 4,

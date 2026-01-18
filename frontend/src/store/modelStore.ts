@@ -108,6 +108,7 @@ interface ModelState {
   removeConnectionWaypoint: (connectionId: string, waypointIndex: number) => void
   clearConnectionWaypoints: (connectionId: string) => void
   updateConnectionSignalName: (connectionId: string, signalName: string | undefined) => void
+  updateConnectionLabelOffset: (connectionId: string, offset: { x: number; y: number } | undefined) => void
 
   // Selection operations
   selectBlocks: (blockIds: string[]) => void
@@ -352,6 +353,52 @@ function updateConnectionSignalNameInHierarchy(
   const updateConnection = (conn: Connection): Connection => {
     if (conn.id !== connectionId) return conn
     return { ...conn, signalName }
+  }
+
+  if (path.length === 0) {
+    return { ...model, connections: model.connections.map(updateConnection) }
+  }
+
+  // Need to update connection inside a subsystem
+  const updateSubsystem = (blocks: BlockInstance[], remainingPath: SubsystemPathItem[]): BlockInstance[] => {
+    if (remainingPath.length === 0) return blocks
+
+    const [first, ...rest] = remainingPath
+    return blocks.map(b => {
+      if (b.id === first.id && b.type === 'subsystem') {
+        if (rest.length === 0) {
+          // This is the target subsystem
+          return {
+            ...b,
+            childConnections: (b.childConnections || []).map(updateConnection)
+          }
+        } else {
+          // Go deeper
+          return {
+            ...b,
+            children: updateSubsystem(b.children || [], rest)
+          }
+        }
+      }
+      return b
+    })
+  }
+
+  return { ...model, blocks: updateSubsystem(model.blocks, path) }
+}
+
+/**
+ * Update a connection's label offset in hierarchy (for draggable labels)
+ */
+function updateConnectionLabelOffsetInHierarchy(
+  model: Model,
+  path: SubsystemPathItem[],
+  connectionId: string,
+  offset: { x: number; y: number } | undefined
+): Model {
+  const updateConnection = (conn: Connection): Connection => {
+    if (conn.id !== connectionId) return conn
+    return { ...conn, labelOffset: offset }
   }
 
   if (path.length === 0) {
@@ -1103,6 +1150,16 @@ export const useModelStore = create<ModelState>((set, get) => ({
 
     set({
       model: updateConnectionSignalNameInHierarchy(model, currentPath, connectionId, signalName),
+      isDirty: true,
+    })
+  },
+
+  updateConnectionLabelOffset: (connectionId: string, offset: { x: number; y: number } | undefined) => {
+    const { model, currentPath } = get()
+    if (!model) return
+
+    set({
+      model: updateConnectionLabelOffsetInHierarchy(model, currentPath, connectionId, offset),
       isDirty: true,
     })
   },
