@@ -108,7 +108,7 @@ interface ModelState {
   removeConnectionWaypoint: (connectionId: string, waypointIndex: number) => void
   clearConnectionWaypoints: (connectionId: string) => void
   updateConnectionSignalName: (connectionId: string, signalName: string | undefined) => void
-  updateConnectionLabelOffset: (connectionId: string, offset: { x: number; y: number } | undefined) => void
+  updateConnectionLabelOffset: (connectionId: string, offset: { t: number; perpOffset: number } | undefined) => void
 
   // Selection operations
   selectBlocks: (blockIds: string[]) => void
@@ -389,12 +389,13 @@ function updateConnectionSignalNameInHierarchy(
 
 /**
  * Update a connection's label offset in hierarchy (for draggable labels)
+ * offset: { t: position along path 0-1, perpOffset: perpendicular offset in pixels }
  */
 function updateConnectionLabelOffsetInHierarchy(
   model: Model,
   path: SubsystemPathItem[],
   connectionId: string,
-  offset: { x: number; y: number } | undefined
+  offset: { t: number; perpOffset: number } | undefined
 ): Model {
   const updateConnection = (conn: Connection): Connection => {
     if (conn.id !== connectionId) return conn
@@ -1154,7 +1155,7 @@ export const useModelStore = create<ModelState>((set, get) => ({
     })
   },
 
-  updateConnectionLabelOffset: (connectionId: string, offset: { x: number; y: number } | undefined) => {
+  updateConnectionLabelOffset: (connectionId: string, offset: { t: number; perpOffset: number } | undefined) => {
     const { model, currentPath } = get()
     if (!model) return
 

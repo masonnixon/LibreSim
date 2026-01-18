@@ -7,7 +7,8 @@ interface WaypointData {
   connectionId?: string
   label?: string
   signalName?: string
-  labelOffset?: { x: number; y: number }
+  // t: position along path (0-1), perpOffset: perpendicular offset in pixels
+  labelOffset?: { t: number; perpOffset: number }
   isBranchTarget?: boolean
   isHighlighted?: boolean
   onDragStateChange?: (isDragging: boolean) => void
@@ -53,9 +54,9 @@ function generateOrthogonalPath(
   targetX: number,
   targetY: number,
   waypoints: Array<{ x: number; y: number }>
-): { path: string; segments: Segment[]; labelX: number; labelY: number } {
+): { path: string; segments: Segment[]; labelX: number; labelY: number; pathPoints: Array<{ x: number; y: number }> } {
   const segments: Segment[] = []
-  // Collect all path points for center calculation
+  // Collect all path points for center calculation and label positioning
   const pathPoints: Array<{ x: number; y: number }> = []
 
   if (waypoints.length === 0) {
@@ -64,6 +65,12 @@ function generateOrthogonalPath(
     const midX = (sourceX + targetX) / 2
 
     const path = `M ${sourceX},${sourceY} L ${midX},${sourceY} L ${midX},${targetY} L ${targetX},${targetY}`
+
+    // Build path points for this simple case
+    pathPoints.push({ x: sourceX, y: sourceY })
+    pathPoints.push({ x: midX, y: sourceY })
+    pathPoints.push({ x: midX, y: targetY })
+    pathPoints.push({ x: targetX, y: targetY })
 
     // Segment 0: horizontal from source to midX - NOT draggable (output port segment per Simulink)
     segments.push({
@@ -84,7 +91,7 @@ function generateOrthogonalPath(
     // Calculate center of path (center of vertical segment since it's typically the longest/middle)
     const labelX = midX
     const labelY = (sourceY + targetY) / 2
-    return { path, segments, labelX, labelY }
+    return { path, segments, labelX, labelY, pathPoints }
   }
 
   // With waypoints, build a path that goes through each waypoint
@@ -154,7 +161,7 @@ function generateOrthogonalPath(
   // Calculate center of path by finding the point at half the total path length
   const { labelX, labelY } = calculatePathCenter(pathPoints)
 
-  return { path, segments, labelX, labelY }
+  return { path, segments, labelX, labelY, pathPoints }
 }
 
 /**
@@ -480,20 +487,156 @@ function DraggableSegment({
   )
 }
 
-// Draggable label component for signal names
+// Maximum perpendicular offset from the path in pixels
+const MAX_PERP_OFFSET = 25
+
+/**
+ * Get position and direction at a given t value (0-1) along the path
+ */
+function getPositionOnPath(
+  pathPoints: Array<{ x: number; y: number }>,
+  t: number
+): { x: number; y: number; perpX: number; perpY: number } {
+  if (pathPoints.length < 2) {
+    return { x: pathPoints[0]?.x || 0, y: pathPoints[0]?.y || 0, perpX: 0, perpY: -1 }
+  }
+
+  // Calculate total path length
+  let totalLength = 0
+  const segmentLengths: number[] = []
+  for (let i = 1; i < pathPoints.length; i++) {
+    const dx = pathPoints[i].x - pathPoints[i - 1].x
+    const dy = pathPoints[i].y - pathPoints[i - 1].y
+    const len = Math.abs(dx) + Math.abs(dy) // Manhattan distance
+    segmentLengths.push(len)
+    totalLength += len
+  }
+
+  // Find position at t * totalLength
+  const targetLength = Math.max(0, Math.min(1, t)) * totalLength
+  let accumulatedLength = 0
+
+  for (let i = 0; i < segmentLengths.length; i++) {
+    const segLen = segmentLengths[i]
+    if (accumulatedLength + segLen >= targetLength || i === segmentLengths.length - 1) {
+      const remaining = targetLength - accumulatedLength
+      const ratio = segLen > 0 ? remaining / segLen : 0
+      const p1 = pathPoints[i]
+      const p2 = pathPoints[i + 1]
+      const dx = p2.x - p1.x
+      const dy = p2.y - p1.y
+
+      // Calculate perpendicular direction (rotate 90 degrees CCW)
+      // For horizontal segment (dy=0): perp is (0, -1) pointing up
+      // For vertical segment (dx=0): perp is (-1, 0) pointing left
+      let perpX = 0, perpY = -1
+      if (Math.abs(dx) > Math.abs(dy)) {
+        // Horizontal segment - perpendicular points up
+        perpX = 0
+        perpY = -1
+      } else {
+        // Vertical segment - perpendicular points left
+        perpX = -1
+        perpY = 0
+      }
+
+      return {
+        x: p1.x + dx * ratio,
+        y: p1.y + dy * ratio,
+        perpX,
+        perpY
+      }
+    }
+    accumulatedLength += segLen
+  }
+
+  // Fallback
+  const last = pathPoints[pathPoints.length - 1]
+  return { x: last.x, y: last.y, perpX: 0, perpY: -1 }
+}
+
+/**
+ * Find the closest point on the path to a given position
+ * Returns t value (0-1) and perpendicular distance
+ */
+function projectOntoPath(
+  pathPoints: Array<{ x: number; y: number }>,
+  px: number,
+  py: number
+): { t: number; perpOffset: number } {
+  if (pathPoints.length < 2) {
+    return { t: 0.5, perpOffset: 0 }
+  }
+
+  // Calculate total path length and find closest point
+  let totalLength = 0
+  const segmentLengths: number[] = []
+  for (let i = 1; i < pathPoints.length; i++) {
+    const dx = pathPoints[i].x - pathPoints[i - 1].x
+    const dy = pathPoints[i].y - pathPoints[i - 1].y
+    const len = Math.abs(dx) + Math.abs(dy)
+    segmentLengths.push(len)
+    totalLength += len
+  }
+
+  let bestT = 0.5
+  let bestDist = Infinity
+  let bestPerpOffset = 0
+  let accumulatedLength = 0
+
+  for (let i = 0; i < segmentLengths.length; i++) {
+    const p1 = pathPoints[i]
+    const p2 = pathPoints[i + 1]
+    const segLen = segmentLengths[i]
+
+    // For orthogonal paths, project onto the segment
+    const dx = p2.x - p1.x
+    const dy = p2.y - p1.y
+
+    let projT: number // 0-1 along this segment
+    let closestX: number, closestY: number
+    let perpOffset: number
+
+    if (Math.abs(dx) > Math.abs(dy)) {
+      // Horizontal segment
+      projT = dx !== 0 ? Math.max(0, Math.min(1, (px - p1.x) / dx)) : 0
+      closestX = p1.x + dx * projT
+      closestY = p1.y
+      perpOffset = py - closestY // positive = below, negative = above
+    } else {
+      // Vertical segment
+      projT = dy !== 0 ? Math.max(0, Math.min(1, (py - p1.y) / dy)) : 0
+      closestX = p1.x
+      closestY = p1.y + dy * projT
+      perpOffset = px - closestX // positive = right, negative = left
+    }
+
+    const dist = Math.abs(px - closestX) + Math.abs(py - closestY)
+
+    if (dist < bestDist) {
+      bestDist = dist
+      bestT = totalLength > 0 ? (accumulatedLength + projT * segLen) / totalLength : 0.5
+      bestPerpOffset = perpOffset
+    }
+
+    accumulatedLength += segLen
+  }
+
+  return { t: bestT, perpOffset: bestPerpOffset }
+}
+
+// Draggable label component for signal names - tethered to the path
 function DraggableLabel({
   connectionId,
-  labelX,
-  labelY,
+  pathPoints,
   offset,
   signalName,
   onDragStart,
   onDragEnd,
 }: {
   connectionId: string
-  labelX: number
-  labelY: number
-  offset: { x: number; y: number }
+  pathPoints: Array<{ x: number; y: number }>
+  offset: { t: number; perpOffset: number }
   signalName: string
   onDragStart: () => void
   onDragEnd: () => void
@@ -503,6 +646,15 @@ function DraggableLabel({
   const { screenToFlowPosition } = useReactFlow()
   const [isDragging, setIsDragging] = useState(false)
 
+  // Calculate label position from t and perpOffset
+  const { x: pathX, y: pathY, perpX, perpY } = useMemo(
+    () => getPositionOnPath(pathPoints, offset.t),
+    [pathPoints, offset.t]
+  )
+
+  const finalX = pathX + perpX * offset.perpOffset
+  const finalY = pathY + perpY * offset.perpOffset
+
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation()
@@ -510,7 +662,6 @@ function DraggableLabel({
 
       const startClientX = e.clientX
       const startClientY = e.clientY
-      const startOffset = { ...offset }
       let hasMoved = false
 
       const handleMouseMove = (moveEvent: MouseEvent) => {
@@ -528,17 +679,16 @@ function DraggableLabel({
           pushHistory()
         }
 
-        // Convert screen delta to flow delta (accounts for zoom)
-        const startFlowPos = screenToFlowPosition({ x: startClientX, y: startClientY })
-        const currentFlowPos = screenToFlowPosition({ x: moveEvent.clientX, y: moveEvent.clientY })
-        const flowDx = currentFlowPos.x - startFlowPos.x
-        const flowDy = currentFlowPos.y - startFlowPos.y
+        // Convert mouse position to flow coordinates
+        const flowPos = screenToFlowPosition({ x: moveEvent.clientX, y: moveEvent.clientY })
 
-        const newOffset = {
-          x: startOffset.x + flowDx,
-          y: startOffset.y + flowDy,
-        }
-        updateConnectionLabelOffset(connectionId, newOffset)
+        // Project onto path to get new t and perpOffset
+        const { t, perpOffset: rawPerpOffset } = projectOntoPath(pathPoints, flowPos.x, flowPos.y)
+
+        // Constrain perpendicular offset
+        const constrainedPerpOffset = Math.max(-MAX_PERP_OFFSET, Math.min(MAX_PERP_OFFSET, rawPerpOffset))
+
+        updateConnectionLabelOffset(connectionId, { t, perpOffset: constrainedPerpOffset })
       }
 
       const handleMouseUp = () => {
@@ -553,11 +703,8 @@ function DraggableLabel({
       document.addEventListener('mousemove', handleMouseMove)
       document.addEventListener('mouseup', handleMouseUp)
     },
-    [connectionId, offset, screenToFlowPosition, updateConnectionLabelOffset, pushHistory, onDragStart, onDragEnd]
+    [connectionId, pathPoints, screenToFlowPosition, updateConnectionLabelOffset, pushHistory, onDragStart, onDragEnd]
   )
-
-  const finalX = labelX + offset.x
-  const finalY = labelY + offset.y
 
   return (
     <div
@@ -611,7 +758,9 @@ function CustomEdgeComponent({
   )
   const connectionId = waypointData?.connectionId || id
   const signalName = waypointData?.signalName || ''
-  const labelOffset = waypointData?.labelOffset || { x: 0, y: 0 }
+  // labelOffset: { t: position along path 0-1, perpOffset: perpendicular offset in pixels }
+  // Default to center (t=0.5) with no perpendicular offset
+  const labelOffset = waypointData?.labelOffset || { t: 0.5, perpOffset: 0 }
   const isBranchTarget = waypointData?.isBranchTarget || false
   const isHighlighted = waypointData?.isHighlighted || false
   const onDragStateChange = waypointData?.onDragStateChange
@@ -621,7 +770,7 @@ function CustomEdgeComponent({
   const padY = Array.isArray(labelBgPadding) ? labelBgPadding[1] : (labelBgPadding || 4)
 
   // Generate orthogonal path
-  const { path: edgePath, segments, labelX, labelY } = useMemo(() => {
+  const { path: edgePath, segments, labelX, labelY, pathPoints } = useMemo(() => {
     return generateOrthogonalPath(sourceX, sourceY, targetX, targetY, waypoints)
   }, [sourceX, sourceY, targetX, targetY, waypoints])
 
@@ -694,12 +843,11 @@ function CustomEdgeComponent({
       ))}
       {/* Signal name label - show always if name exists, or show dimension label when selected */}
       <EdgeLabelRenderer>
-        {/* Signal name display (always visible if set) - positioned above the trace, draggable */}
+        {/* Signal name display (always visible if set) - positioned along the trace, draggable */}
         {signalName && (
           <DraggableLabel
             connectionId={connectionId}
-            labelX={labelX}
-            labelY={labelY}
+            pathPoints={pathPoints}
             offset={labelOffset}
             signalName={signalName}
             onDragStart={() => {
@@ -712,12 +860,12 @@ function CustomEdgeComponent({
             }}
           />
         )}
-        {/* Dimension label when selected (signal dimension count) - positioned just below the trace */}
+        {/* Dimension label when selected (signal dimension count) - positioned at path center */}
         {selected && label && !isWaypointDragging && !isLabelDragging && (
           <div
             style={{
               position: 'absolute',
-              transform: `translate(-50%, 0%) translate(${labelX + labelOffset.x}px,${labelY + labelOffset.y + 2}px)`,
+              transform: `translate(-50%, 0%) translate(${labelX}px,${labelY + 2}px)`,
               pointerEvents: 'none',
               padding: `${padY}px ${padX}px`,
               borderRadius: labelBgBorderRadius || 4,

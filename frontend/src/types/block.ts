@@ -80,6 +80,8 @@ export interface Connection {
   waypoints?: Array<{ x: number; y: number }>
   // Optional signal name (displayed on double-click edit, per Simulink behavior)
   signalName?: string
-  // Optional label offset from default center position (for draggable labels)
-  labelOffset?: { x: number; y: number }
+  // Optional label position along the path (for draggable labels)
+  // t: position along path (0 = start, 1 = end, 0.5 = center/default)
+  // perpOffset: perpendicular offset from path in pixels (constrained to small range)
+  labelOffset?: { t: number; perpOffset: number }
 }
