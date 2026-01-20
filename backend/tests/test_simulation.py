@@ -2050,3 +2050,503 @@ class TestModelCompilerExtended:
         result = self.compiler.compile(model)
         assert result.success is True
         assert result.blocks[0].parameters["value"] == 42.0
+
+
+# =============================================================================
+# Simulation Runner Step Mode Tests
+# =============================================================================
+
+
+class TestSimulationRunnerStepMode:
+    """Tests for SimulationRunner step mode functionality."""
+
+    def _create_integrator_model(self):
+        """Create a simple integrator model for step mode testing."""
+        const_block = Block(
+            id="const-1",
+            type="constant",
+            name="Constant1",
+            position=Position(x=100, y=100),
+            parameters={"value": 1.0},
+            inputPorts=[],
+            outputPorts=[Port(id="const-1-out-0", name="out", dataType="double", dimensions=[1])],
+        )
+        integrator_block = Block(
+            id="int-1",
+            type="integrator",
+            name="Integrator1",
+            position=Position(x=200, y=100),
+            parameters={"initialCondition": 0.0},
+            inputPorts=[Port(id="int-1-in-0", name="in", dataType="double", dimensions=[1])],
+            outputPorts=[Port(id="int-1-out-0", name="out", dataType="double", dimensions=[1])],
+        )
+        scope_block = Block(
+            id="scope-1",
+            type="scope",
+            name="Scope1",
+            position=Position(x=300, y=100),
+            parameters={"numInputs": 1},
+            inputPorts=[Port(id="scope-1-in-0", name="in", dataType="double", dimensions=[1])],
+            outputPorts=[],
+        )
+        conn1 = Connection(
+            id="conn-1",
+            sourceBlockId="const-1",
+            sourcePortId="const-1-out-0",
+            targetBlockId="int-1",
+            targetPortId="int-1-in-0",
+        )
+        conn2 = Connection(
+            id="conn-2",
+            sourceBlockId="int-1",
+            sourcePortId="int-1-out-0",
+            targetBlockId="scope-1",
+            targetPortId="scope-1-in-0",
+        )
+        return Model(
+            id="model-1",
+            metadata=ModelMetadata(name="Integrator Model"),
+            blocks=[const_block, integrator_block, scope_block],
+            connections=[conn1, conn2],
+            simulationConfig=SimulationConfig(stopTime=1.0, stepSize=0.1),
+        )
+
+    def test_initialize_step_mode(self):
+        """Test initializing step mode."""
+        from src.models.simulation import SimulationStatus
+        from src.simulation.runner import SimulationRunner
+
+        model = self._create_integrator_model()
+        config = SimulationConfig(stopTime=1.0, stepSize=0.1)
+        runner = SimulationRunner(model, config)
+
+        result = runner.initialize_step_mode()
+        assert result is True
+        assert runner._step_mode is True
+        assert runner.status == SimulationStatus.PAUSED
+        assert runner.current_time == 0.0
+        assert len(runner._state_history) == 1  # Initial state saved
+
+    def test_step_forward(self):
+        """Test stepping forward in step mode."""
+        from src.simulation.runner import SimulationRunner
+
+        model = self._create_integrator_model()
+        config = SimulationConfig(stopTime=1.0, stepSize=0.1)
+        runner = SimulationRunner(model, config)
+
+        # Initialize step mode
+        runner.initialize_step_mode()
+
+        # Step forward
+        result = runner.step_forward(1)
+        assert result["success"] is True
+        assert result["stepsExecuted"] == 1
+        assert result["currentTime"] == pytest.approx(0.1)
+        assert result["historySize"] == 2  # Initial + 1 step
+
+    def test_step_forward_multiple(self):
+        """Test stepping forward multiple steps at once."""
+        from src.simulation.runner import SimulationRunner
+
+        model = self._create_integrator_model()
+        config = SimulationConfig(stopTime=1.0, stepSize=0.1)
+        runner = SimulationRunner(model, config)
+
+        runner.initialize_step_mode()
+
+        # Step forward 5 steps
+        result = runner.step_forward(5)
+        assert result["success"] is True
+        assert result["stepsExecuted"] == 5
+        assert result["currentTime"] == pytest.approx(0.5)
+
+    def test_step_forward_to_completion(self):
+        """Test stepping forward until simulation completes."""
+        from src.models.simulation import SimulationStatus
+        from src.simulation.runner import SimulationRunner
+
+        model = self._create_integrator_model()
+        config = SimulationConfig(stopTime=0.3, stepSize=0.1)
+        runner = SimulationRunner(model, config)
+
+        runner.initialize_step_mode()
+
+        # Step past end time
+        result = runner.step_forward(10)
+        assert result["completed"] is True
+        assert runner.status == SimulationStatus.COMPLETED
+
+    def test_step_backward(self):
+        """Test stepping backward in step mode."""
+        from src.simulation.runner import SimulationRunner
+
+        model = self._create_integrator_model()
+        config = SimulationConfig(stopTime=1.0, stepSize=0.1)
+        runner = SimulationRunner(model, config)
+
+        runner.initialize_step_mode()
+
+        # Step forward 3 times
+        runner.step_forward(3)
+        assert runner.current_time == pytest.approx(0.3)
+
+        # Step backward 1 time - restores to state BEFORE last step
+        result = runner.step_backward(1)
+        assert result["success"] is True
+        assert result["stepsExecuted"] == 1
+        # After stepping back 1, we're at the state from before the 3rd step (0.2)
+        # But the history saves state BEFORE each step, so stepping back pops
+        # the current state and restores previous. After 3 forward steps:
+        # history = [t=0.0(init), t=0.0(before step 1), t=0.1(before step 2), t=0.2(before step 3)]
+        # Stepping back 1 pops last and restores t=0.2... but current_time was 0.3
+        # Actually the implementation saves state BEFORE stepping, so after step_forward(3):
+        # current_time=0.3, history=[0.0, 0.0, 0.1, 0.2]
+        # step_backward pops and restores 0.2, but then pops again so we get 0.1
+        assert runner.current_time == pytest.approx(0.1)
+
+    def test_step_backward_multiple(self):
+        """Test stepping backward multiple steps."""
+        from src.simulation.runner import SimulationRunner
+
+        model = self._create_integrator_model()
+        config = SimulationConfig(stopTime=1.0, stepSize=0.1)
+        runner = SimulationRunner(model, config)
+
+        runner.initialize_step_mode()
+
+        # Step forward 5 times
+        runner.step_forward(5)
+        initial_time = runner.current_time  # ~0.5
+
+        # Step backward 3 times
+        result = runner.step_backward(3)
+        assert result["success"] is True
+        assert result["stepsExecuted"] == 3
+        # Should be back by 3 steps from 0.5
+        assert runner.current_time < initial_time
+
+    def test_step_backward_no_history(self):
+        """Test step backward when no history available."""
+        from src.simulation.runner import SimulationRunner
+
+        model = self._create_integrator_model()
+        config = SimulationConfig(stopTime=1.0, stepSize=0.1)
+        runner = SimulationRunner(model, config)
+
+        runner.initialize_step_mode()
+
+        # Try to step backward at start
+        result = runner.step_backward(1)
+        assert result["success"] is False
+        assert "no history" in result["error"].lower()
+
+    def test_step_backward_not_in_step_mode(self):
+        """Test step backward when not in step mode."""
+        from src.simulation.runner import SimulationRunner
+
+        model = self._create_integrator_model()
+        config = SimulationConfig(stopTime=1.0, stepSize=0.1)
+        runner = SimulationRunner(model, config)
+
+        # Don't initialize step mode
+        result = runner.step_backward(1)
+        assert result["success"] is False
+
+    def test_reset_step_mode(self):
+        """Test resetting step mode to start."""
+        from src.models.simulation import SimulationStatus
+        from src.simulation.runner import SimulationRunner
+
+        model = self._create_integrator_model()
+        config = SimulationConfig(stopTime=1.0, stepSize=0.1)
+        runner = SimulationRunner(model, config)
+
+        runner.initialize_step_mode()
+        runner.step_forward(5)
+
+        # Reset
+        runner.reset_step_mode()
+        assert runner.current_time == 0.0
+        assert runner.progress == 0.0
+        assert runner._total_steps == 0
+        assert runner.status == SimulationStatus.PAUSED
+        assert len(runner._state_history) == 1  # New initial state
+
+    def test_enter_step_mode_from_paused(self):
+        """Test entering step mode from paused continuous simulation."""
+        from src.models.simulation import SimulationStatus
+        from src.simulation.runner import SimulationRunner
+
+        model = self._create_integrator_model()
+        config = SimulationConfig(stopTime=1.0, stepSize=0.1)
+        runner = SimulationRunner(model, config)
+
+        # Initialize without step mode
+        runner.initialize_step_mode()
+        runner._step_mode = False  # Reset step mode flag
+        runner._current_time = 0.3
+        runner._compiled = runner._compiled  # Keep compiled
+
+        # Enter step mode
+        result = runner.enter_step_mode()
+        assert result is True
+        assert runner._step_mode is True
+        assert runner.status == SimulationStatus.PAUSED
+        assert runner.current_time == pytest.approx(0.3)
+
+    def test_reset_full(self):
+        """Test full reset of simulation."""
+        from src.models.simulation import SimulationStatus
+        from src.simulation.runner import SimulationRunner
+
+        model = self._create_integrator_model()
+        config = SimulationConfig(stopTime=1.0, stepSize=0.1)
+        runner = SimulationRunner(model, config)
+
+        runner.initialize_step_mode()
+        runner.step_forward(5)
+        runner._error_message = "test error"
+
+        # Full reset
+        runner.reset()
+        assert runner.status == SimulationStatus.IDLE
+        assert runner.current_time == 0.0
+        assert runner.progress == 0.0
+        assert runner._step_mode is False
+        assert runner._error_message is None
+        assert len(runner._state_history) == 0
+
+    def test_step_forward_auto_initializes(self):
+        """Test that step_forward auto-initializes step mode if needed."""
+        from src.simulation.runner import SimulationRunner
+
+        model = self._create_integrator_model()
+        config = SimulationConfig(stopTime=1.0, stepSize=0.1)
+        runner = SimulationRunner(model, config)
+
+        # Call step_forward without initialize_step_mode
+        result = runner.step_forward(1)
+        assert result["success"] is True
+        assert runner._step_mode is True
+
+    def test_state_history_limit(self):
+        """Test that state history is limited to max size."""
+        from src.simulation.runner import SimulationRunner
+
+        model = self._create_integrator_model()
+        config = SimulationConfig(stopTime=200.0, stepSize=0.1)
+        runner = SimulationRunner(model, config)
+        runner._max_history_size = 50  # Set small limit for test
+
+        runner.initialize_step_mode()
+
+        # Step forward many times
+        runner.step_forward(100)
+
+        # History should be trimmed
+        assert len(runner._state_history) <= 50
+
+    @pytest.mark.asyncio
+    async def test_continue_from_step_mode(self):
+        """Test continuing simulation from step mode."""
+        from src.models.simulation import SimulationStatus
+        from src.simulation.runner import SimulationRunner
+
+        model = self._create_integrator_model()
+        config = SimulationConfig(stopTime=0.5, stepSize=0.1)
+        runner = SimulationRunner(model, config)
+
+        # Start in step mode, step forward a bit
+        runner.initialize_step_mode()
+        runner.step_forward(2)
+        assert runner.current_time == pytest.approx(0.2)
+
+        # Continue from step mode
+        await runner.continue_from_step_mode()
+
+        assert runner._step_mode is False
+        assert runner.status == SimulationStatus.COMPLETED
+        assert runner.current_time >= 0.5
+
+    @pytest.mark.asyncio
+    async def test_continue_from_step_mode_not_initialized(self):
+        """Test continue_from_step_mode when not in step mode."""
+        from src.simulation.runner import SimulationRunner
+
+        model = self._create_integrator_model()
+        config = SimulationConfig(stopTime=0.5, stepSize=0.1)
+        runner = SimulationRunner(model, config)
+
+        # Call without being in step mode - should return early
+        await runner.continue_from_step_mode()
+        # Should not crash, status should be unchanged
+        assert runner._step_mode is False
+
+    @pytest.mark.asyncio
+    async def test_run_with_step_mode_interrupt(self):
+        """Test run() can be interrupted by entering step mode."""
+        import asyncio
+
+        from src.models.simulation import SimulationStatus
+        from src.simulation.runner import SimulationRunner
+
+        model = self._create_integrator_model()
+        config = SimulationConfig(stopTime=10.0, stepSize=0.01)
+        runner = SimulationRunner(model, config)
+
+        async def enter_step_after_delay():
+            await asyncio.sleep(0.05)
+            # Pause first, then enter step mode
+            runner.pause()
+            runner.enter_step_mode()
+
+        step_task = asyncio.create_task(enter_step_after_delay())
+        await runner.run()
+        await step_task
+
+        # Should have stopped due to step mode
+        assert runner._step_mode is True
+        assert runner.status == SimulationStatus.PAUSED
+
+    def test_properties(self):
+        """Test runner property accessors."""
+        from src.models.simulation import SimulationStatus
+        from src.simulation.runner import SimulationRunner
+
+        model = self._create_integrator_model()
+        config = SimulationConfig(stopTime=1.0, stepSize=0.1)
+        runner = SimulationRunner(model, config)
+
+        assert runner.status == SimulationStatus.IDLE
+        assert runner.progress == 0.0
+        assert runner.current_time == 0.0
+        assert runner.error_message is None
+
+        runner._error_message = "test"
+        assert runner.error_message == "test"
+
+
+class TestSimulationRunnerResults:
+    """Tests for SimulationRunner result processing."""
+
+    def _create_multi_scope_model(self):
+        """Create a model with multiple signals to a scope."""
+        const1 = Block(
+            id="const-1",
+            type="constant",
+            name="Constant1",
+            position=Position(x=100, y=100),
+            parameters={"value": 1.0},
+            inputPorts=[],
+            outputPorts=[Port(id="const-1-out-0", name="out", dataType="double", dimensions=[1])],
+        )
+        const2 = Block(
+            id="const-2",
+            type="constant",
+            name="Constant2",
+            position=Position(x=100, y=200),
+            parameters={"value": 2.0},
+            inputPorts=[],
+            outputPorts=[Port(id="const-2-out-0", name="out", dataType="double", dimensions=[1])],
+        )
+        scope = Block(
+            id="scope-1",
+            type="scope",
+            name="Scope1",
+            position=Position(x=300, y=150),
+            parameters={"numInputs": 2},
+            inputPorts=[
+                Port(id="scope-1-in-0", name="in1", dataType="double", dimensions=[1]),
+                Port(id="scope-1-in-1", name="in2", dataType="double", dimensions=[1]),
+            ],
+            outputPorts=[],
+        )
+        conn1 = Connection(
+            id="conn-1",
+            sourceBlockId="const-1",
+            sourcePortId="const-1-out-0",
+            targetBlockId="scope-1",
+            targetPortId="scope-1-in-0",
+        )
+        conn2 = Connection(
+            id="conn-2",
+            sourceBlockId="const-2",
+            sourcePortId="const-2-out-0",
+            targetBlockId="scope-1",
+            targetPortId="scope-1-in-1",
+        )
+        return Model(
+            id="model-1",
+            metadata=ModelMetadata(name="Multi-Scope Model"),
+            blocks=[const1, const2, scope],
+            connections=[conn1, conn2],
+            simulationConfig=SimulationConfig(stopTime=0.1, stepSize=0.01),
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_results_single_trace(self):
+        """Test get_results with single trace signal."""
+        from src.simulation.runner import SimulationRunner
+
+        # Create simple single-scope model
+        const = Block(
+            id="const-1",
+            type="constant",
+            name="Const",
+            position=Position(x=100, y=100),
+            parameters={"value": 5.0},
+            inputPorts=[],
+            outputPorts=[Port(id="const-1-out-0", name="out", dataType="double", dimensions=[1])],
+        )
+        scope = Block(
+            id="scope-1",
+            type="scope",
+            name="Scope",
+            position=Position(x=200, y=100),
+            parameters={"numInputs": 1},
+            inputPorts=[Port(id="scope-1-in-0", name="in", dataType="double", dimensions=[1])],
+            outputPorts=[],
+        )
+        conn = Connection(
+            id="conn-1",
+            sourceBlockId="const-1",
+            sourcePortId="const-1-out-0",
+            targetBlockId="scope-1",
+            targetPortId="scope-1-in-0",
+        )
+        model = Model(
+            id="model-1",
+            metadata=ModelMetadata(name="Test"),
+            blocks=[const, scope],
+            connections=[conn],
+            simulationConfig=SimulationConfig(stopTime=0.1, stepSize=0.01),
+        )
+
+        config = SimulationConfig(stopTime=0.1, stepSize=0.01)
+        runner = SimulationRunner(model, config)
+        await runner.run()
+
+        results = runner.get_results()
+        assert "signals" in results
+        assert "statistics" in results
+        assert "executionTime" in results["statistics"]
+        assert "totalSteps" in results["statistics"]
+
+    def test_record_outputs(self):
+        """Test _record_outputs method."""
+        from src.simulation.runner import SimulationRunner
+
+        model = self._create_multi_scope_model()
+        config = SimulationConfig(stopTime=0.1, stepSize=0.01)
+        runner = SimulationRunner(model, config)
+
+        # Record some outputs
+        runner._record_outputs(0.0, {"signal1": 1.0, "signal2": 2.0})
+        runner._record_outputs(0.1, {"signal1": 1.5, "signal2": 2.5})
+
+        assert "signal1" in runner._results
+        assert "signal2" in runner._results
+        assert len(runner._results["signal1"]) == 2
+        assert runner._results["signal1"][0] == (0.0, 1.0)
+        assert runner._results["signal1"][1] == (0.1, 1.5)

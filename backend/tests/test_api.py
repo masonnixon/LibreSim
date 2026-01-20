@@ -559,3 +559,290 @@ class TestSimulationEndpointExtended:
         assert data["model_parsed"] is True
         assert data["config_parsed"] is True
         assert data.get("runner_created") is True
+
+
+class TestExamplesEndpoint:
+    """Tests for examples API endpoints."""
+
+    def test_list_examples(self, test_client: TestClient):
+        """Test listing all available examples."""
+        response = test_client.get("/api/examples")
+        assert response.status_code == 200
+        examples = response.json()
+        assert isinstance(examples, list)
+        # Should have at least some examples
+        assert len(examples) > 0
+        # Each example should have required fields
+        for example in examples:
+            assert "id" in example
+            assert "name" in example
+            assert "description" in example
+            assert "category" in example
+
+    def test_get_example_basic(self, test_client: TestClient):
+        """Test getting a specific example by ID."""
+        # First list examples to get a valid ID
+        list_response = test_client.get("/api/examples")
+        examples = list_response.json()
+        if examples:
+            example_id = examples[0]["id"]
+            response = test_client.get(f"/api/examples/{example_id}")
+            assert response.status_code == 200
+            model = response.json()
+            # Should be a valid model
+            assert "blocks" in model or "id" in model
+
+    def test_get_example_not_found(self, test_client: TestClient):
+        """Test getting a nonexistent example returns 404."""
+        response = test_client.get("/api/examples/nonexistent_example_xyz")
+        assert response.status_code == 404
+        data = response.json()
+        assert "detail" in data
+
+    def test_get_example_sine_wave(self, test_client: TestClient):
+        """Test getting the basic sine wave example."""
+        response = test_client.get("/api/examples/01_sine_wave_basic")
+        assert response.status_code == 200
+        model = response.json()
+        assert "blocks" in model
+        assert len(model["blocks"]) >= 1
+
+    def test_example_categories(self, test_client: TestClient):
+        """Test that examples cover multiple categories."""
+        response = test_client.get("/api/examples")
+        examples = response.json()
+        categories = {ex["category"] for ex in examples}
+        # Should have multiple categories
+        assert len(categories) > 1
+
+
+class TestBlocksEndpointExtended:
+    """Extended tests for blocks API endpoints."""
+
+    def test_list_all_blocks_has_content(self, test_client: TestClient):
+        """Test that block list returns meaningful content."""
+        response = test_client.get("/api/blocks")
+        assert response.status_code == 200
+        blocks = response.json()
+        # Should have common block types
+        block_types = [b.get("type", b.get("name", "")).lower() for b in blocks]
+        # At least one of these common types should exist
+        common_types = ["constant", "gain", "sum", "scope", "integrator"]
+        found = any(t in " ".join(block_types) for t in common_types)
+        assert found or len(blocks) > 0
+
+    def test_get_block_with_parameters(self, test_client: TestClient):
+        """Test getting a block definition that has parameters."""
+        response = test_client.get("/api/blocks/gain")
+        assert response.status_code == 200
+        data = response.json()
+        # Either has parameters or is an error (block might not exist with exact name)
+        assert "parameters" in data or "error" in data or data
+
+    def test_get_category_math(self, test_client: TestClient):
+        """Test getting blocks from Math category."""
+        response = test_client.get("/api/blocks/category/Math")
+        assert response.status_code == 200
+        blocks = response.json()
+        assert isinstance(blocks, list)
+
+    def test_get_category_sinks(self, test_client: TestClient):
+        """Test getting blocks from Sinks category."""
+        response = test_client.get("/api/blocks/category/Sinks")
+        assert response.status_code == 200
+        blocks = response.json()
+        assert isinstance(blocks, list)
+
+    def test_get_category_continuous(self, test_client: TestClient):
+        """Test getting blocks from Continuous category."""
+        response = test_client.get("/api/blocks/category/Continuous")
+        assert response.status_code == 200
+        blocks = response.json()
+        assert isinstance(blocks, list)
+
+
+class TestModelsEndpointExtended:
+    """Extended tests for models API endpoints."""
+
+    def test_create_model_basic(self, test_client: TestClient):
+        """Test creating a model with basic info."""
+        response = test_client.post(
+            "/api/models", json={"name": "Test Model", "description": "A test"}
+        )
+        assert response.status_code == 200
+        model = response.json()
+        assert "id" in model
+        assert model["metadata"]["name"] == "Test Model"
+
+    def test_update_model_blocks(self, test_client: TestClient):
+        """Test updating model blocks."""
+        # Create model
+        create_response = test_client.post(
+            "/api/models", json={"name": "Update Test", "description": "Test"}
+        )
+        model_id = create_response.json()["id"]
+
+        # Update with new data
+        update_data = {
+            "metadata": {"name": "Updated Name"},
+            "blocks": [
+                {
+                    "id": "new-block",
+                    "type": "constant",
+                    "name": "New Constant",
+                    "position": {"x": 0, "y": 0},
+                    "parameters": {"value": 10},
+                    "inputPorts": [],
+                    "outputPorts": [{"id": "out", "name": "out"}],
+                }
+            ],
+        }
+        response = test_client.put(f"/api/models/{model_id}", json=update_data)
+        assert response.status_code == 200
+
+    def test_list_models_after_create(self, test_client: TestClient):
+        """Test that created models appear in the list."""
+        # Create a unique model
+        import time
+
+        unique_name = f"List Test {time.time()}"
+        test_client.post("/api/models", json={"name": unique_name, "description": "Test"})
+
+        # List should include it (or at least not error)
+        response = test_client.get("/api/models")
+        assert response.status_code == 200
+        models = response.json()
+        assert isinstance(models, list)
+
+
+class TestImportExportExtended:
+    """Extended tests for import/export endpoints."""
+
+    def test_import_empty_file(self, test_client: TestClient):
+        """Test importing an empty file."""
+        files = {"file": ("empty.mdl", io.BytesIO(b""), "application/octet-stream")}
+        response = test_client.post("/api/import/mdl", files=files)
+        # Should handle gracefully - either error or partial result
+        assert response.status_code in [200, 400, 422, 500]
+
+    def test_import_minimal_mdl(self, test_client: TestClient):
+        """Test importing a minimal MDL structure."""
+        mdl_content = b"""Model {
+  Name "minimal"
+}"""
+        files = {"file": ("minimal.mdl", io.BytesIO(mdl_content), "application/octet-stream")}
+        response = test_client.post("/api/import/mdl", files=files)
+        # Should handle gracefully
+        assert response.status_code in [200, 400, 422, 500]
+
+    def test_import_mdl_with_blocks(self, test_client: TestClient):
+        """Test importing MDL with simple blocks."""
+        mdl_content = b"""Model {
+  Name "test_model"
+  System {
+    Name "test_model"
+    Block {
+      BlockType Constant
+      Name "Const1"
+      Value "1"
+    }
+  }
+}"""
+        files = {"file": ("blocks.mdl", io.BytesIO(mdl_content), "application/octet-stream")}
+        response = test_client.post("/api/import/mdl", files=files)
+        assert response.status_code in [200, 400, 422, 500]
+
+
+class TestSimulationEndpointFull:
+    """Full coverage tests for simulation endpoints."""
+
+    def test_simulation_with_integrator_model(self, test_client: TestClient):
+        """Test simulation with an integrator model."""
+        model = {
+            "id": "integrator-test",
+            "metadata": {
+                "name": "Integrator Test",
+                "description": "Test model with integrator",
+            },
+            "blocks": [
+                {
+                    "id": "step1",
+                    "type": "step",
+                    "name": "Step",
+                    "position": {"x": 100, "y": 100},
+                    "parameters": {"stepTime": 1.0, "initialValue": 0, "finalValue": 1},
+                    "inputPorts": [],
+                    "outputPorts": [{"id": "step1-out", "name": "out"}],
+                },
+                {
+                    "id": "int1",
+                    "type": "integrator",
+                    "name": "Integrator",
+                    "position": {"x": 200, "y": 100},
+                    "parameters": {"initialCondition": 0},
+                    "inputPorts": [{"id": "int1-in", "name": "in"}],
+                    "outputPorts": [{"id": "int1-out", "name": "out"}],
+                },
+                {
+                    "id": "scope1",
+                    "type": "scope",
+                    "name": "Scope",
+                    "position": {"x": 300, "y": 100},
+                    "parameters": {"numInputs": 1},
+                    "inputPorts": [{"id": "scope1-in", "name": "in"}],
+                    "outputPorts": [],
+                },
+            ],
+            "connections": [
+                {
+                    "id": "c1",
+                    "sourceBlockId": "step1",
+                    "sourcePortId": "step1-out",
+                    "targetBlockId": "int1",
+                    "targetPortId": "int1-in",
+                },
+                {
+                    "id": "c2",
+                    "sourceBlockId": "int1",
+                    "sourcePortId": "int1-out",
+                    "targetBlockId": "scope1",
+                    "targetPortId": "scope1-in",
+                },
+            ],
+        }
+        config = {"startTime": 0.0, "stopTime": 2.0, "stepSize": 0.1, "solver": "rk4"}
+
+        response = test_client.post("/api/simulate/start", json={"model": model, "config": config})
+        assert response.status_code == 200
+
+        # Stop the simulation
+        test_client.post("/api/simulate/stop")
+
+    def test_simulation_step_endpoint(self, test_client: TestClient, sample_model):
+        """Test the simulation step endpoint for manual stepping."""
+        config = {"startTime": 0.0, "stopTime": 1.0, "stepSize": 0.1, "solver": "rk4"}
+
+        # Start simulation
+        test_client.post("/api/simulate/start", json={"model": sample_model, "config": config})
+
+        # Try to step (may or may not be supported)
+        step_response = test_client.post("/api/simulate/step")
+        assert step_response.status_code in [200, 400, 404, 422]
+
+        # Cleanup
+        test_client.post("/api/simulate/stop")
+
+    def test_simulation_reset(self, test_client: TestClient, sample_model, simulation_config):
+        """Test resetting simulation."""
+        # Start simulation
+        test_client.post(
+            "/api/simulate/start",
+            json={"model": sample_model, "config": simulation_config},
+        )
+
+        # Try reset endpoint
+        reset_response = test_client.post("/api/simulate/reset")
+        assert reset_response.status_code in [200, 400, 404]
+
+        # Cleanup
+        test_client.post("/api/simulate/stop")

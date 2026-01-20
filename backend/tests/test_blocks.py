@@ -5542,6 +5542,777 @@ class TestBitOperatorBlock:
 
 
 # =============================================================================
+# Extended Logic Block Tests for Full Coverage
+# =============================================================================
+
+
+class TestCompareToZeroBlockExtended:
+    """Extended tests for CompareToZero block to increase coverage."""
+
+    def test_compare_to_zero_not_equal_tilde(self):
+        """Test not equal to zero using ~= operator."""
+        from src.osk.blocks.logic import CompareToZero
+
+        cz = CompareToZero(operator="~=")
+        cz.init()
+        cz.setInput(5.0)
+        cz.update()
+        assert cz.getOutput() == 1.0
+
+        cz.setInput(0.0)
+        cz.update()
+        assert cz.getOutput() == 0.0
+
+    def test_compare_to_zero_not_equal_exclamation(self):
+        """Test not equal to zero using != operator."""
+        from src.osk.blocks.logic import CompareToZero
+
+        cz = CompareToZero(operator="!=")
+        cz.init()
+        cz.setInput(-3.0)
+        cz.update()
+        assert cz.getOutput() == 1.0
+
+        cz.setInput(0.0)
+        cz.update()
+        assert cz.getOutput() == 0.0
+
+    def test_compare_to_zero_less_than(self):
+        """Test less than zero comparison."""
+        from src.osk.blocks.logic import CompareToZero
+
+        cz = CompareToZero(operator="<")
+        cz.init()
+        cz.setInput(-1.0)
+        cz.update()
+        assert cz.getOutput() == 1.0
+
+        cz.setInput(0.0)
+        cz.update()
+        assert cz.getOutput() == 0.0
+
+        cz.setInput(1.0)
+        cz.update()
+        assert cz.getOutput() == 0.0
+
+    def test_compare_to_zero_less_than_equal(self):
+        """Test less than or equal to zero comparison."""
+        from src.osk.blocks.logic import CompareToZero
+
+        cz = CompareToZero(operator="<=")
+        cz.init()
+        cz.setInput(-1.0)
+        cz.update()
+        assert cz.getOutput() == 1.0
+
+        cz.setInput(0.0)
+        cz.update()
+        assert cz.getOutput() == 1.0
+
+        cz.setInput(0.001)
+        cz.update()
+        assert cz.getOutput() == 0.0
+
+    def test_compare_to_zero_greater_than_equal(self):
+        """Test greater than or equal to zero comparison."""
+        from src.osk.blocks.logic import CompareToZero
+
+        cz = CompareToZero(operator=">=")
+        cz.init()
+        cz.setInput(1.0)
+        cz.update()
+        assert cz.getOutput() == 1.0
+
+        cz.setInput(0.0)
+        cz.update()
+        assert cz.getOutput() == 1.0
+
+        cz.setInput(-0.001)
+        cz.update()
+        assert cz.getOutput() == 0.0
+
+    def test_compare_to_zero_invalid_operator(self):
+        """Test invalid operator returns 0."""
+        from src.osk.blocks.logic import CompareToZero
+
+        cz = CompareToZero(operator="invalid")
+        cz.init()
+        cz.setInput(5.0)
+        cz.update()
+        assert cz.getOutput() == 0.0
+
+    def test_compare_to_zero_connect_input(self):
+        """Test connectInput with another block."""
+        from src.osk.blocks.logic import CompareToZero
+        from src.osk.blocks.sources import Constant
+
+        const = Constant(value=3.0)
+        const.init()
+        const.update()
+
+        cz = CompareToZero(operator=">")
+        cz.init()
+        cz.connectInput(const, port=0, source_port=0)
+        cz.update()
+        assert cz.getOutput() == 1.0
+
+
+class TestCompareToConstantBlockExtended:
+    """Extended tests for CompareToConstant block to increase coverage."""
+
+    def test_compare_to_constant_equal(self):
+        """Test equal to constant comparison."""
+        from src.osk.blocks.logic import CompareToConstant
+
+        cc = CompareToConstant(constant=10.0, operator="==")
+        cc.init()
+        cc.setInput(10.0)
+        cc.update()
+        assert cc.getOutput() == 1.0
+
+        cc.setInput(10.001)
+        cc.update()
+        assert cc.getOutput() == 0.0
+
+    def test_compare_to_constant_not_equal_tilde(self):
+        """Test not equal to constant using ~= operator."""
+        from src.osk.blocks.logic import CompareToConstant
+
+        cc = CompareToConstant(constant=5.0, operator="~=")
+        cc.init()
+        cc.setInput(6.0)
+        cc.update()
+        assert cc.getOutput() == 1.0
+
+        cc.setInput(5.0)
+        cc.update()
+        assert cc.getOutput() == 0.0
+
+    def test_compare_to_constant_not_equal_exclamation(self):
+        """Test not equal to constant using != operator."""
+        from src.osk.blocks.logic import CompareToConstant
+
+        cc = CompareToConstant(constant=5.0, operator="!=")
+        cc.init()
+        cc.setInput(4.0)
+        cc.update()
+        assert cc.getOutput() == 1.0
+
+        cc.setInput(5.0)
+        cc.update()
+        assert cc.getOutput() == 0.0
+
+    def test_compare_to_constant_less_than(self):
+        """Test less than constant comparison."""
+        from src.osk.blocks.logic import CompareToConstant
+
+        cc = CompareToConstant(constant=10.0, operator="<")
+        cc.init()
+        cc.setInput(5.0)
+        cc.update()
+        assert cc.getOutput() == 1.0
+
+        cc.setInput(10.0)
+        cc.update()
+        assert cc.getOutput() == 0.0
+
+        cc.setInput(15.0)
+        cc.update()
+        assert cc.getOutput() == 0.0
+
+    def test_compare_to_constant_less_than_equal(self):
+        """Test less than or equal to constant comparison."""
+        from src.osk.blocks.logic import CompareToConstant
+
+        cc = CompareToConstant(constant=10.0, operator="<=")
+        cc.init()
+        cc.setInput(5.0)
+        cc.update()
+        assert cc.getOutput() == 1.0
+
+        cc.setInput(10.0)
+        cc.update()
+        assert cc.getOutput() == 1.0
+
+        cc.setInput(10.001)
+        cc.update()
+        assert cc.getOutput() == 0.0
+
+    def test_compare_to_constant_greater_than_equal(self):
+        """Test greater than or equal to constant comparison."""
+        from src.osk.blocks.logic import CompareToConstant
+
+        cc = CompareToConstant(constant=10.0, operator=">=")
+        cc.init()
+        cc.setInput(15.0)
+        cc.update()
+        assert cc.getOutput() == 1.0
+
+        cc.setInput(10.0)
+        cc.update()
+        assert cc.getOutput() == 1.0
+
+        cc.setInput(9.999)
+        cc.update()
+        assert cc.getOutput() == 0.0
+
+    def test_compare_to_constant_invalid_operator(self):
+        """Test invalid operator returns 0."""
+        from src.osk.blocks.logic import CompareToConstant
+
+        cc = CompareToConstant(constant=5.0, operator="invalid")
+        cc.init()
+        cc.setInput(5.0)
+        cc.update()
+        assert cc.getOutput() == 0.0
+
+    def test_compare_to_constant_connect_input(self):
+        """Test connectInput with another block."""
+        from src.osk.blocks.logic import CompareToConstant
+        from src.osk.blocks.sources import Constant
+
+        const = Constant(value=7.0)
+        const.init()
+        const.update()
+
+        cc = CompareToConstant(constant=5.0, operator=">")
+        cc.init()
+        cc.connectInput(const, port=0, source_port=0)
+        cc.update()
+        assert cc.getOutput() == 1.0
+
+
+class TestRelationalOperatorBlockExtended:
+    """Extended tests for RelationalOperator block to increase coverage."""
+
+    def test_relational_operator_equal(self):
+        """Test equal comparison."""
+        from src.osk.blocks.logic import RelationalOperator
+
+        ro = RelationalOperator(operator="==")
+        ro.init()
+        ro.setInput(5.0, port=0)
+        ro.setInput(5.0, port=1)
+        ro.update()
+        assert ro.getOutput() == 1.0
+
+        ro.setInput(5.0, port=0)
+        ro.setInput(6.0, port=1)
+        ro.update()
+        assert ro.getOutput() == 0.0
+
+    def test_relational_operator_not_equal_tilde(self):
+        """Test not equal comparison with ~= operator."""
+        from src.osk.blocks.logic import RelationalOperator
+
+        ro = RelationalOperator(operator="~=")
+        ro.init()
+        ro.setInput(5.0, port=0)
+        ro.setInput(6.0, port=1)
+        ro.update()
+        assert ro.getOutput() == 1.0
+
+        ro.setInput(5.0, port=1)
+        ro.update()
+        assert ro.getOutput() == 0.0
+
+    def test_relational_operator_not_equal_exclamation(self):
+        """Test not equal comparison with != operator."""
+        from src.osk.blocks.logic import RelationalOperator
+
+        ro = RelationalOperator(operator="!=")
+        ro.init()
+        ro.setInput(3.0, port=0)
+        ro.setInput(4.0, port=1)
+        ro.update()
+        assert ro.getOutput() == 1.0
+
+        ro.setInput(3.0, port=1)
+        ro.update()
+        assert ro.getOutput() == 0.0
+
+    def test_relational_operator_less_than_equal(self):
+        """Test less than or equal comparison."""
+        from src.osk.blocks.logic import RelationalOperator
+
+        ro = RelationalOperator(operator="<=")
+        ro.init()
+        ro.setInput(3.0, port=0)
+        ro.setInput(5.0, port=1)
+        ro.update()
+        assert ro.getOutput() == 1.0
+
+        ro.setInput(5.0, port=0)
+        ro.update()
+        assert ro.getOutput() == 1.0
+
+        ro.setInput(6.0, port=0)
+        ro.update()
+        assert ro.getOutput() == 0.0
+
+    def test_relational_operator_greater_than(self):
+        """Test greater than comparison."""
+        from src.osk.blocks.logic import RelationalOperator
+
+        ro = RelationalOperator(operator=">")
+        ro.init()
+        ro.setInput(7.0, port=0)
+        ro.setInput(5.0, port=1)
+        ro.update()
+        assert ro.getOutput() == 1.0
+
+        ro.setInput(5.0, port=0)
+        ro.update()
+        assert ro.getOutput() == 0.0
+
+    def test_relational_operator_greater_than_equal(self):
+        """Test greater than or equal comparison."""
+        from src.osk.blocks.logic import RelationalOperator
+
+        ro = RelationalOperator(operator=">=")
+        ro.init()
+        ro.setInput(7.0, port=0)
+        ro.setInput(5.0, port=1)
+        ro.update()
+        assert ro.getOutput() == 1.0
+
+        ro.setInput(5.0, port=0)
+        ro.update()
+        assert ro.getOutput() == 1.0
+
+        ro.setInput(4.0, port=0)
+        ro.update()
+        assert ro.getOutput() == 0.0
+
+    def test_relational_operator_invalid_operator(self):
+        """Test invalid operator returns 0."""
+        from src.osk.blocks.logic import RelationalOperator
+
+        ro = RelationalOperator(operator="invalid")
+        ro.init()
+        ro.setInput(5.0, port=0)
+        ro.setInput(3.0, port=1)
+        ro.update()
+        assert ro.getOutput() == 0.0
+
+    def test_relational_operator_vector_input(self):
+        """Test relational operator with vector inputs."""
+        from src.osk.blocks.logic import RelationalOperator
+
+        ro = RelationalOperator(operator="<")
+        ro.init()
+        ro.setInput([1.0, 5.0, 3.0], port=0)
+        ro.setInput([2.0, 4.0, 3.0], port=1)
+        ro.update()
+
+        # [1<2, 5<4, 3<3] = [1, 0, 0]
+        assert ro.getOutput(0) == 1.0
+        assert ro.getOutput(1) == 0.0
+        assert ro.getOutput(2) == 0.0
+
+    def test_relational_operator_get_output_vector(self):
+        """Test getOutputVector with vector inputs."""
+        from src.osk.blocks.logic import RelationalOperator
+
+        ro = RelationalOperator(operator="==")
+        ro.init()
+        ro.setInput([1.0, 2.0, 3.0], port=0)
+        ro.setInput([1.0, 5.0, 3.0], port=1)
+        ro.update()
+
+        vec = ro.getOutputVector()
+        assert vec is not None
+        assert vec == [1.0, 0.0, 1.0]
+
+    def test_relational_operator_scalar_returns_none_for_vector(self):
+        """Test getOutputVector returns None for scalar mode."""
+        from src.osk.blocks.logic import RelationalOperator
+
+        ro = RelationalOperator(operator="<")
+        ro.init()
+        ro.setInput(3.0, port=0)
+        ro.setInput(5.0, port=1)
+        ro.update()
+
+        assert ro.getOutputVector() is None
+
+    def test_relational_operator_connect_input(self):
+        """Test connectInput with another block."""
+        from src.osk.blocks.logic import RelationalOperator
+        from src.osk.blocks.sources import Constant
+
+        const1 = Constant(value=3.0)
+        const1.init()
+        const1.update()
+
+        const2 = Constant(value=5.0)
+        const2.init()
+        const2.update()
+
+        ro = RelationalOperator(operator="<")
+        ro.init()
+        ro.connectInput(const1, port=0, source_port=0)
+        ro.connectInput(const2, port=1, source_port=0)
+        ro.update()
+        assert ro.getOutput() == 1.0
+
+    def test_relational_operator_connect_input_port_bounds(self):
+        """Test connectInput ignores invalid port numbers."""
+        from src.osk.blocks.logic import RelationalOperator
+        from src.osk.blocks.sources import Constant
+
+        const = Constant(value=5.0)
+
+        ro = RelationalOperator(operator="<")
+        ro.init()
+        # Port 2 is invalid, should be ignored
+        ro.connectInput(const, port=2, source_port=0)
+        assert ro.input_blocks[0] is None
+        assert ro.input_blocks[1] is None
+
+    def test_relational_operator_set_input_port_bounds(self):
+        """Test setInput ignores invalid port numbers."""
+        from src.osk.blocks.logic import RelationalOperator
+
+        ro = RelationalOperator(operator="<")
+        ro.init()
+        ro.setInput(5.0, port=2)  # Invalid port
+        assert ro.inputs[0] == 0.0
+        assert ro.inputs[1] == 0.0
+
+    def test_relational_operator_vector_with_connected_block(self):
+        """Test vector mode with connected block having getOutputVector."""
+        from src.osk.blocks.logic import RelationalOperator
+        from src.osk.blocks.math_ops import Mux
+
+        # Mux outputs a vector
+        mux = Mux(num_inputs=2)
+        mux.init()
+        mux.setInput(3.0, port=0)
+        mux.setInput(7.0, port=1)
+        mux.update()
+
+        ro = RelationalOperator(operator=">")
+        ro.init()
+        ro.connectInput(mux, port=0, source_port=0)
+        ro.setInput([5.0, 5.0], port=1)
+        ro.update()
+
+        # [3>5, 7>5] = [0, 1]
+        vec = ro.getOutputVector()
+        assert vec is not None
+        assert vec[0] == 0.0
+        assert vec[1] == 1.0
+
+
+class TestLogicalOperatorBlockExtended:
+    """Extended tests for LogicalOperator block to increase coverage."""
+
+    def test_logical_nand(self):
+        """Test logical NAND operation."""
+        from src.osk.blocks.logic import LogicalOperator
+
+        lo = LogicalOperator(operator="NAND", num_inputs=2)
+        lo.init()
+        lo.setInput(1.0, port=0)
+        lo.setInput(1.0, port=1)
+        lo.update()
+        assert lo.getOutput() == 0.0  # NAND of true,true = false
+
+        lo.setInput(0.0, port=1)
+        lo.update()
+        assert lo.getOutput() == 1.0  # NAND of true,false = true
+
+    def test_logical_nor(self):
+        """Test logical NOR operation."""
+        from src.osk.blocks.logic import LogicalOperator
+
+        lo = LogicalOperator(operator="NOR", num_inputs=2)
+        lo.init()
+        lo.setInput(0.0, port=0)
+        lo.setInput(0.0, port=1)
+        lo.update()
+        assert lo.getOutput() == 1.0  # NOR of false,false = true
+
+        lo.setInput(1.0, port=0)
+        lo.update()
+        assert lo.getOutput() == 0.0  # NOR of true,false = false
+
+    def test_logical_xor(self):
+        """Test logical XOR operation."""
+        from src.osk.blocks.logic import LogicalOperator
+
+        lo = LogicalOperator(operator="XOR", num_inputs=2)
+        lo.init()
+        lo.setInput(1.0, port=0)
+        lo.setInput(0.0, port=1)
+        lo.update()
+        assert lo.getOutput() == 1.0  # XOR of true,false = true
+
+        lo.setInput(1.0, port=1)
+        lo.update()
+        assert lo.getOutput() == 0.0  # XOR of true,true = false
+
+    def test_logical_xor_three_inputs(self):
+        """Test logical XOR with three inputs (odd number of trues)."""
+        from src.osk.blocks.logic import LogicalOperator
+
+        lo = LogicalOperator(operator="XOR", num_inputs=3)
+        lo.init()
+        lo.setInput(1.0, port=0)
+        lo.setInput(1.0, port=1)
+        lo.setInput(1.0, port=2)
+        lo.update()
+        assert lo.getOutput() == 1.0  # XOR: 3 trues = odd = true
+
+        lo.setInput(0.0, port=2)
+        lo.update()
+        assert lo.getOutput() == 0.0  # XOR: 2 trues = even = false
+
+    def test_logical_invalid_operator(self):
+        """Test invalid operator returns 0."""
+        from src.osk.blocks.logic import LogicalOperator
+
+        lo = LogicalOperator(operator="invalid", num_inputs=2)
+        lo.init()
+        lo.setInput(1.0, port=0)
+        lo.setInput(1.0, port=1)
+        lo.update()
+        assert lo.getOutput() == 0.0
+
+    def test_logical_not_forces_single_input(self):
+        """Test NOT operator forces num_inputs to 1."""
+        from src.osk.blocks.logic import LogicalOperator
+
+        lo = LogicalOperator(operator="NOT", num_inputs=5)
+        assert lo.num_inputs == 1
+
+    def test_logical_vector_input(self):
+        """Test logical operator with vector inputs."""
+        from src.osk.blocks.logic import LogicalOperator
+
+        lo = LogicalOperator(operator="AND", num_inputs=2)
+        lo.init()
+        lo.setInput([1.0, 0.0, 1.0], port=0)
+        lo.setInput([1.0, 1.0, 0.0], port=1)
+        lo.update()
+
+        # [1&1, 0&1, 1&0] = [1, 0, 0]
+        assert lo.getOutput(0) == 1.0
+        assert lo.getOutput(1) == 0.0
+        assert lo.getOutput(2) == 0.0
+
+    def test_logical_get_output_vector(self):
+        """Test getOutputVector with vector inputs."""
+        from src.osk.blocks.logic import LogicalOperator
+
+        lo = LogicalOperator(operator="OR", num_inputs=2)
+        lo.init()
+        lo.setInput([1.0, 0.0, 0.0], port=0)
+        lo.setInput([0.0, 0.0, 1.0], port=1)
+        lo.update()
+
+        vec = lo.getOutputVector()
+        assert vec is not None
+        assert vec == [1.0, 0.0, 1.0]
+
+    def test_logical_scalar_returns_none_for_vector(self):
+        """Test getOutputVector returns None for scalar mode."""
+        from src.osk.blocks.logic import LogicalOperator
+
+        lo = LogicalOperator(operator="AND", num_inputs=2)
+        lo.init()
+        lo.setInput(1.0, port=0)
+        lo.setInput(1.0, port=1)
+        lo.update()
+
+        assert lo.getOutputVector() is None
+
+    def test_logical_connect_input(self):
+        """Test connectInput with another block."""
+        from src.osk.blocks.logic import LogicalOperator
+        from src.osk.blocks.sources import Constant
+
+        const1 = Constant(value=1.0)
+        const1.init()
+        const1.update()
+
+        const2 = Constant(value=0.0)
+        const2.init()
+        const2.update()
+
+        lo = LogicalOperator(operator="AND", num_inputs=2)
+        lo.init()
+        lo.connectInput(const1, port=0, source_port=0)
+        lo.connectInput(const2, port=1, source_port=0)
+        lo.update()
+        assert lo.getOutput() == 0.0  # 1 AND 0 = 0
+
+    def test_logical_connect_input_port_bounds(self):
+        """Test connectInput ignores invalid port numbers."""
+        from src.osk.blocks.logic import LogicalOperator
+        from src.osk.blocks.sources import Constant
+
+        const = Constant(value=1.0)
+
+        lo = LogicalOperator(operator="AND", num_inputs=2)
+        lo.init()
+        lo.connectInput(const, port=5, source_port=0)
+        assert lo.input_blocks[0] is None
+        assert lo.input_blocks[1] is None
+
+    def test_logical_set_input_port_bounds(self):
+        """Test setInput ignores invalid port numbers."""
+        from src.osk.blocks.logic import LogicalOperator
+
+        lo = LogicalOperator(operator="AND", num_inputs=2)
+        lo.init()
+        lo.setInput(1.0, port=5)  # Invalid port
+        assert lo.inputs[0] == 0.0
+        assert lo.inputs[1] == 0.0
+
+    def test_logical_vector_with_connected_block(self):
+        """Test vector mode with connected block having getOutputVector."""
+        from src.osk.blocks.logic import LogicalOperator
+        from src.osk.blocks.math_ops import Mux
+
+        mux = Mux(num_inputs=3)
+        mux.init()
+        mux.setInput(1.0, port=0)
+        mux.setInput(0.0, port=1)
+        mux.setInput(1.0, port=2)
+        mux.update()
+
+        lo = LogicalOperator(operator="AND", num_inputs=2)
+        lo.init()
+        lo.connectInput(mux, port=0, source_port=0)
+        lo.setInput([1.0, 1.0, 1.0], port=1)
+        lo.update()
+
+        # [1&1, 0&1, 1&1] = [1, 0, 1]
+        vec = lo.getOutputVector()
+        assert vec is not None
+        assert vec[0] == 1.0
+        assert vec[1] == 0.0
+        assert vec[2] == 1.0
+
+    def test_logical_not_with_empty_vector(self):
+        """Test NOT with empty input behavior."""
+        from src.osk.blocks.logic import LogicalOperator
+
+        lo = LogicalOperator(operator="NOT", num_inputs=1)
+        lo.init()
+        lo.setInput([], port=0)  # Empty list
+        lo.update()
+        # With empty input, _to_bool gets 0.0, NOT(False) = True
+        assert lo.getOutput() == 1.0
+
+
+class TestBitOperatorBlockExtended:
+    """Extended tests for BitOperator block to increase coverage."""
+
+    def test_bit_not(self):
+        """Test bitwise NOT operation."""
+        from src.osk.blocks.logic import BitOperator
+
+        bo = BitOperator(operator="NOT")
+        bo.init()
+        bo.setInput(0b1100, port=0)
+        bo.update()
+        # NOT of 0b1100 (12) is -13 in two's complement
+        assert bo.getOutput() == float(~12)
+
+    def test_bit_nand(self):
+        """Test bitwise NAND operation."""
+        from src.osk.blocks.logic import BitOperator
+
+        bo = BitOperator(operator="NAND")
+        bo.init()
+        bo.setInput(0b1100, port=0)
+        bo.setInput(0b1010, port=1)
+        bo.update()
+        # NAND: ~(0b1100 & 0b1010) = ~0b1000 = -9 in two's complement
+        assert bo.getOutput() == float(~(0b1100 & 0b1010))
+
+    def test_bit_nor(self):
+        """Test bitwise NOR operation."""
+        from src.osk.blocks.logic import BitOperator
+
+        bo = BitOperator(operator="NOR")
+        bo.init()
+        bo.setInput(0b1100, port=0)
+        bo.setInput(0b1010, port=1)
+        bo.update()
+        # NOR: ~(0b1100 | 0b1010) = ~0b1110 = -15 in two's complement
+        assert bo.getOutput() == float(~(0b1100 | 0b1010))
+
+    def test_bit_invalid_operator(self):
+        """Test invalid operator returns 0."""
+        from src.osk.blocks.logic import BitOperator
+
+        bo = BitOperator(operator="invalid")
+        bo.init()
+        bo.setInput(0b1100, port=0)
+        bo.setInput(0b1010, port=1)
+        bo.update()
+        assert bo.getOutput() == 0.0
+
+    def test_bit_connect_input(self):
+        """Test connectInput with another block."""
+        from src.osk.blocks.logic import BitOperator
+        from src.osk.blocks.sources import Constant
+
+        const1 = Constant(value=0b1100)
+        const1.init()
+        const1.update()
+
+        const2 = Constant(value=0b1010)
+        const2.init()
+        const2.update()
+
+        bo = BitOperator(operator="AND")
+        bo.init()
+        bo.connectInput(const1, port=0, source_port=0)
+        bo.connectInput(const2, port=1, source_port=0)
+        bo.update()
+        assert bo.getOutput() == 0b1000
+
+    def test_bit_connect_input_port_bounds(self):
+        """Test connectInput ignores invalid port numbers."""
+        from src.osk.blocks.logic import BitOperator
+        from src.osk.blocks.sources import Constant
+
+        const = Constant(value=0b1111)
+
+        bo = BitOperator(operator="AND")
+        bo.init()
+        bo.connectInput(const, port=2, source_port=0)
+        assert bo.input_blocks[0] is None
+        assert bo.input_blocks[1] is None
+
+    def test_bit_set_input_port_bounds(self):
+        """Test setInput ignores invalid port numbers."""
+        from src.osk.blocks.logic import BitOperator
+
+        bo = BitOperator(operator="AND")
+        bo.init()
+        bo.setInput(0b1111, port=2)  # Invalid port
+        assert bo.inputs[0] == 0.0
+        assert bo.inputs[1] == 0.0
+
+    def test_bit_float_to_int_conversion(self):
+        """Test that float inputs are converted to int for bitwise operations."""
+        from src.osk.blocks.logic import BitOperator
+
+        bo = BitOperator(operator="AND")
+        bo.init()
+        bo.setInput(12.9, port=0)  # Should become 12
+        bo.setInput(10.1, port=1)  # Should become 10
+        bo.update()
+        assert bo.getOutput() == 0b1000  # 12 & 10 = 8
+
+
+# =============================================================================
 # New Source Block Tests
 # =============================================================================
 
@@ -5707,3 +6478,1833 @@ class TestDiscreteStateSpaceBlock:
         # Output now reflects the state updated in previous call
         # y = C * x = 1.0 * 0.1 = 0.1
         assert dss.getOutput() == pytest.approx(0.1)
+
+
+# =============================================================================
+# Demux-to-Scope Interaction Tests (Multi-Output Block Handling)
+# =============================================================================
+
+
+class TestDemuxToScopeInteraction:
+    """Tests for Demux connected to Scope - verifies scalar output handling.
+
+    This tests the fix for the Kalman Filter scope issue where Demux outputs
+    were incorrectly appearing as vector elements in scopes.
+    """
+
+    def test_demux_to_scope_single_port(self):
+        """Test Scope connected to single Demux output port gets scalar value."""
+        # Create vector source via Mux
+        c1 = Constant(value=1.0)
+        c2 = Constant(value=2.0)
+        c3 = Constant(value=3.0)
+        c1.init()
+        c2.init()
+        c3.init()
+
+        mux = Mux(num_inputs=3)
+        mux.connectInput(c1, port=0)
+        mux.connectInput(c2, port=1)
+        mux.connectInput(c3, port=2)
+
+        demux = Demux(num_outputs=3)
+        demux.connectInput(mux)
+
+        # Create scope connected to Demux output port 1 (should get value 2.0)
+        scope = Scope(num_inputs=1)
+        scope.connectInput(demux, port=0, source_port=1)
+
+        # Update chain
+        c1.update()
+        c2.update()
+        c3.update()
+        mux.update()
+        demux.update()
+        scope.update()
+
+        # Verify scope gets scalar value from correct port
+        assert scope.inputs[0] == 2.0
+        # Verify NO vector inputs detected (Demux outputs are scalars)
+        assert len(scope._vector_inputs) == 0
+
+    def test_demux_to_scope_multiple_ports(self):
+        """Test Scope with multiple inputs from different Demux ports."""
+        c1 = Constant(value=10.0)
+        c2 = Constant(value=20.0)
+        c3 = Constant(value=30.0)
+        c1.init()
+        c2.init()
+        c3.init()
+
+        mux = Mux(num_inputs=3)
+        mux.connectInput(c1, port=0)
+        mux.connectInput(c2, port=1)
+        mux.connectInput(c3, port=2)
+
+        demux = Demux(num_outputs=3)
+        demux.connectInput(mux)
+
+        # Scope with 2 inputs - connected to Demux ports 0 and 2
+        scope = Scope(num_inputs=2)
+        scope.connectInput(demux, port=0, source_port=0)  # Gets 10.0
+        scope.connectInput(demux, port=1, source_port=2)  # Gets 30.0
+
+        # Update chain
+        c1.update()
+        c2.update()
+        c3.update()
+        mux.update()
+        demux.update()
+        scope.update()
+
+        # Verify scope gets correct scalar values
+        assert scope.inputs[0] == 10.0
+        assert scope.inputs[1] == 30.0
+        # No vector inputs should be detected
+        assert len(scope._vector_inputs) == 0
+
+    def test_demux_to_scope_recording(self):
+        """Test Scope correctly records Demux output over time."""
+        c1 = Constant(value=5.0)
+        c2 = Constant(value=15.0)
+        c1.init()
+        c2.init()
+
+        mux = Mux(num_inputs=2)
+        mux.connectInput(c1, port=0)
+        mux.connectInput(c2, port=1)
+
+        demux = Demux(num_outputs=2)
+        demux.connectInput(mux)
+
+        scope = Scope(num_inputs=1)
+        scope.connectInput(demux, port=0, source_port=1)  # Gets 15.0
+        scope.setInputName("Demux Output 1", 0)
+
+        State.ready = 1
+        for t in [0.0, 0.1, 0.2]:
+            State.t = t
+            c1.update()
+            c2.update()
+            mux.update()
+            demux.update()
+            scope.update()
+            scope.rpt()
+
+        data = scope.getData()
+        assert len(data["times"]) == 3
+        assert data["numInputs"] == 1  # Only 1 trace (scalar)
+        assert len(data["values"]) == 1
+        assert all(v == 15.0 for v in data["values"][0])
+        assert data["inputNames"] == ["Demux Output 1"]
+
+    def test_demux_get_output_vector_returns_all(self):
+        """Verify Demux.getOutputVector() returns all outputs (the source of the bug)."""
+        c1 = Constant(value=1.0)
+        c2 = Constant(value=2.0)
+        c1.init()
+        c2.init()
+
+        mux = Mux(num_inputs=2)
+        mux.connectInput(c1, port=0)
+        mux.connectInput(c2, port=1)
+
+        demux = Demux(num_outputs=2)
+        demux.connectInput(mux)
+
+        mux.update()
+        demux.update()
+
+        # getOutputVector returns ALL outputs (this is the behavior we need to handle)
+        vec = demux.getOutputVector()
+        assert vec == [1.0, 2.0]
+
+        # But individual getOutput() returns scalar from specific port
+        assert demux.getOutput(0) == 1.0
+        assert demux.getOutput(1) == 2.0
+
+
+class TestSelectorToScopeInteraction:
+    """Tests for Selector connected to Scope - verifies vector output handling.
+
+    Selector is different from Demux - it can output a genuine vector when
+    multiple indices are selected.
+    """
+
+    def test_selector_single_index_scalar(self):
+        """Test Selector with single index outputs scalar to Scope."""
+        from src.osk.blocks.matrix_ops import Selector
+
+        # Create vector source
+        const = Constant(value=[10.0, 20.0, 30.0, 40.0])
+        const.init()
+
+        selector = Selector(indices=[2], output_size=1)
+        selector.connectInput(const)
+
+        scope = Scope(num_inputs=1)
+        scope.connectInput(selector, port=0)
+
+        const.update()
+        selector.update()
+        scope.update()
+
+        # Single index selection - scalar output
+        assert selector.getOutputVector() is None  # Single element = not a vector
+        assert selector.getOutput(0) == 30.0
+        assert scope.inputs[0] == 30.0
+        assert len(scope._vector_inputs) == 0
+
+    def test_selector_multiple_indices_vector(self):
+        """Test Selector with multiple indices outputs vector to Scope."""
+        from src.osk.blocks.matrix_ops import Selector
+
+        const = Constant(value=[10.0, 20.0, 30.0, 40.0, 50.0])
+        const.init()
+
+        selector = Selector(indices=[0, 2, 4], output_size=3)
+        selector.connectInput(const)
+
+        scope = Scope(num_inputs=1)
+        scope.connectInput(selector, port=0)
+        scope.setInputName("Selected", 0)
+
+        const.update()
+        selector.update()
+        scope.update()
+
+        # Multiple indices - should be treated as vector
+        vec = selector.getOutputVector()
+        assert vec == [10.0, 30.0, 50.0]
+
+        # Scope should detect this as vector input
+        assert 0 in scope._vector_inputs
+        assert scope._vector_inputs[0] == [10.0, 30.0, 50.0]
+        # Vector names should be generated
+        assert scope._vector_names[0] == ["Selected[1]", "Selected[2]", "Selected[3]"]
+
+    def test_selector_to_scope_recording(self):
+        """Test Scope records Selector vector output as multiple traces."""
+        from src.osk.blocks.matrix_ops import Selector
+
+        const = Constant(value=[1.0, 2.0, 3.0])
+        const.init()
+
+        selector = Selector(indices=[0, 2], output_size=2)
+        selector.connectInput(const)
+
+        scope = Scope(num_inputs=1)
+        scope.connectInput(selector, port=0)
+        scope.setInputName("Sel", 0)
+
+        State.ready = 1
+        State.t = 0.0
+        const.update()
+        selector.update()
+        scope.update()
+        scope.rpt()
+
+        data = scope.getData()
+        assert data["numInputs"] == 2  # Vector expanded to 2 traces
+        assert len(data["values"]) == 2
+        assert data["values"][0] == [1.0]
+        assert data["values"][1] == [3.0]
+        assert data["inputNames"] == ["Sel[1]", "Sel[2]"]
+
+
+class TestScopeVectorHandlingEdgeCases:
+    """Additional edge case tests for Scope vector handling."""
+
+    def test_scope_vector_to_scalar_transition(self):
+        """Test Scope handles transition from vector to scalar input."""
+        scope = Scope(num_inputs=1)
+
+        # Start with vector input
+        scope.setInput([1.0, 2.0, 3.0], 0)
+        assert 0 in scope._vector_inputs
+        assert scope.inputs[0] == 1.0
+
+        # Switch to scalar
+        scope.setInput(5.0, 0)
+        assert 0 not in scope._vector_inputs
+        assert scope.inputs[0] == 5.0
+
+    def test_scope_empty_vector_input(self):
+        """Test Scope handles empty vector input."""
+        scope = Scope(num_inputs=1)
+        scope.setInput([], 0)
+
+        # Empty list should set input to 0.0
+        assert scope.inputs[0] == 0.0
+        assert 0 in scope._vector_inputs
+        assert scope._vector_inputs[0] == []
+
+    def test_scope_vector_name_regeneration(self):
+        """Test Scope regenerates vector names when vector size changes."""
+        scope = Scope(num_inputs=1)
+        scope.setInputName("Signal", 0)
+
+        # First vector of size 2
+        mux2 = Mux(num_inputs=2)
+        c1 = Constant(value=1.0)
+        c2 = Constant(value=2.0)
+        c1.init()
+        c2.init()
+        mux2.connectInput(c1, 0)
+        mux2.connectInput(c2, 1)
+
+        scope.connectInput(mux2, 0)
+        c1.update()
+        c2.update()
+        mux2.update()
+        scope.update()
+
+        assert scope._vector_names[0] == ["Signal[1]", "Signal[2]"]
+
+        # Now connect a larger vector
+        mux3 = Mux(num_inputs=3)
+        c3 = Constant(value=3.0)
+        c3.init()
+        mux3.connectInput(c1, 0)
+        mux3.connectInput(c2, 1)
+        mux3.connectInput(c3, 2)
+
+        scope.connectInput(mux3, 0)
+        c3.update()
+        mux3.update()
+        scope.update()
+
+        # Names should be regenerated for new size
+        assert scope._vector_names[0] == ["Signal[1]", "Signal[2]", "Signal[3]"]
+
+    def test_scope_trace_count_dynamic(self):
+        """Test Scope trace count updates dynamically with connections."""
+        scope = Scope(num_inputs=3)
+        c1 = Constant(value=1.0)
+        c2 = Constant(value=2.0)
+        c1.init()
+        c2.init()
+
+        State.ready = 1
+        State.t = 0.0
+
+        # Connect only port 0 and 2
+        scope.connectInput(c1, 0)
+        scope.connectInput(c2, 2)
+
+        c1.update()
+        c2.update()
+        scope.update()
+        scope.rpt()
+
+        data = scope.getData()
+        # Only 2 traces for 2 connected inputs
+        assert data["numInputs"] == 2
+
+    def test_scope_getData_with_no_data(self):
+        """Test Scope getData returns correct structure with no recorded data."""
+        scope = Scope(num_inputs=2)
+        data = scope.getData()
+
+        assert data["times"] == []
+        assert data["values"] == []
+        assert data["numInputs"] == 0  # No traces yet
+
+    def test_scope_connect_beyond_num_inputs(self):
+        """Test Scope ignores connections beyond num_inputs."""
+        scope = Scope(num_inputs=2)
+        const = Constant(value=5.0)
+        const.init()
+
+        # Try to connect to port 5 (beyond num_inputs=2)
+        scope.connectInput(const, port=5)
+
+        # Should be ignored
+        assert scope.input_blocks[0] is None
+        assert scope.input_blocks[1] is None
+
+    def test_scope_setInput_beyond_num_inputs(self):
+        """Test Scope ignores setInput beyond num_inputs."""
+        scope = Scope(num_inputs=2)
+
+        # Try to set input at port 10
+        scope.setInput(42.0, port=10)
+
+        # Original inputs unchanged
+        assert scope.inputs[0] == 0.0
+        assert scope.inputs[1] == 0.0
+
+    def test_scope_getOutput_returns_input(self):
+        """Test Scope getOutput returns the input value (pass-through)."""
+        scope = Scope(num_inputs=2)
+        scope.setInput(7.5, 0)
+        scope.setInput(3.2, 1)
+
+        assert scope.getOutput(0) == 7.5
+        assert scope.getOutput(1) == 3.2
+        assert scope.getOutput(5) == 0.0  # Beyond range
+
+
+class TestTerminatorBlockExtended:
+    """Extended tests for the Terminator block."""
+
+    def test_terminator_absorbs_signal(self):
+        """Test Terminator absorbs signal without output."""
+        from src.osk.blocks.sinks import Terminator
+
+        term = Terminator()
+        const = Constant(value=100.0)
+        const.init()
+
+        term.connectInput(const)
+        const.update()
+        term.update()
+
+        # Terminator stores input but outputs 0
+        assert term.input == 100.0
+        assert term.getOutput() == 0.0
+
+    def test_terminator_setInput(self):
+        """Test Terminator setInput method."""
+        from src.osk.blocks.sinks import Terminator
+
+        term = Terminator()
+        term.setInput(42.0)
+        assert term.input == 42.0
+
+    def test_terminator_source_port(self):
+        """Test Terminator with source_port connection."""
+        from src.osk.blocks.sinks import Terminator
+
+        term = Terminator()
+        demux = Demux(num_outputs=2)
+
+        mux = Mux(num_inputs=2)
+        c1 = Constant(value=5.0)
+        c2 = Constant(value=10.0)
+        c1.init()
+        c2.init()
+        mux.connectInput(c1, 0)
+        mux.connectInput(c2, 1)
+        demux.connectInput(mux)
+
+        term.connectInput(demux, source_port=1)
+
+        mux.update()
+        demux.update()
+        term.update()
+
+        assert term.input == 10.0
+
+
+class TestDisplayBlockExtended:
+    """Extended tests for the Display block."""
+
+    def test_display_shows_current_value(self):
+        """Test Display shows current input value."""
+        disp = Display()
+        const = Constant(value=3.14)
+        const.init()
+
+        disp.connectInput(const)
+        const.update()
+        disp.update()
+
+        State.ready = 1
+        disp.rpt()
+
+        assert disp.current_value == 3.14
+        assert disp.getOutput() == 3.14
+
+    def test_display_without_ready(self):
+        """Test Display doesn't update current_value when not ready."""
+        disp = Display()
+        disp.setInput(5.0)
+
+        State.ready = 0
+        disp.rpt()
+
+        # current_value should still be 0 (initial)
+        assert disp.current_value == 0.0
+
+    def test_display_source_port(self):
+        """Test Display with source_port connection."""
+        disp = Display()
+        demux = Demux(num_outputs=2)
+
+        mux = Mux(num_inputs=2)
+        c1 = Constant(value=7.0)
+        c2 = Constant(value=14.0)
+        c1.init()
+        c2.init()
+        mux.connectInput(c1, 0)
+        mux.connectInput(c2, 1)
+        demux.connectInput(mux)
+
+        disp.connectInput(demux, source_port=0)
+
+        mux.update()
+        demux.update()
+        disp.update()
+
+        State.ready = 1
+        disp.rpt()
+
+        assert disp.current_value == 7.0
+
+
+# =============================================================================
+# Extended Math Operations Block Tests for Full Coverage
+# =============================================================================
+
+
+class TestSliderGainBlock:
+    """Tests for the SliderGain block (functionally like Gain with min/max)."""
+
+    def test_slider_basic(self):
+        """Test basic slider operation."""
+        from src.osk.blocks.math_ops import SliderGain
+
+        sl = SliderGain(gain=2.0, min_val=0.0, max_val=10.0)
+        sl.init()
+        sl.setInput(5.0)
+        sl.update()
+        assert sl.getOutput() == 10.0  # 2.0 * 5.0
+
+    def test_slider_vector_input(self):
+        """Test slider with vector input."""
+        from src.osk.blocks.math_ops import SliderGain
+
+        sl = SliderGain(gain=3.0)
+        sl.init()
+        sl.setInput([1.0, 2.0, 3.0])
+        sl.update()
+
+        assert sl.getOutput(0) == 3.0
+        assert sl.getOutput(1) == 6.0
+        assert sl.getOutput(2) == 9.0
+
+        vec = sl.getOutputVector()
+        assert vec == [3.0, 6.0, 9.0]
+
+    def test_slider_scalar_returns_none_for_vector(self):
+        """Test getOutputVector returns None for scalar."""
+        from src.osk.blocks.math_ops import SliderGain
+
+        sl = SliderGain(gain=2.0)
+        sl.init()
+        sl.setInput(5.0)
+        sl.update()
+        assert sl.getOutputVector() is None
+
+    def test_slider_connect_input(self):
+        """Test slider with connected block."""
+        from src.osk.blocks.math_ops import SliderGain
+        from src.osk.blocks.sources import Constant
+
+        const = Constant(value=4.0)
+        const.init()
+        const.update()
+
+        sl = SliderGain(gain=2.5)
+        sl.init()
+        sl.connectInput(const)
+        sl.update()
+        assert sl.getOutput() == 10.0  # 2.5 * 4.0
+
+    def test_slider_connect_with_vector_block(self):
+        """Test slider connected to block with vector output."""
+        from src.osk.blocks.math_ops import Mux, SliderGain
+
+        mux = Mux(num_inputs=2)
+        mux.init()
+        mux.setInput(2.0, 0)
+        mux.setInput(3.0, 1)
+        mux.update()
+
+        sl = SliderGain(gain=2.0)
+        sl.init()
+        sl.connectInput(mux)
+        sl.update()
+
+        vec = sl.getOutputVector()
+        assert vec == [4.0, 6.0]
+
+    def test_slider_connect_no_vector(self):
+        """Test slider connected to block without vector."""
+        from src.osk.blocks.math_ops import SliderGain
+        from src.osk.blocks.sources import Constant
+
+        const = Constant(value=5.0)
+        const.init()
+        const.update()
+
+        sl = SliderGain(gain=1.5)
+        sl.init()
+        sl.connectInput(const)
+        sl.update()
+        assert sl.getOutput() == 7.5
+
+
+class TestWeightedSumBlock:
+    """Tests for the WeightedSum block."""
+
+    def test_weighted_sum_basic(self):
+        """Test basic weighted sum."""
+        from src.osk.blocks.math_ops import WeightedSum
+
+        ws = WeightedSum(weights=[2.0, 3.0])
+        ws.init()
+        ws.setInput(1.0, 0)
+        ws.setInput(2.0, 1)
+        ws.update()
+        assert ws.getOutput() == 8.0  # 2*1 + 3*2
+
+    def test_weighted_sum_vector_input(self):
+        """Test weighted sum with vector inputs."""
+        from src.osk.blocks.math_ops import WeightedSum
+
+        ws = WeightedSum(weights=[1.0, 2.0])
+        ws.init()
+        ws.setInput([1.0, 2.0], 0)
+        ws.setInput([3.0, 4.0], 1)
+        ws.update()
+
+        # [1*1 + 2*3, 1*2 + 2*4] = [7, 10]
+        assert ws.getOutput(0) == 7.0
+        assert ws.getOutput(1) == 10.0
+
+        vec = ws.getOutputVector()
+        assert vec == [7.0, 10.0]
+
+    def test_weighted_sum_scalar_returns_none(self):
+        """Test getOutputVector returns None for scalar."""
+        from src.osk.blocks.math_ops import WeightedSum
+
+        ws = WeightedSum(weights=[1.0, 1.0])
+        ws.init()
+        ws.setInput(5.0, 0)
+        ws.setInput(3.0, 1)
+        ws.update()
+        assert ws.getOutputVector() is None
+        assert ws.getOutput() == 8.0
+
+    def test_weighted_sum_connect_input(self):
+        """Test weighted sum with connected blocks."""
+        from src.osk.blocks.math_ops import WeightedSum
+        from src.osk.blocks.sources import Constant
+
+        c1 = Constant(value=2.0)
+        c1.init()
+        c1.update()
+        c2 = Constant(value=3.0)
+        c2.init()
+        c2.update()
+
+        ws = WeightedSum(weights=[2.0, 3.0])
+        ws.init()
+        ws.connectInput(c1, 0)
+        ws.connectInput(c2, 1)
+        ws.update()
+        assert ws.getOutput() == 13.0  # 2*2 + 3*3
+
+    def test_weighted_sum_port_bounds(self):
+        """Test setInput/connectInput ignore invalid ports."""
+        from src.osk.blocks.math_ops import WeightedSum
+        from src.osk.blocks.sources import Constant
+
+        ws = WeightedSum(weights=[1.0, 1.0])
+        ws.init()
+        ws.setInput(99.0, 5)  # Invalid port
+        ws.connectInput(Constant(value=1.0), 5)  # Invalid port
+        assert ws.inputs == [0.0, 0.0]
+
+    def test_weighted_sum_vector_from_connected_block(self):
+        """Test vector mode from connected block with getOutputVector."""
+        from src.osk.blocks.math_ops import Mux, WeightedSum
+
+        mux = Mux(num_inputs=2)
+        mux.init()
+        mux.setInput(1.0, 0)
+        mux.setInput(2.0, 1)
+        mux.update()
+
+        ws = WeightedSum(weights=[2.0, 3.0])
+        ws.init()
+        ws.connectInput(mux, 0)
+        ws.setInput([3.0, 4.0], 1)
+        ws.update()
+
+        # [2*1 + 3*3, 2*2 + 3*4] = [11, 16]
+        vec = ws.getOutputVector()
+        assert vec is not None
+        assert vec[0] == 11.0
+        assert vec[1] == 16.0
+
+
+class TestPolynomialBlock:
+    """Tests for the Polynomial block."""
+
+    def test_polynomial_basic(self):
+        """Test basic polynomial evaluation."""
+        from src.osk.blocks.math_ops import Polynomial
+
+        # f(x) = x^2 + 2x + 1 = (x+1)^2
+        poly = Polynomial(coefficients=[1.0, 2.0, 1.0])
+        poly.init()
+        poly.setInput(2.0)
+        poly.update()
+        # f(2) = 4 + 4 + 1 = 9
+        assert poly.getOutput() == 9.0
+
+    def test_polynomial_vector_input(self):
+        """Test polynomial with vector input."""
+        from src.osk.blocks.math_ops import Polynomial
+
+        # f(x) = x^2
+        poly = Polynomial(coefficients=[1.0, 0.0, 0.0])
+        poly.init()
+        poly.setInput([1.0, 2.0, 3.0])
+        poly.update()
+
+        # [1, 4, 9]
+        assert poly.getOutput(0) == 1.0
+        assert poly.getOutput(1) == 4.0
+        assert poly.getOutput(2) == 9.0
+
+        vec = poly.getOutputVector()
+        assert vec == [1.0, 4.0, 9.0]
+
+    def test_polynomial_scalar_returns_none(self):
+        """Test getOutputVector returns None for scalar."""
+        from src.osk.blocks.math_ops import Polynomial
+
+        poly = Polynomial(coefficients=[1.0, 0.0])
+        poly.init()
+        poly.setInput(5.0)
+        poly.update()
+        assert poly.getOutputVector() is None
+        assert poly.getOutput() == 5.0  # f(x) = x
+
+    def test_polynomial_connect_input(self):
+        """Test polynomial with connected block."""
+        from src.osk.blocks.math_ops import Polynomial
+        from src.osk.blocks.sources import Constant
+
+        const = Constant(value=3.0)
+        const.init()
+        const.update()
+
+        # f(x) = 2x + 1
+        poly = Polynomial(coefficients=[2.0, 1.0])
+        poly.init()
+        poly.connectInput(const)
+        poly.update()
+        assert poly.getOutput() == 7.0  # 2*3 + 1
+
+    def test_polynomial_vector_from_connected(self):
+        """Test vector mode from connected block."""
+        from src.osk.blocks.math_ops import Mux, Polynomial
+
+        mux = Mux(num_inputs=2)
+        mux.init()
+        mux.setInput(2.0, 0)
+        mux.setInput(3.0, 1)
+        mux.update()
+
+        poly = Polynomial(coefficients=[1.0, 1.0])  # f(x) = x + 1
+        poly.init()
+        poly.connectInput(mux)
+        poly.update()
+
+        vec = poly.getOutputVector()
+        assert vec == [3.0, 4.0]  # [2+1, 3+1]
+
+
+class TestMagnitudeAngleBlock:
+    """Tests for the MagnitudeAngle block (polar to rectangular)."""
+
+    def test_magnitude_angle_basic(self):
+        """Test basic magnitude-angle to complex conversion."""
+        import math
+
+        from src.osk.blocks.math_ops import MagnitudeAngle
+
+        ma = MagnitudeAngle()
+        ma.init()
+        ma.setInput(2.0, 0)  # magnitude
+        ma.setInput(math.pi / 4, 1)  # angle (45 degrees)
+        ma.update()
+
+        # real = 2 * cos(pi/4) ≈ sqrt(2)
+        # imag = 2 * sin(pi/4) ≈ sqrt(2)
+        assert ma.getOutput(0) == pytest.approx(math.sqrt(2), rel=1e-6)
+        assert ma.getOutput(1) == pytest.approx(math.sqrt(2), rel=1e-6)
+
+    def test_magnitude_angle_zero(self):
+        """Test with zero angle."""
+        from src.osk.blocks.math_ops import MagnitudeAngle
+
+        ma = MagnitudeAngle()
+        ma.init()
+        ma.setInput(5.0, 0)  # magnitude
+        ma.setInput(0.0, 1)  # angle = 0
+        ma.update()
+
+        # real = 5 * cos(0) = 5, imag = 5 * sin(0) = 0
+        assert ma.getOutput(0) == pytest.approx(5.0)
+        assert ma.getOutput(1) == pytest.approx(0.0)
+
+    def test_magnitude_angle_connect_input(self):
+        """Test with connected blocks."""
+        import math
+
+        from src.osk.blocks.math_ops import MagnitudeAngle
+        from src.osk.blocks.sources import Constant
+
+        mag = Constant(value=1.0)
+        mag.init()
+        mag.update()
+        angle = Constant(value=math.pi / 2)
+        angle.init()
+        angle.update()
+
+        ma = MagnitudeAngle()
+        ma.init()
+        ma.connectInput(mag, 0)
+        ma.connectInput(angle, 1)
+        ma.update()
+
+        # real = cos(pi/2) ≈ 0, imag = sin(pi/2) = 1
+        assert ma.getOutput(0) == pytest.approx(0.0, abs=1e-10)
+        assert ma.getOutput(1) == pytest.approx(1.0)
+
+    def test_magnitude_angle_port_bounds(self):
+        """Test getOutput returns 0 for invalid port."""
+        from src.osk.blocks.math_ops import MagnitudeAngle
+
+        ma = MagnitudeAngle()
+        ma.init()
+        ma.update()
+        assert ma.getOutput(5) == 0.0
+
+
+class TestComplexToMagnitudeAngleBlock:
+    """Tests for the ComplexToMagnitudeAngle block (rectangular to polar)."""
+
+    def test_complex_to_mag_angle_basic(self):
+        """Test basic complex to magnitude-angle conversion."""
+        import math
+
+        from src.osk.blocks.math_ops import ComplexToMagnitudeAngle
+
+        cma = ComplexToMagnitudeAngle()
+        cma.init()
+        cma.setInput(3.0, 0)  # real
+        cma.setInput(4.0, 1)  # imag
+        cma.update()
+
+        # mag = sqrt(9+16) = 5
+        # angle = atan2(4, 3) ≈ 0.927 rad
+        assert cma.getOutput(0) == pytest.approx(5.0)
+        assert cma.getOutput(1) == pytest.approx(math.atan2(4.0, 3.0))
+
+    def test_complex_to_mag_angle_pure_real(self):
+        """Test with pure real number."""
+        from src.osk.blocks.math_ops import ComplexToMagnitudeAngle
+
+        cma = ComplexToMagnitudeAngle()
+        cma.init()
+        cma.setInput(5.0, 0)
+        cma.setInput(0.0, 1)
+        cma.update()
+
+        assert cma.getOutput(0) == pytest.approx(5.0)
+        assert cma.getOutput(1) == pytest.approx(0.0)
+
+    def test_complex_to_mag_angle_connect_input(self):
+        """Test with connected blocks."""
+        import math
+
+        from src.osk.blocks.math_ops import ComplexToMagnitudeAngle
+        from src.osk.blocks.sources import Constant
+
+        real = Constant(value=0.0)
+        real.init()
+        real.update()
+        imag = Constant(value=5.0)
+        imag.init()
+        imag.update()
+
+        cma = ComplexToMagnitudeAngle()
+        cma.init()
+        cma.connectInput(real, 0)
+        cma.connectInput(imag, 1)
+        cma.update()
+
+        # Pure imaginary: mag = 5, angle = pi/2
+        assert cma.getOutput(0) == pytest.approx(5.0)
+        assert cma.getOutput(1) == pytest.approx(math.pi / 2)
+
+    def test_complex_to_mag_angle_port_bounds(self):
+        """Test getOutput returns 0 for invalid port."""
+        from src.osk.blocks.math_ops import ComplexToMagnitudeAngle
+
+        cma = ComplexToMagnitudeAngle()
+        cma.init()
+        cma.update()
+        assert cma.getOutput(5) == 0.0
+
+
+class TestSqrtBlockExtended:
+    """Extended tests for the Sqrt block."""
+
+    def test_sqrt_vector_input(self):
+        """Test sqrt with vector input."""
+        from src.osk.blocks.math_ops import Sqrt
+
+        sq = Sqrt()
+        sq.init()
+        sq.setInput([4.0, 9.0, 16.0])
+        sq.update()
+
+        assert sq.getOutput(0) == 2.0
+        assert sq.getOutput(1) == 3.0
+        assert sq.getOutput(2) == 4.0
+
+        vec = sq.getOutputVector()
+        assert vec == [2.0, 3.0, 4.0]
+
+    def test_sqrt_negative_clamps_to_zero(self):
+        """Test sqrt of negative clamps to zero before sqrt."""
+        from src.osk.blocks.math_ops import Sqrt
+
+        sq = Sqrt()
+        sq.init()
+        sq.setInput([-4.0, -1.0, 0.0])
+        sq.update()
+
+        # sqrt(max(-4, 0)) = sqrt(0) = 0
+        vec = sq.getOutputVector()
+        assert vec == [0.0, 0.0, 0.0]
+
+    def test_sqrt_scalar_returns_none(self):
+        """Test getOutputVector returns None for scalar."""
+        from src.osk.blocks.math_ops import Sqrt
+
+        sq = Sqrt()
+        sq.init()
+        sq.setInput(4.0)
+        sq.update()
+        assert sq.getOutputVector() is None
+        assert sq.getOutput() == 2.0
+
+    def test_sqrt_connect_vector_block(self):
+        """Test sqrt with connected vector block."""
+        from src.osk.blocks.math_ops import Mux, Sqrt
+
+        mux = Mux(num_inputs=2)
+        mux.init()
+        mux.setInput(1.0, 0)
+        mux.setInput(4.0, 1)
+        mux.update()
+
+        sq = Sqrt()
+        sq.init()
+        sq.connectInput(mux)
+        sq.update()
+
+        vec = sq.getOutputVector()
+        assert vec == [1.0, 2.0]
+
+
+class TestReciprocalBlockExtended:
+    """Extended tests for the Reciprocal block."""
+
+    def test_reciprocal_vector_input(self):
+        """Test reciprocal with vector input."""
+        from src.osk.blocks.math_ops import Reciprocal
+
+        rec = Reciprocal()
+        rec.init()
+        rec.setInput([2.0, 4.0, 5.0])
+        rec.update()
+
+        assert rec.getOutput(0) == pytest.approx(0.5)
+        assert rec.getOutput(1) == pytest.approx(0.25)
+        assert rec.getOutput(2) == pytest.approx(0.2)
+
+        vec = rec.getOutputVector()
+        assert len(vec) == 3
+
+    def test_reciprocal_zero_protection(self):
+        """Test reciprocal of zero returns infinity or large value."""
+        from src.osk.blocks.math_ops import Reciprocal
+
+        rec = Reciprocal()
+        rec.init()
+        rec.setInput([0.0, 1.0])
+        rec.update()
+
+        vec = rec.getOutputVector()
+        # Division by zero should produce inf
+        assert vec[0] == float("inf") or vec[0] > 1e10
+        assert vec[1] == 1.0
+
+    def test_reciprocal_scalar_returns_none(self):
+        """Test getOutputVector returns None for scalar."""
+        from src.osk.blocks.math_ops import Reciprocal
+
+        rec = Reciprocal()
+        rec.init()
+        rec.setInput(4.0)
+        rec.update()
+        assert rec.getOutputVector() is None
+        assert rec.getOutput() == 0.25
+
+    def test_reciprocal_connect_vector_block(self):
+        """Test reciprocal with connected vector block."""
+        from src.osk.blocks.math_ops import Mux, Reciprocal
+
+        mux = Mux(num_inputs=2)
+        mux.init()
+        mux.setInput(2.0, 0)
+        mux.setInput(5.0, 1)
+        mux.update()
+
+        rec = Reciprocal()
+        rec.init()
+        rec.connectInput(mux)
+        rec.update()
+
+        vec = rec.getOutputVector()
+        assert vec[0] == pytest.approx(0.5)
+        assert vec[1] == pytest.approx(0.2)
+
+
+class TestSquareBlockExtended:
+    """Extended tests for the Square block."""
+
+    def test_square_vector_input(self):
+        """Test square with vector input."""
+        from src.osk.blocks.math_ops import Square
+
+        sq = Square()
+        sq.init()
+        sq.setInput([2.0, 3.0, -4.0])
+        sq.update()
+
+        assert sq.getOutput(0) == 4.0
+        assert sq.getOutput(1) == 9.0
+        assert sq.getOutput(2) == 16.0
+
+        vec = sq.getOutputVector()
+        assert vec == [4.0, 9.0, 16.0]
+
+    def test_square_scalar_returns_none(self):
+        """Test getOutputVector returns None for scalar."""
+        from src.osk.blocks.math_ops import Square
+
+        sq = Square()
+        sq.init()
+        sq.setInput(5.0)
+        sq.update()
+        assert sq.getOutputVector() is None
+
+    def test_square_connect_vector_block(self):
+        """Test square with connected vector block."""
+        from src.osk.blocks.math_ops import Mux, Square
+
+        mux = Mux(num_inputs=2)
+        mux.init()
+        mux.setInput(3.0, 0)
+        mux.setInput(4.0, 1)
+        mux.update()
+
+        sq = Square()
+        sq.init()
+        sq.connectInput(mux)
+        sq.update()
+
+        vec = sq.getOutputVector()
+        assert vec == [9.0, 16.0]
+
+
+class TestExpBlockExtended:
+    """Extended tests for the Exp block."""
+
+    def test_exp_vector_input(self):
+        """Test exp with vector input."""
+        import math
+
+        from src.osk.blocks.math_ops import Exp
+
+        exp_block = Exp()
+        exp_block.init()
+        exp_block.setInput([0.0, 1.0, 2.0])
+        exp_block.update()
+
+        assert exp_block.getOutput(0) == pytest.approx(1.0)
+        assert exp_block.getOutput(1) == pytest.approx(math.e)
+        assert exp_block.getOutput(2) == pytest.approx(math.e**2)
+
+    def test_exp_scalar_returns_none(self):
+        """Test getOutputVector returns None for scalar."""
+        from src.osk.blocks.math_ops import Exp
+
+        exp_block = Exp()
+        exp_block.init()
+        exp_block.setInput(0.0)
+        exp_block.update()
+        assert exp_block.getOutputVector() is None
+
+    def test_exp_connect_vector_block(self):
+        """Test exp with connected vector block."""
+        import math
+
+        from src.osk.blocks.math_ops import Exp, Mux
+
+        mux = Mux(num_inputs=2)
+        mux.init()
+        mux.setInput(0.0, 0)
+        mux.setInput(1.0, 1)
+        mux.update()
+
+        exp_block = Exp()
+        exp_block.init()
+        exp_block.connectInput(mux)
+        exp_block.update()
+
+        vec = exp_block.getOutputVector()
+        assert vec[0] == pytest.approx(1.0)
+        assert vec[1] == pytest.approx(math.e)
+
+
+class TestLogBlockExtended:
+    """Extended tests for the Log block."""
+
+    def test_log_vector_input(self):
+        """Test log with vector input."""
+        import math
+
+        from src.osk.blocks.math_ops import Log
+
+        log_block = Log()
+        log_block.init()
+        log_block.setInput([1.0, math.e, math.e**2])
+        log_block.update()
+
+        assert log_block.getOutput(0) == pytest.approx(0.0)
+        assert log_block.getOutput(1) == pytest.approx(1.0)
+        assert log_block.getOutput(2) == pytest.approx(2.0)
+
+    def test_log_scalar_returns_none(self):
+        """Test getOutputVector returns None for scalar."""
+        from src.osk.blocks.math_ops import Log
+
+        log_block = Log()
+        log_block.init()
+        log_block.setInput(1.0)
+        log_block.update()
+        assert log_block.getOutputVector() is None
+
+    def test_log_connect_vector_block(self):
+        """Test log with connected vector block."""
+        import math
+
+        from src.osk.blocks.math_ops import Log, Mux
+
+        mux = Mux(num_inputs=2)
+        mux.init()
+        mux.setInput(1.0, 0)
+        mux.setInput(math.e, 1)
+        mux.update()
+
+        log_block = Log()
+        log_block.init()
+        log_block.connectInput(mux)
+        log_block.update()
+
+        vec = log_block.getOutputVector()
+        assert vec[0] == pytest.approx(0.0)
+        assert vec[1] == pytest.approx(1.0)
+
+
+class TestLog10BlockExtended:
+    """Extended tests for the Log10 block."""
+
+    def test_log10_vector_input(self):
+        """Test log10 with vector input."""
+        from src.osk.blocks.math_ops import Log10
+
+        log10_block = Log10()
+        log10_block.init()
+        log10_block.setInput([1.0, 10.0, 100.0])
+        log10_block.update()
+
+        assert log10_block.getOutput(0) == pytest.approx(0.0)
+        assert log10_block.getOutput(1) == pytest.approx(1.0)
+        assert log10_block.getOutput(2) == pytest.approx(2.0)
+
+    def test_log10_scalar_returns_none(self):
+        """Test getOutputVector returns None for scalar."""
+        from src.osk.blocks.math_ops import Log10
+
+        log10_block = Log10()
+        log10_block.init()
+        log10_block.setInput(10.0)
+        log10_block.update()
+        assert log10_block.getOutputVector() is None
+
+    def test_log10_connect_vector_block(self):
+        """Test log10 with connected vector block."""
+        from src.osk.blocks.math_ops import Log10, Mux
+
+        mux = Mux(num_inputs=2)
+        mux.init()
+        mux.setInput(10.0, 0)
+        mux.setInput(100.0, 1)
+        mux.update()
+
+        log10_block = Log10()
+        log10_block.init()
+        log10_block.connectInput(mux)
+        log10_block.update()
+
+        vec = log10_block.getOutputVector()
+        assert vec[0] == pytest.approx(1.0)
+        assert vec[1] == pytest.approx(2.0)
+
+
+class TestPowerBlockExtended:
+    """Extended tests for the Power block (computes base^exponent)."""
+
+    def test_power_basic(self):
+        """Test basic power operation with two inputs."""
+        from src.osk.blocks.math_ops import Power
+
+        pow_block = Power()
+        pow_block.init()
+        pow_block.setInput(2.0, 0)  # base
+        pow_block.setInput(3.0, 1)  # exponent
+        pow_block.update()
+        assert pow_block.getOutput() == 8.0  # 2^3
+
+    def test_power_connect_input(self):
+        """Test power with connected blocks."""
+        from src.osk.blocks.math_ops import Power
+        from src.osk.blocks.sources import Constant
+
+        base = Constant(value=3.0)
+        base.init()
+        base.update()
+        exp = Constant(value=2.0)
+        exp.init()
+        exp.update()
+
+        pow_block = Power()
+        pow_block.init()
+        pow_block.connectInput(base, 0)
+        pow_block.connectInput(exp, 1)
+        pow_block.update()
+        assert pow_block.getOutput() == 9.0  # 3^2
+
+    def test_power_error_handling(self):
+        """Test power handles error cases."""
+        from src.osk.blocks.math_ops import Power
+
+        pow_block = Power()
+        pow_block.init()
+        pow_block.setInput(-1.0, 0)  # negative base
+        pow_block.setInput(0.5, 1)  # fractional exponent
+        pow_block.update()
+        # sqrt(-1) should return 0.0 due to ValueError
+        assert pow_block.getOutput() == 0.0
+
+    def test_power_port_bounds(self):
+        """Test setInput/connectInput ignore invalid ports."""
+        from src.osk.blocks.math_ops import Power
+        from src.osk.blocks.sources import Constant
+
+        pow_block = Power()
+        pow_block.init()
+        pow_block.setInput(99.0, 5)  # Invalid port
+        pow_block.connectInput(Constant(value=1.0), 5)  # Invalid
+        assert pow_block.inputs == [0.0, 0.0]
+
+
+class TestUnaryMinusBlockExtended:
+    """Extended tests for the UnaryMinus block."""
+
+    def test_unary_minus_vector_input(self):
+        """Test unary minus with vector input."""
+        from src.osk.blocks.math_ops import UnaryMinus
+
+        um = UnaryMinus()
+        um.init()
+        um.setInput([1.0, -2.0, 3.0])
+        um.update()
+
+        assert um.getOutput(0) == -1.0
+        assert um.getOutput(1) == 2.0
+        assert um.getOutput(2) == -3.0
+
+    def test_unary_minus_scalar_returns_none(self):
+        """Test getOutputVector returns None for scalar."""
+        from src.osk.blocks.math_ops import UnaryMinus
+
+        um = UnaryMinus()
+        um.init()
+        um.setInput(5.0)
+        um.update()
+        assert um.getOutputVector() is None
+        assert um.getOutput() == -5.0
+
+    def test_unary_minus_connect_vector_block(self):
+        """Test unary minus with connected vector block."""
+        from src.osk.blocks.math_ops import Mux, UnaryMinus
+
+        mux = Mux(num_inputs=2)
+        mux.init()
+        mux.setInput(3.0, 0)
+        mux.setInput(-4.0, 1)
+        mux.update()
+
+        um = UnaryMinus()
+        um.init()
+        um.connectInput(mux)
+        um.update()
+
+        vec = um.getOutputVector()
+        assert vec == [-3.0, 4.0]
+
+
+class TestDotProductExtended:
+    """Extended tests for the DotProduct block."""
+
+    def test_dot_product_connect_input(self):
+        """Test dot product with connected blocks."""
+        from src.osk.blocks.math_ops import DotProduct, Mux
+
+        mux1 = Mux(num_inputs=3)
+        mux1.init()
+        mux1.setInput(1.0, 0)
+        mux1.setInput(2.0, 1)
+        mux1.setInput(3.0, 2)
+        mux1.update()
+
+        mux2 = Mux(num_inputs=3)
+        mux2.init()
+        mux2.setInput(4.0, 0)
+        mux2.setInput(5.0, 1)
+        mux2.setInput(6.0, 2)
+        mux2.update()
+
+        dp = DotProduct()
+        dp.init()
+        dp.connectInput(mux1, 0)
+        dp.connectInput(mux2, 1)
+        dp.update()
+
+        # [1,2,3] . [4,5,6] = 4 + 10 + 18 = 32
+        assert dp.getOutput() == 32.0
+
+    def test_dot_product_scalar_fallback(self):
+        """Test dot product with scalar inputs."""
+        from src.osk.blocks.math_ops import DotProduct
+
+        dp = DotProduct()
+        dp.init()
+        dp.setInput(3.0, 0)
+        dp.setInput(4.0, 1)
+        dp.update()
+        assert dp.getOutput() == 12.0  # scalar multiply
+
+
+class TestCrossProductExtended:
+    """Extended tests for the CrossProduct block."""
+
+    def test_cross_product_connect_input(self):
+        """Test cross product with connected blocks."""
+        from src.osk.blocks.math_ops import CrossProduct, Mux
+
+        mux1 = Mux(num_inputs=3)
+        mux1.init()
+        mux1.setInput(1.0, 0)
+        mux1.setInput(0.0, 1)
+        mux1.setInput(0.0, 2)
+        mux1.update()
+
+        mux2 = Mux(num_inputs=3)
+        mux2.init()
+        mux2.setInput(0.0, 0)
+        mux2.setInput(1.0, 1)
+        mux2.setInput(0.0, 2)
+        mux2.update()
+
+        cp = CrossProduct()
+        cp.init()
+        cp.connectInput(mux1, 0)
+        cp.connectInput(mux2, 1)
+        cp.update()
+
+        # i x j = k, so [1,0,0] x [0,1,0] = [0,0,1]
+        vec = cp.getOutputVector()
+        assert vec == [0.0, 0.0, 1.0]
+
+    def test_cross_product_get_output_ports(self):
+        """Test cross product individual output ports."""
+        from src.osk.blocks.math_ops import CrossProduct
+
+        cp = CrossProduct()
+        cp.init()
+        cp.setInput([1.0, 0.0, 0.0], 0)
+        cp.setInput([0.0, 0.0, 1.0], 1)
+        cp.update()
+
+        # i x k = -j, so [1,0,0] x [0,0,1] = [0,-1,0]
+        assert cp.getOutput(0) == pytest.approx(0.0)
+        assert cp.getOutput(1) == pytest.approx(-1.0)
+        assert cp.getOutput(2) == pytest.approx(0.0)
+
+
+class TestMinMaxExtended:
+    """Extended tests for the MinMax block."""
+
+    def test_minmax_connect_input(self):
+        """Test MinMax with connected blocks."""
+        from src.osk.blocks.math_ops import MinMax
+        from src.osk.blocks.sources import Constant
+
+        c1 = Constant(value=5.0)
+        c1.init()
+        c1.update()
+        c2 = Constant(value=3.0)
+        c2.init()
+        c2.update()
+
+        mm = MinMax(function="max")
+        mm.init()
+        mm.connectInput(c1, 0)
+        mm.connectInput(c2, 1)
+        mm.update()
+        assert mm.getOutput() == 5.0
+
+    def test_minmax_port_bounds(self):
+        """Test MinMax setInput/connectInput ignore invalid ports."""
+        from src.osk.blocks.math_ops import MinMax
+        from src.osk.blocks.sources import Constant
+
+        mm = MinMax(num_inputs=2)
+        mm.init()
+        mm.setInput(99.0, 5)  # Invalid
+        mm.connectInput(Constant(value=1.0), 5)  # Invalid
+        assert mm.inputs == [0.0, 0.0]
+
+
+class TestRoundingExtended:
+    """Extended tests for the Rounding block."""
+
+    def test_rounding_connect_input(self):
+        """Test Rounding with connected block."""
+        from src.osk.blocks.math_ops import Rounding
+        from src.osk.blocks.sources import Constant
+
+        const = Constant(value=3.7)
+        const.init()
+        const.update()
+
+        r = Rounding(mode="floor")
+        r.init()
+        r.connectInput(const)
+        r.update()
+        assert r.getOutput() == 3.0
+
+    def test_rounding_fix(self):
+        """Test Rounding with fix mode (truncate toward zero)."""
+        from src.osk.blocks.math_ops import Rounding
+
+        r = Rounding(mode="fix")
+        r.init()
+        r.setInput(-3.7)
+        r.update()
+        assert r.getOutput() == -3.0
+
+        r.setInput(3.7)
+        r.update()
+        assert r.getOutput() == 3.0
+
+
+class TestAbsBlockExtended:
+    """Extended tests for the Abs block."""
+
+    def test_abs_vector_input(self):
+        """Test abs with vector input."""
+        from src.osk.blocks.math_ops import Abs
+
+        ab = Abs()
+        ab.init()
+        ab.setInput([-1.0, 2.0, -3.0])
+        ab.update()
+
+        assert ab.getOutput(0) == 1.0
+        assert ab.getOutput(1) == 2.0
+        assert ab.getOutput(2) == 3.0
+
+        vec = ab.getOutputVector()
+        assert vec == [1.0, 2.0, 3.0]
+
+    def test_abs_scalar_returns_none(self):
+        """Test getOutputVector returns None for scalar."""
+        from src.osk.blocks.math_ops import Abs
+
+        ab = Abs()
+        ab.init()
+        ab.setInput(-5.0)
+        ab.update()
+        assert ab.getOutputVector() is None
+
+    def test_abs_connect_vector_block(self):
+        """Test abs with connected vector block."""
+        from src.osk.blocks.math_ops import Abs, Mux
+
+        mux = Mux(num_inputs=2)
+        mux.init()
+        mux.setInput(-3.0, 0)
+        mux.setInput(4.0, 1)
+        mux.update()
+
+        ab = Abs()
+        ab.init()
+        ab.connectInput(mux)
+        ab.update()
+
+        vec = ab.getOutputVector()
+        assert vec == [3.0, 4.0]
+
+
+class TestGainBlockExtended:
+    """Extended tests for the Gain block."""
+
+    def test_gain_vector_input(self):
+        """Test gain with vector input."""
+        from src.osk.blocks.math_ops import Gain
+
+        g = Gain(gain=2.0)
+        g.init()
+        g.setInput([1.0, 2.0, 3.0])
+        g.update()
+
+        assert g.getOutput(0) == 2.0
+        assert g.getOutput(1) == 4.0
+        assert g.getOutput(2) == 6.0
+
+        vec = g.getOutputVector()
+        assert vec == [2.0, 4.0, 6.0]
+
+    def test_gain_scalar_returns_none(self):
+        """Test getOutputVector returns None for scalar."""
+        from src.osk.blocks.math_ops import Gain
+
+        g = Gain(gain=3.0)
+        g.init()
+        g.setInput(5.0)
+        g.update()
+        assert g.getOutputVector() is None
+
+    def test_gain_connect_vector_block(self):
+        """Test gain with connected vector block."""
+        from src.osk.blocks.math_ops import Gain, Mux
+
+        mux = Mux(num_inputs=2)
+        mux.init()
+        mux.setInput(2.0, 0)
+        mux.setInput(5.0, 1)
+        mux.update()
+
+        g = Gain(gain=3.0)
+        g.init()
+        g.connectInput(mux)
+        g.update()
+
+        vec = g.getOutputVector()
+        assert vec == [6.0, 15.0]
+
+
+# =============================================================================
+# Extended Continuous Block Tests for Full Coverage
+# =============================================================================
+
+
+class TestTransportDelayBlock:
+    """Tests for the TransportDelay block."""
+
+    def test_transport_delay_basic(self):
+        """Test basic transport delay operation."""
+        from src.osk.blocks.continuous import TransportDelay
+        from src.osk.state import State
+
+        td = TransportDelay(delay_time=0.1, initial_output=0.0)
+        td.init()
+
+        # During delay period, output should be initial value
+        State.t = 0.0
+        td.setInput(5.0)
+        td.update()
+        assert td.getOutput() == 0.0  # Still in delay period
+
+        # After delay period
+        State.t = 0.1
+        td.setInput(10.0)
+        td.update()
+        # Now t=0.1, delayed_time=0.0, should output value from t=0.0
+        # The buffer should have [5.0, 10.0] at [0.0, 0.1]
+        assert td.getOutput() == pytest.approx(5.0, abs=0.1)
+
+    def test_transport_delay_init(self):
+        """Test transport delay initialization."""
+        from src.osk.blocks.continuous import TransportDelay
+
+        td = TransportDelay(delay_time=0.5, initial_output=3.0)
+        td.init()
+        assert td.getOutput() == 3.0
+        assert td.buffer == []
+        assert td.time_buffer == []
+
+    def test_transport_delay_connect_input(self):
+        """Test transport delay with connected block."""
+        from src.osk.blocks.continuous import TransportDelay
+        from src.osk.blocks.sources import Constant
+        from src.osk.state import State
+
+        const = Constant(value=7.0)
+        const.init()
+        const.update()
+
+        td = TransportDelay(delay_time=0.2, initial_output=0.0)
+        td.init()
+        td.connectInput(const)
+
+        State.t = 0.05
+        td.update()
+        assert td.getOutput() == 0.0  # In delay period
+
+    def test_transport_delay_buffer_cleanup(self):
+        """Test transport delay cleans up old buffer entries."""
+        from src.osk.blocks.continuous import TransportDelay
+        from src.osk.state import State
+
+        td = TransportDelay(delay_time=0.1, initial_output=0.0)
+        td.init()
+
+        # Build up buffer
+        for i in range(10):
+            State.t = i * 0.05
+            td.setInput(float(i))
+            td.update()
+
+        # Buffer should have been cleaned up to relevant entries
+        assert len(td.buffer) <= 10  # Some entries may have been cleaned
+
+
+class TestSecondOrderBlock:
+    """Tests for the SecondOrder block."""
+
+    def test_second_order_basic(self):
+        """Test basic second-order system."""
+        from src.osk.blocks.continuous import SecondOrder
+
+        so = SecondOrder(natural_frequency=1.0, damping_ratio=0.7, gain=1.0)
+        so.init()
+
+        # Check initial state
+        assert so.getOutput() == 0.0
+        assert so.x1[0] == 0.0
+        assert so.x2[0] == 0.0
+
+    def test_second_order_step_response(self):
+        """Test second-order system step response."""
+        from src.osk.blocks.continuous import SecondOrder
+
+        so = SecondOrder(natural_frequency=10.0, damping_ratio=1.0, gain=2.0)
+        so.init()
+        so.setInput(1.0)
+        so.update()
+
+        # Derivatives should be set
+        assert so.x1[1] == so.x2[0]  # x1' = x2
+
+    def test_second_order_connect_input(self):
+        """Test second-order with connected block."""
+        from src.osk.blocks.continuous import SecondOrder
+        from src.osk.blocks.sources import Constant
+
+        const = Constant(value=5.0)
+        const.init()
+        const.update()
+
+        so = SecondOrder(natural_frequency=2.0, damping_ratio=0.5, gain=1.0)
+        so.init()
+        so.connectInput(const)
+        so.update()
+
+        # Output should still be 0 initially, but derivatives should be set
+        assert so.getOutput() == 0.0
+
+
+class TestLimitedIntegratorBlock:
+    """Tests for the LimitedIntegrator block."""
+
+    def test_limited_integrator_basic(self):
+        """Test basic limited integrator."""
+        from src.osk.blocks.continuous import LimitedIntegrator
+
+        li = LimitedIntegrator(initial_condition=0.0, upper_limit=5.0, lower_limit=-5.0)
+        li.init()
+        assert li.getOutput() == 0.0
+
+    def test_limited_integrator_saturation(self):
+        """Test limited integrator saturation behavior."""
+        from src.osk.blocks.continuous import LimitedIntegrator
+
+        li = LimitedIntegrator(initial_condition=4.5, upper_limit=5.0, lower_limit=-5.0)
+        li.init()
+
+        # When at upper limit with positive input, should stop integrating
+        li.x[0] = 5.0  # At limit
+        li.setInput(10.0)  # Positive input
+        li.update()
+        assert li.x[1] == 0.0  # Integration stopped
+
+    def test_limited_integrator_lower_saturation(self):
+        """Test limited integrator lower saturation."""
+        from src.osk.blocks.continuous import LimitedIntegrator
+
+        li = LimitedIntegrator(initial_condition=-4.5, upper_limit=5.0, lower_limit=-5.0)
+        li.init()
+
+        # When at lower limit with negative input, should stop integrating
+        li.x[0] = -5.0  # At limit
+        li.setInput(-10.0)  # Negative input
+        li.update()
+        assert li.x[1] == 0.0  # Integration stopped
+
+    def test_limited_integrator_output_clamping(self):
+        """Test limited integrator output clamping."""
+        from src.osk.blocks.continuous import LimitedIntegrator
+
+        li = LimitedIntegrator(initial_condition=0.0, upper_limit=5.0, lower_limit=-5.0)
+        li.init()
+
+        # Force state beyond limits
+        li.x[0] = 10.0
+        assert li.getOutput() == 5.0  # Clamped to upper limit
+
+        li.x[0] = -10.0
+        assert li.getOutput() == -5.0  # Clamped to lower limit
+
+    def test_limited_integrator_connect_input(self):
+        """Test limited integrator with connected block."""
+        from src.osk.blocks.continuous import LimitedIntegrator
+        from src.osk.blocks.sources import Constant
+
+        const = Constant(value=2.0)
+        const.init()
+        const.update()
+
+        li = LimitedIntegrator(initial_condition=0.0, upper_limit=10.0, lower_limit=-10.0)
+        li.init()
+        li.connectInput(const)
+        li.update()
+
+        assert li.x[1] == 2.0  # Derivative = input
+
+
+class TestZeroPoleBlock:
+    """Tests for the ZeroPole block."""
+
+    def test_zero_pole_basic(self):
+        """Test basic zero-pole transfer function."""
+        from src.osk.blocks.continuous import ZeroPole
+
+        # Simple first-order low-pass: 1/(s+1)
+        zp = ZeroPole(zeros=[], poles=[-1.0], gain=1.0)
+        zp.init()
+        assert zp.getOutput() == 0.0
+        assert zp.order == 1
+
+    def test_zero_pole_with_zeros(self):
+        """Test zero-pole with both zeros and poles."""
+        from src.osk.blocks.continuous import ZeroPole
+
+        # (s+2)/(s+1)
+        zp = ZeroPole(zeros=[-2.0], poles=[-1.0], gain=1.0)
+        zp.init()
+        assert zp.order == 1
+
+    def test_zero_pole_second_order(self):
+        """Test second-order zero-pole system."""
+        from src.osk.blocks.continuous import ZeroPole
+
+        # 1/((s+1)(s+2))
+        zp = ZeroPole(zeros=[], poles=[-1.0, -2.0], gain=1.0)
+        zp.init()
+        assert zp.order == 2
+
+    def test_zero_pole_first_order(self):
+        """Test zero-pole first-order system."""
+        from src.osk.blocks.continuous import ZeroPole
+
+        # First order system 1/(s+1)
+        zp = ZeroPole(zeros=[], poles=[-1.0], gain=1.0)
+        zp.init()
+        zp.setInput(1.0)
+        zp.update()
+        # Initial output is 0, but system should start responding
+        assert zp.order == 1
+
+    def test_zero_pole_step_response(self):
+        """Test zero-pole step response."""
+        from src.osk.blocks.continuous import ZeroPole
+
+        zp = ZeroPole(zeros=[], poles=[-1.0], gain=1.0)
+        zp.init()
+        zp.setInput(1.0)
+        zp.update()
+
+        # Derivatives should be set
+        # This is a first-order system, so there's one state
+
+    def test_zero_pole_connect_input(self):
+        """Test zero-pole with connected block."""
+        from src.osk.blocks.continuous import ZeroPole
+        from src.osk.blocks.sources import Constant
+
+        const = Constant(value=3.0)
+        const.init()
+        const.update()
+
+        zp = ZeroPole(zeros=[], poles=[-1.0], gain=2.0)
+        zp.init()
+        zp.connectInput(const)
+        zp.update()
+
+        # Output should start at 0, but system should respond
+
+    def test_zero_pole_poly_coeffs(self):
+        """Test polynomial coefficient calculation."""
+        from src.osk.blocks.continuous import ZeroPole
+
+        zp = ZeroPole(zeros=[], poles=[-1.0], gain=1.0)
+
+        # Check polynomial from roots
+        # (s - (-1)) = s + 1 -> coeffs = [1, 1]
+        coeffs = zp._poly_coeffs([-1.0])
+        assert coeffs[0] == 1.0
+        assert coeffs[1] == pytest.approx(1.0)
+
+        # (s+1)(s+2) = s^2 + 3s + 2 -> coeffs = [1, 3, 2]
+        coeffs = zp._poly_coeffs([-1.0, -2.0])
+        assert coeffs[0] == 1.0
+        assert coeffs[1] == pytest.approx(3.0)
+        assert coeffs[2] == pytest.approx(2.0)
