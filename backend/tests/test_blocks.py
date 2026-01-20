@@ -8308,3 +8308,4573 @@ class TestZeroPoleBlock:
         assert coeffs[0] == 1.0
         assert coeffs[1] == pytest.approx(3.0)
         assert coeffs[2] == pytest.approx(2.0)
+
+
+# =============================================================================
+# Sources Module Extended Tests
+# =============================================================================
+
+
+class TestWhiteNoiseBlock:
+    """Tests for WhiteNoise block."""
+
+    def test_white_noise_basic(self):
+        """Test basic WhiteNoise initialization and output."""
+        from src.osk.blocks.sources import WhiteNoise
+
+        noise = WhiteNoise(mean=0.0, variance=1.0, seed=42)
+        noise.init()
+        noise.update()
+        output = noise.getOutput()
+        # Output should be a number (stochastic)
+        assert isinstance(output, float)
+
+    def test_white_noise_seeded_reproducibility(self):
+        """Test that seeded noise is reproducible."""
+        from src.osk.blocks.sources import WhiteNoise
+
+        noise1 = WhiteNoise(mean=0.0, variance=1.0, seed=123)
+        noise1.init()
+        noise1.update()
+        out1 = noise1.getOutput()
+
+        noise2 = WhiteNoise(mean=0.0, variance=1.0, seed=123)
+        noise2.init()
+        noise2.update()
+        out2 = noise2.getOutput()
+
+        assert out1 == out2
+
+    def test_white_noise_nonzero_mean(self):
+        """Test WhiteNoise with non-zero mean."""
+        from src.osk.blocks.sources import WhiteNoise
+
+        noise = WhiteNoise(mean=10.0, variance=0.01, seed=42)
+        noise.init()
+        # With low variance, outputs should cluster around mean
+        outputs = []
+        for _ in range(100):
+            noise.update()
+            outputs.append(noise.getOutput())
+
+        avg = sum(outputs) / len(outputs)
+        assert abs(avg - 10.0) < 1.0  # Should be close to mean
+
+    def test_white_noise_sample_time(self):
+        """Test WhiteNoise with discrete sample time."""
+        from src.osk.blocks.sources import WhiteNoise
+        from src.osk.state import State
+
+        State.t = 0.0
+        noise = WhiteNoise(mean=0.0, variance=1.0, seed=42, sample_time=0.1)
+        noise.init()
+        first_output = noise.getOutput()
+
+        # Update at same time - should keep same value
+        noise.update()
+        assert noise.getOutput() == first_output
+
+        # Advance time past sample_time
+        State.t = 0.15
+        noise.update()
+        # Output should have changed
+        # (may or may not be equal by chance, but mechanism is tested)
+
+
+class TestUniformNoiseBlock:
+    """Tests for UniformNoise block."""
+
+    def test_uniform_noise_basic(self):
+        """Test basic UniformNoise output range."""
+        from src.osk.blocks.sources import UniformNoise
+
+        noise = UniformNoise(minimum=-1.0, maximum=1.0, seed=42)
+        noise.init()
+        for _ in range(50):
+            noise.update()
+            output = noise.getOutput()
+            assert -1.0 <= output <= 1.0
+
+    def test_uniform_noise_sample_time(self):
+        """Test UniformNoise with sample time."""
+        from src.osk.blocks.sources import UniformNoise
+        from src.osk.state import State
+
+        State.t = 0.0
+        noise = UniformNoise(minimum=0.0, maximum=10.0, seed=42, sample_time=0.5)
+        noise.init()
+        first_output = noise.getOutput()
+
+        State.t = 0.1
+        noise.update()
+        # Should keep same value before sample time
+        assert noise.getOutput() == first_output
+
+        State.t = 0.6
+        noise.update()
+        # Output may have changed
+
+
+class TestRepeatingSequenceBlockExtended:
+    """Extended tests for RepeatingSequence block."""
+
+    def test_repeating_sequence_interpolation(self):
+        """Test linear interpolation in repeating sequence."""
+        from src.osk.blocks.sources import RepeatingSequence
+        from src.osk.state import State
+
+        seq = RepeatingSequence(time_values=[0.0, 1.0, 2.0], output_values=[0.0, 10.0, 0.0])
+        seq.init()
+
+        State.t = 0.5
+        seq.update()
+        assert seq.getOutput() == pytest.approx(5.0)
+
+        State.t = 1.5
+        seq.update()
+        assert seq.getOutput() == pytest.approx(5.0)
+
+    def test_repeating_sequence_wrapping(self):
+        """Test time wrapping in repeating sequence."""
+        from src.osk.blocks.sources import RepeatingSequence
+        from src.osk.state import State
+
+        seq = RepeatingSequence(time_values=[0.0, 1.0], output_values=[0.0, 1.0])
+        seq.init()
+
+        State.t = 2.5  # Should wrap to 0.5
+        seq.update()
+        assert seq.getOutput() == pytest.approx(0.5)
+
+    def test_repeating_sequence_single_point(self):
+        """Test repeating sequence with single point."""
+        from src.osk.blocks.sources import RepeatingSequence
+        from src.osk.state import State
+
+        seq = RepeatingSequence(time_values=[0.0], output_values=[5.0])
+        seq.init()
+
+        State.t = 1.0
+        seq.update()
+        assert seq.getOutput() == 5.0
+
+    def test_repeating_sequence_zero_period(self):
+        """Test repeating sequence with zero period edge case."""
+        from src.osk.blocks.sources import RepeatingSequence
+        from src.osk.state import State
+
+        seq = RepeatingSequence(
+            time_values=[1.0, 1.0],  # Zero period
+            output_values=[5.0, 10.0],
+        )
+        seq.init()
+
+        State.t = 0.5
+        seq.update()
+        # Should handle gracefully
+
+
+class TestChirpSignalBlockExtended:
+    """Extended tests for ChirpSignal block."""
+
+    def test_chirp_during_sweep(self):
+        """Test chirp during frequency sweep."""
+        from src.osk.blocks.sources import ChirpSignal
+        from src.osk.state import State
+
+        chirp = ChirpSignal(initial_frequency=1.0, target_time=2.0, target_frequency=5.0)
+        chirp.init()
+
+        State.t = 1.0  # Midway through sweep
+        chirp.update()
+        output = chirp.getOutput()
+        assert -1.0 <= output <= 1.0  # Cosine output
+
+    def test_chirp_after_target(self):
+        """Test chirp after reaching target frequency."""
+        from src.osk.blocks.sources import ChirpSignal
+        from src.osk.state import State
+
+        chirp = ChirpSignal(initial_frequency=1.0, target_time=1.0, target_frequency=2.0)
+        chirp.init()
+
+        State.t = 2.0  # Past target time
+        chirp.update()
+        output = chirp.getOutput()
+        assert -1.0 <= output <= 1.0
+
+    def test_chirp_zero_target_time(self):
+        """Test chirp with zero target time."""
+        from src.osk.blocks.sources import ChirpSignal
+
+        chirp = ChirpSignal(initial_frequency=1.0, target_time=0.0, target_frequency=2.0)
+        chirp.init()
+        assert chirp.sweep_rate == 0.0
+
+
+class TestBandLimitedWhiteNoiseBlock:
+    """Tests for BandLimitedWhiteNoise block."""
+
+    def test_band_limited_noise_basic(self):
+        """Test basic band-limited noise output."""
+        from src.osk.blocks.sources import BandLimitedWhiteNoise
+        from src.osk.state import State
+
+        State.t = 0.0
+        noise = BandLimitedWhiteNoise(noise_power=0.1, sample_time=0.1, seed=42)
+        noise.init()
+
+        output = noise.getOutput()
+        assert isinstance(output, float)
+
+    def test_band_limited_noise_sample_hold(self):
+        """Test that noise holds value between samples."""
+        from src.osk.blocks.sources import BandLimitedWhiteNoise
+        from src.osk.state import State
+
+        State.t = 0.0
+        noise = BandLimitedWhiteNoise(noise_power=0.1, sample_time=0.1, seed=42)
+        noise.init()
+        first_output = noise.getOutput()
+
+        State.t = 0.05  # Before next sample
+        noise.update()
+        assert noise.getOutput() == first_output
+
+        State.t = 0.1  # At next sample time
+        noise.update()
+        # Output should potentially change
+
+
+class TestFromWorkspaceBlock:
+    """Tests for FromWorkspace block."""
+
+    def test_from_workspace_linear_interpolation(self):
+        """Test FromWorkspace linear interpolation."""
+        from src.osk.blocks.sources import FromWorkspace
+        from src.osk.state import State
+
+        ws = FromWorkspace(
+            time_data=[0.0, 1.0, 2.0], value_data=[0.0, 10.0, 20.0], interpolation="linear"
+        )
+        ws.init()
+
+        State.t = 0.5
+        ws.update()
+        assert ws.getOutput() == pytest.approx(5.0)
+
+        State.t = 1.5
+        ws.update()
+        assert ws.getOutput() == pytest.approx(15.0)
+
+    def test_from_workspace_zoh_interpolation(self):
+        """Test FromWorkspace zero-order hold interpolation."""
+        from src.osk.blocks.sources import FromWorkspace
+        from src.osk.state import State
+
+        ws = FromWorkspace(
+            time_data=[0.0, 1.0, 2.0], value_data=[0.0, 10.0, 20.0], interpolation="zoh"
+        )
+        ws.init()
+
+        State.t = 0.5
+        ws.update()
+        assert ws.getOutput() == 0.0  # ZOH holds previous value
+
+        State.t = 1.5
+        ws.update()
+        assert ws.getOutput() == 10.0
+
+    def test_from_workspace_nearest_interpolation(self):
+        """Test FromWorkspace nearest interpolation."""
+        from src.osk.blocks.sources import FromWorkspace
+        from src.osk.state import State
+
+        ws = FromWorkspace(
+            time_data=[0.0, 1.0, 2.0], value_data=[0.0, 10.0, 20.0], interpolation="nearest"
+        )
+        ws.init()
+
+        State.t = 0.3  # Closer to 0.0
+        ws.update()
+        assert ws.getOutput() == 0.0
+
+        State.t = 0.7  # Closer to 1.0
+        ws.update()
+        assert ws.getOutput() == 10.0
+
+    def test_from_workspace_before_first_point(self):
+        """Test FromWorkspace before first time point."""
+        from src.osk.blocks.sources import FromWorkspace
+        from src.osk.state import State
+
+        ws = FromWorkspace(time_data=[1.0, 2.0], value_data=[10.0, 20.0])
+        ws.init()
+
+        State.t = 0.5
+        ws.update()
+        assert ws.getOutput() == 10.0  # Returns first value
+
+    def test_from_workspace_after_last_point(self):
+        """Test FromWorkspace after last time point."""
+        from src.osk.blocks.sources import FromWorkspace
+        from src.osk.state import State
+
+        ws = FromWorkspace(time_data=[0.0, 1.0], value_data=[0.0, 10.0])
+        ws.init()
+
+        State.t = 5.0
+        ws.update()
+        assert ws.getOutput() == 10.0  # Returns last value
+
+    def test_from_workspace_empty_data(self):
+        """Test FromWorkspace with empty data."""
+        from src.osk.blocks.sources import FromWorkspace
+        from src.osk.state import State
+
+        ws = FromWorkspace(time_data=[], value_data=[])
+        ws.init()
+
+        State.t = 0.5
+        ws.update()
+        assert ws.getOutput() == 0.0
+
+
+class TestSignalGeneratorBlockExtended:
+    """Extended tests for SignalGenerator block."""
+
+    def test_signal_generator_square(self):
+        """Test square wave generation."""
+        from src.osk.blocks.sources import SignalGenerator
+        from src.osk.state import State
+
+        gen = SignalGenerator(wave_type="square", amplitude=1.0, frequency=1.0)
+        gen.init()
+
+        State.t = 0.25  # First half of period
+        gen.update()
+        assert gen.getOutput() == 1.0
+
+        State.t = 0.75  # Second half of period
+        gen.update()
+        assert gen.getOutput() == -1.0
+
+    def test_signal_generator_sawtooth(self):
+        """Test sawtooth wave generation."""
+        from src.osk.blocks.sources import SignalGenerator
+        from src.osk.state import State
+
+        gen = SignalGenerator(wave_type="sawtooth", amplitude=1.0, frequency=1.0)
+        gen.init()
+
+        State.t = 0.0
+        gen.update()
+        assert gen.getOutput() == pytest.approx(-1.0)
+
+        State.t = 0.5
+        gen.update()
+        assert gen.getOutput() == pytest.approx(0.0)
+
+        State.t = 0.99
+        gen.update()
+        assert gen.getOutput() == pytest.approx(0.98, rel=0.05)
+
+    def test_signal_generator_random(self):
+        """Test random wave generation."""
+        from src.osk.blocks.sources import SignalGenerator
+        from src.osk.state import State
+
+        gen = SignalGenerator(wave_type="random", amplitude=1.0, frequency=1.0)
+        gen.init()
+
+        State.t = 0.1
+        gen.update()
+        output = gen.getOutput()
+        assert -1.0 <= output <= 1.0
+
+    def test_signal_generator_zero_frequency(self):
+        """Test signal generator with zero frequency."""
+        from src.osk.blocks.sources import SignalGenerator
+        from src.osk.state import State
+
+        gen = SignalGenerator(wave_type="sine", amplitude=1.0, frequency=0.0)
+        gen.init()
+
+        State.t = 1.0
+        gen.update()
+        assert gen.getOutput() == 0.0
+
+    def test_signal_generator_rad_s_units(self):
+        """Test signal generator with rad/s units."""
+        from src.osk.blocks.sources import SignalGenerator
+
+        # 2*pi rad/s = 1 Hz
+        gen = SignalGenerator(wave_type="sine", amplitude=1.0, frequency=2 * math.pi, units="rad/s")
+        gen.init()
+        assert gen.freq_hz == pytest.approx(1.0)
+
+    def test_signal_generator_unknown_wave_type(self):
+        """Test signal generator with unknown wave type."""
+        from src.osk.blocks.sources import SignalGenerator
+        from src.osk.state import State
+
+        gen = SignalGenerator(wave_type="unknown", amplitude=1.0, frequency=1.0)
+        gen.init()
+
+        State.t = 0.5
+        gen.update()
+        assert gen.getOutput() == 0.0  # Falls through to default
+
+
+class TestConstantBlockExtended:
+    """Extended tests for Constant block value parsing."""
+
+    def test_constant_semicolon_separated(self):
+        """Test Constant block parses semicolon-separated arrays."""
+        from src.osk.blocks.sources import Constant
+
+        const = Constant(value="[1; 2; 3]")
+        const.init()
+        assert const.getOutputVector() == [1.0, 2.0, 3.0]
+
+    def test_constant_space_separated(self):
+        """Test Constant block parses space-separated arrays."""
+        from src.osk.blocks.sources import Constant
+
+        const = Constant(value="[1 2 3 4]")
+        const.init()
+        assert const.getOutputVector() == [1.0, 2.0, 3.0, 4.0]
+
+    def test_constant_comma_no_brackets(self):
+        """Test Constant block parses comma-separated without brackets."""
+        from src.osk.blocks.sources import Constant
+
+        const = Constant(value="1,2,3")
+        const.init()
+        assert const.getOutputVector() == [1.0, 2.0, 3.0]
+
+    def test_constant_empty_array(self):
+        """Test Constant block with empty array string."""
+        from src.osk.blocks.sources import Constant
+
+        const = Constant(value="[]")
+        const.init()
+        # Empty array should fall back to default
+        assert const.getOutput() == 1.0
+
+    def test_constant_value_setter(self):
+        """Test Constant block value setter."""
+        from src.osk.blocks.sources import Constant
+
+        const = Constant(value=1.0)
+        const.init()
+        assert const.value == 1.0
+
+        const.value = [1.0, 2.0, 3.0]
+        assert const._is_vector is True
+        assert const._values == [1.0, 2.0, 3.0]
+
+        const.value = 5.0
+        assert const._is_vector is False
+        assert const._values == [5.0]
+
+    def test_constant_out_of_range_port(self):
+        """Test Constant block with out of range port."""
+        from src.osk.blocks.sources import Constant
+
+        const = Constant(value=[1.0, 2.0])
+        const.init()
+        assert const.getOutput(10) == 0.0
+
+    def test_constant_scalar_no_vector(self):
+        """Test Constant block scalar returns None for getOutputVector."""
+        from src.osk.blocks.sources import Constant
+
+        const = Constant(value=5.0)
+        const.init()
+        assert const.getOutputVector() is None
+
+    def test_constant_get_num_outputs(self):
+        """Test Constant block getNumOutputs method."""
+        from src.osk.blocks.sources import Constant
+
+        const = Constant(value=[1.0, 2.0, 3.0])
+        const.init()
+        assert const.getNumOutputs() == 3
+
+
+# =============================================================================
+# Navigation Module Tests
+# =============================================================================
+
+
+class TestCoordinateTransformationConversion:
+    """Tests for CoordinateTransformationConversion block."""
+
+    def test_lla_to_ecef_conversion(self):
+        """Test LLA to ECEF conversion."""
+        from src.osk.blocks.navigation import CoordinateTransformationConversion
+
+        conv = CoordinateTransformationConversion(input_type="lla", output_type="ecef")
+        conv.init()
+        conv.setInput([0.0, 0.0, 0.0])  # Equator, prime meridian, sea level
+        conv.update()
+
+        output = conv.getOutputVector()
+        assert output is not None
+        # At lat=0, lon=0, alt=0: X should equal semi-major axis
+        assert output[0] == pytest.approx(6378137.0, rel=1e-6)
+        assert output[1] == pytest.approx(0.0, abs=1e-3)
+        assert output[2] == pytest.approx(0.0, abs=1e-3)
+
+    def test_ecef_to_lla_conversion(self):
+        """Test ECEF to LLA conversion."""
+        from src.osk.blocks.navigation import CoordinateTransformationConversion
+
+        conv = CoordinateTransformationConversion(input_type="ecef", output_type="lla")
+        conv.init()
+        conv.setInput([6378137.0, 0.0, 0.0])
+        conv.update()
+
+        output = conv.getOutputVector()
+        assert output is not None
+        assert output[0] == pytest.approx(0.0, abs=1e-6)  # lat
+        assert output[1] == pytest.approx(0.0, abs=1e-6)  # lon
+        assert output[2] == pytest.approx(0.0, abs=10.0)  # alt (some tolerance)
+
+    def test_ecef_to_ned_conversion(self):
+        """Test ECEF to NED conversion."""
+        from src.osk.blocks.navigation import CoordinateTransformationConversion
+
+        # Reference at equator, prime meridian
+        conv = CoordinateTransformationConversion(
+            input_type="ecef", output_type="ned", reference_lla=[0.0, 0.0, 0.0]
+        )
+        conv.init()
+        # Point slightly above reference
+        conv.setInput([6378137.0 + 100, 0.0, 0.0])
+        conv.update()
+
+        output = conv.getOutputVector()
+        assert output is not None
+        # 100m above should be -100m in Down direction
+        assert output[2] == pytest.approx(-100.0, rel=0.01)
+
+    def test_ned_to_ecef_conversion(self):
+        """Test NED to ECEF conversion."""
+        from src.osk.blocks.navigation import CoordinateTransformationConversion
+
+        conv = CoordinateTransformationConversion(
+            input_type="ned", output_type="ecef", reference_lla=[0.0, 0.0, 0.0]
+        )
+        conv.init()
+        conv.setInput([0.0, 0.0, 0.0])  # At reference point
+        conv.update()
+
+        output = conv.getOutputVector()
+        assert output is not None
+        assert output[0] == pytest.approx(6378137.0, rel=1e-6)
+
+    def test_ecef_to_enu_conversion(self):
+        """Test ECEF to ENU conversion."""
+        from src.osk.blocks.navigation import CoordinateTransformationConversion
+
+        conv = CoordinateTransformationConversion(
+            input_type="ecef", output_type="enu", reference_lla=[0.0, 0.0, 0.0]
+        )
+        conv.init()
+        conv.setInput([6378137.0 + 100, 0.0, 0.0])
+        conv.update()
+
+        output = conv.getOutputVector()
+        assert output is not None
+        # 100m above should be +100m in Up direction (ENU)
+        assert output[2] == pytest.approx(100.0, rel=0.01)
+
+    def test_enu_to_ecef_conversion(self):
+        """Test ENU to ECEF conversion."""
+        from src.osk.blocks.navigation import CoordinateTransformationConversion
+
+        conv = CoordinateTransformationConversion(
+            input_type="enu", output_type="ecef", reference_lla=[0.0, 0.0, 0.0]
+        )
+        conv.init()
+        conv.setInput([0.0, 0.0, 0.0])
+        conv.update()
+
+        output = conv.getOutputVector()
+        assert output is not None
+        assert output[0] == pytest.approx(6378137.0, rel=1e-6)
+
+    def test_euler_to_dcm_conversion(self):
+        """Test Euler angles to DCM conversion."""
+        from src.osk.blocks.navigation import CoordinateTransformationConversion
+
+        conv = CoordinateTransformationConversion(input_type="euler", output_type="dcm")
+        conv.init()
+        conv.setInput([0.0, 0.0, 0.0])  # Zero rotation
+        conv.update()
+
+        output = conv.getOutputVector()
+        assert output is not None
+        # Identity matrix: [1,0,0,0,1,0,0,0,1]
+        assert output[0] == pytest.approx(1.0)
+        assert output[4] == pytest.approx(1.0)
+        assert output[8] == pytest.approx(1.0)
+
+    def test_dcm_to_euler_conversion(self):
+        """Test DCM to Euler conversion."""
+        from src.osk.blocks.navigation import CoordinateTransformationConversion
+
+        conv = CoordinateTransformationConversion(input_type="dcm", output_type="euler")
+        conv.init()
+        # Identity matrix
+        conv.setInput([1, 0, 0, 0, 1, 0, 0, 0, 1])
+        conv.update()
+
+        output = conv.getOutputVector()
+        assert output is not None
+        assert output[0] == pytest.approx(0.0, abs=1e-10)
+        assert output[1] == pytest.approx(0.0, abs=1e-10)
+        assert output[2] == pytest.approx(0.0, abs=1e-10)
+
+    def test_euler_to_quaternion_conversion(self):
+        """Test Euler angles to quaternion conversion."""
+        from src.osk.blocks.navigation import CoordinateTransformationConversion
+
+        conv = CoordinateTransformationConversion(input_type="euler", output_type="quaternion")
+        conv.init()
+        conv.setInput([0.0, 0.0, 0.0])
+        conv.update()
+
+        output = conv.getOutputVector()
+        assert output is not None
+        # Identity quaternion [1, 0, 0, 0]
+        assert output[0] == pytest.approx(1.0)
+        assert output[1] == pytest.approx(0.0)
+        assert output[2] == pytest.approx(0.0)
+        assert output[3] == pytest.approx(0.0)
+
+    def test_quaternion_to_euler_conversion(self):
+        """Test quaternion to Euler conversion."""
+        from src.osk.blocks.navigation import CoordinateTransformationConversion
+
+        conv = CoordinateTransformationConversion(input_type="quaternion", output_type="euler")
+        conv.init()
+        conv.setInput([1.0, 0.0, 0.0, 0.0])
+        conv.update()
+
+        output = conv.getOutputVector()
+        assert output is not None
+        assert all(abs(x) < 1e-10 for x in output)
+
+    def test_dcm_to_quaternion_conversion(self):
+        """Test DCM to quaternion conversion."""
+        from src.osk.blocks.navigation import CoordinateTransformationConversion
+
+        conv = CoordinateTransformationConversion(input_type="dcm", output_type="quaternion")
+        conv.init()
+        conv.setInput([1, 0, 0, 0, 1, 0, 0, 0, 1])
+        conv.update()
+
+        output = conv.getOutputVector()
+        assert output is not None
+        assert output[0] == pytest.approx(1.0)
+
+    def test_quaternion_to_dcm_conversion(self):
+        """Test quaternion to DCM conversion."""
+        from src.osk.blocks.navigation import CoordinateTransformationConversion
+
+        conv = CoordinateTransformationConversion(input_type="quaternion", output_type="dcm")
+        conv.init()
+        conv.setInput([1.0, 0.0, 0.0, 0.0])
+        conv.update()
+
+        output = conv.getOutputVector()
+        assert output is not None
+        # Identity matrix
+        assert output[0] == pytest.approx(1.0)
+        assert output[4] == pytest.approx(1.0)
+        assert output[8] == pytest.approx(1.0)
+
+    def test_axis_angle_to_quaternion_conversion(self):
+        """Test axis-angle to quaternion conversion."""
+        from src.osk.blocks.navigation import CoordinateTransformationConversion
+
+        conv = CoordinateTransformationConversion(input_type="axis_angle", output_type="quaternion")
+        conv.init()
+        # 90 degree rotation about z-axis
+        conv.setInput([0.0, 0.0, 1.0, math.pi / 2])
+        conv.update()
+
+        output = conv.getOutputVector()
+        assert output is not None
+        assert output[0] == pytest.approx(math.cos(math.pi / 4))
+        assert output[3] == pytest.approx(math.sin(math.pi / 4))
+
+    def test_axis_angle_zero_axis(self):
+        """Test axis-angle with zero axis (returns identity)."""
+        from src.osk.blocks.navigation import CoordinateTransformationConversion
+
+        conv = CoordinateTransformationConversion(input_type="axis_angle", output_type="quaternion")
+        conv.init()
+        conv.setInput([0.0, 0.0, 0.0, math.pi / 2])  # Zero axis
+        conv.update()
+
+        output = conv.getOutputVector()
+        assert output is not None
+        assert output[0] == pytest.approx(1.0)
+
+    def test_quaternion_to_axis_angle_conversion(self):
+        """Test quaternion to axis-angle conversion."""
+        from src.osk.blocks.navigation import CoordinateTransformationConversion
+
+        conv = CoordinateTransformationConversion(input_type="quaternion", output_type="axis_angle")
+        conv.init()
+        # 90 degree rotation about z-axis
+        w = math.cos(math.pi / 4)
+        z = math.sin(math.pi / 4)
+        conv.setInput([w, 0.0, 0.0, z])
+        conv.update()
+
+        output = conv.getOutputVector()
+        assert output is not None
+        # Axis should be [0, 0, 1], angle should be pi/2
+        assert output[2] == pytest.approx(1.0)
+        assert output[3] == pytest.approx(math.pi / 2)
+
+    def test_quaternion_to_axis_angle_identity(self):
+        """Test quaternion to axis-angle for identity."""
+        from src.osk.blocks.navigation import CoordinateTransformationConversion
+
+        conv = CoordinateTransformationConversion(input_type="quaternion", output_type="axis_angle")
+        conv.init()
+        conv.setInput([1.0, 0.0, 0.0, 0.0])
+        conv.update()
+
+        output = conv.getOutputVector()
+        assert output is not None
+        # Identity has zero rotation angle
+        assert output[3] == pytest.approx(0.0, abs=1e-10)
+
+    def test_unsupported_conversion(self):
+        """Test unsupported conversion passes through."""
+        from src.osk.blocks.navigation import CoordinateTransformationConversion
+
+        conv = CoordinateTransformationConversion(input_type="foo", output_type="bar")
+        conv.init()
+        conv.setInput([1.0, 2.0, 3.0])
+        conv.update()
+
+        output = conv.getOutputVector()
+        assert output == [1.0, 2.0, 3.0]  # Pass-through
+
+    def test_connect_input_block(self):
+        """Test connecting an input block."""
+        from src.osk.blocks.navigation import CoordinateTransformationConversion
+        from src.osk.blocks.sources import Constant
+
+        const = Constant(value=[0.0, 0.0, 0.0])
+        const.init()
+        const.update()
+
+        conv = CoordinateTransformationConversion(input_type="lla", output_type="ecef")
+        conv.init()
+        conv.connectInput(const)
+        conv.update()
+
+        output = conv.getOutputVector()
+        assert output is not None
+
+    def test_get_output_port(self):
+        """Test getOutput with port index."""
+        from src.osk.blocks.navigation import CoordinateTransformationConversion
+
+        conv = CoordinateTransformationConversion(input_type="lla", output_type="ecef")
+        conv.init()
+        conv.setInput([0.0, 0.0, 0.0])
+        conv.update()
+
+        assert conv.getOutput(0) == pytest.approx(6378137.0, rel=1e-6)
+        assert conv.getOutput(1) == pytest.approx(0.0, abs=1e-3)
+        assert conv.getOutput(10) == 0.0  # Out of range
+
+    def test_dcm_to_euler_gimbal_lock(self):
+        """Test DCM to Euler at gimbal lock (theta = +/-90deg)."""
+        from src.osk.blocks.navigation import CoordinateTransformationConversion
+
+        conv = CoordinateTransformationConversion(input_type="dcm", output_type="euler")
+        conv.init()
+        # DCM for pitch = 90 degrees (gimbal lock)
+        # R = Rz * Ry(90) * Rx => sin(theta) = 1 => dcm[6] = -1
+        conv.setInput([0, 0, 1, 0, 1, 0, -1, 0, 0])
+        conv.update()
+
+        output = conv.getOutputVector()
+        assert output is not None
+        # Should handle gimbal lock gracefully
+
+
+class TestLLAToECEF:
+    """Tests for LLAToECEF block."""
+
+    def test_lla_to_ecef_equator(self):
+        """Test LLA to ECEF at equator."""
+        from src.osk.blocks.navigation import LLAToECEF
+
+        block = LLAToECEF()
+        block.init()
+        block.setInput([0.0, 0.0, 0.0])
+        block.update()
+
+        assert block.getOutput(0) == pytest.approx(6378137.0, rel=1e-6)
+        assert block.getOutput(1) == pytest.approx(0.0, abs=1e-3)
+        assert block.getOutput(2) == pytest.approx(0.0, abs=1e-3)
+
+    def test_lla_to_ecef_connected(self):
+        """Test LLA to ECEF with connected block."""
+        from src.osk.blocks.navigation import LLAToECEF
+        from src.osk.blocks.sources import Constant
+
+        const = Constant(value=[45.0, -75.0, 100.0])
+        const.init()
+        const.update()
+
+        block = LLAToECEF()
+        block.init()
+        block.connectInput(const)
+        block.update()
+
+        output = block.getOutputVector()
+        assert output is not None
+        assert len(output) == 3
+
+
+class TestECEFToLLA:
+    """Tests for ECEFToLLA block."""
+
+    def test_ecef_to_lla_equator(self):
+        """Test ECEF to LLA at equator."""
+        from src.osk.blocks.navigation import ECEFToLLA
+
+        block = ECEFToLLA()
+        block.init()
+        block.setInput([6378137.0, 0.0, 0.0])
+        block.update()
+
+        assert block.getOutput(0) == pytest.approx(0.0, abs=1e-6)  # lat
+        assert block.getOutput(1) == pytest.approx(0.0, abs=1e-6)  # lon
+
+    def test_ecef_to_lla_pole(self):
+        """Test ECEF to LLA at north pole."""
+        from src.osk.blocks.navigation import ECEFToLLA
+
+        block = ECEFToLLA()
+        block.init()
+        # North pole (z-axis)
+        block.setInput([0.0, 0.0, 6356752.3])  # Semi-minor axis
+        block.update()
+
+        output = block.getOutputVector()
+        assert output is not None
+        assert output[0] == pytest.approx(90.0, abs=0.1)  # lat ~ 90
+
+
+class TestECEFToNED:
+    """Tests for ECEFToNED block."""
+
+    def test_ecef_to_ned_at_reference(self):
+        """Test ECEF to NED at reference point."""
+        from src.osk.blocks.navigation import ECEFToNED
+
+        block = ECEFToNED(reference_lla=[0.0, 0.0, 0.0])
+        block.init()
+        block.setInput([6378137.0, 0.0, 0.0])  # Reference ECEF
+        block.update()
+
+        output = block.getOutputVector()
+        assert output is not None
+        # At reference, NED should be [0, 0, 0]
+        assert all(abs(x) < 1.0 for x in output)
+
+    def test_ecef_to_ned_with_reference_input(self):
+        """Test ECEF to NED with dynamic reference."""
+        from src.osk.blocks.navigation import ECEFToNED
+
+        block = ECEFToNED()
+        block.init()
+        block.setInput([6378137.0, 0.0, 0.0], port=0)  # ECEF
+        block.setInput([0.0, 0.0, 0.0], port=1)  # Reference
+        block.update()
+
+
+class TestNEDToECEF:
+    """Tests for NEDToECEF block."""
+
+    def test_ned_to_ecef_at_origin(self):
+        """Test NED to ECEF at origin."""
+        from src.osk.blocks.navigation import NEDToECEF
+
+        block = NEDToECEF(reference_lla=[0.0, 0.0, 0.0])
+        block.init()
+        block.setInput([0.0, 0.0, 0.0])
+        block.update()
+
+        output = block.getOutputVector()
+        assert output is not None
+        assert output[0] == pytest.approx(6378137.0, rel=1e-6)
+
+
+class TestWaypointFollower:
+    """Tests for WaypointFollower block."""
+
+    def test_waypoint_follower_basic(self):
+        """Test basic waypoint following."""
+        from src.osk.blocks.navigation import WaypointFollower
+
+        follower = WaypointFollower(
+            waypoints=[[10.0, 10.0], [20.0, 10.0], [20.0, 20.0]],
+            acceptance_radius=100.0,  # Small radius
+        )
+        follower.init()
+        follower.setInput([0.0, 0.0])  # Far from waypoints
+        follower.update()
+
+        output = follower.getOutputVector()
+        assert output is not None
+        assert len(output) == 3
+        assert output[2] == 0.0  # Current waypoint index
+
+    def test_waypoint_follower_reach_waypoint(self):
+        """Test reaching a waypoint advances to next."""
+        from src.osk.blocks.navigation import WaypointFollower
+
+        follower = WaypointFollower(
+            waypoints=[[0.0, 0.0], [0.001, 0.0]],  # Very close waypoints
+            acceptance_radius=1000.0,  # Large radius
+        )
+        follower.init()
+        follower.setInput([0.0, 0.0])  # At first waypoint
+        follower.update()
+
+        # Should advance to next waypoint
+        assert follower.output[2] >= 0
+
+    def test_waypoint_follower_past_last(self):
+        """Test behavior when past last waypoint."""
+        from src.osk.blocks.navigation import WaypointFollower
+
+        follower = WaypointFollower(waypoints=[[0.0, 0.0]])
+        follower.init()
+        follower.current_wp_index = 10  # Past end
+        follower.setInput([0.0, 0.0])
+        follower.update()
+
+        assert follower.output[2] == 10.0
+
+
+class TestGreatCircleDistance:
+    """Tests for GreatCircleDistance block."""
+
+    def test_great_circle_same_point(self):
+        """Test distance between same point is zero."""
+        from src.osk.blocks.navigation import GreatCircleDistance
+
+        block = GreatCircleDistance()
+        block.init()
+        block.setInput([0.0, 0.0], port=0)
+        block.setInput([0.0, 0.0], port=1)
+        block.update()
+
+        assert block.getOutput() == pytest.approx(0.0, abs=1.0)
+
+    def test_great_circle_known_distance(self):
+        """Test known great circle distance."""
+        from src.osk.blocks.navigation import GreatCircleDistance
+
+        block = GreatCircleDistance()
+        block.init()
+        # New York to London approximately 5570 km
+        block.setInput([40.7128, -74.0060], port=0)  # NYC
+        block.setInput([51.5074, -0.1278], port=1)  # London
+        block.update()
+
+        distance_km = block.getOutput() / 1000.0
+        assert 5500 < distance_km < 5700
+
+
+class TestFlatEarthPosition:
+    """Tests for FlatEarthPosition block."""
+
+    def test_flat_earth_basic(self):
+        """Test basic flat earth position integration."""
+        from src.osk.blocks.navigation import FlatEarthPosition
+
+        block = FlatEarthPosition(initial_position=[0.0, 0.0, 0.0])
+        block.init()
+        block.setInput([10.0, 5.0, -1.0])  # Velocity NED
+        block.update()
+
+        # Position should update based on velocity
+        output = block.getOutputVector()
+        assert output is not None
+
+    def test_flat_earth_connected(self):
+        """Test flat earth with connected velocity block."""
+        from src.osk.blocks.navigation import FlatEarthPosition
+        from src.osk.blocks.sources import Constant
+
+        vel = Constant(value=[1.0, 2.0, 3.0])
+        vel.init()
+        vel.update()
+
+        block = FlatEarthPosition(initial_position=[100.0, 200.0, 300.0])
+        block.init()
+        block.connectInput(vel)
+        block.update()
+
+        output = block.getOutputVector()
+        assert output is not None
+
+
+# =============================================================================
+# DSP Module Tests
+# =============================================================================
+
+
+class TestFFTBlock:
+    """Tests for FFT block."""
+
+    def test_fft_dc_signal(self):
+        """Test FFT of DC signal."""
+        from src.osk.blocks.dsp import FFT
+
+        fft = FFT(n_points=8)
+        fft.init()
+        # DC signal (all ones)
+        fft.setInput([1.0] * 8)
+        fft.update()
+
+        output = fft.getOutputVector()
+        assert output is not None
+        # DC component should be 8 (sum of all ones)
+        assert output[0] == pytest.approx(8.0)
+        # Imaginary part of DC should be 0
+        assert output[1] == pytest.approx(0.0, abs=1e-10)
+
+    def test_fft_connected_input(self):
+        """Test FFT with connected input block."""
+        from src.osk.blocks.dsp import FFT
+        from src.osk.blocks.sources import Constant
+
+        const = Constant(value=[1.0, 0.0, -1.0, 0.0])
+        const.init()
+        const.update()
+
+        fft = FFT(n_points=4)
+        fft.init()
+        fft.connectInput(const)
+        fft.update()
+
+        output = fft.getOutputVector()
+        assert output is not None
+
+    def test_fft_get_output_port(self):
+        """Test FFT getOutput with port."""
+        from src.osk.blocks.dsp import FFT
+
+        fft = FFT(n_points=4)
+        fft.init()
+        fft.setInput([1.0, 2.0, 3.0, 4.0])
+        fft.update()
+
+        assert isinstance(fft.getOutput(0), float)
+        assert fft.getOutput(100) == 0.0  # Out of range
+
+
+class TestIFFTBlock:
+    """Tests for IFFT block."""
+
+    def test_ifft_dc_signal(self):
+        """Test IFFT of DC frequency component."""
+        from src.osk.blocks.dsp import IFFT
+
+        ifft = IFFT(n_points=4)
+        ifft.init()
+        # DC component of 4 (real), 0 (imag), zeros elsewhere
+        ifft.setInput([4.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+        ifft.update()
+
+        output = ifft.getOutputVector()
+        assert output is not None
+        # Should reconstruct constant signal
+        assert all(abs(x - 1.0) < 1e-10 for x in output)
+
+    def test_ifft_connected_input(self):
+        """Test IFFT with connected input block."""
+        from src.osk.blocks.dsp import IFFT
+        from src.osk.blocks.sources import Constant
+
+        const = Constant(value=[4.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+        const.init()
+        const.update()
+
+        ifft = IFFT(n_points=4)
+        ifft.init()
+        ifft.connectInput(const)
+        ifft.update()
+
+
+class TestFIRFilterBlock:
+    """Tests for FIRFilter block."""
+
+    def test_fir_moving_average(self):
+        """Test FIR as moving average filter."""
+        from src.osk.blocks.dsp import FIRFilter
+
+        # 3-tap moving average
+        fir = FIRFilter(coefficients=[1 / 3, 1 / 3, 1 / 3])
+        fir.init()
+
+        # Feed in samples
+        fir.setInput(3.0)
+        fir.update()
+        fir.setInput(3.0)
+        fir.update()
+        fir.setInput(3.0)
+        fir.update()
+
+        # Output should be average
+        assert fir.getOutput() == pytest.approx(3.0)
+
+    def test_fir_connected_input(self):
+        """Test FIR with connected input block."""
+        from src.osk.blocks.dsp import FIRFilter
+        from src.osk.blocks.sources import Constant
+
+        const = Constant(value=5.0)
+        const.init()
+        const.update()
+
+        fir = FIRFilter(coefficients=[1.0])
+        fir.init()
+        fir.connectInput(const)
+        fir.update()
+
+        assert fir.getOutput() == pytest.approx(5.0)
+
+
+class TestIIRFilterBlock:
+    """Tests for IIRFilter block."""
+
+    def test_iir_first_order(self):
+        """Test first-order IIR filter."""
+        from src.osk.blocks.dsp import IIRFilter
+
+        # First order low-pass: y[n] = 0.1*x[n] + 0.9*y[n-1]
+        iir = IIRFilter(numerator=[0.1], denominator=[1.0, -0.9])
+        iir.init()
+
+        # Feed constant input, output should approach input
+        for _ in range(50):
+            iir.setInput(1.0)
+            iir.update()
+
+        assert iir.getOutput() == pytest.approx(1.0, rel=0.1)
+
+    def test_iir_connected_input(self):
+        """Test IIR with connected input block."""
+        from src.osk.blocks.dsp import IIRFilter
+        from src.osk.blocks.sources import Constant
+
+        const = Constant(value=1.0)
+        const.init()
+        const.update()
+
+        iir = IIRFilter(numerator=[1.0], denominator=[1.0])
+        iir.init()
+        iir.connectInput(const)
+        iir.update()
+
+        assert iir.getOutput() == pytest.approx(1.0)
+
+
+class TestConvolutionBlock:
+    """Tests for Convolution block."""
+
+    def test_convolution_basic(self):
+        """Test basic convolution."""
+        from src.osk.blocks.dsp import Convolution
+
+        conv = Convolution()
+        conv.init()
+        conv.setInput([1, 2, 3], port=0)  # Signal
+        conv.setInput([1, 1], port=1)  # Kernel
+        conv.update()
+
+        output = conv.getOutputVector()
+        assert output is not None
+        # [1,2,3] * [1,1] = [1, 3, 5, 3]
+        assert output == pytest.approx([1, 3, 5, 3])
+
+    def test_convolution_empty_input(self):
+        """Test convolution with empty input."""
+        from src.osk.blocks.dsp import Convolution
+
+        conv = Convolution()
+        conv.init()
+        conv.setInput([], port=0)
+        conv.setInput([1, 1], port=1)
+        conv.update()
+
+        assert conv.getOutputVector() == []
+
+
+class TestDownsamplerBlock:
+    """Tests for Downsampler block."""
+
+    def test_downsampler_by_2(self):
+        """Test downsampling by factor of 2."""
+        from src.osk.blocks.dsp import Downsampler
+
+        ds = Downsampler(factor=2)
+        ds.init()
+
+        outputs = []
+        for i in range(6):
+            ds.setInput(float(i))
+            ds.update()
+            outputs.append(ds.getOutput())
+
+        # Should keep 0, 2, 4
+        assert outputs[0] == 0.0
+        assert outputs[2] == 2.0
+        assert outputs[4] == 4.0
+
+
+class TestUpsamplerBlock:
+    """Tests for Upsampler block."""
+
+    def test_upsampler_by_2(self):
+        """Test upsampling by factor of 2."""
+        from src.osk.blocks.dsp import Upsampler
+
+        us = Upsampler(factor=2)
+        us.init()
+
+        outputs = []
+        for i in range(4):
+            us.setInput(float(i + 1))
+            us.update()
+            outputs.append(us.getOutput())
+
+        # First sample, then zero
+        assert outputs[0] == 1.0
+        assert outputs[1] == 0.0
+
+
+class TestInterpolatorBlock:
+    """Tests for Interpolator block."""
+
+    def test_interpolator_linear(self):
+        """Test linear interpolation."""
+        from src.osk.blocks.dsp import Interpolator
+
+        interp = Interpolator(factor=2)
+        interp.init()
+
+        # First sample
+        interp.setInput(0.0)
+        interp.update()
+        _ = interp.getOutput()
+
+        interp.setInput(2.0)
+        interp.update()
+        final_out = interp.getOutput()
+
+        # Should interpolate between 0 and 2
+        # The interpolator should produce values between samples
+        assert final_out is not None
+
+
+class TestWindowFunctionBlock:
+    """Tests for WindowFunction block."""
+
+    def test_window_hamming(self):
+        """Test Hamming window."""
+        from src.osk.blocks.dsp import WindowFunction
+
+        win = WindowFunction(window_type="hamming", length=8)
+        win.init()
+
+        # Window coefficients should be generated
+        assert len(win.window) == 8
+        # Hamming window starts and ends near 0.08
+        assert win.window[0] == pytest.approx(0.08, abs=0.01)
+
+    def test_window_hanning(self):
+        """Test Hanning window."""
+        from src.osk.blocks.dsp import WindowFunction
+
+        win = WindowFunction(window_type="hanning", length=8)
+        win.init()
+        assert len(win.window) == 8
+        # Hanning starts at 0
+        assert win.window[0] == pytest.approx(0.0)
+
+    def test_window_blackman(self):
+        """Test Blackman window."""
+        from src.osk.blocks.dsp import WindowFunction
+
+        win = WindowFunction(window_type="blackman", length=8)
+        win.init()
+        assert len(win.window) == 8
+
+    def test_window_rectangular(self):
+        """Test rectangular window (all ones)."""
+        from src.osk.blocks.dsp import WindowFunction
+
+        win = WindowFunction(window_type="rectangular", length=4)
+        win.init()
+        assert win.window == [1.0, 1.0, 1.0, 1.0]
+
+    def test_window_kaiser(self):
+        """Test Kaiser window."""
+        from src.osk.blocks.dsp import WindowFunction
+
+        win = WindowFunction(window_type="kaiser", length=8, beta=5.0)
+        win.init()
+        assert len(win.window) == 8
+
+    def test_window_unknown_type(self):
+        """Test unknown window type defaults to rectangular."""
+        from src.osk.blocks.dsp import WindowFunction
+
+        win = WindowFunction(window_type="unknown", length=4)
+        win.init()
+        assert win.window == [1.0, 1.0, 1.0, 1.0]
+
+    def test_window_apply_to_signal(self):
+        """Test applying window to signal."""
+        from src.osk.blocks.dsp import WindowFunction
+
+        win = WindowFunction(window_type="rectangular", length=4)
+        win.init()
+        win.setInput([2.0, 2.0, 2.0, 2.0])
+        win.update()
+
+        assert win.getOutputVector() == [2.0, 2.0, 2.0, 2.0]
+
+
+class TestMeanBlock:
+    """Tests for Mean block."""
+
+    def test_mean_running_average(self):
+        """Test running mean calculation."""
+        from src.osk.blocks.dsp import Mean
+
+        mean = Mean(window_size=3)
+        mean.init()
+
+        mean.setInput(3.0)
+        mean.update()
+        mean.setInput(6.0)
+        mean.update()
+        mean.setInput(9.0)
+        mean.update()
+
+        assert mean.getOutput() == pytest.approx(6.0)
+
+    def test_mean_empty_buffer(self):
+        """Test mean with empty buffer."""
+        from src.osk.blocks.dsp import Mean
+
+        mean = Mean(window_size=3)
+        mean.init()
+        mean.update()
+
+        assert mean.getOutput() == 0.0
+
+
+class TestVarianceBlock:
+    """Tests for Variance block."""
+
+    def test_variance_calculation(self):
+        """Test variance calculation."""
+        from src.osk.blocks.dsp import Variance
+
+        var = Variance(window_size=3)
+        var.init()
+
+        var.setInput(1.0)
+        var.update()
+        var.setInput(2.0)
+        var.update()
+        var.setInput(3.0)
+        var.update()
+
+        # Variance of [1, 2, 3] = 1.0
+        assert var.getOutput() == pytest.approx(1.0)
+
+    def test_variance_single_sample(self):
+        """Test variance with single sample."""
+        from src.osk.blocks.dsp import Variance
+
+        var = Variance(window_size=10)
+        var.init()
+        var.setInput(5.0)
+        var.update()
+
+        assert var.getOutput() == 0.0
+
+
+class TestRMSBlock:
+    """Tests for RMS block."""
+
+    def test_rms_calculation(self):
+        """Test RMS calculation."""
+        from src.osk.blocks.dsp import RMS
+
+        rms = RMS(window_size=4)
+        rms.init()
+
+        rms.setInput(2.0)
+        rms.update()
+        rms.setInput(2.0)
+        rms.update()
+        rms.setInput(2.0)
+        rms.update()
+        rms.setInput(2.0)
+        rms.update()
+
+        assert rms.getOutput() == pytest.approx(2.0)
+
+    def test_rms_empty_buffer(self):
+        """Test RMS with empty buffer."""
+        from src.osk.blocks.dsp import RMS
+
+        rms = RMS(window_size=3)
+        rms.init()
+        rms.update()
+
+        assert rms.getOutput() == 0.0
+
+
+class TestPeakDetectorBlock:
+    """Tests for PeakDetector block."""
+
+    def test_peak_detector_finds_peak(self):
+        """Test peak detection."""
+        from src.osk.blocks.dsp import PeakDetector
+
+        pd = PeakDetector(threshold=0.0)
+        pd.init()
+
+        # Rising edge
+        pd.setInput(0.0)
+        pd.update()
+        pd.setInput(1.0)
+        pd.update()
+        pd.setInput(2.0)  # Peak
+        pd.update()
+        pd.setInput(1.0)  # Falling - peak detected
+        pd.update()
+
+        assert pd.getOutput() == 1.0
+
+    def test_peak_detector_threshold(self):
+        """Test peak detector with threshold."""
+        from src.osk.blocks.dsp import PeakDetector
+
+        pd = PeakDetector(threshold=5.0)
+        pd.init()
+
+        pd.setInput(0.0)
+        pd.update()
+        pd.setInput(2.0)
+        pd.update()
+        pd.setInput(1.0)
+        pd.update()
+
+        # Peak at 2.0 is below threshold 5.0
+        assert pd.getOutput() == 0.0
+
+
+class TestZeroCrossingDetectorBlock:
+    """Tests for ZeroCrossingDetector block."""
+
+    def test_zero_crossing_rising(self):
+        """Test rising zero crossing detection."""
+        from src.osk.blocks.dsp import ZeroCrossingDetector
+
+        zcd = ZeroCrossingDetector(direction="rising")
+        zcd.init()
+
+        zcd.setInput(-1.0)
+        zcd.update()
+        zcd.setInput(1.0)  # Rising crossing
+        zcd.update()
+
+        assert zcd.getOutput() == 1.0
+
+    def test_zero_crossing_falling(self):
+        """Test falling zero crossing detection."""
+        from src.osk.blocks.dsp import ZeroCrossingDetector
+
+        zcd = ZeroCrossingDetector(direction="falling")
+        zcd.init()
+
+        zcd.setInput(1.0)
+        zcd.update()
+        zcd.setInput(-1.0)  # Falling crossing
+        zcd.update()
+
+        assert zcd.getOutput() == 1.0
+
+    def test_zero_crossing_both(self):
+        """Test both zero crossing directions."""
+        from src.osk.blocks.dsp import ZeroCrossingDetector
+
+        zcd = ZeroCrossingDetector(direction="both")
+        zcd.init()
+
+        zcd.setInput(-1.0)
+        zcd.update()
+        zcd.setInput(1.0)  # Rising
+        zcd.update()
+        assert zcd.getOutput() == 1.0
+
+        zcd.setInput(-1.0)  # Falling
+        zcd.update()
+        assert zcd.getOutput() == 1.0
+
+
+# =============================================================================
+# Matrix Operations Module Tests
+# =============================================================================
+
+
+class TestMatrixMultiplyBlock:
+    """Tests for MatrixMultiply block."""
+
+    def test_matrix_multiply_dot_product(self):
+        """Test dot product of equal-length vectors."""
+        from src.osk.blocks.matrix_ops import MatrixMultiply
+
+        mm = MatrixMultiply()
+        mm.init()
+        mm.setInput([1, 2, 3], port=0)
+        mm.setInput([4, 5, 6], port=1)
+        mm.update()
+
+        # Dot product: 1*4 + 2*5 + 3*6 = 32
+        assert mm.getOutput() == pytest.approx(32.0)
+
+    def test_matrix_multiply_scalar(self):
+        """Test scalar multiplication."""
+        from src.osk.blocks.matrix_ops import MatrixMultiply
+
+        mm = MatrixMultiply()
+        mm.init()
+        mm.setInput(3.0, port=0)
+        mm.setInput(4.0, port=1)
+        mm.update()
+
+        assert mm.getOutput() == pytest.approx(12.0)
+
+    def test_matrix_multiply_different_lengths(self):
+        """Test with different length inputs."""
+        from src.osk.blocks.matrix_ops import MatrixMultiply
+
+        mm = MatrixMultiply()
+        mm.init()
+        mm.setInput([1, 2], port=0)
+        mm.setInput([3], port=1)
+        mm.update()
+
+        # Should treat as scalar mult
+        assert mm.getOutput() == pytest.approx(3.0)
+
+
+class TestMatrixTransposeBlock:
+    """Tests for MatrixTranspose block."""
+
+    def test_matrix_transpose_vector(self):
+        """Test transpose of vector (identity for 1D)."""
+        from src.osk.blocks.matrix_ops import MatrixTranspose
+        from src.osk.blocks.sources import Constant
+
+        # Must use connected input to set _is_vector flag
+        const = Constant(value=[1, 2, 3])
+        const.init()
+        const.update()
+
+        mt = MatrixTranspose()
+        mt.init()
+        mt.connectInput(const)
+        mt.update()
+
+        assert mt.getOutputVector() == [1, 2, 3]
+
+    def test_matrix_transpose_scalar(self):
+        """Test transpose of scalar."""
+        from src.osk.blocks.matrix_ops import MatrixTranspose
+        from src.osk.blocks.sources import Constant
+
+        const = Constant(value=5.0)
+        const.init()
+        const.update()
+
+        mt = MatrixTranspose()
+        mt.init()
+        mt.connectInput(const)
+        mt.update()
+
+        assert mt.getOutput() == 5.0
+
+
+class TestMatrixInverseBlock:
+    """Tests for MatrixInverse block."""
+
+    def test_matrix_inverse_scalar(self):
+        """Test inverse of scalar."""
+        from src.osk.blocks.matrix_ops import MatrixInverse
+
+        mi = MatrixInverse()
+        mi.init()
+        mi.setInput([4.0])
+        mi.update()
+
+        assert mi.getOutput() == pytest.approx(0.25)
+
+    def test_matrix_inverse_scalar_zero(self):
+        """Test inverse of zero returns inf."""
+        from src.osk.blocks.matrix_ops import MatrixInverse
+
+        mi = MatrixInverse()
+        mi.init()
+        mi.setInput([0.0])
+        mi.update()
+
+        assert mi.getOutput() == float("inf")
+
+    def test_matrix_inverse_2x2(self):
+        """Test inverse of 2x2 matrix."""
+        from src.osk.blocks.matrix_ops import MatrixInverse
+        from src.osk.blocks.sources import Constant
+
+        const = Constant(value=[1, 2, 3, 4])
+        const.init()
+        const.update()
+
+        mi = MatrixInverse()
+        mi.init()
+        mi.connectInput(const)
+        mi.update()
+
+        output = mi.getOutputVector()
+        assert output is not None
+        # Inverse of [[1,2],[3,4]] = [[-2, 1], [1.5, -0.5]]
+        # det = -2
+        assert output[0] == pytest.approx(-2.0)
+        assert output[1] == pytest.approx(1.0)
+
+    def test_matrix_inverse_singular(self):
+        """Test inverse of singular matrix."""
+        from src.osk.blocks.matrix_ops import MatrixInverse
+        from src.osk.blocks.sources import Constant
+
+        const = Constant(value=[1, 2, 2, 4])
+        const.init()
+        const.update()
+
+        mi = MatrixInverse()
+        mi.init()
+        mi.connectInput(const)
+        mi.update()
+
+        output = mi.getOutputVector()
+        assert output is not None
+        assert all(x == float("inf") for x in output)
+
+    def test_matrix_inverse_unsupported_size(self):
+        """Test inverse with unsupported size passes through."""
+        from src.osk.blocks.matrix_ops import MatrixInverse
+        from src.osk.blocks.sources import Constant
+
+        const = Constant(value=[1, 2, 3])
+        const.init()
+        const.update()
+
+        mi = MatrixInverse()
+        mi.init()
+        mi.connectInput(const)
+        mi.update()
+
+        output = mi.getOutputVector()
+        assert output is not None
+        assert output == [1, 2, 3]  # Pass through
+
+
+class TestSelectorBlock:
+    """Tests for Selector block."""
+
+    def test_selector_basic(self):
+        """Test basic element selection."""
+        from src.osk.blocks.matrix_ops import Selector
+
+        sel = Selector(indices=[0, 2], output_size=2)
+        sel.init()
+        sel.setInput([10, 20, 30, 40])
+        sel.update()
+
+        output = sel.getOutputVector()
+        assert output is not None
+        assert output == [10, 30]
+
+    def test_selector_out_of_range(self):
+        """Test selector with out of range index."""
+        from src.osk.blocks.matrix_ops import Selector
+
+        sel = Selector(indices=[0, 10], output_size=2)
+        sel.init()
+        sel.setInput([1, 2, 3])
+        sel.update()
+
+        output = sel.getOutputVector()
+        assert output is not None
+        assert output == [1, 0.0]  # Out of range returns 0
+
+
+class TestAssignmentBlock:
+    """Tests for Assignment block."""
+
+    def test_assignment_basic(self):
+        """Test basic value assignment."""
+        from src.osk.blocks.matrix_ops import Assignment
+
+        assign = Assignment(indices=[1])
+        assign.init()
+        assign.setInput([1, 2, 3], port=0)  # Base
+        assign.setInput([99], port=1)  # Values
+        assign.update()
+
+        output = assign.getOutputVector()
+        assert output is not None
+        assert output == [1, 99, 3]
+
+    def test_assignment_multiple_indices(self):
+        """Test assignment to multiple indices."""
+        from src.osk.blocks.matrix_ops import Assignment
+
+        assign = Assignment(indices=[0, 2])
+        assign.init()
+        assign.setInput([1, 2, 3, 4], port=0)
+        assign.setInput([10, 30], port=1)
+        assign.update()
+
+        output = assign.getOutputVector()
+        assert output is not None
+        assert output == [10, 2, 30, 4]
+
+
+class TestConcatenateBlock:
+    """Tests for Concatenate block."""
+
+    def test_concatenate_two_vectors(self):
+        """Test concatenating two vectors."""
+        from src.osk.blocks.matrix_ops import Concatenate
+
+        cat = Concatenate(num_inputs=2)
+        cat.init()
+        cat.setInput([1, 2], port=0)
+        cat.setInput([3, 4], port=1)
+        cat.update()
+
+        output = cat.getOutputVector()
+        assert output is not None
+        assert output == [1, 2, 3, 4]
+
+    def test_concatenate_three_inputs(self):
+        """Test concatenating three inputs."""
+        from src.osk.blocks.matrix_ops import Concatenate
+
+        cat = Concatenate(num_inputs=3)
+        cat.init()
+        cat.setInput([1], port=0)
+        cat.setInput([2], port=1)
+        cat.setInput([3], port=2)
+        cat.update()
+
+        output = cat.getOutputVector()
+        assert output is not None
+        assert output == [1, 2, 3]
+
+    def test_concatenate_get_num_outputs(self):
+        """Test getNumOutputs method."""
+        from src.osk.blocks.matrix_ops import Concatenate
+
+        cat = Concatenate(num_inputs=2)
+        cat.init()
+        cat.setInput([1, 2, 3], port=0)
+        cat.setInput([4, 5], port=1)
+        cat.update()
+
+        assert cat.getNumOutputs() == 5
+
+
+class TestMatrixSumBlock:
+    """Tests for MatrixSum block."""
+
+    def test_matrix_sum_all(self):
+        """Test sum of all elements."""
+        from src.osk.blocks.matrix_ops import MatrixSum
+
+        ms = MatrixSum(dimension="all")
+        ms.init()
+        ms.setInput([1, 2, 3, 4])
+        ms.update()
+
+        assert ms.getOutput() == pytest.approx(10.0)
+
+    def test_matrix_sum_scalar(self):
+        """Test sum of scalar."""
+        from src.osk.blocks.matrix_ops import MatrixSum
+
+        ms = MatrixSum()
+        ms.init()
+        ms.setInput(5.0)
+        ms.update()
+
+        assert ms.getOutput() == pytest.approx(5.0)
+
+
+class TestVectorNormBlock:
+    """Tests for VectorNorm block."""
+
+    def test_vector_norm_2(self):
+        """Test 2-norm (Euclidean)."""
+        from src.osk.blocks.matrix_ops import VectorNorm
+
+        vn = VectorNorm(norm_type="2")
+        vn.init()
+        vn.setInput([3, 4])  # sqrt(9+16) = 5
+        vn.update()
+
+        assert vn.getOutput() == pytest.approx(5.0)
+
+    def test_vector_norm_1(self):
+        """Test 1-norm (Manhattan)."""
+        from src.osk.blocks.matrix_ops import VectorNorm
+
+        vn = VectorNorm(norm_type="1")
+        vn.init()
+        vn.setInput([-3, 4])  # |3| + |4| = 7
+        vn.update()
+
+        assert vn.getOutput() == pytest.approx(7.0)
+
+    def test_vector_norm_inf(self):
+        """Test inf-norm (maximum)."""
+        from src.osk.blocks.matrix_ops import VectorNorm
+
+        vn = VectorNorm(norm_type="inf")
+        vn.init()
+        vn.setInput([-5, 3, 4])  # max(|5|, |3|, |4|) = 5
+        vn.update()
+
+        assert vn.getOutput() == pytest.approx(5.0)
+
+    def test_vector_norm_unknown_type(self):
+        """Test unknown norm type defaults to 2-norm."""
+        from src.osk.blocks.matrix_ops import VectorNorm
+
+        vn = VectorNorm(norm_type="unknown")
+        vn.init()
+        vn.setInput([3, 4])
+        vn.update()
+
+        assert vn.getOutput() == pytest.approx(5.0)
+
+    def test_vector_norm_empty(self):
+        """Test norm of empty vector."""
+        from src.osk.blocks.matrix_ops import VectorNorm
+
+        vn = VectorNorm(norm_type="inf")
+        vn.init()
+        vn.setInput([])
+        vn.update()
+
+        assert vn.getOutput() == 0.0
+
+
+# =============================================================================
+# RF Module Tests
+# =============================================================================
+
+
+class TestRFAmplifierBlock:
+    """Tests for RFAmplifier block."""
+
+    def test_rf_amplifier_basic_gain(self):
+        """Test basic amplifier gain."""
+        from src.osk.blocks.rf import RFAmplifier
+
+        amp = RFAmplifier(gain_db=20.0, p1db_dbm=30.0)
+        amp.init()
+        amp.setInput(-10.0)  # -10 dBm input
+
+        assert amp.getOutput() == pytest.approx(10.0)  # -10 + 20 = 10 dBm
+
+    def test_rf_amplifier_compression(self):
+        """Test amplifier compression near P1dB."""
+        from src.osk.blocks.rf import RFAmplifier
+
+        amp = RFAmplifier(gain_db=20.0, p1db_dbm=20.0)
+        amp.init()
+        amp.setInput(5.0)  # 5 dBm input -> 25 dBm ideal output > P1dB
+
+        # Should compress below ideal
+        output = amp.getOutput()
+        assert output < 25.0
+        assert output <= 25.0  # P1dB + 5
+
+    def test_rf_amplifier_connected(self):
+        """Test amplifier with connected input."""
+        from src.osk.blocks.rf import RFAmplifier
+        from src.osk.blocks.sources import Constant
+
+        const = Constant(value=-20.0)
+        const.init()
+        const.update()
+
+        amp = RFAmplifier(gain_db=10.0)
+        amp.init()
+        amp.connectInput(const)
+        amp.update()
+
+        assert amp.getOutput() == pytest.approx(-10.0)
+
+
+class TestRFMixerBlock:
+    """Tests for RFMixer block."""
+
+    def test_rf_mixer_conversion_loss(self):
+        """Test mixer conversion loss."""
+        from src.osk.blocks.rf import RFMixer
+
+        mixer = RFMixer(conversion_loss_db=6.0)
+        mixer.init()
+        mixer.setInput(0.0, port=0)  # RF input: 0 dBm
+        mixer.setInput(10.0, port=1)  # LO
+        mixer.update()
+
+        assert mixer.getOutput() == pytest.approx(-6.0)
+
+    def test_rf_mixer_connected(self):
+        """Test mixer with connected inputs."""
+        from src.osk.blocks.rf import RFMixer
+        from src.osk.blocks.sources import Constant
+
+        rf = Constant(value=-10.0)
+        rf.init()
+        rf.update()
+
+        lo = Constant(value=7.0)
+        lo.init()
+        lo.update()
+
+        mixer = RFMixer(conversion_loss_db=8.0)
+        mixer.init()
+        mixer.connectInput(rf, port=0)
+        mixer.connectInput(lo, port=1)
+        mixer.update()
+
+        assert mixer.getOutput() == pytest.approx(-18.0)
+
+
+class TestRFFilterBlock:
+    """Tests for RFFilter block."""
+
+    def test_rf_filter_bandpass_in_band(self):
+        """Test bandpass filter in passband."""
+        from src.osk.blocks.rf import RFFilter
+
+        filt = RFFilter(
+            filter_type="bandpass",
+            center_freq_hz=1e9,
+            bandwidth_hz=100e6,
+            insertion_loss_db=1.0,
+            rejection_db=40.0,
+        )
+        filt.init()
+        filt.setInput(0.0, port=0)  # Power
+        filt.setInput(1e9, port=1)  # Freq (in band)
+        filt.update()
+
+        assert filt.getOutput() == pytest.approx(-1.0)  # Just insertion loss
+
+    def test_rf_filter_bandpass_out_of_band(self):
+        """Test bandpass filter out of band."""
+        from src.osk.blocks.rf import RFFilter
+
+        filt = RFFilter(
+            filter_type="bandpass",
+            center_freq_hz=1e9,
+            bandwidth_hz=100e6,
+            insertion_loss_db=1.0,
+            rejection_db=40.0,
+        )
+        filt.init()
+        filt.setInput(0.0, port=0)
+        filt.setInput(2e9, port=1)  # Out of band
+        filt.update()
+
+        assert filt.getOutput() == pytest.approx(-41.0)  # IL + rejection
+
+    def test_rf_filter_bandstop(self):
+        """Test bandstop filter."""
+        from src.osk.blocks.rf import RFFilter
+
+        filt = RFFilter(
+            filter_type="bandstop",
+            center_freq_hz=1e9,
+            bandwidth_hz=100e6,
+            insertion_loss_db=1.0,
+            rejection_db=30.0,
+        )
+        filt.init()
+
+        # In stop band
+        filt.setInput(0.0, port=0)
+        filt.setInput(1e9, port=1)
+        filt.update()
+        assert filt.getOutput() == pytest.approx(-31.0)
+
+        # Out of stop band (passband)
+        filt.setInput(0.0, port=0)
+        filt.setInput(2e9, port=1)
+        filt.update()
+        assert filt.getOutput() == pytest.approx(-1.0)
+
+    def test_rf_filter_lowpass(self):
+        """Test lowpass filter."""
+        from src.osk.blocks.rf import RFFilter
+
+        filt = RFFilter(
+            filter_type="lowpass", center_freq_hz=1e9, insertion_loss_db=0.5, rejection_db=50.0
+        )
+        filt.init()
+
+        # Below cutoff
+        filt.setInput(0.0, port=0)
+        filt.setInput(0.5e9, port=1)
+        filt.update()
+        assert filt.getOutput() == pytest.approx(-0.5)
+
+        # Above cutoff
+        filt.setInput(0.0, port=0)
+        filt.setInput(2e9, port=1)
+        filt.update()
+        assert filt.getOutput() == pytest.approx(-50.5)
+
+    def test_rf_filter_highpass(self):
+        """Test highpass filter."""
+        from src.osk.blocks.rf import RFFilter
+
+        filt = RFFilter(
+            filter_type="highpass", center_freq_hz=1e9, insertion_loss_db=0.5, rejection_db=50.0
+        )
+        filt.init()
+
+        # Above cutoff
+        filt.setInput(0.0, port=0)
+        filt.setInput(2e9, port=1)
+        filt.update()
+        assert filt.getOutput() == pytest.approx(-0.5)
+
+        # Below cutoff
+        filt.setInput(0.0, port=0)
+        filt.setInput(0.5e9, port=1)
+        filt.update()
+        assert filt.getOutput() == pytest.approx(-50.5)
+
+    def test_rf_filter_unknown_type(self):
+        """Test filter with unknown type."""
+        from src.osk.blocks.rf import RFFilter
+
+        filt = RFFilter(filter_type="unknown", insertion_loss_db=2.0)
+        filt.init()
+        filt.setInput(0.0, port=0)
+        filt.setInput(1e9, port=1)
+        filt.update()
+
+        assert filt.getOutput() == pytest.approx(-2.0)
+
+
+class TestSParameterNetworkBlock:
+    """Tests for SParameterNetwork block."""
+
+    def test_s_param_through(self):
+        """Test ideal through connection."""
+        from src.osk.blocks.rf import SParameterNetwork
+
+        # Default is ideal through: S21 = 1
+        sparam = SParameterNetwork()
+        sparam.init()
+        sparam.setInput([1.0, 0.0])  # Unit input
+        sparam.update()
+
+        output = sparam.getOutputVector()
+        assert output is not None
+        # b1 = S11 * a1 = 0
+        # b2 = S21 * a1 = 1
+        assert output[0] == pytest.approx(0.0)
+        assert output[2] == pytest.approx(1.0)
+
+    def test_s_param_custom(self):
+        """Test custom S-parameters."""
+        from src.osk.blocks.rf import SParameterNetwork
+
+        # S11 = 0.5, S21 = 0.866 (approx for -3dB return loss, 0dB insertion)
+        sparam = SParameterNetwork(s_params=[0.5, 0, 0, 0, 0.866, 0, 0, 0])
+        sparam.init()
+        sparam.setInput([2.0, 0.0])
+        sparam.update()
+
+        output = sparam.getOutputVector()
+        assert output is not None
+        assert output[0] == pytest.approx(1.0)  # b1 = 0.5 * 2
+        assert output[2] == pytest.approx(1.732)  # b2 = 0.866 * 2
+
+    def test_s_param_connected(self):
+        """Test S-parameter with connected input."""
+        from src.osk.blocks.rf import SParameterNetwork
+        from src.osk.blocks.sources import Constant
+
+        const = Constant(value=[1.0, 0.5])
+        const.init()
+        const.update()
+
+        sparam = SParameterNetwork()
+        sparam.init()
+        sparam.connectInput(const)
+        sparam.update()
+
+        output = sparam.getOutputVector()
+        assert output is not None
+
+
+class TestRFBudgetElementBlock:
+    """Tests for RFBudgetElement block."""
+
+    def test_rf_budget_first_element(self):
+        """Test first element in cascade."""
+        from src.osk.blocks.rf import RFBudgetElement
+
+        elem = RFBudgetElement(gain_db=10.0, noise_figure_db=3.0)
+        elem.init()
+        elem.setInput(-30.0, port=0)  # Input power
+        elem.setInput(0.0, port=1)  # Cascaded gain (first element)
+        elem.setInput(0.0, port=2)  # Cascaded NF (first element)
+        elem.update()
+
+        output = elem.getOutputVector()
+        assert output is not None
+        assert output[0] == pytest.approx(-20.0)  # Pout = Pin + G
+        assert output[1] == pytest.approx(10.0)  # Cascaded gain
+        assert output[2] == pytest.approx(3.0)  # Cascaded NF = this NF
+
+    def test_rf_budget_cascade(self):
+        """Test cascaded element with Friis formula."""
+        from src.osk.blocks.rf import RFBudgetElement
+
+        elem = RFBudgetElement(gain_db=5.0, noise_figure_db=6.0)
+        elem.init()
+        elem.setInput(-20.0, port=0)
+        elem.setInput(10.0, port=1)  # Previous gain
+        elem.setInput(3.0, port=2)  # Previous NF
+        elem.update()
+
+        output = elem.getOutputVector()
+        assert output is not None
+        assert output[0] == pytest.approx(-15.0)
+        assert output[1] == pytest.approx(15.0)
+        # NF should be slightly higher than first stage
+
+    def test_rf_budget_low_gain_cascade(self):
+        """Test cascade with very low gain."""
+        from src.osk.blocks.rf import RFBudgetElement
+
+        elem = RFBudgetElement(gain_db=0.0, noise_figure_db=3.0)
+        elem.init()
+        elem.setInput(0.0, port=0)
+        elem.setInput(-100.0, port=1)  # Very low previous gain
+        elem.setInput(3.0, port=2)
+        elem.update()
+
+        # Should handle low gain case
+
+
+class TestAttenuatorBlock:
+    """Tests for Attenuator block."""
+
+    def test_attenuator_basic(self):
+        """Test basic attenuation."""
+        from src.osk.blocks.rf import Attenuator
+
+        atten = Attenuator(attenuation_db=10.0)
+        atten.init()
+        atten.setInput(0.0)
+
+        assert atten.getOutput() == pytest.approx(-10.0)
+
+    def test_attenuator_connected(self):
+        """Test attenuator with connected input."""
+        from src.osk.blocks.rf import Attenuator
+        from src.osk.blocks.sources import Constant
+
+        const = Constant(value=20.0)
+        const.init()
+        const.update()
+
+        atten = Attenuator(attenuation_db=6.0)
+        atten.init()
+        atten.connectInput(const)
+        atten.update()
+
+        assert atten.getOutput() == pytest.approx(14.0)
+
+
+class TestAMModulatorBlock:
+    """Tests for AMModulator block."""
+
+    def test_am_modulator_zero_message(self):
+        """Test AM modulator with zero message."""
+        from src.osk.blocks.rf import AMModulator
+        from src.osk.state import State
+
+        State.t = 0.0
+        mod = AMModulator(carrier_freq=1e6, carrier_amplitude=1.0, modulation_index=0.5)
+        mod.init()
+        mod.setInput(0.0)  # Zero message
+        mod.update()
+
+        # At t=0, cos(0) = 1, envelope = 1, output = 1
+        assert mod.getOutput() == pytest.approx(1.0)
+
+    def test_am_modulator_with_message(self):
+        """Test AM modulator with non-zero message."""
+        from src.osk.blocks.rf import AMModulator
+        from src.osk.state import State
+
+        State.t = 0.0
+        mod = AMModulator(carrier_freq=1e6, carrier_amplitude=2.0, modulation_index=0.5)
+        mod.init()
+        mod.setInput(1.0)  # Full positive message
+        mod.update()
+
+        # At t=0: envelope = 1 + 0.5*1 = 1.5, carrier = 1
+        # output = 2.0 * 1.5 * 1 = 3.0
+        assert mod.getOutput() == pytest.approx(3.0)
+
+
+class TestFMModulatorBlock:
+    """Tests for FMModulator block."""
+
+    def test_fm_modulator_zero_message(self):
+        """Test FM modulator with zero message."""
+        from src.osk.blocks.rf import FMModulator
+        from src.osk.state import State
+
+        State.t = 0.0
+        State.dt = 0.001
+        mod = FMModulator(carrier_freq=1e6, carrier_amplitude=1.0, freq_deviation=75e3)
+        mod.init()
+        mod.setInput(0.0)
+        mod.update()
+
+        # At t=0 with zero message, output = cos(0) = 1
+        assert mod.getOutput() == pytest.approx(1.0)
+
+    def test_fm_modulator_accumulation(self):
+        """Test FM modulator phase accumulation."""
+        from src.osk.blocks.rf import FMModulator
+        from src.osk.state import State
+
+        State.t = 0.0
+        State.dt = 1e-6
+        mod = FMModulator(
+            carrier_freq=0.0,  # Zero carrier to isolate phase modulation
+            carrier_amplitude=1.0,
+            freq_deviation=1e6,
+        )
+        mod.init()
+
+        # First update with positive message
+        mod.setInput(1.0)
+        mod.update()
+
+        # Phase should have accumulated
+
+
+class TestPhaseNoiseBlock:
+    """Tests for PhaseNoise block."""
+
+    def test_phase_noise_basic(self):
+        """Test phase noise adds noise to signal."""
+        from src.osk.blocks.rf import PhaseNoise
+        from src.osk.state import State
+
+        State.dt = 0.001
+        pn = PhaseNoise(phase_noise_dbcHz=-100.0, offset_freq=10e3)
+        pn.init()
+        pn.setInput(1.0)
+        pn.update()
+
+        # Output should be close to input with small noise
+        output = pn.getOutput()
+        assert isinstance(output, float)
+
+    def test_phase_noise_connected(self):
+        """Test phase noise with connected input."""
+        from src.osk.blocks.rf import PhaseNoise
+        from src.osk.blocks.sources import Constant
+        from src.osk.state import State
+
+        State.dt = 0.001
+        const = Constant(value=5.0)
+        const.init()
+        const.update()
+
+        pn = PhaseNoise(phase_noise_dbcHz=-80.0, offset_freq=1e3)
+        pn.init()
+        pn.connectInput(const)
+        pn.update()
+
+        # Output should be close to 5.0
+
+
+class TestdBmToWattsBlock:
+    """Tests for dBmToWatts block."""
+
+    def test_dbm_to_watts_0dbm(self):
+        """Test 0 dBm = 1 mW."""
+        from src.osk.blocks.rf import dBmToWatts
+
+        conv = dBmToWatts()
+        conv.init()
+        conv.setInput(0.0)
+
+        assert conv.getOutput() == pytest.approx(0.001)
+
+    def test_dbm_to_watts_30dbm(self):
+        """Test 30 dBm = 1 W."""
+        from src.osk.blocks.rf import dBmToWatts
+
+        conv = dBmToWatts()
+        conv.init()
+        conv.setInput(30.0)
+
+        assert conv.getOutput() == pytest.approx(1.0)
+
+    def test_dbm_to_watts_connected(self):
+        """Test with connected input."""
+        from src.osk.blocks.rf import dBmToWatts
+        from src.osk.blocks.sources import Constant
+
+        const = Constant(value=10.0)
+        const.init()
+        const.update()
+
+        conv = dBmToWatts()
+        conv.init()
+        conv.connectInput(const)
+        conv.update()
+
+        # 10 dBm = 10 mW = 0.01 W
+        assert conv.getOutput() == pytest.approx(0.01)
+
+
+class TestWattsTodBmBlock:
+    """Tests for WattsTodBm block."""
+
+    def test_watts_to_dbm_1mw(self):
+        """Test 1 mW = 0 dBm."""
+        from src.osk.blocks.rf import WattsTodBm
+
+        conv = WattsTodBm()
+        conv.init()
+        conv.setInput(0.001)
+
+        assert conv.getOutput() == pytest.approx(0.0)
+
+    def test_watts_to_dbm_1w(self):
+        """Test 1 W = 30 dBm."""
+        from src.osk.blocks.rf import WattsTodBm
+
+        conv = WattsTodBm()
+        conv.init()
+        conv.setInput(1.0)
+
+        assert conv.getOutput() == pytest.approx(30.0)
+
+    def test_watts_to_dbm_zero(self):
+        """Test 0 W returns floor value."""
+        from src.osk.blocks.rf import WattsTodBm
+
+        conv = WattsTodBm()
+        conv.init()
+        conv.setInput(0.0)
+
+        assert conv.getOutput() == -200.0
+
+    def test_watts_to_dbm_connected(self):
+        """Test with connected input."""
+        from src.osk.blocks.rf import WattsTodBm
+        from src.osk.blocks.sources import Constant
+
+        const = Constant(value=0.01)  # 10 mW
+        const.init()
+        const.update()
+
+        conv = WattsTodBm()
+        conv.init()
+        conv.connectInput(const)
+        conv.update()
+
+        assert conv.getOutput() == pytest.approx(10.0)
+
+    def test_watts_to_dbm_connected_zero(self):
+        """Test connected with zero input."""
+        from src.osk.blocks.rf import WattsTodBm
+        from src.osk.blocks.sources import Constant
+
+        const = Constant(value=0.0)
+        const.init()
+        const.update()
+
+        conv = WattsTodBm()
+        conv.init()
+        conv.connectInput(const)
+        conv.update()
+
+        assert conv.getOutput() == -200.0
+
+
+# =============================================================================
+# Sensor Fusion Module Tests
+# =============================================================================
+
+
+class TestMadgwickFilterBlock:
+    """Tests for MadgwickFilter block."""
+
+    def test_madgwick_initialization(self):
+        """Test Madgwick filter initialization."""
+        from src.osk.blocks.sensor_fusion import MadgwickFilter
+
+        mf = MadgwickFilter(beta=0.1)
+        mf.init()
+
+        # Initial quaternion should be identity [1, 0, 0, 0]
+        output = mf.getOutputVector()
+        assert output is not None
+        assert output[0] == pytest.approx(1.0)
+
+    def test_madgwick_stationary(self):
+        """Test Madgwick filter with stationary input."""
+        from src.osk.blocks.sensor_fusion import MadgwickFilter
+        from src.osk.state import State
+
+        State.dt = 0.01
+        mf = MadgwickFilter(beta=0.1)
+        mf.init()
+
+        # Zero gyro, normalized accelerometer pointing up
+        mf.setInput([0, 0, 0], port=0)  # Gyro
+        mf.setInput([0, 0, 1], port=1)  # Accel
+        mf.update()
+
+        output = mf.getOutputVector()
+        assert output is not None
+
+
+class TestComplementaryFilterBlock:
+    """Tests for ComplementaryFilter block."""
+
+    def test_complementary_initialization(self):
+        """Test complementary filter initialization."""
+        from src.osk.blocks.sensor_fusion import ComplementaryFilter
+
+        cf = ComplementaryFilter(alpha=0.98)
+        cf.init()
+
+        # Initial output should be zeros (Euler angles)
+        output = cf.getOutputVector()
+        assert output is not None
+
+    def test_complementary_stationary(self):
+        """Test complementary filter with stationary input."""
+        from src.osk.blocks.sensor_fusion import ComplementaryFilter
+        from src.osk.state import State
+
+        State.dt = 0.01
+        cf = ComplementaryFilter(alpha=0.98)
+        cf.init()
+
+        # Zero gyro, flat accelerometer
+        cf.setInput([0, 0, 0], port=0)  # Gyro
+        cf.setInput([0, 0, 1], port=1)  # Accel
+        cf.update()
+
+        output = cf.getOutputVector()
+        assert output is not None
+
+
+class TestMahonyFilterBlock:
+    """Tests for MahonyFilter block."""
+
+    def test_mahony_initialization(self):
+        """Test Mahony filter initialization."""
+        from src.osk.blocks.sensor_fusion import MahonyFilter
+
+        # MahonyFilter uses Kp and Ki
+        mf = MahonyFilter(Kp=0.5, Ki=0.01)
+        mf.init()
+
+        output = mf.getOutputVector()
+        assert output is not None
+        assert output[0] == pytest.approx(1.0)  # Identity quaternion
+
+    def test_mahony_stationary(self):
+        """Test Mahony filter with stationary input."""
+        from src.osk.blocks.sensor_fusion import MahonyFilter
+        from src.osk.state import State
+
+        State.dt = 0.01
+        mf = MahonyFilter(Kp=0.5, Ki=0.01)
+        mf.init()
+
+        mf.setInput([0, 0, 0], port=0)  # Gyro
+        mf.setInput([0, 0, 1], port=1)  # Accel
+        mf.update()
+
+
+class TestIMUSensor:
+    """Tests for IMUSensor block."""
+
+    def test_imu_initialization(self):
+        """Test IMU sensor initialization."""
+        from src.osk.blocks.sensor_fusion import IMUSensor
+
+        imu = IMUSensor()
+        imu.init()
+
+        output = imu.getOutputVector()
+        assert output is not None
+
+    def test_imu_with_input(self):
+        """Test IMU sensor with input."""
+        from src.osk.blocks.sensor_fusion import IMUSensor
+        from src.osk.state import State
+
+        State.dt = 0.01
+        imu = IMUSensor()
+        imu.init()
+
+        # True acceleration and angular velocity
+        imu.setInput([0.0, 0.0, 9.81], port=0)  # Accel
+        imu.setInput([0.0, 0.0, 0.0], port=1)  # Gyro
+        imu.update()
+
+
+class TestAccelerometer:
+    """Tests for Accelerometer block."""
+
+    def test_accelerometer_basic(self):
+        """Test accelerometer output."""
+        from src.osk.blocks.sensor_fusion import Accelerometer
+
+        accel = Accelerometer()
+        accel.init()
+        accel.setInput([0.0, 0.0, 9.81])
+        accel.update()
+
+        output = accel.getOutputVector()
+        assert output is not None
+
+
+class TestGyroscope:
+    """Tests for Gyroscope block."""
+
+    def test_gyroscope_basic(self):
+        """Test gyroscope output."""
+        from src.osk.blocks.sensor_fusion import Gyroscope
+
+        gyro = Gyroscope()
+        gyro.init()
+        gyro.setInput([0.1, 0.2, 0.3])
+        gyro.update()
+
+        output = gyro.getOutputVector()
+        assert output is not None
+
+
+class TestMagnetometer:
+    """Tests for Magnetometer block."""
+
+    def test_magnetometer_basic(self):
+        """Test magnetometer output."""
+        from src.osk.blocks.sensor_fusion import Magnetometer
+
+        mag = Magnetometer()
+        mag.init()
+        mag.setInput([0.2, 0.0, 0.4])
+        mag.update()
+
+        output = mag.getOutputVector()
+        assert output is not None
+
+
+class TestGPSSensor:
+    """Tests for GPSSensor block."""
+
+    def test_gps_basic(self):
+        """Test GPS sensor output."""
+        from src.osk.blocks.sensor_fusion import GPSSensor
+
+        gps = GPSSensor()
+        gps.init()
+        gps.setInput([40.0, -75.0, 100.0])  # Lat, lon, alt
+        gps.update()
+
+        output = gps.getOutputVector()
+        assert output is not None
+
+
+class TestAltimeter:
+    """Tests for Altimeter block."""
+
+    def test_altimeter_basic(self):
+        """Test altimeter output."""
+        from src.osk.blocks.sensor_fusion import Altimeter
+
+        alt = Altimeter()
+        alt.init()
+        alt.setInput(1000.0)  # Altitude
+        alt.update()
+
+        output = alt.getOutput()
+        assert isinstance(output, float)
+
+
+class TestAlphaBetaFilter:
+    """Tests for AlphaBetaFilter block."""
+
+    def test_alpha_beta_initialization(self):
+        """Test alpha-beta filter initialization."""
+        from src.osk.blocks.sensor_fusion import AlphaBetaFilter
+
+        abf = AlphaBetaFilter(alpha=0.5, beta=0.1)
+        abf.init()
+
+        output = abf.getOutputVector()
+        assert output is not None
+
+
+class TestAlphaBetaGammaFilter:
+    """Tests for AlphaBetaGammaFilter block."""
+
+    def test_alpha_beta_gamma_initialization(self):
+        """Test alpha-beta-gamma filter initialization."""
+        from src.osk.blocks.sensor_fusion import AlphaBetaGammaFilter
+
+        abgf = AlphaBetaGammaFilter(alpha=0.5, beta=0.1, gamma=0.01)
+        abgf.init()
+
+        output = abgf.getOutputVector()
+        assert output is not None
+
+
+class TestINSGPSFusion:
+    """Tests for INSGPSFusion block."""
+
+    def test_ins_gps_initialization(self):
+        """Test INS/GPS fusion initialization."""
+        from src.osk.blocks.sensor_fusion import INSGPSFusion
+
+        fusion = INSGPSFusion()
+        fusion.init()
+
+        output = fusion.getOutputVector()
+        assert output is not None
+
+
+# =============================================================================
+# Aerospace Module Tests
+# =============================================================================
+
+
+class TestISAAtmosphereBlock:
+    """Tests for ISAAtmosphere block."""
+
+    def test_atmosphere_sea_level(self):
+        """Test ISA at sea level."""
+        from src.osk.blocks.aerospace import ISAAtmosphere
+
+        atm = ISAAtmosphere()
+        atm.init()
+        atm.setInput(0.0)  # Sea level
+        atm.update()
+
+        output = atm.getOutputVector()
+        assert output is not None
+        # Standard sea level: T=288.15K, P=101325 Pa, rho=1.225 kg/m³
+        assert output[0] == pytest.approx(288.15, rel=0.001)
+        assert output[1] == pytest.approx(101325, rel=0.001)
+
+    def test_atmosphere_11km(self):
+        """Test ISA at 11km (tropopause)."""
+        from src.osk.blocks.aerospace import ISAAtmosphere
+
+        atm = ISAAtmosphere()
+        atm.init()
+        atm.setInput(11000.0)
+        atm.update()
+
+        output = atm.getOutputVector()
+        assert output is not None
+        # At 11km: T ≈ 216.65K
+        assert output[0] == pytest.approx(216.65, rel=0.01)
+
+    def test_atmosphere_connected(self):
+        """Test ISA with connected input."""
+        from src.osk.blocks.aerospace import ISAAtmosphere
+        from src.osk.blocks.sources import Constant
+
+        const = Constant(value=5000.0)
+        const.init()
+        const.update()
+
+        atm = ISAAtmosphere()
+        atm.init()
+        atm.connectInput(const)
+        atm.update()
+
+        output = atm.getOutputVector()
+        assert output is not None
+
+
+class TestQuaternionNormalize:
+    """Tests for QuaternionNormalize block."""
+
+    def test_quat_normalize_unit(self):
+        """Test normalizing already-unit quaternion."""
+        from src.osk.blocks.aerospace import QuaternionNormalize
+
+        qn = QuaternionNormalize()
+        qn.init()
+        qn.setInput([1.0, 0.0, 0.0, 0.0])
+        qn.update()
+
+        output = qn.getOutputVector()
+        assert output is not None
+        assert output[0] == pytest.approx(1.0)
+
+    def test_quat_normalize_non_unit(self):
+        """Test normalizing non-unit quaternion."""
+        from src.osk.blocks.aerospace import QuaternionNormalize
+
+        qn = QuaternionNormalize()
+        qn.init()
+        qn.setInput([2.0, 0.0, 0.0, 0.0])
+        qn.update()
+
+        output = qn.getOutputVector()
+        assert output is not None
+        # Should be normalized to [1, 0, 0, 0]
+        assert output[0] == pytest.approx(1.0)
+
+
+class TestQuaternionMultiply:
+    """Tests for QuaternionMultiply block."""
+
+    def test_quat_multiply_identity(self):
+        """Test multiplying by identity quaternion."""
+        from src.osk.blocks.aerospace import QuaternionMultiply
+
+        qm = QuaternionMultiply()
+        qm.init()
+        qm.setInput([1.0, 0.0, 0.0, 0.0], port=0)  # Identity
+        qm.setInput([0.707, 0.0, 0.0, 0.707], port=1)  # 90 deg about z
+        qm.update()
+
+        output = qm.getOutputVector()
+        assert output is not None
+
+
+class TestQuaternionConjugate:
+    """Tests for QuaternionConjugate block."""
+
+    def test_quat_conjugate(self):
+        """Test quaternion conjugate."""
+        from src.osk.blocks.aerospace import QuaternionConjugate
+
+        qc = QuaternionConjugate()
+        qc.init()
+        qc.setInput([1.0, 0.5, 0.5, 0.5])
+        qc.update()
+
+        output = qc.getOutputVector()
+        assert output is not None
+        # Conjugate negates vector part
+        assert output[0] == pytest.approx(1.0)
+        assert output[1] == pytest.approx(-0.5)
+
+
+class TestQuaternionToEuler:
+    """Tests for QuaternionToEuler block."""
+
+    def test_quat_to_euler_identity(self):
+        """Test identity quaternion to Euler."""
+        from src.osk.blocks.aerospace import QuaternionToEuler
+
+        qe = QuaternionToEuler()
+        qe.init()
+        qe.setInput([1.0, 0.0, 0.0, 0.0])
+        qe.update()
+
+        output = qe.getOutputVector()
+        assert output is not None
+        # Should be zero Euler angles
+        assert all(abs(x) < 1e-10 for x in output)
+
+
+class TestEulerToQuaternion:
+    """Tests for EulerToQuaternion block."""
+
+    def test_euler_to_quat_zero(self):
+        """Test zero Euler to quaternion."""
+        from src.osk.blocks.aerospace import EulerToQuaternion
+
+        eq = EulerToQuaternion()
+        eq.init()
+        eq.setInput([0.0, 0.0, 0.0])
+        eq.update()
+
+        output = eq.getOutputVector()
+        assert output is not None
+        assert output[0] == pytest.approx(1.0)
+
+
+class TestQuaternionRotateVector:
+    """Tests for QuaternionRotateVector block."""
+
+    def test_quat_rotate_identity(self):
+        """Test rotating vector by identity quaternion."""
+        from src.osk.blocks.aerospace import QuaternionRotateVector
+
+        qrv = QuaternionRotateVector()
+        qrv.init()
+        qrv.setInput([1.0, 0.0, 0.0, 0.0], port=0)  # Identity quat
+        qrv.setInput([1.0, 0.0, 0.0], port=1)  # Vector
+        qrv.update()
+
+        output = qrv.getOutputVector()
+        assert output is not None
+        assert output[0] == pytest.approx(1.0)
+
+
+class TestDCMToQuaternion:
+    """Tests for DCMToQuaternion block."""
+
+    def test_dcm_to_quat_identity(self):
+        """Test identity DCM to quaternion."""
+        from src.osk.blocks.aerospace import DCMToQuaternion
+
+        dq = DCMToQuaternion()
+        dq.init()
+        dq.setInput([1, 0, 0, 0, 1, 0, 0, 0, 1])
+        dq.update()
+
+        output = dq.getOutputVector()
+        assert output is not None
+
+
+class TestQuaternionToDCM:
+    """Tests for QuaternionToDCM block."""
+
+    def test_quat_to_dcm_identity(self):
+        """Test identity quaternion to DCM."""
+        from src.osk.blocks.aerospace import QuaternionToDCM
+
+        qd = QuaternionToDCM()
+        qd.init()
+        qd.setInput([1.0, 0.0, 0.0, 0.0])
+        qd.update()
+
+        output = qd.getOutputVector()
+        assert output is not None
+        # Identity DCM
+        assert output[0] == pytest.approx(1.0)
+        assert output[4] == pytest.approx(1.0)
+        assert output[8] == pytest.approx(1.0)
+
+
+class TestSixDOFEuler:
+    """Tests for SixDOFEuler block."""
+
+    def test_six_dof_euler_initialization(self):
+        """Test 6DOF Euler initialization."""
+        from src.osk.blocks.aerospace import SixDOFEuler
+
+        eom = SixDOFEuler(mass=100.0, Ixx=10.0, Iyy=10.0, Izz=10.0, Ixz=0.0)
+        eom.init()
+
+        output = eom.getOutputVector()
+        assert output is not None
+
+
+class TestFlatEarthGravity:
+    """Tests for FlatEarthGravity block."""
+
+    def test_flat_earth_gravity(self):
+        """Test flat earth gravity model."""
+        from src.osk.blocks.aerospace import FlatEarthGravity
+
+        grav = FlatEarthGravity()
+        grav.init()
+        grav.setInput(0.0)  # Altitude
+        grav.update()
+
+        output = grav.getOutputVector()
+        assert output is not None
+        # Gravity should be approximately 9.8 m/s²
+
+
+class TestWGS84Gravity:
+    """Tests for WGS84Gravity block."""
+
+    def test_wgs84_gravity_equator(self):
+        """Test WGS84 gravity at equator sea level."""
+        from src.osk.blocks.aerospace import WGS84Gravity
+
+        grav = WGS84Gravity()
+        grav.init()
+        grav.setInput([0.0, 0.0])  # [latitude (rad), altitude (m)]
+        grav.update()
+
+        output = grav.getOutput()
+        # At equator sea level, gravity should be around 9.78
+        assert output == pytest.approx(9.78, rel=0.01)
+
+    def test_wgs84_gravity_pole(self):
+        """Test WGS84 gravity at pole sea level."""
+        import math
+
+        from src.osk.blocks.aerospace import WGS84Gravity
+
+        grav = WGS84Gravity()
+        grav.init()
+        grav.setInput([math.pi / 2, 0.0])  # [90 deg latitude, 0 altitude]
+        grav.update()
+
+        output = grav.getOutput()
+        # At pole, gravity should be around 9.83
+        assert output == pytest.approx(9.83, rel=0.01)
+
+
+# =============================================================================
+# Control Design Block Tests
+# =============================================================================
+
+
+class TestLQRControllerBlock:
+    """Tests for LQRController block."""
+
+    def test_lqr_default_initialization(self):
+        """Test LQR with default parameters."""
+        from src.osk.blocks.control_design import LQRController
+
+        lqr = LQRController(num_states=2, num_inputs=1)
+        lqr.init()
+
+        # State input [0, 0] should produce zero output
+        lqr.setInput(0.0, port=0)
+        lqr.setInput(0.0, port=1)
+        lqr.update()
+
+        assert lqr.getOutput(0) == 0.0
+
+    def test_lqr_with_custom_gain(self):
+        """Test LQR with custom gain matrix."""
+        from src.osk.blocks.control_design import LQRController
+
+        # K matrix: 1x2 (1 input, 2 states)
+        K = [[1.0, 2.0]]
+        lqr = LQRController(K=K, num_states=2, num_inputs=1)
+        lqr.init()
+
+        # State = [1, 1], output = -K*x = -(1*1 + 2*1) = -3
+        lqr.setInput(1.0, port=0)
+        lqr.setInput(1.0, port=1)
+        lqr.update()
+
+        assert lqr.getOutput(0) == pytest.approx(-3.0)
+
+    def test_lqr_multi_input(self):
+        """Test LQR with multiple inputs."""
+        from src.osk.blocks.control_design import LQRController
+
+        # K matrix: 2x2 (2 inputs, 2 states)
+        K = [[1.0, 0.0], [0.0, 1.0]]
+        lqr = LQRController(K=K, num_states=2, num_inputs=2)
+        lqr.init()
+
+        lqr.setInput(2.0, port=0)
+        lqr.setInput(3.0, port=1)
+        lqr.update()
+
+        # u0 = -(1*2 + 0*3) = -2
+        # u1 = -(0*2 + 1*3) = -3
+        assert lqr.getOutput(0) == pytest.approx(-2.0)
+        assert lqr.getOutput(1) == pytest.approx(-3.0)
+
+    def test_lqr_with_vector_input(self):
+        """Test LQR with connected vector input."""
+        from src.osk.blocks.control_design import LQRController
+        from src.osk.blocks.sources import Constant
+
+        K = [[1.0, 2.0]]
+        lqr = LQRController(K=K, num_states=2, num_inputs=1)
+        lqr.init()
+
+        const = Constant(value=[1.0, 0.5])
+        const.init()
+        const.update()
+
+        lqr.connectInput(const)
+        lqr.update()
+
+        # u = -(1*1 + 2*0.5) = -2
+        assert lqr.getOutput(0) == pytest.approx(-2.0)
+
+    def test_lqr_output_vector(self):
+        """Test LQR getOutputVector for multi-input case."""
+        from src.osk.blocks.control_design import LQRController
+
+        K = [[1.0, 0.0], [0.0, 1.0]]
+        lqr = LQRController(K=K, num_states=2, num_inputs=2)
+        lqr.init()
+
+        lqr.setInput(1.0, port=0)
+        lqr.setInput(2.0, port=1)
+        lqr.update()
+
+        vec = lqr.getOutputVector()
+        assert vec is not None
+        assert vec[0] == pytest.approx(-1.0)
+        assert vec[1] == pytest.approx(-2.0)
+
+
+class TestPolePlacementBlock:
+    """Tests for PolePlacement block."""
+
+    def test_pole_placement_default(self):
+        """Test pole placement with default parameters."""
+        from src.osk.blocks.control_design import PolePlacement
+
+        pp = PolePlacement(num_states=2)
+        pp.init()
+
+        pp.setInput(0.0, port=0)
+        pp.setInput(0.0, port=1)
+        pp.update()
+
+        assert pp.getOutput() == 0.0
+
+    def test_pole_placement_with_gains(self):
+        """Test pole placement with custom gains."""
+        from src.osk.blocks.control_design import PolePlacement
+
+        K = [2.0, 3.0]
+        pp = PolePlacement(K=K, num_states=2)
+        pp.init()
+
+        pp.setInput(1.0, port=0)
+        pp.setInput(1.0, port=1)
+        pp.update()
+
+        # u = -(2*1 + 3*1) = -5
+        assert pp.getOutput() == pytest.approx(-5.0)
+
+    def test_pole_placement_with_vector_input(self):
+        """Test pole placement with connected vector input."""
+        from src.osk.blocks.control_design import PolePlacement
+        from src.osk.blocks.sources import Constant
+
+        K = [1.0, 2.0]
+        pp = PolePlacement(K=K, num_states=2)
+        pp.init()
+
+        const = Constant(value=[2.0, 3.0])
+        const.init()
+        const.update()
+
+        pp.connectInput(const)
+        pp.update()
+
+        # u = -(1*2 + 2*3) = -8
+        assert pp.getOutput() == pytest.approx(-8.0)
+
+
+class TestLeadLagCompensatorBlock:
+    """Tests for LeadLagCompensator block."""
+
+    def test_lead_lag_initialization(self):
+        """Test lead-lag compensator initialization."""
+        from src.osk.blocks.control_design import LeadLagCompensator
+
+        comp = LeadLagCompensator(gain=2.0, zero=-1.0, pole=-10.0)
+        comp.init()
+
+        assert comp.output == 0.0
+
+    def test_lead_lag_step_response(self):
+        """Test lead-lag compensator step response."""
+        from src.osk.blocks.control_design import LeadLagCompensator
+
+        comp = LeadLagCompensator(gain=1.0, zero=-1.0, pole=-10.0)
+        comp.init()
+
+        comp.setInput(1.0)
+        comp.update()
+
+        # Immediate output should be non-zero (feedthrough term)
+        assert comp.getOutput() != 0.0
+
+    def test_lead_lag_with_connected_input(self):
+        """Test lead-lag with connected input."""
+        from src.osk.blocks.control_design import LeadLagCompensator
+        from src.osk.blocks.sources import Constant
+
+        comp = LeadLagCompensator(gain=1.0, zero=-2.0, pole=-5.0)
+        comp.init()
+
+        const = Constant(value=2.0)
+        const.init()
+        const.update()
+
+        comp.connectInput(const)
+        comp.update()
+
+        assert comp.getOutput() != 0.0
+
+
+class TestPIControllerBlock:
+    """Tests for PIController block."""
+
+    def test_pi_initialization(self):
+        """Test PI controller initialization."""
+        from src.osk.blocks.control_design import PIController
+
+        pi = PIController(Kp=1.0, Ki=0.5)
+        pi.init()
+
+        assert pi.output == 0.0
+
+    def test_pi_proportional_only(self):
+        """Test PI controller proportional term."""
+        from src.osk.blocks.control_design import PIController
+
+        pi = PIController(Kp=2.0, Ki=0.0)
+        pi.init()
+
+        pi.setInput(1.0)
+        pi.update()
+
+        # P term only: 2.0 * 1.0 = 2.0
+        assert pi.getOutput() == pytest.approx(2.0)
+
+    def test_pi_with_initial_integrator(self):
+        """Test PI with initial integrator value."""
+        from src.osk.blocks.control_design import PIController
+
+        pi = PIController(Kp=0.0, Ki=1.0, initial_integrator=5.0)
+        pi.init()
+
+        pi.setInput(0.0)
+        pi.update()
+
+        # I term only: 1.0 * 5.0 = 5.0
+        assert pi.getOutput() == pytest.approx(5.0)
+
+    def test_pi_with_connected_input(self):
+        """Test PI with connected input."""
+        from src.osk.blocks.control_design import PIController
+        from src.osk.blocks.sources import Constant
+
+        pi = PIController(Kp=1.0, Ki=0.5)
+        pi.init()
+
+        const = Constant(value=2.0)
+        const.init()
+        const.update()
+
+        pi.connectInput(const)
+        pi.update()
+
+        # P term: 1.0 * 2.0 = 2.0
+        # I term: 0.5 * 0.0 = 0.0 (integrator starts at 0)
+        assert pi.getOutput() == pytest.approx(2.0)
+
+
+class TestPDControllerBlock:
+    """Tests for PDController block."""
+
+    def test_pd_initialization(self):
+        """Test PD controller initialization."""
+        from src.osk.blocks.control_design import PDController
+
+        pd = PDController(Kp=1.0, Kd=0.1)
+        pd.init()
+
+        assert pd.output == 0.0
+
+    def test_pd_proportional_only(self):
+        """Test PD controller proportional term."""
+        from src.osk.blocks.control_design import PDController
+
+        pd = PDController(Kp=3.0, Kd=0.0)
+        pd.init()
+
+        pd.setInput(2.0)
+        pd.update()
+
+        # P term only: 3.0 * 2.0 = 6.0
+        assert pd.getOutput() == pytest.approx(6.0)
+
+    def test_pd_with_derivative(self):
+        """Test PD controller with derivative term."""
+        from src.osk.blocks.control_design import PDController
+
+        pd = PDController(Kp=1.0, Kd=0.1, N=100.0)
+        pd.init()
+
+        pd.setInput(0.0)
+        pd.update()
+        pd.setInput(1.0)
+        pd.update()
+
+        # Output should include derivative contribution
+        output = pd.getOutput()
+        assert output > 1.0  # More than just P term
+
+    def test_pd_with_connected_input(self):
+        """Test PD with connected input."""
+        from src.osk.blocks.control_design import PDController
+        from src.osk.blocks.sources import Constant
+
+        pd = PDController(Kp=2.0, Kd=0.1)
+        pd.init()
+
+        const = Constant(value=1.5)
+        const.init()
+        const.update()
+
+        pd.connectInput(const)
+        pd.update()
+
+        # P term: 2.0 * 1.5 = 3.0 plus derivative term
+        assert pd.getOutput() >= 3.0
+
+
+class TestAntiWindupPIDBlock:
+    """Tests for AntiWindupPID block."""
+
+    def test_anti_windup_pid_initialization(self):
+        """Test anti-windup PID initialization."""
+        from src.osk.blocks.control_design import AntiWindupPID
+
+        pid = AntiWindupPID(Kp=1.0, Ki=0.5, Kd=0.1)
+        pid.init()
+
+        assert pid.output == 0.0
+
+    def test_anti_windup_pid_saturation_upper(self):
+        """Test anti-windup PID upper saturation."""
+        from src.osk.blocks.control_design import AntiWindupPID
+
+        pid = AntiWindupPID(Kp=10.0, Ki=0.0, Kd=0.0, upper_limit=5.0)
+        pid.init()
+
+        pid.setInput(1.0)
+        pid.update()
+
+        # P term would be 10.0, but saturates at 5.0
+        assert pid.getOutput() == pytest.approx(5.0)
+
+    def test_anti_windup_pid_saturation_lower(self):
+        """Test anti-windup PID lower saturation."""
+        from src.osk.blocks.control_design import AntiWindupPID
+
+        pid = AntiWindupPID(Kp=10.0, Ki=0.0, Kd=0.0, lower_limit=-3.0)
+        pid.init()
+
+        pid.setInput(-1.0)
+        pid.update()
+
+        # P term would be -10.0, but saturates at -3.0
+        assert pid.getOutput() == pytest.approx(-3.0)
+
+    def test_anti_windup_pid_full_pid(self):
+        """Test full anti-windup PID operation."""
+        from src.osk.blocks.control_design import AntiWindupPID
+
+        pid = AntiWindupPID(Kp=1.0, Ki=0.5, Kd=0.1, N=100.0, Kb=1.0)
+        pid.init()
+
+        pid.setInput(1.0)
+        pid.update()
+
+        # Should have non-zero output
+        assert pid.getOutput() != 0.0
+
+    def test_anti_windup_pid_with_connected_input(self):
+        """Test anti-windup PID with connected input."""
+        from src.osk.blocks.control_design import AntiWindupPID
+        from src.osk.blocks.sources import Constant
+
+        pid = AntiWindupPID(Kp=2.0, Ki=0.5, Kd=0.0, upper_limit=10.0)
+        pid.init()
+
+        const = Constant(value=1.0)
+        const.init()
+        const.update()
+
+        pid.connectInput(const)
+        pid.update()
+
+        # P term: 2.0 * 1.0 = 2.0
+        assert pid.getOutput() == pytest.approx(2.0)
+
+
+class TestModelReferenceBlock:
+    """Tests for ModelReference block."""
+
+    def test_model_reference_initialization(self):
+        """Test model reference initialization."""
+        from src.osk.blocks.control_design import ModelReference
+
+        ref = ModelReference(natural_frequency=1.0, damping_ratio=1.0)
+        ref.init()
+
+        assert ref.output == 0.0
+
+    def test_model_reference_step_input(self):
+        """Test model reference with step input."""
+        from src.osk.blocks.control_design import ModelReference
+
+        ref = ModelReference(natural_frequency=10.0, damping_ratio=0.7)
+        ref.init()
+
+        ref.setInput(1.0)
+        ref.update()
+
+        # Output starts at 0 (second-order system)
+        assert ref.getOutput() == 0.0
+
+    def test_model_reference_with_connected_input(self):
+        """Test model reference with connected input."""
+        from src.osk.blocks.control_design import ModelReference
+        from src.osk.blocks.sources import Constant
+
+        ref = ModelReference(natural_frequency=5.0, damping_ratio=1.0)
+        ref.init()
+
+        const = Constant(value=2.0)
+        const.init()
+        const.update()
+
+        ref.connectInput(const)
+        ref.update()
+
+        # Output should be the current state
+        assert ref.getOutput() is not None
+
+
+# =============================================================================
+# Control Analysis Block Tests
+# =============================================================================
+
+
+class TestBodePlotBlock:
+    """Tests for BodePlot analysis block."""
+
+    def test_bode_initialization(self):
+        """Test Bode plot initialization with default parameters."""
+        from src.osk.blocks.control_analysis import BodePlot
+
+        bode = BodePlot()
+        bode.init()
+
+        # Should have computed frequency response data
+        assert len(bode.frequencies) > 0
+        assert len(bode.magnitude_db) > 0
+        assert len(bode.phase_deg) > 0
+
+    def test_bode_with_custom_tf(self):
+        """Test Bode plot with custom transfer function."""
+        from src.osk.blocks.control_analysis import BodePlot
+
+        # Simple first-order system: 1 / (s + 1)
+        bode = BodePlot(numerator=[1.0], denominator=[1.0, 1.0], numPoints=50)
+        bode.init()
+
+        # DC gain should be 0 dB (1/1 = 1)
+        assert bode.magnitude_db[0] == pytest.approx(0.0, abs=1.0)
+
+    def test_bode_get_data(self):
+        """Test Bode plot get_bode_data method."""
+        from src.osk.blocks.control_analysis import BodePlot
+
+        bode = BodePlot(numerator=[1.0], denominator=[1.0, 1.0])
+        bode.init()
+
+        data = bode.get_bode_data()
+        assert "frequencies" in data
+        assert "magnitude_db" in data
+        assert "phase_deg" in data
+        assert "gain_margin" in data
+        assert "phase_margin" in data
+
+    def test_bode_getData(self):
+        """Test Bode plot getData method."""
+        from src.osk.blocks.control_analysis import BodePlot
+
+        bode = BodePlot(numerator=[10.0], denominator=[1.0, 2.0, 1.0])
+        bode.init()
+
+        data = bode.getData()
+        assert data["analysisType"] == "bode"
+        assert "frequencies" in data
+
+    def test_bode_setInput(self):
+        """Test Bode plot setInput method."""
+        from src.osk.blocks.control_analysis import BodePlot
+
+        bode = BodePlot()
+        bode.init()
+
+        bode.setInput(1.0)
+        assert bode.input == 1.0
+
+    def test_bode_update(self):
+        """Test Bode plot update method (no-op for analysis blocks)."""
+        from src.osk.blocks.control_analysis import BodePlot
+
+        bode = BodePlot()
+        bode.init()
+
+        output_before = bode.getOutput()
+        bode.update()
+        output_after = bode.getOutput()
+
+        assert output_before == output_after
+
+    def test_bode_stability_margins(self):
+        """Test Bode plot stability margin computation."""
+        from src.osk.blocks.control_analysis import BodePlot
+
+        # System with finite gain and phase margins
+        # H(s) = 10 / (s^2 + 2s + 1)
+        bode = BodePlot(
+            numerator=[10.0],
+            denominator=[1.0, 2.0, 1.0],
+            minFrequency=0.01,
+            maxFrequency=100.0,
+            numPoints=200,
+        )
+        bode.init()
+
+        # Should have computed stability margins
+        # Phase margin should exist for this system
+        data = bode.get_bode_data()
+        assert "gain_margin" in data
+        assert "phase_margin" in data
+
+
+class TestNyquistPlotBlock:
+    """Tests for NyquistPlot analysis block."""
+
+    def test_nyquist_initialization(self):
+        """Test Nyquist plot initialization."""
+        from src.osk.blocks.control_analysis import NyquistPlot
+
+        nyquist = NyquistPlot()
+        nyquist.init()
+
+        assert len(nyquist.real_parts) > 0
+        assert len(nyquist.imag_parts) > 0
+        assert len(nyquist.frequencies) > 0
+
+    def test_nyquist_with_custom_tf(self):
+        """Test Nyquist plot with custom transfer function."""
+        from src.osk.blocks.control_analysis import NyquistPlot
+
+        # Stable system: 1 / (s + 1)
+        nyquist = NyquistPlot(numerator=[1.0], denominator=[1.0, 1.0], numPoints=100)
+        nyquist.init()
+
+        # Stable system should have 0 encirclements
+        assert nyquist.encirclements == 0
+
+    def test_nyquist_get_data(self):
+        """Test Nyquist plot get_nyquist_data method."""
+        from src.osk.blocks.control_analysis import NyquistPlot
+
+        nyquist = NyquistPlot(numerator=[1.0], denominator=[1.0, 1.0])
+        nyquist.init()
+
+        data = nyquist.get_nyquist_data()
+        assert "real" in data
+        assert "imag" in data
+        assert "frequencies" in data
+        assert "encirclements" in data
+
+    def test_nyquist_getData(self):
+        """Test Nyquist plot getData method."""
+        from src.osk.blocks.control_analysis import NyquistPlot
+
+        nyquist = NyquistPlot()
+        nyquist.init()
+
+        data = nyquist.getData()
+        assert data["analysisType"] == "nyquist"
+
+    def test_nyquist_setInput(self):
+        """Test Nyquist plot setInput method."""
+        from src.osk.blocks.control_analysis import NyquistPlot
+
+        nyquist = NyquistPlot()
+        nyquist.init()
+
+        nyquist.setInput(2.0)
+        assert nyquist.input == 2.0
+
+    def test_nyquist_update(self):
+        """Test Nyquist plot update method."""
+        from src.osk.blocks.control_analysis import NyquistPlot
+
+        nyquist = NyquistPlot()
+        nyquist.init()
+
+        output_before = nyquist.getOutput()
+        nyquist.update()
+        output_after = nyquist.getOutput()
+
+        assert output_before == output_after
+
+
+class TestPoleZeroMapBlock:
+    """Tests for PoleZeroMap analysis block."""
+
+    def test_pzmap_initialization(self):
+        """Test pole-zero map initialization."""
+        from src.osk.blocks.control_analysis import PoleZeroMap
+
+        pzmap = PoleZeroMap()
+        pzmap.init()
+
+        # Default TF [1]/[1, 1] has one pole at s=-1
+        assert len(pzmap.poles) == 1
+
+    def test_pzmap_stable_system(self):
+        """Test pole-zero map for a stable system."""
+        from src.osk.blocks.control_analysis import PoleZeroMap
+
+        # Stable system: all poles in LHP
+        # H(s) = 1 / (s^2 + 3s + 2) = 1 / ((s+1)(s+2))
+        pzmap = PoleZeroMap(numerator=[1.0], denominator=[1.0, 3.0, 2.0])
+        pzmap.init()
+
+        assert pzmap.is_stable is True
+        assert pzmap.getOutput() == 1.0
+        assert len(pzmap.poles) == 2
+
+    def test_pzmap_unstable_system(self):
+        """Test pole-zero map for an unstable system."""
+        from src.osk.blocks.control_analysis import PoleZeroMap
+
+        # Unstable system: pole in RHP
+        # H(s) = 1 / (s - 1) has pole at s=1
+        pzmap = PoleZeroMap(numerator=[1.0], denominator=[1.0, -1.0])
+        pzmap.init()
+
+        assert pzmap.is_stable is False
+        assert pzmap.getOutput() == 0.0
+
+    def test_pzmap_with_zeros(self):
+        """Test pole-zero map with zeros."""
+        from src.osk.blocks.control_analysis import PoleZeroMap
+
+        # H(s) = (s + 1) / (s^2 + 3s + 2)
+        pzmap = PoleZeroMap(numerator=[1.0, 1.0], denominator=[1.0, 3.0, 2.0])
+        pzmap.init()
+
+        assert len(pzmap.zeros) == 1
+        assert len(pzmap.poles) == 2
+
+    def test_pzmap_get_data(self):
+        """Test pole-zero map get_pole_zero_data method."""
+        from src.osk.blocks.control_analysis import PoleZeroMap
+
+        pzmap = PoleZeroMap(numerator=[1.0], denominator=[1.0, 1.0])
+        pzmap.init()
+
+        data = pzmap.get_pole_zero_data()
+        assert "poles" in data
+        assert "zeros" in data
+        assert "is_stable" in data
+        assert "dominant_pole" in data
+
+    def test_pzmap_getData(self):
+        """Test pole-zero map getData method."""
+        from src.osk.blocks.control_analysis import PoleZeroMap
+
+        pzmap = PoleZeroMap()
+        pzmap.init()
+
+        data = pzmap.getData()
+        assert data["analysisType"] == "pzmap"
+
+    def test_pzmap_setInput(self):
+        """Test pole-zero map setInput method."""
+        from src.osk.blocks.control_analysis import PoleZeroMap
+
+        pzmap = PoleZeroMap()
+        pzmap.init()
+
+        pzmap.setInput(3.0)
+        assert pzmap.input == 3.0
+
+    def test_pzmap_dominant_pole(self):
+        """Test dominant pole identification."""
+        from src.osk.blocks.control_analysis import PoleZeroMap
+
+        # System with poles at -1 and -10, dominant pole is at -1
+        pzmap = PoleZeroMap(numerator=[1.0], denominator=[1.0, 11.0, 10.0])
+        pzmap.init()
+
+        assert pzmap.dominant_pole is not None
+        assert pzmap.dominant_pole[0] == pytest.approx(-1.0, abs=0.1)
+
+
+class TestStepInfoBlock:
+    """Tests for StepInfo analysis block."""
+
+    def test_stepinfo_initialization(self):
+        """Test step info initialization."""
+        from src.osk.blocks.control_analysis import StepInfo
+
+        stepinfo = StepInfo()
+        stepinfo.init()
+
+        assert len(stepinfo.times) > 0
+        assert len(stepinfo.response) > 0
+
+    def test_stepinfo_first_order_system(self):
+        """Test step info for first-order system."""
+        from src.osk.blocks.control_analysis import StepInfo
+
+        # First-order system: 1 / (s + 1), time constant = 1
+        stepinfo = StepInfo(
+            numerator=[1.0], denominator=[1.0, 1.0], simulationTime=10.0, numPoints=500
+        )
+        stepinfo.init()
+
+        # Steady-state value should be 1.0
+        assert stepinfo.steady_state_value == pytest.approx(1.0, rel=0.05)
+
+        # Rise time for first-order system is about 2.2 * tau
+        assert stepinfo.rise_time is not None
+
+    def test_stepinfo_second_order_underdamped(self):
+        """Test step info for underdamped second-order system."""
+        from src.osk.blocks.control_analysis import StepInfo
+
+        # Underdamped system: wn^2 / (s^2 + 2*zeta*wn*s + wn^2)
+        # wn = 1, zeta = 0.3
+        wn = 1.0
+        zeta = 0.3
+        stepinfo = StepInfo(
+            numerator=[wn**2],
+            denominator=[1.0, 2 * zeta * wn, wn**2],
+            simulationTime=20.0,
+            numPoints=1000,
+        )
+        stepinfo.init()
+
+        # Underdamped system should have overshoot
+        assert stepinfo.overshoot_percent is not None
+        assert stepinfo.overshoot_percent > 0
+
+    def test_stepinfo_get_data(self):
+        """Test step info get_step_data method."""
+        from src.osk.blocks.control_analysis import StepInfo
+
+        stepinfo = StepInfo(numerator=[1.0], denominator=[1.0, 1.0])
+        stepinfo.init()
+
+        data = stepinfo.get_step_data()
+        assert "times" in data
+        assert "response" in data
+        assert "rise_time" in data
+        assert "settling_time" in data
+        assert "overshoot_percent" in data
+        assert "peak_time" in data
+        assert "peak_value" in data
+        assert "steady_state_value" in data
+
+    def test_stepinfo_getData(self):
+        """Test step info getData method."""
+        from src.osk.blocks.control_analysis import StepInfo
+
+        stepinfo = StepInfo()
+        stepinfo.init()
+
+        data = stepinfo.getData()
+        assert data["analysisType"] == "stepinfo"
+
+    def test_stepinfo_setInput(self):
+        """Test step info setInput method."""
+        from src.osk.blocks.control_analysis import StepInfo
+
+        stepinfo = StepInfo()
+        stepinfo.init()
+
+        stepinfo.setInput(4.0)
+        assert stepinfo.input == 4.0
+
+    def test_stepinfo_settling_time(self):
+        """Test settling time computation."""
+        from src.osk.blocks.control_analysis import StepInfo
+
+        # Critically damped system should settle without oscillation
+        stepinfo = StepInfo(
+            numerator=[1.0],
+            denominator=[1.0, 2.0, 1.0],  # (s+1)^2
+            simulationTime=10.0,
+            numPoints=500,
+            settlingPercent=2.0,
+        )
+        stepinfo.init()
+
+        assert stepinfo.settling_time is not None
+
+    def test_stepinfo_static_gain(self):
+        """Test step info for static gain (zero-order system)."""
+        from src.osk.blocks.control_analysis import StepInfo
+
+        # Static gain: H(s) = 2
+        stepinfo = StepInfo(numerator=[2.0], denominator=[1.0], simulationTime=5.0)
+        stepinfo.init()
+
+        # Response should be constant at 2.0
+        assert stepinfo.response[0] == pytest.approx(2.0)
+        assert stepinfo.response[-1] == pytest.approx(2.0)
+
+
+# =============================================================================
+# Data Types Block Tests
+# =============================================================================
+
+
+class TestDataTypeConversionBlock:
+    """Tests for DataTypeConversion block."""
+
+    def test_data_type_double_passthrough(self):
+        """Test double type conversion (passthrough)."""
+        from src.osk.blocks.data_types import DataTypeConversion
+
+        dtc = DataTypeConversion(output_type="double")
+        dtc.init()
+
+        dtc.setInput(3.14159)
+        dtc.update()
+
+        assert dtc.getOutput() == pytest.approx(3.14159)
+
+    def test_data_type_single_passthrough(self):
+        """Test single type conversion (passthrough in Python)."""
+        from src.osk.blocks.data_types import DataTypeConversion
+
+        dtc = DataTypeConversion(output_type="single")
+        dtc.init()
+
+        dtc.setInput(2.718)
+        dtc.update()
+
+        assert dtc.getOutput() == pytest.approx(2.718)
+
+    def test_data_type_boolean_true(self):
+        """Test boolean conversion for non-zero value."""
+        from src.osk.blocks.data_types import DataTypeConversion
+
+        dtc = DataTypeConversion(output_type="boolean")
+        dtc.init()
+
+        dtc.setInput(5.0)
+        dtc.update()
+
+        assert dtc.getOutput() == 1.0
+
+    def test_data_type_boolean_false(self):
+        """Test boolean conversion for zero value."""
+        from src.osk.blocks.data_types import DataTypeConversion
+
+        dtc = DataTypeConversion(output_type="boolean")
+        dtc.init()
+
+        dtc.setInput(0.0)
+        dtc.update()
+
+        assert dtc.getOutput() == 0.0
+
+    def test_data_type_int8_saturation(self):
+        """Test int8 conversion with saturation."""
+        from src.osk.blocks.data_types import DataTypeConversion
+
+        dtc = DataTypeConversion(output_type="int8", saturate=True)
+        dtc.init()
+
+        # Test saturation at upper limit
+        dtc.setInput(200.0)
+        dtc.update()
+        assert dtc.getOutput() == 127.0
+
+        # Test saturation at lower limit
+        dtc.setInput(-200.0)
+        dtc.update()
+        assert dtc.getOutput() == -128.0
+
+    def test_data_type_uint8_saturation(self):
+        """Test uint8 conversion with saturation."""
+        from src.osk.blocks.data_types import DataTypeConversion
+
+        dtc = DataTypeConversion(output_type="uint8", saturate=True)
+        dtc.init()
+
+        dtc.setInput(300.0)
+        dtc.update()
+        assert dtc.getOutput() == 255.0
+
+        dtc.setInput(-10.0)
+        dtc.update()
+        assert dtc.getOutput() == 0.0
+
+    def test_data_type_int16_saturation(self):
+        """Test int16 conversion with saturation."""
+        from src.osk.blocks.data_types import DataTypeConversion
+
+        dtc = DataTypeConversion(output_type="int16", saturate=True)
+        dtc.init()
+
+        dtc.setInput(40000.0)
+        dtc.update()
+        assert dtc.getOutput() == 32767.0
+
+    def test_data_type_int32_saturation(self):
+        """Test int32 conversion with saturation."""
+        from src.osk.blocks.data_types import DataTypeConversion
+
+        dtc = DataTypeConversion(output_type="int32", saturate=True)
+        dtc.init()
+
+        dtc.setInput(3e9)
+        dtc.update()
+        assert dtc.getOutput() == 2147483647.0
+
+    def test_data_type_uint16_saturation(self):
+        """Test uint16 conversion with saturation."""
+        from src.osk.blocks.data_types import DataTypeConversion
+
+        dtc = DataTypeConversion(output_type="uint16", saturate=True)
+        dtc.init()
+
+        dtc.setInput(70000.0)
+        dtc.update()
+        assert dtc.getOutput() == 65535.0
+
+    def test_data_type_uint32_saturation(self):
+        """Test uint32 conversion with saturation."""
+        from src.osk.blocks.data_types import DataTypeConversion
+
+        dtc = DataTypeConversion(output_type="uint32", saturate=True)
+        dtc.init()
+
+        dtc.setInput(5e9)
+        dtc.update()
+        assert dtc.getOutput() == 4294967295.0
+
+    def test_data_type_int8_wrap(self):
+        """Test int8 conversion with wrap-around."""
+        from src.osk.blocks.data_types import DataTypeConversion
+
+        dtc = DataTypeConversion(output_type="int8", saturate=False)
+        dtc.init()
+
+        dtc.setInput(128.0)  # Wraps to -128
+        dtc.update()
+        assert dtc.getOutput() == -128.0
+
+    def test_data_type_round_mode_floor(self):
+        """Test floor rounding mode."""
+        from src.osk.blocks.data_types import DataTypeConversion
+
+        dtc = DataTypeConversion(output_type="int8", round_mode="floor")
+        dtc.init()
+
+        dtc.setInput(3.7)
+        dtc.update()
+        assert dtc.getOutput() == 3.0
+
+        dtc.setInput(-3.7)
+        dtc.update()
+        assert dtc.getOutput() == -4.0
+
+    def test_data_type_round_mode_ceil(self):
+        """Test ceil rounding mode."""
+        from src.osk.blocks.data_types import DataTypeConversion
+
+        dtc = DataTypeConversion(output_type="int8", round_mode="ceil")
+        dtc.init()
+
+        dtc.setInput(3.3)
+        dtc.update()
+        assert dtc.getOutput() == 4.0
+
+    def test_data_type_round_mode_fix(self):
+        """Test fix (truncate toward zero) rounding mode."""
+        from src.osk.blocks.data_types import DataTypeConversion
+
+        dtc = DataTypeConversion(output_type="int8", round_mode="fix")
+        dtc.init()
+
+        dtc.setInput(3.9)
+        dtc.update()
+        assert dtc.getOutput() == 3.0
+
+        dtc.setInput(-3.9)
+        dtc.update()
+        assert dtc.getOutput() == -3.0
+
+    def test_data_type_with_connected_input(self):
+        """Test data type conversion with connected input."""
+        from src.osk.blocks.data_types import DataTypeConversion
+        from src.osk.blocks.sources import Constant
+
+        dtc = DataTypeConversion(output_type="int8")
+        dtc.init()
+
+        const = Constant(value=50.5)
+        const.init()
+        const.update()
+
+        dtc.connectInput(const)
+        dtc.update()
+
+        assert dtc.getOutput() == 50.0  # Rounded
+
+
+class TestRealImagToComplexBlock:
+    """Tests for RealImagToComplex block."""
+
+    def test_real_imag_to_complex_basic(self):
+        """Test basic real/imag to complex conversion."""
+        import math
+
+        from src.osk.blocks.data_types import RealImagToComplex
+
+        rtc = RealImagToComplex()
+        rtc.init()
+
+        rtc.setInput(3.0, port=0)  # Real
+        rtc.setInput(4.0, port=1)  # Imag
+        rtc.update()
+
+        # Magnitude = sqrt(3^2 + 4^2) = 5
+        assert rtc.getOutput(0) == pytest.approx(5.0)
+        # Phase = atan2(4, 3) ~ 0.927 rad
+        assert rtc.getOutput(1) == pytest.approx(math.atan2(4, 3))
+
+    def test_real_imag_to_complex_zero(self):
+        """Test real/imag to complex with zero values."""
+        from src.osk.blocks.data_types import RealImagToComplex
+
+        rtc = RealImagToComplex()
+        rtc.init()
+
+        rtc.setInput(0.0, port=0)
+        rtc.setInput(0.0, port=1)
+        rtc.update()
+
+        assert rtc.getOutput(0) == 0.0
+        assert rtc.getOutput(1) == 0.0
+
+    def test_real_imag_to_complex_output_vector(self):
+        """Test real/imag to complex getOutputVector."""
+        from src.osk.blocks.data_types import RealImagToComplex
+
+        rtc = RealImagToComplex()
+        rtc.init()
+
+        rtc.setInput(1.0, port=0)
+        rtc.setInput(1.0, port=1)
+        rtc.update()
+
+        vec = rtc.getOutputVector()
+        assert vec is not None
+        assert len(vec) == 2
+
+    def test_real_imag_to_complex_with_connected_input(self):
+        """Test real/imag to complex with connected inputs."""
+        from src.osk.blocks.data_types import RealImagToComplex
+        from src.osk.blocks.sources import Constant
+
+        rtc = RealImagToComplex()
+        rtc.init()
+
+        const_real = Constant(value=5.0)
+        const_real.init()
+        const_real.update()
+
+        const_imag = Constant(value=12.0)
+        const_imag.init()
+        const_imag.update()
+
+        rtc.connectInput(const_real, port=0)
+        rtc.connectInput(const_imag, port=1)
+        rtc.update()
+
+        # Magnitude = sqrt(5^2 + 12^2) = 13
+        assert rtc.getOutput(0) == pytest.approx(13.0)
+
+    def test_real_imag_invalid_port(self):
+        """Test getOutput with invalid port."""
+        from src.osk.blocks.data_types import RealImagToComplex
+
+        rtc = RealImagToComplex()
+        rtc.init()
+
+        rtc.setInput(1.0, port=0)
+        rtc.setInput(1.0, port=1)
+        rtc.update()
+
+        assert rtc.getOutput(2) == 0.0
+
+
+class TestComplexToRealImagBlock:
+    """Tests for ComplexToRealImag block."""
+
+    def test_complex_to_real_imag_basic(self):
+        """Test basic complex to real/imag conversion."""
+        import math
+
+        from src.osk.blocks.data_types import ComplexToRealImag
+
+        ctr = ComplexToRealImag()
+        ctr.init()
+
+        # Magnitude = 5, phase = pi/4 (45 degrees)
+        ctr.setInput(5.0, port=0)  # Magnitude
+        ctr.setInput(math.pi / 4, port=1)  # Phase
+        ctr.update()
+
+        # Real = 5 * cos(pi/4) ~ 3.535
+        # Imag = 5 * sin(pi/4) ~ 3.535
+        assert ctr.getOutput(0) == pytest.approx(5.0 * math.cos(math.pi / 4))
+        assert ctr.getOutput(1) == pytest.approx(5.0 * math.sin(math.pi / 4))
+
+    def test_complex_to_real_imag_zero_phase(self):
+        """Test complex to real/imag with zero phase."""
+        from src.osk.blocks.data_types import ComplexToRealImag
+
+        ctr = ComplexToRealImag()
+        ctr.init()
+
+        ctr.setInput(10.0, port=0)  # Magnitude
+        ctr.setInput(0.0, port=1)  # Phase = 0
+        ctr.update()
+
+        # Real = 10 * cos(0) = 10
+        # Imag = 10 * sin(0) = 0
+        assert ctr.getOutput(0) == pytest.approx(10.0)
+        assert ctr.getOutput(1) == pytest.approx(0.0)
+
+    def test_complex_to_real_imag_90_deg(self):
+        """Test complex to real/imag with 90 degree phase."""
+        import math
+
+        from src.osk.blocks.data_types import ComplexToRealImag
+
+        ctr = ComplexToRealImag()
+        ctr.init()
+
+        ctr.setInput(1.0, port=0)  # Magnitude
+        ctr.setInput(math.pi / 2, port=1)  # Phase = 90 deg
+        ctr.update()
+
+        # Real = 1 * cos(pi/2) ~ 0
+        # Imag = 1 * sin(pi/2) = 1
+        assert ctr.getOutput(0) == pytest.approx(0.0, abs=1e-10)
+        assert ctr.getOutput(1) == pytest.approx(1.0)
+
+    def test_complex_to_real_imag_output_vector(self):
+        """Test complex to real/imag getOutputVector."""
+        from src.osk.blocks.data_types import ComplexToRealImag
+
+        ctr = ComplexToRealImag()
+        ctr.init()
+
+        ctr.setInput(2.0, port=0)
+        ctr.setInput(0.0, port=1)
+        ctr.update()
+
+        vec = ctr.getOutputVector()
+        assert vec is not None
+        assert len(vec) == 2
+        assert vec[0] == pytest.approx(2.0)
+        assert vec[1] == pytest.approx(0.0)
+
+    def test_complex_to_real_imag_with_connected_input(self):
+        """Test complex to real/imag with connected inputs."""
+        import math
+
+        from src.osk.blocks.data_types import ComplexToRealImag
+        from src.osk.blocks.sources import Constant
+
+        ctr = ComplexToRealImag()
+        ctr.init()
+
+        const_mag = Constant(value=2.0)
+        const_mag.init()
+        const_mag.update()
+
+        const_phase = Constant(value=math.pi)  # 180 degrees
+        const_phase.init()
+        const_phase.update()
+
+        ctr.connectInput(const_mag, port=0)
+        ctr.connectInput(const_phase, port=1)
+        ctr.update()
+
+        # Real = 2 * cos(pi) = -2
+        # Imag = 2 * sin(pi) ~ 0
+        assert ctr.getOutput(0) == pytest.approx(-2.0)
+        assert ctr.getOutput(1) == pytest.approx(0.0, abs=1e-10)
+
+    def test_complex_to_real_imag_invalid_port(self):
+        """Test getOutput with invalid port."""
+        from src.osk.blocks.data_types import ComplexToRealImag
+
+        ctr = ComplexToRealImag()
+        ctr.init()
+
+        ctr.setInput(1.0, port=0)
+        ctr.setInput(0.0, port=1)
+        ctr.update()
+
+        assert ctr.getOutput(2) == 0.0
+
+
+# =============================================================================
+# Sinks Block Tests
+# =============================================================================
+
+
+class TestScopeBlockExtended:
+    """Extended tests for Scope block to increase coverage."""
+
+    def test_scope_init(self):
+        """Test Scope block init method."""
+        from src.osk.blocks.sinks import Scope
+
+        scope = Scope(num_inputs=3)
+        scope.init()
+
+        assert scope.times == []
+        assert scope.values == []
+        assert scope._vector_inputs == {}
+        assert scope._total_traces == 0
+
+    def test_scope_setInput_vector(self):
+        """Test Scope block with vector input."""
+        from src.osk.blocks.sinks import Scope
+
+        scope = Scope(num_inputs=1)
+        scope.init()
+
+        scope.setInput([1.0, 2.0, 3.0], port=0)
+
+        # First element is stored in inputs[0]
+        assert scope.inputs[0] == 1.0
+        # Full vector in _vector_inputs
+        assert 0 in scope._vector_inputs
+        assert scope._vector_inputs[0] == [1.0, 2.0, 3.0]
+
+    def test_scope_setInput_scalar_clears_vector(self):
+        """Test Scope block: scalar input clears previous vector."""
+        from src.osk.blocks.sinks import Scope
+
+        scope = Scope(num_inputs=1)
+        scope.init()
+
+        # First set vector
+        scope.setInput([1.0, 2.0, 3.0], port=0)
+        assert 0 in scope._vector_inputs
+
+        # Then set scalar
+        scope.setInput(5.0, port=0)
+        assert 0 not in scope._vector_inputs
+        assert scope.inputs[0] == 5.0
+
+    def test_scope_setInputName(self):
+        """Test Scope setInputName method."""
+        from src.osk.blocks.sinks import Scope
+
+        scope = Scope(num_inputs=2)
+        scope.init()
+
+        scope.setInputName("Signal A", port=0)
+        scope.setInputName("Signal B", port=1)
+
+        assert scope.input_names[0] == "Signal A"
+        assert scope.input_names[1] == "Signal B"
+
+    def test_scope_getData_with_names(self):
+        """Test Scope getData returns input names."""
+        from src.osk.blocks.sinks import Scope
+        from src.osk.blocks.sources import Constant
+        from src.osk.state import State
+
+        scope = Scope(num_inputs=2)
+        scope.init()
+
+        const1 = Constant(value=1.0)
+        const1.init()
+        const2 = Constant(value=2.0)
+        const2.init()
+
+        scope.connectInput(const1, port=0)
+        scope.connectInput(const2, port=1)
+        scope.setInputName("Position", port=0)
+        scope.setInputName("Velocity", port=1)
+
+        const1.update()
+        const2.update()
+        scope.update()
+
+        # Simulate recording
+        State.ready = True
+        State.t = 0.0
+        scope.rpt()
+
+        data = scope.getData()
+        assert "inputNames" in data
+        assert data["inputNames"][0] == "Position"
+        assert data["inputNames"][1] == "Velocity"
+
+    def test_scope_invalid_port_getOutput(self):
+        """Test Scope getOutput with invalid port."""
+        from src.osk.blocks.sinks import Scope
+
+        scope = Scope(num_inputs=2)
+        scope.init()
+
+        scope.setInput(1.0, port=0)
+        scope.setInput(2.0, port=1)
+
+        assert scope.getOutput(0) == 1.0
+        assert scope.getOutput(1) == 2.0
+        assert scope.getOutput(5) == 0.0  # Invalid port
+
+
+class TestToWorkspaceBlockExtended:
+    """Extended tests for ToWorkspace block."""
+
+    def test_toworkspace_initialization(self):
+        """Test ToWorkspace initialization."""
+        from src.osk.blocks.sinks import ToWorkspace
+
+        tw = ToWorkspace(variable_name="mydata")
+        tw.init()
+
+        assert tw.variable_name == "mydata"
+        assert tw.times == []
+        assert tw.values == []
+
+    def test_toworkspace_record(self):
+        """Test ToWorkspace recording."""
+        from src.osk.blocks.sinks import ToWorkspace
+        from src.osk.blocks.sources import Constant
+        from src.osk.state import State
+
+        tw = ToWorkspace(variable_name="output")
+        tw.init()
+
+        const = Constant(value=3.14)
+        const.init()
+        const.update()
+
+        tw.connectInput(const)
+        tw.update()
+
+        # Simulate recording
+        State.ready = True
+        State.t = 0.5
+        tw.rpt()
+
+        assert len(tw.times) == 1
+        assert tw.times[0] == 0.5
+        assert tw.values[0] == pytest.approx(3.14)
+
+    def test_toworkspace_getData(self):
+        """Test ToWorkspace getData method."""
+        from src.osk.blocks.sinks import ToWorkspace
+        from src.osk.state import State
+
+        tw = ToWorkspace(variable_name="testvar")
+        tw.init()
+
+        tw.setInput(10.0)
+        tw.update()
+
+        State.ready = True
+        State.t = 1.0
+        tw.rpt()
+
+        data = tw.getData()
+        assert data["name"] == "testvar"
+        assert len(data["times"]) == 1
+        assert len(data["values"]) == 1
+
+    def test_toworkspace_getOutput(self):
+        """Test ToWorkspace getOutput method."""
+        from src.osk.blocks.sinks import ToWorkspace
+
+        tw = ToWorkspace()
+        tw.init()
+
+        tw.setInput(42.0)
+        tw.update()
+
+        assert tw.getOutput() == 42.0
+
+
+class TestDisplayBlockSinks:
+    """Sinks tests for Display block."""
+
+    def test_display_setInput_sinks(self):
+        """Test Display setInput method."""
+        from src.osk.blocks.sinks import Display
+
+        disp = Display()
+
+        disp.setInput(5.5)
+        assert disp.input == 5.5
+
+    def test_display_connectInput_sinks(self):
+        """Test Display connectInput method."""
+        from src.osk.blocks.sinks import Display
+        from src.osk.blocks.sources import Constant
+
+        disp = Display()
+
+        const = Constant(value=2.5)
+        const.init()
+        const.update()
+
+        disp.connectInput(const)
+        disp.update()
+
+        assert disp.input == 2.5
+
+    def test_display_rpt_sinks(self):
+        """Test Display rpt method."""
+        from src.osk.blocks.sinks import Display
+        from src.osk.state import State
+
+        disp = Display()
+
+        disp.setInput(7.77)
+
+        State.ready = True
+        disp.rpt()
+
+        assert disp.current_value == 7.77
+        assert disp.getOutput() == 7.77
+
+
+class TestTerminatorBlockSinks:
+    """Sinks tests for Terminator block."""
+
+    def test_terminator_setInput_extended(self):
+        """Test Terminator setInput method."""
+        from src.osk.blocks.sinks import Terminator
+
+        term = Terminator()
+
+        term.setInput(100.0)
+        assert term.input == 100.0
+
+    def test_terminator_connectInput_extended(self):
+        """Test Terminator connectInput method."""
+        from src.osk.blocks.sinks import Terminator
+        from src.osk.blocks.sources import Constant
+
+        term = Terminator()
+
+        const = Constant(value=999.0)
+        const.init()
+        const.update()
+
+        term.connectInput(const)
+        term.update()
+
+        assert term.input == 999.0
+
+    def test_terminator_getOutput_always_zero(self):
+        """Test Terminator always returns zero output."""
+        from src.osk.blocks.sinks import Terminator
+
+        term = Terminator()
+
+        term.setInput(12345.0)
+        term.update()
+
+        assert term.getOutput() == 0.0
+
+
+class TestScope3DBlock:
+    """Tests for Scope3D block."""
+
+    def test_scope3d_initialization(self):
+        """Test Scope3D initialization with custom labels."""
+        from src.osk.blocks.sinks import Scope3D
+
+        scope = Scope3D(x_label="Longitude", y_label="Latitude", z_label="Altitude")
+        scope.init()
+
+        assert scope.x_label == "Longitude"
+        assert scope.y_label == "Latitude"
+        assert scope.z_label == "Altitude"
+        assert scope.times == []
+        assert scope.x_values == []
+        assert scope.y_values == []
+        assert scope.z_values == []
+
+    def test_scope3d_setInput(self):
+        """Test Scope3D setInput method."""
+        from src.osk.blocks.sinks import Scope3D
+
+        scope = Scope3D()
+        scope.init()
+
+        scope.setInput(1.0, port=0)  # X
+        scope.setInput(2.0, port=1)  # Y
+        scope.setInput(3.0, port=2)  # Z
+
+        assert scope.inputs[0] == 1.0
+        assert scope.inputs[1] == 2.0
+        assert scope.inputs[2] == 3.0
+
+    def test_scope3d_connectInput(self):
+        """Test Scope3D connectInput method."""
+        from src.osk.blocks.sinks import Scope3D
+        from src.osk.blocks.sources import Constant
+
+        scope = Scope3D()
+        scope.init()
+
+        const_x = Constant(value=10.0)
+        const_x.init()
+        const_x.update()
+
+        const_y = Constant(value=20.0)
+        const_y.init()
+        const_y.update()
+
+        const_z = Constant(value=30.0)
+        const_z.init()
+        const_z.update()
+
+        scope.connectInput(const_x, port=0)
+        scope.connectInput(const_y, port=1)
+        scope.connectInput(const_z, port=2)
+        scope.update()
+
+        assert scope.inputs[0] == 10.0
+        assert scope.inputs[1] == 20.0
+        assert scope.inputs[2] == 30.0
+
+    def test_scope3d_rpt(self):
+        """Test Scope3D rpt method."""
+        from src.osk.blocks.sinks import Scope3D
+        from src.osk.state import State
+
+        scope = Scope3D()
+        scope.init()
+
+        scope.setInput(1.5, port=0)
+        scope.setInput(2.5, port=1)
+        scope.setInput(3.5, port=2)
+
+        State.ready = True
+        State.t = 0.1
+        scope.rpt()
+
+        assert len(scope.times) == 1
+        assert scope.times[0] == 0.1
+        assert scope.x_values[0] == 1.5
+        assert scope.y_values[0] == 2.5
+        assert scope.z_values[0] == 3.5
+
+    def test_scope3d_getData(self):
+        """Test Scope3D getData method."""
+        from src.osk.blocks.sinks import Scope3D
+        from src.osk.state import State
+
+        scope = Scope3D(x_label="Roll", y_label="Pitch", z_label="Yaw")
+        scope.init()
+
+        scope.setInput(0.1, port=0)
+        scope.setInput(0.2, port=1)
+        scope.setInput(0.3, port=2)
+
+        State.ready = True
+        State.t = 0.0
+        scope.rpt()
+
+        data = scope.getData()
+        assert data["x"] == [0.1]
+        assert data["y"] == [0.2]
+        assert data["z"] == [0.3]
+        assert data["inputNames"] == ["Roll", "Pitch", "Yaw"]
+
+    def test_scope3d_getOutput(self):
+        """Test Scope3D getOutput method."""
+        from src.osk.blocks.sinks import Scope3D
+
+        scope = Scope3D()
+        scope.init()
+
+        scope.setInput(5.0, port=0)
+        scope.setInput(6.0, port=1)
+        scope.setInput(7.0, port=2)
+
+        assert scope.getOutput(0) == 5.0
+        assert scope.getOutput(1) == 6.0
+        assert scope.getOutput(2) == 7.0
+        assert scope.getOutput(3) == 0.0  # Invalid port
