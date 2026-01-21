@@ -741,7 +741,7 @@ Improved from 75% to 78% overall coverage:
 ### Summary
 Improved frontend test coverage and fixed failing tests.
 
-### Coverage Progress
+### Coverage Progress (Session 1)
 | Metric | Before | After | Notes |
 |--------|--------|-------|-------|
 | **Backend Tests** | 1904 | 1904 | Unchanged (84% coverage) |
@@ -757,7 +757,7 @@ Improved frontend test coverage and fixed failing tests.
    - Fixed `handleResizeEnd` callback to check for `block` before accessing `block.id`
    - Changed dependency array from `[block.id, updateBlockSize]` to `[block, updateBlockSize]`
 
-### Tests Added
+### Tests Added (Session 1)
 
 **`src/store/modelStore.test.ts`** (75 total, 24 new):
 - Undo/redo: `canUndo`, `canRedo`, `pushHistory`, `undo`, `redo`
@@ -776,17 +776,55 @@ Improved frontend test coverage and fixed failing tests.
 - `openCodeGenModal` / `closeCodeGenModal`
 - `openSaveAsModal` / `closeSaveAsModal`
 
-### Coverage by Module (After)
+### Coverage Progress (Session 2 - Continued)
+| Metric | Before | After | Notes |
+|--------|--------|-------|-------|
+| **Frontend Tests** | 454 | 494 | Added 40 more tests |
+| **Frontend Coverage** | 31% | 33.5% | Improved |
+| **client.ts** | 44% | 98% | Comprehensive axios mock tests |
+| **modelStore.ts** | 54% | 70% | Subsystem, navigation, metadata tests |
+| **libraryStore.ts** | 92% | 94% | Duplicate library handling tests |
+
+### Tests Added (Session 2)
+
+**`src/api/client.test.ts`** (36 new tests):
+- Comprehensive axios mocking with vi.mock
+- Tests for all API methods: checkHealth, getBlocks, getExamples, getCategories, getBlocksByCategory
+- Tests for loadModel, listModels, createModel, updateModel, deleteModel
+- Tests for importMDL, importMDLAsLibrary, importMDLAsLibraryWithRegistration
+- Tests for runSimulation, getSimulationResults
+- Tests for step mode: initStepMode, stepForward, stepBackward, resetStepMode, continueFromStepMode
+- Tests for enterStepMode, resetSimulation, generateCode, generateCodeRust, generateCodeC
+
+**`src/store/libraryStore.test.ts`** (3 new tests):
+- Duplicate library handling tests
+- Tests for `replaceExisting` option behavior
+- Tests for allowing libraries with different names
+
+**`src/store/modelStore.test.ts`** (40 new tests):
+- `describe('operations inside subsystems')` - Block/connection operations with currentPath
+- `describe('subsystem navigation')` - enterSubsystem, exitSubsystem, navigateToPath
+- `describe('expandSubsystem')` - Inline subsystem contents
+- `describe('getCurrentBlocks and getCurrentConnections')` - Subsystem-aware getters
+- `describe('selection operations')` - selectBlocks, selectConnections, clearSelection
+- `describe('undo/redo')` - pushHistory, undo, redo with proper state management
+- `describe('model metadata')` - updateMetadata, updateSimulationConfig
+- `describe('removeBlock deletes connections')` - Connection cleanup on block delete
+- `describe('parseConstantValueDimensions edge cases')` - Array formats [1,2,3], [1;2;3], [1 2 3]
+
+### Coverage by Module (After Session 2)
 | Module | Coverage |
 |--------|----------|
 | `src/blocks/` | 100% |
+| `src/api/client.ts` | 98% |
 | `src/store/simulationStore.ts` | 100% |
 | `src/store/uiStore.ts` | 100% |
+| `src/store/libraryStore.ts` | 94% |
 | `src/types/` | 100% |
 | `src/utils/nanoid.ts` | 100% |
 | `src/utils/mdlExporter.ts` | 100% |
-| `src/store/modelStore.ts` | 54% |
-| `src/utils/mdlImporter.ts` | 69% |
+| `src/store/modelStore.ts` | 70% |
+| `src/utils/mdlImporter.ts` | 72% |
 | `src/components/` | ~4% (React components need DOM testing) |
 
 ### Documentation Updated

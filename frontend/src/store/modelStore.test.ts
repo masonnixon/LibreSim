@@ -1229,4 +1229,891 @@ describe('useModelStore', () => {
       expect(blocks?.some(b => b.name === 'ChildConstant')).toBe(true)
     })
   })
+
+  describe('operations inside subsystems', () => {
+    beforeEach(() => {
+      useModelStore.getState().createNewModel('Test Model')
+
+      // Create a subsystem with a child block
+      const subsystemBlock: BlockInstance = {
+        id: 'subsystem-1',
+        type: 'subsystem',
+        name: 'TestSubsystem',
+        position: { x: 100, y: 100 },
+        parameters: {},
+        inputPorts: [],
+        outputPorts: [],
+        children: [
+          {
+            id: 'child-1',
+            type: 'constant',
+            name: 'ChildConstant',
+            position: { x: 50, y: 50 },
+            parameters: { value: 1 },
+            inputPorts: [],
+            outputPorts: [{ id: 'child-out-0', name: 'out', dataType: 'double', dimensions: [1] }],
+          },
+        ],
+        childConnections: [],
+      }
+
+      useModelStore.setState({
+        model: {
+          ...useModelStore.getState().model!,
+          blocks: [subsystemBlock],
+        },
+        currentPath: [{ id: 'subsystem-1', name: 'TestSubsystem' }],
+      })
+    })
+
+    it('adds block inside subsystem', () => {
+      const blockDef = createBlockDef('gain', 'Gain')
+      const blockId = useModelStore.getState().addBlock(blockDef, { x: 200, y: 100 })
+
+      expect(blockId).toBeTruthy()
+
+      const currentBlocks = useModelStore.getState().getCurrentBlocks()
+      expect(currentBlocks.some(b => b.id === blockId)).toBe(true)
+    })
+
+    it('removes block inside subsystem', () => {
+      // First add a block to the subsystem
+      const blockDef = createBlockDef('gain', 'Gain')
+      const blockId = useModelStore.getState().addBlock(blockDef, { x: 200, y: 100 })
+
+      useModelStore.getState().removeBlock(blockId)
+
+      const currentBlocks = useModelStore.getState().getCurrentBlocks()
+      expect(currentBlocks.some(b => b.id === blockId)).toBe(false)
+    })
+
+    it('adds connection inside subsystem', () => {
+      const blockDef: BlockDefinition = {
+        type: 'scope',
+        name: 'Scope',
+        category: 'sinks',
+        description: 'A scope block',
+        inputs: [{ name: 'in', dataType: 'double', dimensions: [1] }],
+        outputs: [],
+        parameters: [],
+      }
+
+      const scopeId = useModelStore.getState().addBlock(blockDef, { x: 200, y: 100 })
+
+      const currentBlocks = useModelStore.getState().getCurrentBlocks()
+      const sourceBlock = currentBlocks.find(b => b.id === 'child-1')
+      const targetBlock = currentBlocks.find(b => b.id === scopeId)
+
+      const connId = useModelStore.getState().addConnection({
+        sourceBlockId: 'child-1',
+        sourcePortId: sourceBlock?.outputPorts[0]?.id || '',
+        targetBlockId: scopeId,
+        targetPortId: targetBlock?.inputPorts[0]?.id || '',
+      })
+
+      expect(connId).toBeTruthy()
+      const currentConnections = useModelStore.getState().getCurrentConnections()
+      expect(currentConnections.some(c => c.id === connId)).toBe(true)
+    })
+
+    it('removes connection inside subsystem', () => {
+      const blockDef: BlockDefinition = {
+        type: 'scope',
+        name: 'Scope',
+        category: 'sinks',
+        description: 'A scope block',
+        inputs: [{ name: 'in', dataType: 'double', dimensions: [1] }],
+        outputs: [],
+        parameters: [],
+      }
+
+      const scopeId = useModelStore.getState().addBlock(blockDef, { x: 200, y: 100 })
+
+      const currentBlocks = useModelStore.getState().getCurrentBlocks()
+      const sourceBlock = currentBlocks.find(b => b.id === 'child-1')
+      const targetBlock = currentBlocks.find(b => b.id === scopeId)
+
+      const connId = useModelStore.getState().addConnection({
+        sourceBlockId: 'child-1',
+        sourcePortId: sourceBlock?.outputPorts[0]?.id || '',
+        targetBlockId: scopeId,
+        targetPortId: targetBlock?.inputPorts[0]?.id || '',
+      })
+
+      useModelStore.getState().removeConnection(connId!)
+
+      const currentConnections = useModelStore.getState().getCurrentConnections()
+      expect(currentConnections.some(c => c.id === connId)).toBe(false)
+    })
+
+    it('updates block position inside subsystem', () => {
+      useModelStore.getState().updateBlockPosition('child-1', { x: 150, y: 150 })
+
+      const currentBlocks = useModelStore.getState().getCurrentBlocks()
+      const block = currentBlocks.find(b => b.id === 'child-1')
+      expect(block?.position).toEqual({ x: 150, y: 150 })
+    })
+
+    it('updates block parameters inside subsystem', () => {
+      useModelStore.getState().updateBlockParameters('child-1', { value: 42 })
+
+      const currentBlocks = useModelStore.getState().getCurrentBlocks()
+      const block = currentBlocks.find(b => b.id === 'child-1')
+      expect(block?.parameters.value).toBe(42)
+    })
+
+    it('waypoint operations inside subsystem', () => {
+      const blockDef: BlockDefinition = {
+        type: 'scope',
+        name: 'Scope',
+        category: 'sinks',
+        description: 'A scope block',
+        inputs: [{ name: 'in', dataType: 'double', dimensions: [1] }],
+        outputs: [],
+        parameters: [],
+      }
+
+      const scopeId = useModelStore.getState().addBlock(blockDef, { x: 200, y: 100 })
+
+      const currentBlocks = useModelStore.getState().getCurrentBlocks()
+      const sourceBlock = currentBlocks.find(b => b.id === 'child-1')
+      const targetBlock = currentBlocks.find(b => b.id === scopeId)
+
+      const connId = useModelStore.getState().addConnection({
+        sourceBlockId: 'child-1',
+        sourcePortId: sourceBlock?.outputPorts[0]?.id || '',
+        targetBlockId: scopeId,
+        targetPortId: targetBlock?.inputPorts[0]?.id || '',
+      })
+
+      // Add waypoint
+      useModelStore.getState().addConnectionWaypoint(connId!, { x: 150, y: 75 })
+
+      let currentConnections = useModelStore.getState().getCurrentConnections()
+      let conn = currentConnections.find(c => c.id === connId)
+      expect(conn?.waypoints?.length).toBe(1)
+
+      // Update waypoint
+      useModelStore.getState().updateConnectionWaypoint(connId!, 0, { x: 160, y: 80 })
+      currentConnections = useModelStore.getState().getCurrentConnections()
+      conn = currentConnections.find(c => c.id === connId)
+      expect(conn?.waypoints?.[0]).toEqual({ x: 160, y: 80 })
+
+      // Remove waypoint
+      useModelStore.getState().removeConnectionWaypoint(connId!, 0)
+      currentConnections = useModelStore.getState().getCurrentConnections()
+      conn = currentConnections.find(c => c.id === connId)
+      expect(conn?.waypoints?.length).toBe(0)
+    })
+  })
+
+  describe('library block handling', () => {
+    beforeEach(() => {
+      useModelStore.getState().createNewModel('Test Model')
+    })
+
+    it('adds library block with implementation', () => {
+      // Create a library block definition with implementation
+      const libraryBlockDef: BlockDefinition = {
+        type: 'my_library__gain_system',
+        name: 'Gain System',
+        category: 'subsystems',
+        description: 'A library block with implementation',
+        inputs: [{ name: 'in', dataType: 'double', dimensions: [1] }],
+        outputs: [{ name: 'out', dataType: 'double', dimensions: [1] }],
+        parameters: [],
+        isLibraryBlock: true,
+        libraryId: 'lib-1',
+        libraryName: 'My Library',
+        originalName: 'GainSystem',
+        implementation: {
+          blocks: [
+            {
+              id: 'impl-gain-1',
+              type: 'gain',
+              name: 'InternalGain',
+              position: { x: 100, y: 100 },
+              parameters: { gain: 2 },
+              inputPorts: [{ id: 'impl-in-0', name: 'in', dataType: 'double', dimensions: [1] }],
+              outputPorts: [{ id: 'impl-out-0', name: 'out', dataType: 'double', dimensions: [1] }],
+            },
+          ],
+          connections: [],
+          portMappings: [],
+        },
+      } as any
+
+      const blockId = useModelStore.getState().addBlock(libraryBlockDef, { x: 100, y: 100 })
+
+      expect(blockId).toBeTruthy()
+      const block = useModelStore.getState().model?.blocks.find(b => b.id === blockId)
+      expect(block?.type).toBe('subsystem')
+      expect(block?.children?.length).toBeGreaterThan(0)
+    })
+  })
+
+  describe('parseConstantValueDimensions edge cases', () => {
+    beforeEach(() => {
+      useModelStore.getState().createNewModel('Test Model')
+    })
+
+    it('handles array value in constant block', () => {
+      const constDef: BlockDefinition = {
+        type: 'constant',
+        name: 'Constant',
+        category: 'sources',
+        description: 'A constant block',
+        inputs: [],
+        outputs: [{ name: 'out', dataType: 'double', dimensions: [1] }],
+        parameters: [{ name: 'value', label: 'Value', type: 'string', default: '0' }],
+      }
+
+      const blockId = useModelStore.getState().addBlock(constDef, { x: 100, y: 100 })
+      useModelStore.getState().updateBlockParameters(blockId, { value: '[1, 2, 3]' })
+
+      const block = useModelStore.getState().model?.blocks.find(b => b.id === blockId)
+      expect(block?.outputPorts[0].dimensions).toEqual([3])
+    })
+
+    it('handles semicolon-separated array value', () => {
+      const constDef: BlockDefinition = {
+        type: 'constant',
+        name: 'Constant',
+        category: 'sources',
+        description: 'A constant block',
+        inputs: [],
+        outputs: [{ name: 'out', dataType: 'double', dimensions: [1] }],
+        parameters: [{ name: 'value', label: 'Value', type: 'string', default: '0' }],
+      }
+
+      const blockId = useModelStore.getState().addBlock(constDef, { x: 100, y: 100 })
+      useModelStore.getState().updateBlockParameters(blockId, { value: '[1; 2; 3; 4]' })
+
+      const block = useModelStore.getState().model?.blocks.find(b => b.id === blockId)
+      expect(block?.outputPorts[0].dimensions).toEqual([4])
+    })
+
+    it('handles space-separated array value', () => {
+      const constDef: BlockDefinition = {
+        type: 'constant',
+        name: 'Constant',
+        category: 'sources',
+        description: 'A constant block',
+        inputs: [],
+        outputs: [{ name: 'out', dataType: 'double', dimensions: [1] }],
+        parameters: [{ name: 'value', label: 'Value', type: 'string', default: '0' }],
+      }
+
+      const blockId = useModelStore.getState().addBlock(constDef, { x: 100, y: 100 })
+      useModelStore.getState().updateBlockParameters(blockId, { value: '[1 2 3 4 5]' })
+
+      const block = useModelStore.getState().model?.blocks.find(b => b.id === blockId)
+      expect(block?.outputPorts[0].dimensions).toEqual([5])
+    })
+
+    it('handles comma-separated value without brackets', () => {
+      const constDef: BlockDefinition = {
+        type: 'constant',
+        name: 'Constant',
+        category: 'sources',
+        description: 'A constant block',
+        inputs: [],
+        outputs: [{ name: 'out', dataType: 'double', dimensions: [1] }],
+        parameters: [{ name: 'value', label: 'Value', type: 'string', default: '0' }],
+      }
+
+      const blockId = useModelStore.getState().addBlock(constDef, { x: 100, y: 100 })
+      useModelStore.getState().updateBlockParameters(blockId, { value: '1,2,3' })
+
+      const block = useModelStore.getState().model?.blocks.find(b => b.id === blockId)
+      expect(block?.outputPorts[0].dimensions).toEqual([3])
+    })
+  })
+
+  describe('subsystem navigation', () => {
+    beforeEach(() => {
+      useModelStore.getState().createNewModel('Test Model')
+    })
+
+    it('enters a subsystem', () => {
+      // Create a subsystem
+      const subsystemDef: BlockDefinition = {
+        type: 'subsystem',
+        name: 'Subsystem',
+        category: 'subsystems',
+        description: 'A subsystem',
+        inputs: [],
+        outputs: [],
+        parameters: [],
+      }
+
+      const subsystemId = useModelStore.getState().addBlock(subsystemDef, { x: 100, y: 100 })
+
+      // Manually set up children since addBlock creates an empty subsystem
+      useModelStore.setState(state => ({
+        model: state.model ? {
+          ...state.model,
+          blocks: state.model.blocks.map(b =>
+            b.id === subsystemId
+              ? { ...b, children: [], childConnections: [] }
+              : b
+          )
+        } : null
+      }))
+
+      useModelStore.getState().enterSubsystem(subsystemId)
+
+      const currentPath = useModelStore.getState().currentPath
+      expect(currentPath.length).toBe(1)
+      expect(currentPath[0].id).toBe(subsystemId)
+    })
+
+    it('exits a subsystem', () => {
+      // Create and enter a subsystem
+      const subsystemDef: BlockDefinition = {
+        type: 'subsystem',
+        name: 'Subsystem',
+        category: 'subsystems',
+        description: 'A subsystem',
+        inputs: [],
+        outputs: [],
+        parameters: [],
+      }
+
+      const subsystemId = useModelStore.getState().addBlock(subsystemDef, { x: 100, y: 100 })
+
+      // Manually set up children
+      useModelStore.setState(state => ({
+        model: state.model ? {
+          ...state.model,
+          blocks: state.model.blocks.map(b =>
+            b.id === subsystemId
+              ? { ...b, children: [], childConnections: [] }
+              : b
+          )
+        } : null
+      }))
+
+      useModelStore.getState().enterSubsystem(subsystemId)
+      expect(useModelStore.getState().currentPath.length).toBe(1)
+
+      useModelStore.getState().exitSubsystem()
+      expect(useModelStore.getState().currentPath.length).toBe(0)
+    })
+
+    it('does nothing when exiting at root level', () => {
+      expect(useModelStore.getState().currentPath.length).toBe(0)
+      useModelStore.getState().exitSubsystem()
+      expect(useModelStore.getState().currentPath.length).toBe(0)
+    })
+
+    it('navigates to a specific path index', () => {
+      // Create nested subsystems
+      const subsystemDef: BlockDefinition = {
+        type: 'subsystem',
+        name: 'Subsystem',
+        category: 'subsystems',
+        description: 'A subsystem',
+        inputs: [],
+        outputs: [],
+        parameters: [],
+      }
+
+      const subsystem1Id = useModelStore.getState().addBlock(subsystemDef, { x: 100, y: 100 })
+
+      // Manually set up nested subsystems
+      useModelStore.setState(state => ({
+        model: state.model ? {
+          ...state.model,
+          blocks: state.model.blocks.map(b =>
+            b.id === subsystem1Id
+              ? {
+                  ...b,
+                  children: [{
+                    id: 'inner-subsystem',
+                    type: 'subsystem',
+                    name: 'Inner Subsystem',
+                    position: { x: 50, y: 50 },
+                    parameters: {},
+                    inputPorts: [],
+                    outputPorts: [],
+                    children: [],
+                    childConnections: [],
+                  }],
+                  childConnections: []
+                }
+              : b
+          )
+        } : null,
+        currentPath: [
+          { id: subsystem1Id, name: 'Subsystem' },
+          { id: 'inner-subsystem', name: 'Inner Subsystem' }
+        ]
+      }))
+
+      // Navigate to first subsystem
+      useModelStore.getState().navigateToPath(0)
+      expect(useModelStore.getState().currentPath.length).toBe(1)
+    })
+
+    it('navigates to root when path index is negative', () => {
+      useModelStore.setState({
+        currentPath: [
+          { id: 'sub1', name: 'Sub1' },
+          { id: 'sub2', name: 'Sub2' }
+        ]
+      })
+
+      useModelStore.getState().navigateToPath(-1)
+      expect(useModelStore.getState().currentPath.length).toBe(0)
+    })
+
+    it('does not enter non-existent subsystem', () => {
+      useModelStore.getState().enterSubsystem('non-existent')
+      expect(useModelStore.getState().currentPath.length).toBe(0)
+    })
+
+    it('does not enter a non-subsystem block', () => {
+      const constDef: BlockDefinition = {
+        type: 'constant',
+        name: 'Constant',
+        category: 'sources',
+        description: 'A constant block',
+        inputs: [],
+        outputs: [{ name: 'out', dataType: 'double', dimensions: [1] }],
+        parameters: [],
+      }
+
+      const blockId = useModelStore.getState().addBlock(constDef, { x: 100, y: 100 })
+      useModelStore.getState().enterSubsystem(blockId)
+      expect(useModelStore.getState().currentPath.length).toBe(0)
+    })
+  })
+
+  describe('expandSubsystem', () => {
+    beforeEach(() => {
+      useModelStore.getState().createNewModel('Test Model')
+    })
+
+    it('expands a subsystem at root level', () => {
+      // Create a subsystem with children
+      const subsystemDef: BlockDefinition = {
+        type: 'subsystem',
+        name: 'Subsystem',
+        category: 'subsystems',
+        description: 'A subsystem',
+        inputs: [],
+        outputs: [],
+        parameters: [],
+      }
+
+      const subsystemId = useModelStore.getState().addBlock(subsystemDef, { x: 100, y: 100 })
+
+      // Manually add children to the subsystem
+      useModelStore.setState(state => ({
+        model: state.model ? {
+          ...state.model,
+          blocks: state.model.blocks.map(b =>
+            b.id === subsystemId
+              ? {
+                  ...b,
+                  children: [
+                    {
+                      id: 'child-block-1',
+                      type: 'constant',
+                      name: 'Child Constant',
+                      position: { x: 50, y: 50 },
+                      parameters: { value: 1 },
+                      inputPorts: [],
+                      outputPorts: [{ id: 'out-1', name: 'out', dataType: 'double', dimensions: [1] }],
+                    },
+                    {
+                      id: 'child-block-2',
+                      type: 'gain',
+                      name: 'Child Gain',
+                      position: { x: 150, y: 50 },
+                      parameters: { gain: 2 },
+                      inputPorts: [{ id: 'in-1', name: 'in', dataType: 'double', dimensions: [1] }],
+                      outputPorts: [{ id: 'out-2', name: 'out', dataType: 'double', dimensions: [1] }],
+                    }
+                  ],
+                  childConnections: [
+                    {
+                      id: 'child-conn-1',
+                      sourceBlockId: 'child-block-1',
+                      sourcePortId: 'out-1',
+                      targetBlockId: 'child-block-2',
+                      targetPortId: 'in-1',
+                    }
+                  ]
+                }
+              : b
+          )
+        } : null
+      }))
+
+      const initialBlockCount = useModelStore.getState().model?.blocks.length || 0
+
+      useModelStore.getState().expandSubsystem(subsystemId)
+
+      // The subsystem should be replaced by its children
+      const model = useModelStore.getState().model
+      expect(model?.blocks.length).toBe(initialBlockCount - 1 + 2) // -1 subsystem +2 children
+
+      // Subsystem should no longer exist
+      expect(model?.blocks.find(b => b.id === subsystemId)).toBeUndefined()
+
+      // Children should exist at root level (with new IDs)
+      const childBlocks = model?.blocks.filter(b => b.type === 'constant' || b.type === 'gain')
+      expect(childBlocks?.length).toBe(2)
+    })
+
+    it('does nothing for non-existent subsystem', () => {
+      const initialBlockCount = useModelStore.getState().model?.blocks.length || 0
+      useModelStore.getState().expandSubsystem('non-existent')
+      expect(useModelStore.getState().model?.blocks.length).toBe(initialBlockCount)
+    })
+
+    it('does nothing for non-subsystem block', () => {
+      const constDef: BlockDefinition = {
+        type: 'constant',
+        name: 'Constant',
+        category: 'sources',
+        description: 'A constant block',
+        inputs: [],
+        outputs: [{ name: 'out', dataType: 'double', dimensions: [1] }],
+        parameters: [],
+      }
+
+      const blockId = useModelStore.getState().addBlock(constDef, { x: 100, y: 100 })
+      const initialBlockCount = useModelStore.getState().model?.blocks.length || 0
+
+      useModelStore.getState().expandSubsystem(blockId)
+      expect(useModelStore.getState().model?.blocks.length).toBe(initialBlockCount)
+    })
+
+    it('does nothing when model is null', () => {
+      useModelStore.setState({ model: null })
+      useModelStore.getState().expandSubsystem('any-id')
+      expect(useModelStore.getState().model).toBeNull()
+    })
+  })
+
+  describe('getCurrentBlocks and getCurrentConnections', () => {
+    beforeEach(() => {
+      useModelStore.getState().createNewModel('Test Model')
+    })
+
+    it('returns root blocks when at root level', () => {
+      const constDef: BlockDefinition = {
+        type: 'constant',
+        name: 'Constant',
+        category: 'sources',
+        description: 'A constant block',
+        inputs: [],
+        outputs: [{ name: 'out', dataType: 'double', dimensions: [1] }],
+        parameters: [],
+      }
+
+      useModelStore.getState().addBlock(constDef, { x: 100, y: 100 })
+
+      const currentBlocks = useModelStore.getState().getCurrentBlocks()
+      expect(currentBlocks.length).toBe(1)
+    })
+
+    it('returns empty array when model is null', () => {
+      useModelStore.setState({ model: null })
+      expect(useModelStore.getState().getCurrentBlocks()).toEqual([])
+      expect(useModelStore.getState().getCurrentConnections()).toEqual([])
+    })
+
+    it('returns subsystem children when inside subsystem', () => {
+      const subsystemDef: BlockDefinition = {
+        type: 'subsystem',
+        name: 'Subsystem',
+        category: 'subsystems',
+        description: 'A subsystem',
+        inputs: [],
+        outputs: [],
+        parameters: [],
+      }
+
+      const subsystemId = useModelStore.getState().addBlock(subsystemDef, { x: 100, y: 100 })
+
+      // Set up subsystem with children
+      useModelStore.setState(state => ({
+        model: state.model ? {
+          ...state.model,
+          blocks: state.model.blocks.map(b =>
+            b.id === subsystemId
+              ? {
+                  ...b,
+                  children: [
+                    {
+                      id: 'child-block',
+                      type: 'constant',
+                      name: 'Child',
+                      position: { x: 50, y: 50 },
+                      parameters: {},
+                      inputPorts: [],
+                      outputPorts: [],
+                    }
+                  ],
+                  childConnections: []
+                }
+              : b
+          )
+        } : null,
+        currentPath: [{ id: subsystemId, name: 'Subsystem' }]
+      }))
+
+      const currentBlocks = useModelStore.getState().getCurrentBlocks()
+      expect(currentBlocks.length).toBe(1)
+      expect(currentBlocks[0].id).toBe('child-block')
+    })
+
+    it('returns root connections when at root level', () => {
+      // Add two blocks and connect them
+      const constDef: BlockDefinition = {
+        type: 'constant',
+        name: 'Constant',
+        category: 'sources',
+        description: 'A constant block',
+        inputs: [],
+        outputs: [{ name: 'out', dataType: 'double', dimensions: [1] }],
+        parameters: [],
+      }
+
+      const gainDef: BlockDefinition = {
+        type: 'gain',
+        name: 'Gain',
+        category: 'math',
+        description: 'A gain block',
+        inputs: [{ name: 'in', dataType: 'double', dimensions: [1] }],
+        outputs: [{ name: 'out', dataType: 'double', dimensions: [1] }],
+        parameters: [],
+      }
+
+      const constId = useModelStore.getState().addBlock(constDef, { x: 100, y: 100 })
+      const gainId = useModelStore.getState().addBlock(gainDef, { x: 200, y: 100 })
+
+      const constBlock = useModelStore.getState().model?.blocks.find(b => b.id === constId)
+      const gainBlock = useModelStore.getState().model?.blocks.find(b => b.id === gainId)
+
+      if (constBlock && gainBlock) {
+        useModelStore.getState().addConnection({
+          sourceBlockId: constId,
+          sourcePortId: constBlock.outputPorts[0].id,
+          targetBlockId: gainId,
+          targetPortId: gainBlock.inputPorts[0].id
+        })
+      }
+
+      expect(useModelStore.getState().getCurrentConnections().length).toBe(1)
+    })
+  })
+
+  describe('selection operations', () => {
+    beforeEach(() => {
+      useModelStore.getState().createNewModel('Test Model')
+    })
+
+    it('selects multiple blocks', () => {
+      const constDef: BlockDefinition = {
+        type: 'constant',
+        name: 'Constant',
+        category: 'sources',
+        description: 'A constant block',
+        inputs: [],
+        outputs: [{ name: 'out', dataType: 'double', dimensions: [1] }],
+        parameters: [],
+      }
+
+      const block1Id = useModelStore.getState().addBlock(constDef, { x: 100, y: 100 })
+      const block2Id = useModelStore.getState().addBlock(constDef, { x: 200, y: 100 })
+
+      useModelStore.getState().selectBlocks([block1Id, block2Id])
+      expect(useModelStore.getState().selectedBlockIds).toEqual([block1Id, block2Id])
+    })
+
+    it('clears selection', () => {
+      const constDef: BlockDefinition = {
+        type: 'constant',
+        name: 'Constant',
+        category: 'sources',
+        description: 'A constant block',
+        inputs: [],
+        outputs: [{ name: 'out', dataType: 'double', dimensions: [1] }],
+        parameters: [],
+      }
+
+      const blockId = useModelStore.getState().addBlock(constDef, { x: 100, y: 100 })
+      useModelStore.getState().selectBlocks([blockId])
+      expect(useModelStore.getState().selectedBlockIds.length).toBe(1)
+
+      useModelStore.getState().clearSelection()
+      expect(useModelStore.getState().selectedBlockIds.length).toBe(0)
+      expect(useModelStore.getState().selectedConnectionIds.length).toBe(0)
+    })
+
+    it('selects multiple connections', () => {
+      useModelStore.getState().selectConnections(['conn1', 'conn2'])
+      expect(useModelStore.getState().selectedConnectionIds).toEqual(['conn1', 'conn2'])
+    })
+  })
+
+  describe('undo/redo', () => {
+    beforeEach(() => {
+      // Clear history and future stacks before creating new model
+      useModelStore.setState({ history: [], future: [] })
+      useModelStore.getState().createNewModel('Test Model')
+    })
+
+    it('undoes and redoes block addition', () => {
+      const constDef: BlockDefinition = {
+        type: 'constant',
+        name: 'Constant',
+        category: 'sources',
+        description: 'A constant block',
+        inputs: [],
+        outputs: [{ name: 'out', dataType: 'double', dimensions: [1] }],
+        parameters: [],
+      }
+
+      // Push history BEFORE making a change to enable undo
+      useModelStore.getState().pushHistory()
+      useModelStore.getState().addBlock(constDef, { x: 100, y: 100 })
+      expect(useModelStore.getState().model?.blocks.length).toBe(1)
+
+      useModelStore.getState().undo()
+      expect(useModelStore.getState().model?.blocks.length).toBe(0)
+
+      useModelStore.getState().redo()
+      expect(useModelStore.getState().model?.blocks.length).toBe(1)
+    })
+
+    it('reports canUndo and canRedo correctly', () => {
+      expect(useModelStore.getState().canUndo()).toBe(false)
+      expect(useModelStore.getState().canRedo()).toBe(false)
+
+      const constDef: BlockDefinition = {
+        type: 'constant',
+        name: 'Constant',
+        category: 'sources',
+        description: 'A constant block',
+        inputs: [],
+        outputs: [{ name: 'out', dataType: 'double', dimensions: [1] }],
+        parameters: [],
+      }
+
+      // Push history BEFORE making a change to enable undo
+      useModelStore.getState().pushHistory()
+      useModelStore.getState().addBlock(constDef, { x: 100, y: 100 })
+      expect(useModelStore.getState().canUndo()).toBe(true)
+      expect(useModelStore.getState().canRedo()).toBe(false)
+
+      useModelStore.getState().undo()
+      expect(useModelStore.getState().canUndo()).toBe(false)
+      expect(useModelStore.getState().canRedo()).toBe(true)
+    })
+  })
+
+  describe('model metadata', () => {
+    beforeEach(() => {
+      useModelStore.getState().createNewModel('Test Model')
+    })
+
+    it('updates model name via updateMetadata', () => {
+      useModelStore.getState().updateMetadata({ name: 'New Name' })
+      expect(useModelStore.getState().model?.metadata.name).toBe('New Name')
+    })
+
+    it('updates solver via updateSimulationConfig', () => {
+      useModelStore.getState().updateSimulationConfig({ solver: 'ode45' })
+      expect(useModelStore.getState().model?.simulationConfig.solver).toBe('ode45')
+    })
+
+    it('updates stop time via updateSimulationConfig', () => {
+      useModelStore.getState().updateSimulationConfig({ stopTime: 20 })
+      expect(useModelStore.getState().model?.simulationConfig.stopTime).toBe(20)
+    })
+
+    it('updates step size via updateSimulationConfig', () => {
+      useModelStore.getState().updateSimulationConfig({ stepSize: 0.001 })
+      expect(useModelStore.getState().model?.simulationConfig.stepSize).toBe(0.001)
+    })
+
+    it('isDirty is set when model changes', () => {
+      // Reset dirty flag by creating new model
+      useModelStore.getState().createNewModel('Clean Model')
+      expect(useModelStore.getState().isDirty).toBe(false)
+
+      // Making a change should set isDirty
+      useModelStore.getState().updateMetadata({ name: 'Changed' })
+      expect(useModelStore.getState().isDirty).toBe(true)
+    })
+
+    it('updateSimulationConfig does nothing when model is null', () => {
+      useModelStore.setState({ model: null })
+      useModelStore.getState().updateSimulationConfig({ solver: 'ode45' })
+      expect(useModelStore.getState().model).toBeNull()
+    })
+
+    it('updateMetadata does nothing when model is null', () => {
+      useModelStore.setState({ model: null })
+      useModelStore.getState().updateMetadata({ name: 'New Name' })
+      expect(useModelStore.getState().model).toBeNull()
+    })
+  })
+
+  describe('removeBlock deletes connections', () => {
+    beforeEach(() => {
+      useModelStore.getState().createNewModel('Test Model')
+    })
+
+    it('removes connections when block is deleted', () => {
+      const constDef: BlockDefinition = {
+        type: 'constant',
+        name: 'Constant',
+        category: 'sources',
+        description: 'A constant block',
+        inputs: [],
+        outputs: [{ name: 'out', dataType: 'double', dimensions: [1] }],
+        parameters: [],
+      }
+
+      const gainDef: BlockDefinition = {
+        type: 'gain',
+        name: 'Gain',
+        category: 'math',
+        description: 'A gain block',
+        inputs: [{ name: 'in', dataType: 'double', dimensions: [1] }],
+        outputs: [{ name: 'out', dataType: 'double', dimensions: [1] }],
+        parameters: [],
+      }
+
+      const constId = useModelStore.getState().addBlock(constDef, { x: 100, y: 100 })
+      const gainId = useModelStore.getState().addBlock(gainDef, { x: 200, y: 100 })
+
+      const constBlock = useModelStore.getState().model?.blocks.find(b => b.id === constId)
+      const gainBlock = useModelStore.getState().model?.blocks.find(b => b.id === gainId)
+
+      if (constBlock && gainBlock) {
+        useModelStore.getState().addConnection({
+          sourceBlockId: constId,
+          sourcePortId: constBlock.outputPorts[0].id,
+          targetBlockId: gainId,
+          targetPortId: gainBlock.inputPorts[0].id
+        })
+      }
+
+      expect(useModelStore.getState().model?.connections.length).toBe(1)
+
+      // Remove the constant block
+      useModelStore.getState().removeBlock(constId)
+
+      expect(useModelStore.getState().model?.blocks.length).toBe(1)
+      expect(useModelStore.getState().model?.connections.length).toBe(0)
+    })
+  })
 })
