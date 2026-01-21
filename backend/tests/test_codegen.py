@@ -2959,3 +2959,4148 @@ class TestCppBlockTemplates:
         )
         code = template_demux(block, "Demux1Block")
         assert "Demux1Block" in code
+
+
+# =============================================================================
+# C++ Continuous Block Templates Tests
+# =============================================================================
+
+
+class TestCppContinuousTemplates:
+    """Tests for C++ continuous block templates."""
+
+    def test_cpp_integrator_template(self):
+        """Test C++ Integrator template."""
+        from src.codegen.languages.cpp.blocks.continuous import template_integrator
+
+        block = BlockInfo(
+            id="int1",
+            type="integrator",
+            name="Integrator1",
+            parameters={"initialCondition": 0.5},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_integrator(block, "Integrator1Block")
+        assert "Integrator1Block" in code
+        assert "class" in code
+        assert "0.5" in code
+
+    def test_cpp_derivative_template(self):
+        """Test C++ Derivative template."""
+        from src.codegen.languages.cpp.blocks.continuous import template_derivative
+
+        block = BlockInfo(
+            id="deriv1",
+            type="derivative",
+            name="Derivative1",
+            parameters={},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_derivative(block, "Derivative1Block")
+        assert "Derivative1Block" in code
+        assert "prev_input" in code
+
+    def test_cpp_transfer_function_template(self):
+        """Test C++ Transfer Function template."""
+        from src.codegen.languages.cpp.blocks.continuous import template_transfer_function
+
+        block = BlockInfo(
+            id="tf1",
+            type="transfer_function",
+            name="TransferFcn1",
+            parameters={"numerator": [1.0], "denominator": [1.0, 2.0, 1.0]},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_transfer_function(block, "TransferFcn1Block")
+        assert "TransferFcn1Block" in code
+        assert "order" in code
+
+    def test_cpp_state_space_template(self):
+        """Test C++ State Space template."""
+        from src.codegen.languages.cpp.blocks.continuous import template_state_space
+
+        block = BlockInfo(
+            id="ss1",
+            type="state_space",
+            name="StateSpace1",
+            parameters={
+                "A": [[0, 1], [-2, -3]],
+                "B": [[0], [1]],
+                "C": [[1, 0]],
+                "D": [[0]],
+            },
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_state_space(block, "StateSpace1Block")
+        assert "StateSpace1Block" in code
+        assert "n_states" in code
+
+    def test_cpp_second_order_template(self):
+        """Test C++ Second Order template."""
+        from src.codegen.languages.cpp.blocks.continuous import template_second_order
+
+        block = BlockInfo(
+            id="so1",
+            type="second_order",
+            name="SecondOrder1",
+            parameters={"natural_frequency": 2.0, "damping_ratio": 0.7},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_second_order(block, "SecondOrder1Block")
+        assert "SecondOrder1Block" in code
+        assert "wn" in code
+        assert "zeta" in code
+
+    def test_cpp_transport_delay_template(self):
+        """Test C++ Transport Delay template."""
+        from src.codegen.languages.cpp.blocks.continuous import template_transport_delay
+
+        block = BlockInfo(
+            id="td1",
+            type="transport_delay",
+            name="TransportDelay1",
+            parameters={"delay": 0.5},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_transport_delay(block, "TransportDelay1Block")
+        assert "TransportDelay1Block" in code
+        assert "delay" in code
+
+
+# =============================================================================
+# C++ Discrete Block Templates Tests
+# =============================================================================
+
+
+class TestCppDiscreteTemplates:
+    """Tests for C++ discrete block templates."""
+
+    def test_cpp_unit_delay_template(self):
+        """Test C++ Unit Delay template."""
+        from src.codegen.languages.cpp.blocks.discrete import unit_delay_template
+
+        block = BlockInfo(
+            id="ud1",
+            type="unit_delay",
+            name="UnitDelay1",
+            parameters={"initial_condition": 0.0},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = unit_delay_template(block, "UnitDelay1Block")
+        assert "UnitDelay1Block" in code
+
+    def test_cpp_discrete_integrator_template(self):
+        """Test C++ Discrete Integrator template."""
+        from src.codegen.languages.cpp.blocks.discrete import discrete_integrator_template
+
+        block = BlockInfo(
+            id="di1",
+            type="discrete_integrator",
+            name="DiscreteInt1",
+            parameters={"sample_time": 0.01},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = discrete_integrator_template(block, "DiscreteInt1Block")
+        assert "DiscreteInt1Block" in code
+
+    def test_cpp_discrete_derivative_template(self):
+        """Test C++ Discrete Derivative template."""
+        from src.codegen.languages.cpp.blocks.discrete import discrete_derivative_template
+
+        block = BlockInfo(
+            id="dd1",
+            type="discrete_derivative",
+            name="DiscreteDeriv1",
+            parameters={"sample_time": 0.01},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = discrete_derivative_template(block, "DiscreteDeriv1Block")
+        assert "DiscreteDeriv1Block" in code
+
+    def test_cpp_memory_template(self):
+        """Test C++ Memory template."""
+        from src.codegen.languages.cpp.blocks.discrete import memory_template
+
+        block = BlockInfo(
+            id="mem1",
+            type="memory",
+            name="Memory1",
+            parameters={},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = memory_template(block, "Memory1Block")
+        assert "Memory1Block" in code
+
+    def test_cpp_zero_order_hold_template(self):
+        """Test C++ Zero Order Hold template."""
+        from src.codegen.languages.cpp.blocks.discrete import zero_order_hold_template
+
+        block = BlockInfo(
+            id="zoh1",
+            type="zero_order_hold",
+            name="ZOH1",
+            parameters={"sample_time": 0.01},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = zero_order_hold_template(block, "ZOH1Block")
+        assert "ZOH1Block" in code
+
+    def test_cpp_first_order_hold_template(self):
+        """Test C++ First Order Hold template."""
+        from src.codegen.languages.cpp.blocks.discrete import first_order_hold_template
+
+        block = BlockInfo(
+            id="foh1",
+            type="first_order_hold",
+            name="FOH1",
+            parameters={"sample_time": 0.01},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = first_order_hold_template(block, "FOH1Block")
+        assert "FOH1Block" in code
+
+    def test_cpp_discrete_transfer_function_template(self):
+        """Test C++ Discrete Transfer Function template."""
+        from src.codegen.languages.cpp.blocks.discrete import (
+            discrete_transfer_function_template,
+        )
+
+        block = BlockInfo(
+            id="dtf1",
+            type="discrete_transfer_function",
+            name="DiscreteTF1",
+            parameters={"numerator": [1.0], "denominator": [1.0, -0.5]},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = discrete_transfer_function_template(block, "DiscreteTF1Block")
+        assert "DiscreteTF1Block" in code
+
+
+# =============================================================================
+# C++ Logic Block Templates Tests
+# =============================================================================
+
+
+class TestCppLogicTemplates:
+    """Tests for C++ logic block templates."""
+
+    def test_cpp_compare_to_zero_template(self):
+        """Test C++ Compare to Zero template."""
+        from src.codegen.languages.cpp.blocks.logic import template_compare_to_zero
+
+        block = BlockInfo(
+            id="ctz1",
+            type="compare_to_zero",
+            name="CompareToZero1",
+            parameters={"operator": ">="},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_compare_to_zero(block, "CompareToZero1Block")
+        assert "CompareToZero1Block" in code
+
+    def test_cpp_compare_to_constant_template(self):
+        """Test C++ Compare to Constant template."""
+        from src.codegen.languages.cpp.blocks.logic import template_compare_to_constant
+
+        block = BlockInfo(
+            id="ctc1",
+            type="compare_to_constant",
+            name="CompareToConst1",
+            parameters={"operator": "==", "constant": 5.0},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_compare_to_constant(block, "CompareToConst1Block")
+        assert "CompareToConst1Block" in code
+
+    def test_cpp_logical_operator_template(self):
+        """Test C++ Logical Operator template."""
+        from src.codegen.languages.cpp.blocks.logic import template_logical_operator
+
+        block = BlockInfo(
+            id="log1",
+            type="logical_operator",
+            name="LogicalOp1",
+            parameters={"operator": "AND", "numInputs": 2},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_logical_operator(block, "LogicalOp1Block")
+        assert "LogicalOp1Block" in code
+
+    def test_cpp_relational_operator_template(self):
+        """Test C++ Relational Operator template."""
+        from src.codegen.languages.cpp.blocks.logic import template_relational_operator
+
+        block = BlockInfo(
+            id="rel1",
+            type="relational_operator",
+            name="RelationalOp1",
+            parameters={"operator": "<"},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_relational_operator(block, "RelationalOp1Block")
+        assert "RelationalOp1Block" in code
+
+    def test_cpp_bit_operator_template(self):
+        """Test C++ Bit Operator template."""
+        from src.codegen.languages.cpp.blocks.logic import template_bit_operator
+
+        block = BlockInfo(
+            id="bit1",
+            type="bit_operator",
+            name="BitOp1",
+            parameters={"operator": "AND"},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_bit_operator(block, "BitOp1Block")
+        assert "BitOp1Block" in code
+
+
+# =============================================================================
+# C++ DSP Block Templates Tests
+# =============================================================================
+
+
+class TestCppDSPTemplates:
+    """Tests for C++ DSP block templates."""
+
+    def test_cpp_fir_filter_template(self):
+        """Test C++ FIR Filter template."""
+        from src.codegen.languages.cpp.blocks.dsp import template_fir_filter
+
+        block = BlockInfo(
+            id="fir1",
+            type="fir_filter",
+            name="FIRFilter1",
+            parameters={"coefficients": [0.25, 0.5, 0.25]},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_fir_filter(block, "FIRFilter1Block")
+        assert "FIRFilter1Block" in code
+
+    def test_cpp_iir_filter_template(self):
+        """Test C++ IIR Filter template."""
+        from src.codegen.languages.cpp.blocks.dsp import template_iir_filter
+
+        block = BlockInfo(
+            id="iir1",
+            type="iir_filter",
+            name="IIRFilter1",
+            parameters={"b": [0.1, 0.2], "a": [1.0, -0.8]},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_iir_filter(block, "IIRFilter1Block")
+        assert "IIRFilter1Block" in code
+
+    def test_cpp_mean_template(self):
+        """Test C++ Mean template."""
+        from src.codegen.languages.cpp.blocks.dsp import template_mean
+
+        block = BlockInfo(
+            id="mean1",
+            type="mean",
+            name="Mean1",
+            parameters={"window_size": 10},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_mean(block, "Mean1Block")
+        assert "Mean1Block" in code
+
+    def test_cpp_variance_template(self):
+        """Test C++ Variance template."""
+        from src.codegen.languages.cpp.blocks.dsp import template_variance
+
+        block = BlockInfo(
+            id="var1",
+            type="variance",
+            name="Variance1",
+            parameters={"window_size": 10},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_variance(block, "Variance1Block")
+        assert "Variance1Block" in code
+
+    def test_cpp_rms_template(self):
+        """Test C++ RMS template."""
+        from src.codegen.languages.cpp.blocks.dsp import template_rms
+
+        block = BlockInfo(
+            id="rms1",
+            type="rms",
+            name="RMS1",
+            parameters={"window_size": 10},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_rms(block, "RMS1Block")
+        assert "RMS1Block" in code
+
+    def test_cpp_peak_detector_template(self):
+        """Test C++ Peak Detector template."""
+        from src.codegen.languages.cpp.blocks.dsp import template_peak_detector
+
+        block = BlockInfo(
+            id="peak1",
+            type="peak_detector",
+            name="PeakDetector1",
+            parameters={},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_peak_detector(block, "PeakDetector1Block")
+        assert "PeakDetector1Block" in code
+
+    def test_cpp_upsampler_template(self):
+        """Test C++ Upsampler template."""
+        from src.codegen.languages.cpp.blocks.dsp import template_upsampler
+
+        block = BlockInfo(
+            id="up1",
+            type="upsampler",
+            name="Upsampler1",
+            parameters={"factor": 2},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_upsampler(block, "Upsampler1Block")
+        assert "Upsampler1Block" in code
+
+    def test_cpp_downsampler_template(self):
+        """Test C++ Downsampler template."""
+        from src.codegen.languages.cpp.blocks.dsp import template_downsampler
+
+        block = BlockInfo(
+            id="down1",
+            type="downsampler",
+            name="Downsampler1",
+            parameters={"factor": 2},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_downsampler(block, "Downsampler1Block")
+        assert "Downsampler1Block" in code
+
+    def test_cpp_zero_crossing_detector_template(self):
+        """Test C++ Zero Crossing Detector template."""
+        from src.codegen.languages.cpp.blocks.dsp import template_zero_crossing_detector
+
+        block = BlockInfo(
+            id="zcd1",
+            type="zero_crossing_detector",
+            name="ZeroCross1",
+            parameters={},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_zero_crossing_detector(block, "ZeroCross1Block")
+        assert "ZeroCross1Block" in code
+
+
+# =============================================================================
+# C++ Nonlinear Block Templates Tests
+# =============================================================================
+
+
+class TestCppNonlinearTemplates:
+    """Tests for C++ nonlinear block templates."""
+
+    def test_cpp_relay_template(self):
+        """Test C++ Relay template."""
+        from src.codegen.languages.cpp.blocks.nonlinear import template_relay
+
+        block = BlockInfo(
+            id="relay1",
+            type="relay",
+            name="Relay1",
+            parameters={"on_value": 1.0, "off_value": 0.0, "on_threshold": 0.5},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_relay(block, "Relay1Block")
+        assert "Relay1Block" in code
+
+    def test_cpp_quantizer_template(self):
+        """Test C++ Quantizer template."""
+        from src.codegen.languages.cpp.blocks.nonlinear import template_quantizer
+
+        block = BlockInfo(
+            id="quant1",
+            type="quantizer",
+            name="Quantizer1",
+            parameters={"interval": 0.1},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_quantizer(block, "Quantizer1Block")
+        assert "Quantizer1Block" in code
+
+    def test_cpp_lookup_table_1d_template(self):
+        """Test C++ Lookup Table 1D template."""
+        from src.codegen.languages.cpp.blocks.nonlinear import template_lookup_table_1d
+
+        block = BlockInfo(
+            id="lut1",
+            type="lookup_table_1d",
+            name="LookupTable1",
+            parameters={"table_data": [0, 1, 2], "breakpoints": [0, 1, 2]},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_lookup_table_1d(block, "LookupTable1Block")
+        assert "LookupTable1Block" in code
+
+    def test_cpp_coulomb_template(self):
+        """Test C++ Coulomb Friction template."""
+        from src.codegen.languages.cpp.blocks.nonlinear import template_coulomb
+
+        block = BlockInfo(
+            id="coulomb1",
+            type="coulomb",
+            name="Coulomb1",
+            parameters={"coefficient": 0.5},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_coulomb(block, "Coulomb1Block")
+        assert "Coulomb1Block" in code
+
+    def test_cpp_stiction_template(self):
+        """Test C++ Stiction template."""
+        from src.codegen.languages.cpp.blocks.nonlinear import template_stiction
+
+        block = BlockInfo(
+            id="stiction1",
+            type="stiction",
+            name="Stiction1",
+            parameters={"static_gain": 1.0, "dynamic_gain": 0.8},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_stiction(block, "Stiction1Block")
+        assert "Stiction1Block" in code
+
+    def test_cpp_hit_crossing_template(self):
+        """Test C++ Hit Crossing template."""
+        from src.codegen.languages.cpp.blocks.nonlinear import template_hit_crossing
+
+        block = BlockInfo(
+            id="hit1",
+            type="hit_crossing",
+            name="HitCrossing1",
+            parameters={"threshold": 0.0},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_hit_crossing(block, "HitCrossing1Block")
+        assert "HitCrossing1Block" in code
+
+    def test_cpp_wrap_to_range_template(self):
+        """Test C++ Wrap to Range template."""
+        from src.codegen.languages.cpp.blocks.nonlinear import template_wrap_to_range
+
+        block = BlockInfo(
+            id="wrap1",
+            type="wrap_to_range",
+            name="WrapToRange1",
+            parameters={"min_value": -180.0, "max_value": 180.0},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_wrap_to_range(block, "WrapToRange1Block")
+        assert "WrapToRange1Block" in code
+
+
+# =============================================================================
+# C++ Signal Processing Block Templates Tests
+# =============================================================================
+
+
+class TestCppSignalProcessingTemplates:
+    """Tests for C++ signal processing block templates."""
+
+    def test_cpp_rate_limiter_template(self):
+        """Test C++ Rate Limiter template."""
+        from src.codegen.languages.cpp.blocks.signal_processing import (
+            template_rate_limiter,
+        )
+
+        block = BlockInfo(
+            id="rl1",
+            type="rate_limiter",
+            name="RateLimiter1",
+            parameters={"rising_limit": 1.0, "falling_limit": -1.0},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_rate_limiter(block, "RateLimiter1Block")
+        assert "RateLimiter1Block" in code
+
+    def test_cpp_low_pass_filter_template(self):
+        """Test C++ Low Pass Filter template."""
+        from src.codegen.languages.cpp.blocks.signal_processing import (
+            template_low_pass_filter,
+        )
+
+        block = BlockInfo(
+            id="lpf1",
+            type="low_pass_filter",
+            name="LowPass1",
+            parameters={"cutoff_frequency": 10.0},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_low_pass_filter(block, "LowPass1Block")
+        assert "LowPass1Block" in code
+
+    def test_cpp_high_pass_filter_template(self):
+        """Test C++ High Pass Filter template."""
+        from src.codegen.languages.cpp.blocks.signal_processing import (
+            template_high_pass_filter,
+        )
+
+        block = BlockInfo(
+            id="hpf1",
+            type="high_pass_filter",
+            name="HighPass1",
+            parameters={"cutoff_frequency": 100.0},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_high_pass_filter(block, "HighPass1Block")
+        assert "HighPass1Block" in code
+
+    def test_cpp_band_pass_filter_template(self):
+        """Test C++ Band Pass Filter template."""
+        from src.codegen.languages.cpp.blocks.signal_processing import (
+            template_band_pass_filter,
+        )
+
+        block = BlockInfo(
+            id="bpf1",
+            type="band_pass_filter",
+            name="BandPass1",
+            parameters={"low_frequency": 10.0, "high_frequency": 100.0},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_band_pass_filter(block, "BandPass1Block")
+        assert "BandPass1Block" in code
+
+    def test_cpp_notch_filter_template(self):
+        """Test C++ Notch Filter template."""
+        from src.codegen.languages.cpp.blocks.signal_processing import (
+            template_notch_filter,
+        )
+
+        block = BlockInfo(
+            id="notch1",
+            type="notch_filter",
+            name="Notch1",
+            parameters={"notch_frequency": 50.0},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_notch_filter(block, "Notch1Block")
+        assert "Notch1Block" in code
+
+    def test_cpp_moving_average_template(self):
+        """Test C++ Moving Average template."""
+        from src.codegen.languages.cpp.blocks.signal_processing import (
+            template_moving_average,
+        )
+
+        block = BlockInfo(
+            id="ma1",
+            type="moving_average",
+            name="MovingAvg1",
+            parameters={"window_size": 5},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_moving_average(block, "MovingAvg1Block")
+        assert "MovingAvg1Block" in code
+
+    def test_cpp_backlash_template(self):
+        """Test C++ Backlash template."""
+        from src.codegen.languages.cpp.blocks.signal_processing import template_backlash
+
+        block = BlockInfo(
+            id="back1",
+            type="backlash",
+            name="Backlash1",
+            parameters={"deadband": 0.1},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_backlash(block, "Backlash1Block")
+        assert "Backlash1Block" in code
+
+
+# =============================================================================
+# C++ Sinks Block Templates Tests
+# =============================================================================
+
+
+class TestCppSinksTemplates:
+    """Tests for C++ sinks block templates."""
+
+    def test_cpp_scope_template(self):
+        """Test C++ Scope template."""
+        from src.codegen.languages.cpp.blocks.sinks import template_scope
+
+        block = BlockInfo(
+            id="scope1",
+            type="scope",
+            name="Scope1",
+            parameters={"numInputs": 2},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_scope(block, "Scope1Block")
+        assert "Scope1Block" in code
+
+    def test_cpp_display_template(self):
+        """Test C++ Display template."""
+        from src.codegen.languages.cpp.blocks.sinks import template_display
+
+        block = BlockInfo(
+            id="disp1",
+            type="display",
+            name="Display1",
+            parameters={},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_display(block, "Display1Block")
+        assert "Display1Block" in code
+
+    def test_cpp_terminator_template(self):
+        """Test C++ Terminator template."""
+        from src.codegen.languages.cpp.blocks.sinks import template_terminator
+
+        block = BlockInfo(
+            id="term1",
+            type="terminator",
+            name="Terminator1",
+            parameters={},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_terminator(block, "Term1Block")
+        assert "Term1Block" in code
+
+    def test_cpp_to_workspace_template(self):
+        """Test C++ To Workspace template."""
+        from src.codegen.languages.cpp.blocks.sinks import template_to_workspace
+
+        block = BlockInfo(
+            id="tows1",
+            type="to_workspace",
+            name="ToWorkspace1",
+            parameters={"variable_name": "simout"},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_to_workspace(block, "ToWorkspace1Block")
+        assert "ToWorkspace1Block" in code
+
+    def test_cpp_xy_graph_template(self):
+        """Test C++ XY Graph template."""
+        from src.codegen.languages.cpp.blocks.sinks import template_xy_graph
+
+        block = BlockInfo(
+            id="xy1",
+            type="xy_graph",
+            name="XYGraph1",
+            parameters={},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_xy_graph(block, "XYGraph1Block")
+        assert "XYGraph1Block" in code
+
+    def test_cpp_scope_3d_template(self):
+        """Test C++ 3D Scope template."""
+        from src.codegen.languages.cpp.blocks.sinks import template_scope_3d
+
+        block = BlockInfo(
+            id="scope3d1",
+            type="scope_3d",
+            name="Scope3D1",
+            parameters={},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_scope_3d(block, "Scope3D1Block")
+        assert "Scope3D1Block" in code
+
+
+# =============================================================================
+# C++ Sources Block Templates Tests (Additional)
+# =============================================================================
+
+
+class TestCppSourcesTemplatesAdditional:
+    """Additional tests for C++ sources block templates."""
+
+    def test_cpp_clock_template(self):
+        """Test C++ Clock template."""
+        from src.codegen.languages.cpp.blocks.sources import template_clock
+
+        block = BlockInfo(
+            id="clock1",
+            type="clock",
+            name="Clock1",
+            parameters={},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_clock(block, "Clock1Block")
+        assert "Clock1Block" in code
+
+    def test_cpp_ground_template(self):
+        """Test C++ Ground template."""
+        from src.codegen.languages.cpp.blocks.sources import template_ground
+
+        block = BlockInfo(
+            id="gnd1",
+            type="ground",
+            name="Ground1",
+            parameters={},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_ground(block, "Ground1Block")
+        assert "Ground1Block" in code
+
+    def test_cpp_ramp_template(self):
+        """Test C++ Ramp template."""
+        from src.codegen.languages.cpp.blocks.sources import template_ramp
+
+        block = BlockInfo(
+            id="ramp1",
+            type="ramp",
+            name="Ramp1",
+            parameters={"slope": 1.0, "start_time": 0.0},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_ramp(block, "Ramp1Block")
+        assert "Ramp1Block" in code
+
+    def test_cpp_white_noise_template(self):
+        """Test C++ White Noise template."""
+        from src.codegen.languages.cpp.blocks.sources import template_white_noise
+
+        block = BlockInfo(
+            id="wn1",
+            type="white_noise",
+            name="WhiteNoise1",
+            parameters={"variance": 1.0},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_white_noise(block, "WhiteNoise1Block")
+        assert "WhiteNoise1Block" in code
+
+    def test_cpp_band_limited_white_noise_template(self):
+        """Test C++ Band Limited White Noise template."""
+        from src.codegen.languages.cpp.blocks.sources import (
+            template_band_limited_white_noise,
+        )
+
+        block = BlockInfo(
+            id="blwn1",
+            type="band_limited_white_noise",
+            name="BandLimitedNoise1",
+            parameters={"noise_power": 0.1, "sample_time": 0.01},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_band_limited_white_noise(block, "BandLimitedNoise1Block")
+        assert "BandLimitedNoise1Block" in code
+
+    def test_cpp_pulse_template(self):
+        """Test C++ Pulse template."""
+        from src.codegen.languages.cpp.blocks.sources import template_pulse
+
+        block = BlockInfo(
+            id="pulse1",
+            type="pulse",
+            name="Pulse1",
+            parameters={"amplitude": 1.0, "period": 1.0, "pulse_width": 50},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_pulse(block, "Pulse1Block")
+        assert "Pulse1Block" in code
+
+
+# =============================================================================
+# Rust Continuous Block Templates Tests
+# =============================================================================
+
+
+class TestRustContinuousTemplates:
+    """Tests for Rust continuous block templates."""
+
+    def test_rust_integrator_template(self):
+        """Test Rust Integrator template."""
+        from src.codegen.languages.rust.blocks.continuous import template_integrator
+
+        block = BlockInfo(
+            id="int1",
+            type="integrator",
+            name="Integrator1",
+            parameters={"initialCondition": 0.5},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_integrator(block, "Integrator1Struct")
+        assert "Integrator1Struct" in code
+        assert "struct" in code
+
+    def test_rust_derivative_template(self):
+        """Test Rust Derivative template."""
+        from src.codegen.languages.rust.blocks.continuous import template_derivative
+
+        block = BlockInfo(
+            id="deriv1",
+            type="derivative",
+            name="Derivative1",
+            parameters={},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_derivative(block, "Derivative1Struct")
+        assert "Derivative1Struct" in code
+
+    def test_rust_transfer_function_template(self):
+        """Test Rust Transfer Function template."""
+        from src.codegen.languages.rust.blocks.continuous import template_transfer_function
+
+        block = BlockInfo(
+            id="tf1",
+            type="transfer_function",
+            name="TransferFcn1",
+            parameters={"numerator": [1.0], "denominator": [1.0, 2.0, 1.0]},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_transfer_function(block, "TransferFcn1Struct")
+        assert "TransferFcn1Struct" in code
+
+    def test_rust_state_space_template(self):
+        """Test Rust State Space template."""
+        from src.codegen.languages.rust.blocks.continuous import template_state_space
+
+        block = BlockInfo(
+            id="ss1",
+            type="state_space",
+            name="StateSpace1",
+            parameters={
+                "A": [[0, 1], [-2, -3]],
+                "B": [[0], [1]],
+                "C": [[1, 0]],
+                "D": [[0]],
+            },
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_state_space(block, "StateSpace1Struct")
+        assert "StateSpace1Struct" in code
+
+    def test_rust_second_order_template(self):
+        """Test Rust Second Order template."""
+        from src.codegen.languages.rust.blocks.continuous import template_second_order
+
+        block = BlockInfo(
+            id="so1",
+            type="second_order",
+            name="SecondOrder1",
+            parameters={"natural_frequency": 2.0, "damping_ratio": 0.7},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_second_order(block, "SecondOrder1Struct")
+        assert "SecondOrder1Struct" in code
+
+    def test_rust_transport_delay_template(self):
+        """Test Rust Transport Delay template."""
+        from src.codegen.languages.rust.blocks.continuous import template_transport_delay
+
+        block = BlockInfo(
+            id="td1",
+            type="transport_delay",
+            name="TransportDelay1",
+            parameters={"delay": 0.5},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_transport_delay(block, "TransportDelay1Struct")
+        assert "TransportDelay1Struct" in code
+
+
+# =============================================================================
+# Rust Discrete Block Templates Tests
+# =============================================================================
+
+
+class TestRustDiscreteTemplates:
+    """Tests for Rust discrete block templates."""
+
+    def test_rust_unit_delay_template(self):
+        """Test Rust Unit Delay template."""
+        from src.codegen.languages.rust.blocks.discrete import unit_delay_template
+
+        block = BlockInfo(
+            id="ud1",
+            type="unit_delay",
+            name="UnitDelay1",
+            parameters={"initial_condition": 0.0},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = unit_delay_template(block, "UnitDelay1Struct")
+        assert "UnitDelay1Struct" in code
+
+    def test_rust_discrete_integrator_template(self):
+        """Test Rust Discrete Integrator template."""
+        from src.codegen.languages.rust.blocks.discrete import discrete_integrator_template
+
+        block = BlockInfo(
+            id="di1",
+            type="discrete_integrator",
+            name="DiscreteInt1",
+            parameters={"sample_time": 0.01},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = discrete_integrator_template(block, "DiscreteInt1Struct")
+        assert "DiscreteInt1Struct" in code
+
+    def test_rust_discrete_derivative_template(self):
+        """Test Rust Discrete Derivative template."""
+        from src.codegen.languages.rust.blocks.discrete import discrete_derivative_template
+
+        block = BlockInfo(
+            id="dd1",
+            type="discrete_derivative",
+            name="DiscreteDeriv1",
+            parameters={"sample_time": 0.01},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = discrete_derivative_template(block, "DiscreteDeriv1Struct")
+        assert "DiscreteDeriv1Struct" in code
+
+    def test_rust_memory_template(self):
+        """Test Rust Memory template."""
+        from src.codegen.languages.rust.blocks.discrete import memory_template
+
+        block = BlockInfo(
+            id="mem1",
+            type="memory",
+            name="Memory1",
+            parameters={},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = memory_template(block, "Memory1Struct")
+        assert "Memory1Struct" in code
+
+    def test_rust_zero_order_hold_template(self):
+        """Test Rust Zero Order Hold template."""
+        from src.codegen.languages.rust.blocks.discrete import zero_order_hold_template
+
+        block = BlockInfo(
+            id="zoh1",
+            type="zero_order_hold",
+            name="ZOH1",
+            parameters={"sample_time": 0.01},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = zero_order_hold_template(block, "ZOH1Struct")
+        assert "ZOH1Struct" in code
+
+    def test_rust_first_order_hold_template(self):
+        """Test Rust First Order Hold template."""
+        from src.codegen.languages.rust.blocks.discrete import first_order_hold_template
+
+        block = BlockInfo(
+            id="foh1",
+            type="first_order_hold",
+            name="FOH1",
+            parameters={"sample_time": 0.01},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = first_order_hold_template(block, "FOH1Struct")
+        assert "FOH1Struct" in code
+
+    def test_rust_discrete_transfer_function_template(self):
+        """Test Rust Discrete Transfer Function template."""
+        from src.codegen.languages.rust.blocks.discrete import (
+            discrete_transfer_function_template,
+        )
+
+        block = BlockInfo(
+            id="dtf1",
+            type="discrete_transfer_function",
+            name="DiscreteTF1",
+            parameters={"numerator": [1.0], "denominator": [1.0, -0.5]},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = discrete_transfer_function_template(block, "DiscreteTF1Struct")
+        assert "DiscreteTF1Struct" in code
+
+
+# =============================================================================
+# Rust Logic Block Templates Tests
+# =============================================================================
+
+
+class TestRustLogicTemplates:
+    """Tests for Rust logic block templates."""
+
+    def test_rust_compare_to_zero_template(self):
+        """Test Rust Compare to Zero template."""
+        from src.codegen.languages.rust.blocks.logic import template_compare_to_zero
+
+        block = BlockInfo(
+            id="ctz1",
+            type="compare_to_zero",
+            name="CompareToZero1",
+            parameters={"operator": ">="},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_compare_to_zero(block, "CompareToZero1Struct")
+        assert "CompareToZero1Struct" in code
+
+    def test_rust_compare_to_constant_template(self):
+        """Test Rust Compare to Constant template."""
+        from src.codegen.languages.rust.blocks.logic import template_compare_to_constant
+
+        block = BlockInfo(
+            id="ctc1",
+            type="compare_to_constant",
+            name="CompareToConst1",
+            parameters={"operator": "==", "constant": 5.0},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_compare_to_constant(block, "CompareToConst1Struct")
+        assert "CompareToConst1Struct" in code
+
+    def test_rust_logical_operator_template(self):
+        """Test Rust Logical Operator template."""
+        from src.codegen.languages.rust.blocks.logic import template_logical_operator
+
+        block = BlockInfo(
+            id="log1",
+            type="logical_operator",
+            name="LogicalOp1",
+            parameters={"operator": "AND", "numInputs": 2},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_logical_operator(block, "LogicalOp1Struct")
+        assert "LogicalOp1Struct" in code
+
+    def test_rust_relational_operator_template(self):
+        """Test Rust Relational Operator template."""
+        from src.codegen.languages.rust.blocks.logic import template_relational_operator
+
+        block = BlockInfo(
+            id="rel1",
+            type="relational_operator",
+            name="RelationalOp1",
+            parameters={"operator": "<"},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_relational_operator(block, "RelationalOp1Struct")
+        assert "RelationalOp1Struct" in code
+
+    def test_rust_bit_operator_template(self):
+        """Test Rust Bit Operator template."""
+        from src.codegen.languages.rust.blocks.logic import template_bit_operator
+
+        block = BlockInfo(
+            id="bit1",
+            type="bit_operator",
+            name="BitOp1",
+            parameters={"operator": "AND"},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_bit_operator(block, "BitOp1Struct")
+        assert "BitOp1Struct" in code
+
+
+# =============================================================================
+# Rust DSP Block Templates Tests
+# =============================================================================
+
+
+class TestRustDSPTemplates:
+    """Tests for Rust DSP block templates."""
+
+    def test_rust_fir_filter_template(self):
+        """Test Rust FIR Filter template."""
+        from src.codegen.languages.rust.blocks.dsp import template_fir_filter
+
+        block = BlockInfo(
+            id="fir1",
+            type="fir_filter",
+            name="FIRFilter1",
+            parameters={"coefficients": [0.25, 0.5, 0.25]},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_fir_filter(block, "FIRFilter1Struct")
+        assert "FIRFilter1Struct" in code
+
+    def test_rust_iir_filter_template(self):
+        """Test Rust IIR Filter template."""
+        from src.codegen.languages.rust.blocks.dsp import template_iir_filter
+
+        block = BlockInfo(
+            id="iir1",
+            type="iir_filter",
+            name="IIRFilter1",
+            parameters={"b": [0.1, 0.2], "a": [1.0, -0.8]},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_iir_filter(block, "IIRFilter1Struct")
+        assert "IIRFilter1Struct" in code
+
+    def test_rust_mean_template(self):
+        """Test Rust Mean template."""
+        from src.codegen.languages.rust.blocks.dsp import template_mean
+
+        block = BlockInfo(
+            id="mean1",
+            type="mean",
+            name="Mean1",
+            parameters={"window_size": 10},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_mean(block, "Mean1Struct")
+        assert "Mean1Struct" in code
+
+    def test_rust_variance_template(self):
+        """Test Rust Variance template."""
+        from src.codegen.languages.rust.blocks.dsp import template_variance
+
+        block = BlockInfo(
+            id="var1",
+            type="variance",
+            name="Variance1",
+            parameters={"window_size": 10},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_variance(block, "Variance1Struct")
+        assert "Variance1Struct" in code
+
+    def test_rust_rms_template(self):
+        """Test Rust RMS template."""
+        from src.codegen.languages.rust.blocks.dsp import template_rms
+
+        block = BlockInfo(
+            id="rms1",
+            type="rms",
+            name="RMS1",
+            parameters={"window_size": 10},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_rms(block, "RMS1Struct")
+        assert "RMS1Struct" in code
+
+    def test_rust_peak_detector_template(self):
+        """Test Rust Peak Detector template."""
+        from src.codegen.languages.rust.blocks.dsp import template_peak_detector
+
+        block = BlockInfo(
+            id="peak1",
+            type="peak_detector",
+            name="PeakDetector1",
+            parameters={},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_peak_detector(block, "PeakDetector1Struct")
+        assert "PeakDetector1Struct" in code
+
+    def test_rust_upsampler_template(self):
+        """Test Rust Upsampler template."""
+        from src.codegen.languages.rust.blocks.dsp import template_upsampler
+
+        block = BlockInfo(
+            id="up1",
+            type="upsampler",
+            name="Upsampler1",
+            parameters={"factor": 2},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_upsampler(block, "Upsampler1Struct")
+        assert "Upsampler1Struct" in code
+
+    def test_rust_downsampler_template(self):
+        """Test Rust Downsampler template."""
+        from src.codegen.languages.rust.blocks.dsp import template_downsampler
+
+        block = BlockInfo(
+            id="down1",
+            type="downsampler",
+            name="Downsampler1",
+            parameters={"factor": 2},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_downsampler(block, "Downsampler1Struct")
+        assert "Downsampler1Struct" in code
+
+    def test_rust_zero_crossing_detector_template(self):
+        """Test Rust Zero Crossing Detector template."""
+        from src.codegen.languages.rust.blocks.dsp import template_zero_crossing_detector
+
+        block = BlockInfo(
+            id="zcd1",
+            type="zero_crossing_detector",
+            name="ZeroCross1",
+            parameters={},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_zero_crossing_detector(block, "ZeroCross1Struct")
+        assert "ZeroCross1Struct" in code
+
+
+# =============================================================================
+# Rust Nonlinear Block Templates Tests
+# =============================================================================
+
+
+class TestRustNonlinearTemplates:
+    """Tests for Rust nonlinear block templates."""
+
+    def test_rust_relay_template(self):
+        """Test Rust Relay template."""
+        from src.codegen.languages.rust.blocks.nonlinear import template_relay
+
+        block = BlockInfo(
+            id="relay1",
+            type="relay",
+            name="Relay1",
+            parameters={"on_value": 1.0, "off_value": 0.0, "on_threshold": 0.5},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_relay(block, "Relay1Struct")
+        assert "Relay1Struct" in code
+
+    def test_rust_quantizer_template(self):
+        """Test Rust Quantizer template."""
+        from src.codegen.languages.rust.blocks.nonlinear import template_quantizer
+
+        block = BlockInfo(
+            id="quant1",
+            type="quantizer",
+            name="Quantizer1",
+            parameters={"interval": 0.1},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_quantizer(block, "Quantizer1Struct")
+        assert "Quantizer1Struct" in code
+
+    def test_rust_lookup_table_1d_template(self):
+        """Test Rust Lookup Table 1D template."""
+        from src.codegen.languages.rust.blocks.nonlinear import template_lookup_table_1d
+
+        block = BlockInfo(
+            id="lut1",
+            type="lookup_table_1d",
+            name="LookupTable1",
+            parameters={"table_data": [0, 1, 2], "breakpoints": [0, 1, 2]},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_lookup_table_1d(block, "LookupTable1Struct")
+        assert "LookupTable1Struct" in code
+
+    def test_rust_coulomb_template(self):
+        """Test Rust Coulomb Friction template."""
+        from src.codegen.languages.rust.blocks.nonlinear import template_coulomb
+
+        block = BlockInfo(
+            id="coulomb1",
+            type="coulomb",
+            name="Coulomb1",
+            parameters={"coefficient": 0.5},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_coulomb(block, "Coulomb1Struct")
+        assert "Coulomb1Struct" in code
+
+    def test_rust_stiction_template(self):
+        """Test Rust Stiction template."""
+        from src.codegen.languages.rust.blocks.nonlinear import template_stiction
+
+        block = BlockInfo(
+            id="stiction1",
+            type="stiction",
+            name="Stiction1",
+            parameters={"static_gain": 1.0, "dynamic_gain": 0.8},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_stiction(block, "Stiction1Struct")
+        assert "Stiction1Struct" in code
+
+    def test_rust_hit_crossing_template(self):
+        """Test Rust Hit Crossing template."""
+        from src.codegen.languages.rust.blocks.nonlinear import template_hit_crossing
+
+        block = BlockInfo(
+            id="hit1",
+            type="hit_crossing",
+            name="HitCrossing1",
+            parameters={"threshold": 0.0},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_hit_crossing(block, "HitCrossing1Struct")
+        assert "HitCrossing1Struct" in code
+
+    def test_rust_wrap_to_range_template(self):
+        """Test Rust Wrap to Range template."""
+        from src.codegen.languages.rust.blocks.nonlinear import template_wrap_to_range
+
+        block = BlockInfo(
+            id="wrap1",
+            type="wrap_to_range",
+            name="WrapToRange1",
+            parameters={"min_value": -180.0, "max_value": 180.0},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_wrap_to_range(block, "WrapToRange1Struct")
+        assert "WrapToRange1Struct" in code
+
+
+# =============================================================================
+# Rust Signal Processing Block Templates Tests
+# =============================================================================
+
+
+class TestRustSignalProcessingTemplates:
+    """Tests for Rust signal processing block templates."""
+
+    def test_rust_rate_limiter_template(self):
+        """Test Rust Rate Limiter template."""
+        from src.codegen.languages.rust.blocks.signal_processing import (
+            template_rate_limiter,
+        )
+
+        block = BlockInfo(
+            id="rl1",
+            type="rate_limiter",
+            name="RateLimiter1",
+            parameters={"rising_limit": 1.0, "falling_limit": -1.0},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_rate_limiter(block, "RateLimiter1Struct")
+        assert "RateLimiter1Struct" in code
+
+    def test_rust_low_pass_filter_template(self):
+        """Test Rust Low Pass Filter template."""
+        from src.codegen.languages.rust.blocks.signal_processing import (
+            template_low_pass_filter,
+        )
+
+        block = BlockInfo(
+            id="lpf1",
+            type="low_pass_filter",
+            name="LowPass1",
+            parameters={"cutoff_frequency": 10.0},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_low_pass_filter(block, "LowPass1Struct")
+        assert "LowPass1Struct" in code
+
+    def test_rust_high_pass_filter_template(self):
+        """Test Rust High Pass Filter template."""
+        from src.codegen.languages.rust.blocks.signal_processing import (
+            template_high_pass_filter,
+        )
+
+        block = BlockInfo(
+            id="hpf1",
+            type="high_pass_filter",
+            name="HighPass1",
+            parameters={"cutoff_frequency": 100.0},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_high_pass_filter(block, "HighPass1Struct")
+        assert "HighPass1Struct" in code
+
+    def test_rust_band_pass_filter_template(self):
+        """Test Rust Band Pass Filter template."""
+        from src.codegen.languages.rust.blocks.signal_processing import (
+            template_band_pass_filter,
+        )
+
+        block = BlockInfo(
+            id="bpf1",
+            type="band_pass_filter",
+            name="BandPass1",
+            parameters={"low_frequency": 10.0, "high_frequency": 100.0},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_band_pass_filter(block, "BandPass1Struct")
+        assert "BandPass1Struct" in code
+
+    def test_rust_notch_filter_template(self):
+        """Test Rust Notch Filter template."""
+        from src.codegen.languages.rust.blocks.signal_processing import (
+            template_notch_filter,
+        )
+
+        block = BlockInfo(
+            id="notch1",
+            type="notch_filter",
+            name="Notch1",
+            parameters={"notch_frequency": 50.0},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_notch_filter(block, "Notch1Struct")
+        assert "Notch1Struct" in code
+
+    def test_rust_moving_average_template(self):
+        """Test Rust Moving Average template."""
+        from src.codegen.languages.rust.blocks.signal_processing import (
+            template_moving_average,
+        )
+
+        block = BlockInfo(
+            id="ma1",
+            type="moving_average",
+            name="MovingAvg1",
+            parameters={"window_size": 5},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_moving_average(block, "MovingAvg1Struct")
+        assert "MovingAvg1Struct" in code
+
+    def test_rust_backlash_template(self):
+        """Test Rust Backlash template."""
+        from src.codegen.languages.rust.blocks.signal_processing import template_backlash
+
+        block = BlockInfo(
+            id="back1",
+            type="backlash",
+            name="Backlash1",
+            parameters={"deadband": 0.1},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_backlash(block, "Backlash1Struct")
+        assert "Backlash1Struct" in code
+
+
+# =============================================================================
+# Rust Sinks Block Templates Tests
+# =============================================================================
+
+
+class TestRustSinksTemplates:
+    """Tests for Rust sinks block templates."""
+
+    def test_rust_scope_template(self):
+        """Test Rust Scope template."""
+        from src.codegen.languages.rust.blocks.sinks import template_scope
+
+        block = BlockInfo(
+            id="scope1",
+            type="scope",
+            name="Scope1",
+            parameters={"numInputs": 2},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_scope(block, "Scope1Struct")
+        assert "Scope1Struct" in code
+
+    def test_rust_display_template(self):
+        """Test Rust Display template."""
+        from src.codegen.languages.rust.blocks.sinks import template_display
+
+        block = BlockInfo(
+            id="disp1",
+            type="display",
+            name="Display1",
+            parameters={},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_display(block, "Display1Struct")
+        assert "Display1Struct" in code
+
+    def test_rust_terminator_template(self):
+        """Test Rust Terminator template."""
+        from src.codegen.languages.rust.blocks.sinks import template_terminator
+
+        block = BlockInfo(
+            id="term1",
+            type="terminator",
+            name="Terminator1",
+            parameters={},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_terminator(block, "Term1Struct")
+        assert "Term1Struct" in code
+
+    def test_rust_to_workspace_template(self):
+        """Test Rust To Workspace template."""
+        from src.codegen.languages.rust.blocks.sinks import template_to_workspace
+
+        block = BlockInfo(
+            id="tows1",
+            type="to_workspace",
+            name="ToWorkspace1",
+            parameters={"variable_name": "simout"},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_to_workspace(block, "ToWorkspace1Struct")
+        assert "ToWorkspace1Struct" in code
+
+    def test_rust_xy_graph_template(self):
+        """Test Rust XY Graph template."""
+        from src.codegen.languages.rust.blocks.sinks import template_xy_graph
+
+        block = BlockInfo(
+            id="xy1",
+            type="xy_graph",
+            name="XYGraph1",
+            parameters={},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_xy_graph(block, "XYGraph1Struct")
+        assert "XYGraph1Struct" in code
+
+    def test_rust_scope_3d_template(self):
+        """Test Rust 3D Scope template."""
+        from src.codegen.languages.rust.blocks.sinks import template_scope_3d
+
+        block = BlockInfo(
+            id="scope3d1",
+            type="scope_3d",
+            name="Scope3D1",
+            parameters={},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_scope_3d(block, "Scope3D1Struct")
+        assert "Scope3D1Struct" in code
+
+
+# =============================================================================
+# Rust Sources Block Templates Tests (Additional)
+# =============================================================================
+
+
+class TestRustSourcesTemplatesAdditional:
+    """Additional tests for Rust sources block templates."""
+
+    def test_rust_clock_template(self):
+        """Test Rust Clock template."""
+        from src.codegen.languages.rust.blocks.sources import template_clock
+
+        block = BlockInfo(
+            id="clock1",
+            type="clock",
+            name="Clock1",
+            parameters={},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_clock(block, "Clock1Struct")
+        assert "Clock1Struct" in code
+
+    def test_rust_ground_template(self):
+        """Test Rust Ground template."""
+        from src.codegen.languages.rust.blocks.sources import template_ground
+
+        block = BlockInfo(
+            id="gnd1",
+            type="ground",
+            name="Ground1",
+            parameters={},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_ground(block, "Ground1Struct")
+        assert "Ground1Struct" in code
+
+    def test_rust_ramp_template(self):
+        """Test Rust Ramp template."""
+        from src.codegen.languages.rust.blocks.sources import template_ramp
+
+        block = BlockInfo(
+            id="ramp1",
+            type="ramp",
+            name="Ramp1",
+            parameters={"slope": 1.0, "start_time": 0.0},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_ramp(block, "Ramp1Struct")
+        assert "Ramp1Struct" in code
+
+    def test_rust_white_noise_template(self):
+        """Test Rust White Noise template."""
+        from src.codegen.languages.rust.blocks.sources import template_white_noise
+
+        block = BlockInfo(
+            id="wn1",
+            type="white_noise",
+            name="WhiteNoise1",
+            parameters={"variance": 1.0},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_white_noise(block, "WhiteNoise1Struct")
+        assert "WhiteNoise1Struct" in code
+
+    def test_rust_band_limited_white_noise_template(self):
+        """Test Rust Band Limited White Noise template."""
+        from src.codegen.languages.rust.blocks.sources import (
+            template_band_limited_white_noise,
+        )
+
+        block = BlockInfo(
+            id="blwn1",
+            type="band_limited_white_noise",
+            name="BandLimitedNoise1",
+            parameters={"noise_power": 0.1, "sample_time": 0.01},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_band_limited_white_noise(block, "BandLimitedNoise1Struct")
+        assert "BandLimitedNoise1Struct" in code
+
+    def test_rust_pulse_template(self):
+        """Test Rust Pulse template."""
+        from src.codegen.languages.rust.blocks.sources import template_pulse
+
+        block = BlockInfo(
+            id="pulse1",
+            type="pulse",
+            name="Pulse1",
+            parameters={"amplitude": 1.0, "period": 1.0, "pulse_width": 50},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_pulse(block, "Pulse1Struct")
+        assert "Pulse1Struct" in code
+
+
+# =============================================================================
+# Rust Control Design Block Templates Tests
+# =============================================================================
+
+
+class TestRustControlDesignTemplates:
+    """Tests for Rust control design block templates."""
+
+    def test_rust_pid_controller_template(self):
+        """Test Rust PID Controller template."""
+        from src.codegen.languages.rust.blocks.control_design import pid_controller_template
+
+        block = BlockInfo(
+            id="pid1",
+            type="pid_controller",
+            name="PIDController1",
+            parameters={"Kp": 1.0, "Ki": 0.1, "Kd": 0.01},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = pid_controller_template(block, "PIDController1Struct")
+        assert "PIDController1Struct" in code
+
+    def test_rust_pi_controller_template(self):
+        """Test Rust PI Controller template."""
+        from src.codegen.languages.rust.blocks.control_design import pi_controller_template
+
+        block = BlockInfo(
+            id="pi1",
+            type="pi_controller",
+            name="PIController1",
+            parameters={"Kp": 1.0, "Ki": 0.1},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = pi_controller_template(block, "PIController1Struct")
+        assert "PIController1Struct" in code
+
+    def test_rust_pd_controller_template(self):
+        """Test Rust PD Controller template."""
+        from src.codegen.languages.rust.blocks.control_design import pd_controller_template
+
+        block = BlockInfo(
+            id="pd1",
+            type="pd_controller",
+            name="PDController1",
+            parameters={"Kp": 1.0, "Kd": 0.01},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = pd_controller_template(block, "PDController1Struct")
+        assert "PDController1Struct" in code
+
+    def test_rust_lead_lag_compensator_template(self):
+        """Test Rust Lead Lag Compensator template."""
+        from src.codegen.languages.rust.blocks.control_design import (
+            lead_lag_compensator_template,
+        )
+
+        block = BlockInfo(
+            id="ll1",
+            type="lead_lag_compensator",
+            name="LeadLag1",
+            parameters={"lead_time": 0.1, "lag_time": 1.0},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = lead_lag_compensator_template(block, "LeadLag1Struct")
+        assert "LeadLag1Struct" in code
+
+    def test_rust_lqr_controller_template(self):
+        """Test Rust LQR Controller template."""
+        from src.codegen.languages.rust.blocks.control_design import lqr_controller_template
+
+        block = BlockInfo(
+            id="lqr1",
+            type="lqr_controller",
+            name="LQRController1",
+            parameters={"K": [[1.0, 0.5]]},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = lqr_controller_template(block, "LQRController1Struct")
+        assert "LQRController1Struct" in code
+
+    def test_rust_pole_placement_template(self):
+        """Test Rust Pole Placement template."""
+        from src.codegen.languages.rust.blocks.control_design import pole_placement_template
+
+        block = BlockInfo(
+            id="pp1",
+            type="pole_placement",
+            name="PolePlacement1",
+            parameters={"poles": [-1.0, -2.0]},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = pole_placement_template(block, "PolePlacement1Struct")
+        assert "PolePlacement1Struct" in code
+
+    def test_rust_anti_windup_pid_template(self):
+        """Test Rust Anti-Windup PID template."""
+        from src.codegen.languages.rust.blocks.control_design import (
+            anti_windup_pid_template,
+        )
+
+        block = BlockInfo(
+            id="awpid1",
+            type="anti_windup_pid",
+            name="AntiWindupPID1",
+            parameters={"Kp": 1.0, "Ki": 0.1, "Kd": 0.01, "limit": 10.0},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = anti_windup_pid_template(block, "AntiWindupPID1Struct")
+        assert "AntiWindupPID1Struct" in code
+
+    def test_rust_model_reference_template(self):
+        """Test Rust Model Reference template."""
+        from src.codegen.languages.rust.blocks.control_design import model_reference_template
+
+        block = BlockInfo(
+            id="mr1",
+            type="model_reference",
+            name="ModelRef1",
+            parameters={},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = model_reference_template(block, "ModelRef1Struct")
+        assert "ModelRef1Struct" in code
+
+
+# =============================================================================
+# Rust Estimation Block Templates Tests
+# =============================================================================
+
+
+class TestRustEstimationTemplates:
+    """Tests for Rust estimation block templates."""
+
+    def test_rust_kalman_filter_template(self):
+        """Test Rust Kalman Filter template."""
+        from src.codegen.languages.rust.blocks.estimation import kalman_filter_template
+
+        block = BlockInfo(
+            id="kf1",
+            type="kalman_filter",
+            name="KalmanFilter1",
+            parameters={"num_states": 2},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = kalman_filter_template(block, "KalmanFilter1Struct")
+        assert "KalmanFilter1Struct" in code
+
+    def test_rust_luenberger_observer_template(self):
+        """Test Rust Luenberger Observer template."""
+        from src.codegen.languages.rust.blocks.estimation import luenberger_observer_template
+
+        block = BlockInfo(
+            id="lo1",
+            type="luenberger_observer",
+            name="LuenbergerObs1",
+            parameters={"num_states": 2},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = luenberger_observer_template(block, "LuenbergerObs1Struct")
+        assert "LuenbergerObs1Struct" in code
+
+
+# =============================================================================
+# C Continuous Block Templates Tests (Extended)
+# =============================================================================
+
+
+class TestCContinuousTemplatesExtended:
+    """Extended tests for C continuous block templates."""
+
+    def test_c_integrator_template_extended(self):
+        """Test C Integrator template with extended parameters."""
+        from src.codegen.languages.c.blocks.continuous import template_integrator
+
+        block = BlockInfo(
+            id="int1",
+            type="integrator",
+            name="Integrator1",
+            parameters={"initialCondition": 0.5},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_integrator(block, "Integrator1Struct")
+        assert "Integrator1Struct" in code
+        assert "typedef struct" in code
+
+    def test_c_derivative_template(self):
+        """Test C Derivative template."""
+        from src.codegen.languages.c.blocks.continuous import template_derivative
+
+        block = BlockInfo(
+            id="deriv1",
+            type="derivative",
+            name="Derivative1",
+            parameters={},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_derivative(block, "Derivative1Struct")
+        assert "Derivative1Struct" in code
+
+    def test_c_transfer_function_template(self):
+        """Test C Transfer Function template."""
+        from src.codegen.languages.c.blocks.continuous import template_transfer_function
+
+        block = BlockInfo(
+            id="tf1",
+            type="transfer_function",
+            name="TransferFcn1",
+            parameters={"numerator": [1.0], "denominator": [1.0, 2.0, 1.0]},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_transfer_function(block, "TransferFcn1Struct")
+        assert "TransferFcn1Struct" in code
+
+    def test_c_state_space_template(self):
+        """Test C State Space template."""
+        from src.codegen.languages.c.blocks.continuous import template_state_space
+
+        block = BlockInfo(
+            id="ss1",
+            type="state_space",
+            name="StateSpace1",
+            parameters={
+                "A": [[0, 1], [-2, -3]],
+                "B": [[0], [1]],
+                "C": [[1, 0]],
+                "D": [[0]],
+            },
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_state_space(block, "StateSpace1Struct")
+        assert "StateSpace1Struct" in code
+
+    def test_c_second_order_template(self):
+        """Test C Second Order template."""
+        from src.codegen.languages.c.blocks.continuous import template_second_order
+
+        block = BlockInfo(
+            id="so1",
+            type="second_order",
+            name="SecondOrder1",
+            parameters={"natural_frequency": 2.0, "damping_ratio": 0.7},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_second_order(block, "SecondOrder1Struct")
+        assert "SecondOrder1Struct" in code
+
+    def test_c_transport_delay_template(self):
+        """Test C Transport Delay template."""
+        from src.codegen.languages.c.blocks.continuous import template_transport_delay
+
+        block = BlockInfo(
+            id="td1",
+            type="transport_delay",
+            name="TransportDelay1",
+            parameters={"delay": 0.5},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_transport_delay(block, "TransportDelay1Struct")
+        assert "TransportDelay1Struct" in code
+
+
+# =============================================================================
+# C Nonlinear Block Templates Tests
+# =============================================================================
+
+
+class TestCNonlinearTemplates:
+    """Tests for C nonlinear block templates."""
+
+    def test_c_relay_template(self):
+        """Test C Relay template."""
+        from src.codegen.languages.c.blocks.nonlinear import template_relay
+
+        block = BlockInfo(
+            id="relay1",
+            type="relay",
+            name="Relay1",
+            parameters={"on_value": 1.0, "off_value": 0.0, "on_threshold": 0.5},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_relay(block, "Relay1Struct")
+        assert "Relay1Struct" in code
+
+    def test_c_quantizer_template(self):
+        """Test C Quantizer template."""
+        from src.codegen.languages.c.blocks.nonlinear import template_quantizer
+
+        block = BlockInfo(
+            id="quant1",
+            type="quantizer",
+            name="Quantizer1",
+            parameters={"interval": 0.1},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_quantizer(block, "Quantizer1Struct")
+        assert "Quantizer1Struct" in code
+
+    def test_c_lookup_table_1d_template(self):
+        """Test C Lookup Table 1D template."""
+        from src.codegen.languages.c.blocks.nonlinear import template_lookup_table_1d
+
+        block = BlockInfo(
+            id="lut1",
+            type="lookup_table_1d",
+            name="LookupTable1",
+            parameters={"table_data": [0, 1, 2], "breakpoints": [0, 1, 2]},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_lookup_table_1d(block, "LookupTable1Struct")
+        assert "LookupTable1Struct" in code
+
+    def test_c_coulomb_template(self):
+        """Test C Coulomb Friction template."""
+        from src.codegen.languages.c.blocks.nonlinear import template_coulomb
+
+        block = BlockInfo(
+            id="coulomb1",
+            type="coulomb",
+            name="Coulomb1",
+            parameters={"coefficient": 0.5},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_coulomb(block, "Coulomb1Struct")
+        assert "Coulomb1Struct" in code
+
+    def test_c_stiction_template(self):
+        """Test C Stiction template."""
+        from src.codegen.languages.c.blocks.nonlinear import template_stiction
+
+        block = BlockInfo(
+            id="stiction1",
+            type="stiction",
+            name="Stiction1",
+            parameters={"static_gain": 1.0, "dynamic_gain": 0.8},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_stiction(block, "Stiction1Struct")
+        assert "Stiction1Struct" in code
+
+    def test_c_hit_crossing_template(self):
+        """Test C Hit Crossing template."""
+        from src.codegen.languages.c.blocks.nonlinear import template_hit_crossing
+
+        block = BlockInfo(
+            id="hit1",
+            type="hit_crossing",
+            name="HitCrossing1",
+            parameters={"threshold": 0.0},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_hit_crossing(block, "HitCrossing1Struct")
+        assert "HitCrossing1Struct" in code
+
+    def test_c_wrap_to_range_template(self):
+        """Test C Wrap to Range template."""
+        from src.codegen.languages.c.blocks.nonlinear import template_wrap_to_range
+
+        block = BlockInfo(
+            id="wrap1",
+            type="wrap_to_range",
+            name="WrapToRange1",
+            parameters={"min_value": -180.0, "max_value": 180.0},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_wrap_to_range(block, "WrapToRange1Struct")
+        assert "WrapToRange1Struct" in code
+
+
+# =============================================================================
+# C Signal Processing Block Templates Tests
+# =============================================================================
+
+
+class TestCSignalProcessingTemplates:
+    """Tests for C signal processing block templates."""
+
+    def test_c_rate_limiter_template(self):
+        """Test C Rate Limiter template."""
+        from src.codegen.languages.c.blocks.signal_processing import template_rate_limiter
+
+        block = BlockInfo(
+            id="rl1",
+            type="rate_limiter",
+            name="RateLimiter1",
+            parameters={"rising_limit": 1.0, "falling_limit": -1.0},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_rate_limiter(block, "RateLimiter1Struct")
+        assert "RateLimiter1Struct" in code
+
+    def test_c_low_pass_filter_template(self):
+        """Test C Low Pass Filter template."""
+        from src.codegen.languages.c.blocks.signal_processing import (
+            template_low_pass_filter,
+        )
+
+        block = BlockInfo(
+            id="lpf1",
+            type="low_pass_filter",
+            name="LowPass1",
+            parameters={"cutoff_frequency": 10.0},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_low_pass_filter(block, "LowPass1Struct")
+        assert "LowPass1Struct" in code
+
+    def test_c_high_pass_filter_template(self):
+        """Test C High Pass Filter template."""
+        from src.codegen.languages.c.blocks.signal_processing import (
+            template_high_pass_filter,
+        )
+
+        block = BlockInfo(
+            id="hpf1",
+            type="high_pass_filter",
+            name="HighPass1",
+            parameters={"cutoff_frequency": 100.0},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_high_pass_filter(block, "HighPass1Struct")
+        assert "HighPass1Struct" in code
+
+    def test_c_band_pass_filter_template(self):
+        """Test C Band Pass Filter template."""
+        from src.codegen.languages.c.blocks.signal_processing import (
+            template_band_pass_filter,
+        )
+
+        block = BlockInfo(
+            id="bpf1",
+            type="band_pass_filter",
+            name="BandPass1",
+            parameters={"low_frequency": 10.0, "high_frequency": 100.0},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_band_pass_filter(block, "BandPass1Struct")
+        assert "BandPass1Struct" in code
+
+    def test_c_notch_filter_template(self):
+        """Test C Notch Filter template."""
+        from src.codegen.languages.c.blocks.signal_processing import template_notch_filter
+
+        block = BlockInfo(
+            id="notch1",
+            type="notch_filter",
+            name="Notch1",
+            parameters={"notch_frequency": 50.0},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_notch_filter(block, "Notch1Struct")
+        assert "Notch1Struct" in code
+
+    def test_c_moving_average_template(self):
+        """Test C Moving Average template."""
+        from src.codegen.languages.c.blocks.signal_processing import (
+            template_moving_average,
+        )
+
+        block = BlockInfo(
+            id="ma1",
+            type="moving_average",
+            name="MovingAvg1",
+            parameters={"window_size": 5},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_moving_average(block, "MovingAvg1Struct")
+        assert "MovingAvg1Struct" in code
+
+    def test_c_backlash_template(self):
+        """Test C Backlash template."""
+        from src.codegen.languages.c.blocks.signal_processing import template_backlash
+
+        block = BlockInfo(
+            id="back1",
+            type="backlash",
+            name="Backlash1",
+            parameters={"deadband": 0.1},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_backlash(block, "Backlash1Struct")
+        assert "Backlash1Struct" in code
+
+
+# =============================================================================
+# C DSP Block Templates Tests
+# =============================================================================
+
+
+class TestCDSPTemplates:
+    """Tests for C DSP block templates."""
+
+    def test_c_fir_filter_template(self):
+        """Test C FIR Filter template."""
+        from src.codegen.languages.c.blocks.dsp import template_fir_filter
+
+        block = BlockInfo(
+            id="fir1",
+            type="fir_filter",
+            name="FIRFilter1",
+            parameters={"coefficients": [0.25, 0.5, 0.25]},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_fir_filter(block, "FIRFilter1Struct")
+        assert "FIRFilter1Struct" in code
+
+    def test_c_iir_filter_template(self):
+        """Test C IIR Filter template."""
+        from src.codegen.languages.c.blocks.dsp import template_iir_filter
+
+        block = BlockInfo(
+            id="iir1",
+            type="iir_filter",
+            name="IIRFilter1",
+            parameters={"b": [0.1, 0.2], "a": [1.0, -0.8]},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_iir_filter(block, "IIRFilter1Struct")
+        assert "IIRFilter1Struct" in code
+
+    def test_c_mean_template(self):
+        """Test C Mean template."""
+        from src.codegen.languages.c.blocks.dsp import template_mean
+
+        block = BlockInfo(
+            id="mean1",
+            type="mean",
+            name="Mean1",
+            parameters={"window_size": 10},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_mean(block, "Mean1Struct")
+        assert "Mean1Struct" in code
+
+    def test_c_variance_template(self):
+        """Test C Variance template."""
+        from src.codegen.languages.c.blocks.dsp import template_variance
+
+        block = BlockInfo(
+            id="var1",
+            type="variance",
+            name="Variance1",
+            parameters={"window_size": 10},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_variance(block, "Variance1Struct")
+        assert "Variance1Struct" in code
+
+    def test_c_rms_template(self):
+        """Test C RMS template."""
+        from src.codegen.languages.c.blocks.dsp import template_rms
+
+        block = BlockInfo(
+            id="rms1",
+            type="rms",
+            name="RMS1",
+            parameters={"window_size": 10},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_rms(block, "RMS1Struct")
+        assert "RMS1Struct" in code
+
+    def test_c_peak_detector_template(self):
+        """Test C Peak Detector template."""
+        from src.codegen.languages.c.blocks.dsp import template_peak_detector
+
+        block = BlockInfo(
+            id="peak1",
+            type="peak_detector",
+            name="PeakDetector1",
+            parameters={},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_peak_detector(block, "PeakDetector1Struct")
+        assert "PeakDetector1Struct" in code
+
+    def test_c_upsampler_template(self):
+        """Test C Upsampler template."""
+        from src.codegen.languages.c.blocks.dsp import template_upsampler
+
+        block = BlockInfo(
+            id="up1",
+            type="upsampler",
+            name="Upsampler1",
+            parameters={"factor": 2},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_upsampler(block, "Upsampler1Struct")
+        assert "Upsampler1Struct" in code
+
+    def test_c_downsampler_template(self):
+        """Test C Downsampler template."""
+        from src.codegen.languages.c.blocks.dsp import template_downsampler
+
+        block = BlockInfo(
+            id="down1",
+            type="downsampler",
+            name="Downsampler1",
+            parameters={"factor": 2},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_downsampler(block, "Downsampler1Struct")
+        assert "Downsampler1Struct" in code
+
+    def test_c_zero_crossing_detector_template(self):
+        """Test C Zero Crossing Detector template."""
+        from src.codegen.languages.c.blocks.dsp import template_zero_crossing_detector
+
+        block = BlockInfo(
+            id="zcd1",
+            type="zero_crossing_detector",
+            name="ZeroCross1",
+            parameters={},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_zero_crossing_detector(block, "ZeroCross1Struct")
+        assert "ZeroCross1Struct" in code
+
+
+# =============================================================================
+# C Sinks Block Templates Tests
+# =============================================================================
+
+
+class TestCSinksTemplates:
+    """Tests for C sinks block templates."""
+
+    def test_c_scope_template(self):
+        """Test C Scope template."""
+        from src.codegen.languages.c.blocks.sinks import template_scope
+
+        block = BlockInfo(
+            id="scope1",
+            type="scope",
+            name="Scope1",
+            parameters={"numInputs": 2},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_scope(block, "Scope1Struct")
+        assert "Scope1Struct" in code
+
+    def test_c_display_template(self):
+        """Test C Display template."""
+        from src.codegen.languages.c.blocks.sinks import template_display
+
+        block = BlockInfo(
+            id="disp1",
+            type="display",
+            name="Display1",
+            parameters={},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_display(block, "Display1Struct")
+        assert "Display1Struct" in code
+
+    def test_c_terminator_template(self):
+        """Test C Terminator template."""
+        from src.codegen.languages.c.blocks.sinks import template_terminator
+
+        block = BlockInfo(
+            id="term1",
+            type="terminator",
+            name="Terminator1",
+            parameters={},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_terminator(block, "Term1Struct")
+        assert "Term1Struct" in code
+
+    def test_c_to_workspace_template(self):
+        """Test C To Workspace template."""
+        from src.codegen.languages.c.blocks.sinks import template_to_workspace
+
+        block = BlockInfo(
+            id="tows1",
+            type="to_workspace",
+            name="ToWorkspace1",
+            parameters={"variable_name": "simout"},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_to_workspace(block, "ToWorkspace1Struct")
+        assert "ToWorkspace1Struct" in code
+
+    def test_c_xy_graph_template(self):
+        """Test C XY Graph template."""
+        from src.codegen.languages.c.blocks.sinks import template_xy_graph
+
+        block = BlockInfo(
+            id="xy1",
+            type="xy_graph",
+            name="XYGraph1",
+            parameters={},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_xy_graph(block, "XYGraph1Struct")
+        assert "XYGraph1Struct" in code
+
+    def test_c_scope_3d_template(self):
+        """Test C 3D Scope template."""
+        from src.codegen.languages.c.blocks.sinks import template_scope_3d
+
+        block = BlockInfo(
+            id="scope3d1",
+            type="scope_3d",
+            name="Scope3D1",
+            parameters={},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_scope_3d(block, "Scope3D1Struct")
+        assert "Scope3D1Struct" in code
+
+
+# =============================================================================
+# C Logic Block Templates Tests
+# =============================================================================
+
+
+class TestCLogicTemplatesExtended:
+    """Extended tests for C logic block templates."""
+
+    def test_c_compare_to_zero_template(self):
+        """Test C Compare to Zero template."""
+        from src.codegen.languages.c.blocks.logic import template_compare_to_zero
+
+        block = BlockInfo(
+            id="ctz1",
+            type="compare_to_zero",
+            name="CompareToZero1",
+            parameters={"operator": ">="},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_compare_to_zero(block, "CompareToZero1Struct")
+        assert "CompareToZero1Struct" in code
+
+    def test_c_compare_to_constant_template(self):
+        """Test C Compare to Constant template."""
+        from src.codegen.languages.c.blocks.logic import template_compare_to_constant
+
+        block = BlockInfo(
+            id="ctc1",
+            type="compare_to_constant",
+            name="CompareToConst1",
+            parameters={"operator": "==", "constant": 5.0},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_compare_to_constant(block, "CompareToConst1Struct")
+        assert "CompareToConst1Struct" in code
+
+    def test_c_logical_operator_template(self):
+        """Test C Logical Operator template."""
+        from src.codegen.languages.c.blocks.logic import template_logical_operator
+
+        block = BlockInfo(
+            id="log1",
+            type="logical_operator",
+            name="LogicalOp1",
+            parameters={"operator": "AND", "numInputs": 2},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_logical_operator(block, "LogicalOp1Struct")
+        assert "LogicalOp1Struct" in code
+
+    def test_c_relational_operator_template(self):
+        """Test C Relational Operator template."""
+        from src.codegen.languages.c.blocks.logic import template_relational_operator
+
+        block = BlockInfo(
+            id="rel1",
+            type="relational_operator",
+            name="RelationalOp1",
+            parameters={"operator": "<"},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_relational_operator(block, "RelationalOp1Struct")
+        assert "RelationalOp1Struct" in code
+
+    def test_c_bit_operator_template(self):
+        """Test C Bit Operator template."""
+        from src.codegen.languages.c.blocks.logic import template_bit_operator
+
+        block = BlockInfo(
+            id="bit1",
+            type="bit_operator",
+            name="BitOp1",
+            parameters={"operator": "AND"},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_bit_operator(block, "BitOp1Struct")
+        assert "BitOp1Struct" in code
+
+
+# =============================================================================
+# Python Continuous Block Templates Tests
+# =============================================================================
+
+
+class TestPythonContinuousTemplatesExtended:
+    """Extended tests for Python continuous block templates."""
+
+    def test_python_integrator_template(self):
+        """Test Python Integrator template."""
+        from src.codegen.languages.python.blocks.continuous import integrator_template
+
+        block = BlockInfo(
+            id="int1",
+            type="integrator",
+            name="Integrator1",
+            parameters={"initialCondition": 0.5},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = integrator_template(block, "Integrator1Class")
+        assert "Integrator1Class" in code
+        assert "class" in code
+
+    def test_python_derivative_template(self):
+        """Test Python Derivative template."""
+        from src.codegen.languages.python.blocks.continuous import derivative_template
+
+        block = BlockInfo(
+            id="deriv1",
+            type="derivative",
+            name="Derivative1",
+            parameters={},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = derivative_template(block, "Derivative1Class")
+        assert "Derivative1Class" in code
+
+    def test_python_transfer_function_template(self):
+        """Test Python Transfer Function template."""
+        from src.codegen.languages.python.blocks.continuous import (
+            transfer_function_template,
+        )
+
+        block = BlockInfo(
+            id="tf1",
+            type="transfer_function",
+            name="TransferFcn1",
+            parameters={"numerator": [1.0], "denominator": [1.0, 2.0, 1.0]},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = transfer_function_template(block, "TransferFcn1Class")
+        assert "TransferFcn1Class" in code
+
+    def test_python_state_space_template(self):
+        """Test Python State Space template."""
+        from src.codegen.languages.python.blocks.continuous import state_space_template
+
+        block = BlockInfo(
+            id="ss1",
+            type="state_space",
+            name="StateSpace1",
+            parameters={
+                "A": [[0, 1], [-2, -3]],
+                "B": [[0], [1]],
+                "C": [[1, 0]],
+                "D": [[0]],
+            },
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = state_space_template(block, "StateSpace1Class")
+        assert "StateSpace1Class" in code
+
+    def test_python_second_order_template(self):
+        """Test Python Second Order template."""
+        from src.codegen.languages.python.blocks.continuous import second_order_template
+
+        block = BlockInfo(
+            id="so1",
+            type="second_order",
+            name="SecondOrder1",
+            parameters={"natural_frequency": 2.0, "damping_ratio": 0.7},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = second_order_template(block, "SecondOrder1Class")
+        assert "SecondOrder1Class" in code
+
+    def test_python_transport_delay_template(self):
+        """Test Python Transport Delay template."""
+        from src.codegen.languages.python.blocks.continuous import transport_delay_template
+
+        block = BlockInfo(
+            id="td1",
+            type="transport_delay",
+            name="TransportDelay1",
+            parameters={"delay": 0.5},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = transport_delay_template(block, "TransportDelay1Class")
+        assert "TransportDelay1Class" in code
+
+
+# =============================================================================
+# Python Nonlinear Block Templates Tests
+# =============================================================================
+
+
+class TestPythonNonlinearTemplates:
+    """Tests for Python nonlinear block templates."""
+
+    def test_python_relay_template(self):
+        """Test Python Relay template."""
+        from src.codegen.languages.python.blocks.nonlinear import relay_template
+
+        block = BlockInfo(
+            id="relay1",
+            type="relay",
+            name="Relay1",
+            parameters={"on_value": 1.0, "off_value": 0.0, "on_threshold": 0.5},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = relay_template(block, "Relay1Class")
+        assert "Relay1Class" in code
+
+    def test_python_quantizer_template(self):
+        """Test Python Quantizer template."""
+        from src.codegen.languages.python.blocks.nonlinear import quantizer_template
+
+        block = BlockInfo(
+            id="quant1",
+            type="quantizer",
+            name="Quantizer1",
+            parameters={"interval": 0.1},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = quantizer_template(block, "Quantizer1Class")
+        assert "Quantizer1Class" in code
+
+    def test_python_coulomb_friction_template(self):
+        """Test Python Coulomb Friction template."""
+        from src.codegen.languages.python.blocks.nonlinear import coulomb_friction_template
+
+        block = BlockInfo(
+            id="coulomb1",
+            type="coulomb_friction",
+            name="CoulombFriction1",
+            parameters={"coefficient": 0.5},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = coulomb_friction_template(block, "CoulombFriction1Class")
+        assert "CoulombFriction1Class" in code
+
+    def test_python_stiction_template(self):
+        """Test Python Stiction template."""
+        from src.codegen.languages.python.blocks.nonlinear import stiction_template
+
+        block = BlockInfo(
+            id="stiction1",
+            type="stiction",
+            name="Stiction1",
+            parameters={"static_gain": 1.0, "dynamic_gain": 0.8},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = stiction_template(block, "Stiction1Class")
+        assert "Stiction1Class" in code
+
+    def test_python_hit_crossing_template(self):
+        """Test Python Hit Crossing template."""
+        from src.codegen.languages.python.blocks.nonlinear import hit_crossing_template
+
+        block = BlockInfo(
+            id="hit1",
+            type="hit_crossing",
+            name="HitCrossing1",
+            parameters={"threshold": 0.0},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = hit_crossing_template(block, "HitCrossing1Class")
+        assert "HitCrossing1Class" in code
+
+    def test_python_wrap_to_range_template(self):
+        """Test Python Wrap to Range template."""
+        from src.codegen.languages.python.blocks.nonlinear import wrap_to_range_template
+
+        block = BlockInfo(
+            id="wrap1",
+            type="wrap_to_range",
+            name="WrapToRange1",
+            parameters={"min_value": -180.0, "max_value": 180.0},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = wrap_to_range_template(block, "WrapToRange1Class")
+        assert "WrapToRange1Class" in code
+
+
+# =============================================================================
+# Python Signal Processing Block Templates Tests
+# =============================================================================
+
+
+class TestPythonSignalProcessingTemplates:
+    """Tests for Python signal processing block templates."""
+
+    def test_python_rate_limiter_template(self):
+        """Test Python Rate Limiter template."""
+        from src.codegen.languages.python.blocks.signal_processing import (
+            rate_limiter_template,
+        )
+
+        block = BlockInfo(
+            id="rl1",
+            type="rate_limiter",
+            name="RateLimiter1",
+            parameters={"rising_limit": 1.0, "falling_limit": -1.0},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = rate_limiter_template(block, "RateLimiter1Class")
+        assert "RateLimiter1Class" in code
+
+    def test_python_low_pass_filter_template(self):
+        """Test Python Low Pass Filter template."""
+        from src.codegen.languages.python.blocks.signal_processing import (
+            low_pass_filter_template,
+        )
+
+        block = BlockInfo(
+            id="lpf1",
+            type="low_pass_filter",
+            name="LowPass1",
+            parameters={"cutoff_frequency": 10.0},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = low_pass_filter_template(block, "LowPass1Class")
+        assert "LowPass1Class" in code
+
+    def test_python_high_pass_filter_template(self):
+        """Test Python High Pass Filter template."""
+        from src.codegen.languages.python.blocks.signal_processing import (
+            high_pass_filter_template,
+        )
+
+        block = BlockInfo(
+            id="hpf1",
+            type="high_pass_filter",
+            name="HighPass1",
+            parameters={"cutoff_frequency": 100.0},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = high_pass_filter_template(block, "HighPass1Class")
+        assert "HighPass1Class" in code
+
+    def test_python_band_pass_filter_template(self):
+        """Test Python Band Pass Filter template."""
+        from src.codegen.languages.python.blocks.signal_processing import (
+            band_pass_filter_template,
+        )
+
+        block = BlockInfo(
+            id="bpf1",
+            type="band_pass_filter",
+            name="BandPass1",
+            parameters={"low_frequency": 10.0, "high_frequency": 100.0},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = band_pass_filter_template(block, "BandPass1Class")
+        assert "BandPass1Class" in code
+
+    def test_python_notch_filter_template(self):
+        """Test Python Notch Filter template."""
+        from src.codegen.languages.python.blocks.signal_processing import (
+            notch_filter_template,
+        )
+
+        block = BlockInfo(
+            id="notch1",
+            type="notch_filter",
+            name="Notch1",
+            parameters={"notch_frequency": 50.0},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = notch_filter_template(block, "Notch1Class")
+        assert "Notch1Class" in code
+
+    def test_python_moving_average_template(self):
+        """Test Python Moving Average template."""
+        from src.codegen.languages.python.blocks.signal_processing import (
+            moving_average_template,
+        )
+
+        block = BlockInfo(
+            id="ma1",
+            type="moving_average",
+            name="MovingAvg1",
+            parameters={"window_size": 5},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = moving_average_template(block, "MovingAvg1Class")
+        assert "MovingAvg1Class" in code
+
+    def test_python_backlash_template(self):
+        """Test Python Backlash template."""
+        from src.codegen.languages.python.blocks.signal_processing import (
+            backlash_template,
+        )
+
+        block = BlockInfo(
+            id="back1",
+            type="backlash",
+            name="Backlash1",
+            parameters={"deadband": 0.1},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = backlash_template(block, "Backlash1Class")
+        assert "Backlash1Class" in code
+
+
+# =============================================================================
+# Python DSP Block Templates Tests
+# =============================================================================
+
+
+class TestPythonDSPTemplates:
+    """Tests for Python DSP block templates."""
+
+    def test_python_fir_filter_template(self):
+        """Test Python FIR Filter template."""
+        from src.codegen.languages.python.blocks.dsp import fir_filter_template
+
+        block = BlockInfo(
+            id="fir1",
+            type="fir_filter",
+            name="FIRFilter1",
+            parameters={"coefficients": [0.25, 0.5, 0.25]},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = fir_filter_template(block, "FIRFilter1Class")
+        assert "FIRFilter1Class" in code
+
+    def test_python_iir_filter_template(self):
+        """Test Python IIR Filter template."""
+        from src.codegen.languages.python.blocks.dsp import iir_filter_template
+
+        block = BlockInfo(
+            id="iir1",
+            type="iir_filter",
+            name="IIRFilter1",
+            parameters={"b": [0.1, 0.2], "a": [1.0, -0.8]},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = iir_filter_template(block, "IIRFilter1Class")
+        assert "IIRFilter1Class" in code
+
+    def test_python_mean_template(self):
+        """Test Python Mean template."""
+        from src.codegen.languages.python.blocks.dsp import mean_template
+
+        block = BlockInfo(
+            id="mean1",
+            type="mean",
+            name="Mean1",
+            parameters={"window_size": 10},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = mean_template(block, "Mean1Class")
+        assert "Mean1Class" in code
+
+    def test_python_variance_template(self):
+        """Test Python Variance template."""
+        from src.codegen.languages.python.blocks.dsp import variance_template
+
+        block = BlockInfo(
+            id="var1",
+            type="variance",
+            name="Variance1",
+            parameters={"window_size": 10},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = variance_template(block, "Variance1Class")
+        assert "Variance1Class" in code
+
+    def test_python_rms_template(self):
+        """Test Python RMS template."""
+        from src.codegen.languages.python.blocks.dsp import rms_template
+
+        block = BlockInfo(
+            id="rms1",
+            type="rms",
+            name="RMS1",
+            parameters={"window_size": 10},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = rms_template(block, "RMS1Class")
+        assert "RMS1Class" in code
+
+    def test_python_peak_detector_template(self):
+        """Test Python Peak Detector template."""
+        from src.codegen.languages.python.blocks.dsp import peak_detector_template
+
+        block = BlockInfo(
+            id="peak1",
+            type="peak_detector",
+            name="PeakDetector1",
+            parameters={},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = peak_detector_template(block, "PeakDetector1Class")
+        assert "PeakDetector1Class" in code
+
+    def test_python_upsampler_template(self):
+        """Test Python Upsampler template."""
+        from src.codegen.languages.python.blocks.dsp import upsampler_template
+
+        block = BlockInfo(
+            id="up1",
+            type="upsampler",
+            name="Upsampler1",
+            parameters={"factor": 2},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = upsampler_template(block, "Upsampler1Class")
+        assert "Upsampler1Class" in code
+
+    def test_python_downsampler_template(self):
+        """Test Python Downsampler template."""
+        from src.codegen.languages.python.blocks.dsp import downsampler_template
+
+        block = BlockInfo(
+            id="down1",
+            type="downsampler",
+            name="Downsampler1",
+            parameters={"factor": 2},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = downsampler_template(block, "Downsampler1Class")
+        assert "Downsampler1Class" in code
+
+    def test_python_zero_crossing_detector_template(self):
+        """Test Python Zero Crossing Detector template."""
+        from src.codegen.languages.python.blocks.dsp import zero_crossing_detector_template
+
+        block = BlockInfo(
+            id="zcd1",
+            type="zero_crossing_detector",
+            name="ZeroCross1",
+            parameters={},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = zero_crossing_detector_template(block, "ZeroCross1Class")
+        assert "ZeroCross1Class" in code
+
+
+# =============================================================================
+# Advanced Generator Tests
+# =============================================================================
+
+
+class TestAdvancedGeneratorFeatures:
+    """Tests for advanced generator features like multi-input scopes and edge cases."""
+
+    @pytest.fixture
+    def generator(self):
+        """Create a CodeGenerator instance."""
+        return CodeGenerator()
+
+    @pytest.fixture
+    def multi_scope_model(self):
+        """Create a model with a multi-input scope."""
+        return {
+            "id": "multi-scope-model",
+            "metadata": {
+                "name": "Multi-Scope Model",
+                "description": "Model with multi-input scope",
+                "author": "Test",
+                "version": "1.0.0",
+            },
+            "blocks": [
+                {
+                    "id": "step-1",
+                    "type": "step",
+                    "name": "Step1",
+                    "position": {"x": 100, "y": 100},
+                    "parameters": {
+                        "step_time": 1.0,
+                        "initial_value": 0.0,
+                        "final_value": 1.0,
+                    },
+                    "inputPorts": [],
+                    "outputPorts": [{"id": "step-1-out-0", "name": "out"}],
+                },
+                {
+                    "id": "step-2",
+                    "type": "step",
+                    "name": "Step2",
+                    "position": {"x": 100, "y": 200},
+                    "parameters": {
+                        "step_time": 2.0,
+                        "initial_value": 0.0,
+                        "final_value": 2.0,
+                    },
+                    "inputPorts": [],
+                    "outputPorts": [{"id": "step-2-out-0", "name": "out"}],
+                },
+                {
+                    "id": "scope-1",
+                    "type": "scope",
+                    "name": "MultiScope",
+                    "position": {"x": 400, "y": 150},
+                    "parameters": {"numInputs": 2},
+                    "inputPorts": [
+                        {"id": "scope-1-in-0", "name": "in0"},
+                        {"id": "scope-1-in-1", "name": "in1"},
+                    ],
+                    "outputPorts": [],
+                },
+            ],
+            "connections": [
+                {
+                    "id": "conn-1",
+                    "sourceBlockId": "step-1",
+                    "sourcePortId": "step-1-out-0",
+                    "targetBlockId": "scope-1",
+                    "targetPortId": "scope-1-in-0",
+                },
+                {
+                    "id": "conn-2",
+                    "sourceBlockId": "step-2",
+                    "sourcePortId": "step-2-out-0",
+                    "targetBlockId": "scope-1",
+                    "targetPortId": "scope-1-in-1",
+                },
+            ],
+            "simulationConfig": {
+                "startTime": 0.0,
+                "stopTime": 5.0,
+                "stepSize": 0.1,
+                "solver": "rk4",
+            },
+        }
+
+    def test_generate_multi_input_scope_python(self, generator, multi_scope_model):
+        """Test generating Python code with multi-input scope."""
+        config = CodeGenerationConfig(
+            language=Language.PYTHON,
+            project_name="multi_scope_sim",
+            include_csv_output=True,
+        )
+        project = generator.generate(multi_scope_model, config)
+
+        # Check simulation file contains multi-input handling (input1 for second input)
+        sim_file = project.get_file("simulation.py")
+        assert sim_file is not None
+        assert "input1" in sim_file.content  # Multi-input scopes use input, input1, etc.
+
+        # Check blocks file exists and has scope class
+        blocks_file = project.get_file("blocks.py")
+        assert blocks_file is not None
+
+    def test_generate_multi_input_scope_c(self, generator, multi_scope_model):
+        """Test generating C code with multi-input scope."""
+        config = CodeGenerationConfig(
+            language=Language.C,
+            project_name="multi_scope_sim",
+            include_csv_output=True,
+        )
+        project = generator.generate(multi_scope_model, config)
+
+        # Check header file
+        header = project.get_file("include/blocks.h")
+        assert header is not None
+
+    def test_generate_multi_input_scope_cpp(self, generator, multi_scope_model):
+        """Test generating C++ code with multi-input scope."""
+        config = CodeGenerationConfig(
+            language=Language.CPP,
+            project_name="multi_scope_sim",
+            include_csv_output=True,
+        )
+        project = generator.generate(multi_scope_model, config)
+
+        # Check header file
+        header = project.get_file("include/blocks.hpp")
+        assert header is not None
+
+    def test_generate_multi_input_scope_rust(self, generator, multi_scope_model):
+        """Test generating Rust code with multi-input scope."""
+        config = CodeGenerationConfig(
+            language=Language.RUST,
+            project_name="multi_scope_sim",
+            include_csv_output=True,
+        )
+        project = generator.generate(multi_scope_model, config)
+
+        # Check blocks file
+        blocks_file = project.get_file("src/blocks.rs")
+        assert blocks_file is not None
+
+    def test_generate_with_different_integration_methods(self, generator):
+        """Test generating code with different integration methods."""
+        simple_model = {
+            "id": "simple-model",
+            "metadata": {"name": "Simple", "description": ""},
+            "blocks": [
+                {
+                    "id": "const-1",
+                    "type": "constant",
+                    "name": "Const",
+                    "position": {"x": 100, "y": 100},
+                    "parameters": {"value": 1.0},
+                    "inputPorts": [],
+                    "outputPorts": [{"id": "const-1-out-0", "name": "out"}],
+                },
+                {
+                    "id": "scope-1",
+                    "type": "scope",
+                    "name": "Scope",
+                    "position": {"x": 300, "y": 100},
+                    "parameters": {},
+                    "inputPorts": [{"id": "scope-1-in-0", "name": "in"}],
+                    "outputPorts": [],
+                },
+            ],
+            "connections": [
+                {
+                    "id": "conn-1",
+                    "sourceBlockId": "const-1",
+                    "sourcePortId": "const-1-out-0",
+                    "targetBlockId": "scope-1",
+                    "targetPortId": "scope-1-in-0",
+                },
+            ],
+            "simulationConfig": {
+                "startTime": 0.0,
+                "stopTime": 1.0,
+                "stepSize": 0.01,
+            },
+        }
+
+        methods = [
+            IntegrationMethod.EULER,
+            IntegrationMethod.RK2,
+            IntegrationMethod.RK4,
+            IntegrationMethod.MERSON,
+        ]
+        for method in methods:
+            config = CodeGenerationConfig(
+                language=Language.PYTHON,
+                integration_method=method,
+            )
+            project = generator.generate(simple_model, config)
+            main_file = project.get_file("main.py")
+            assert main_file is not None
+            assert method.value in main_file.content
+
+    def test_generate_without_csv_output(self, generator):
+        """Test generating code without CSV output."""
+        simple_model = {
+            "id": "simple-model",
+            "metadata": {"name": "Simple", "description": ""},
+            "blocks": [
+                {
+                    "id": "const-1",
+                    "type": "constant",
+                    "name": "Const",
+                    "position": {"x": 100, "y": 100},
+                    "parameters": {"value": 1.0},
+                    "inputPorts": [],
+                    "outputPorts": [{"id": "const-1-out-0", "name": "out"}],
+                },
+                {
+                    "id": "scope-1",
+                    "type": "scope",
+                    "name": "Scope",
+                    "position": {"x": 300, "y": 100},
+                    "parameters": {},
+                    "inputPorts": [{"id": "scope-1-in-0", "name": "in"}],
+                    "outputPorts": [],
+                },
+            ],
+            "connections": [
+                {
+                    "id": "conn-1",
+                    "sourceBlockId": "const-1",
+                    "sourcePortId": "const-1-out-0",
+                    "targetBlockId": "scope-1",
+                    "targetPortId": "scope-1-in-0",
+                },
+            ],
+            "simulationConfig": {},
+        }
+
+        config = CodeGenerationConfig(
+            language=Language.PYTHON,
+            include_csv_output=False,
+        )
+        project = generator.generate(simple_model, config)
+        main_file = project.get_file("main.py")
+        assert main_file is not None
+        assert "results.csv" not in main_file.content
+
+    def test_generate_with_integrator_blocks(self, generator):
+        """Test generating code with integrator blocks."""
+        integrator_model = {
+            "id": "integrator-model",
+            "metadata": {"name": "Integrator Test", "description": ""},
+            "blocks": [
+                {
+                    "id": "step-1",
+                    "type": "step",
+                    "name": "Step",
+                    "position": {"x": 100, "y": 100},
+                    "parameters": {"step_time": 0.0, "initial_value": 0.0, "final_value": 1.0},
+                    "inputPorts": [],
+                    "outputPorts": [{"id": "step-1-out-0", "name": "out"}],
+                },
+                {
+                    "id": "int-1",
+                    "type": "integrator",
+                    "name": "Integrator",
+                    "position": {"x": 250, "y": 100},
+                    "parameters": {"initialCondition": 0.0},
+                    "inputPorts": [{"id": "int-1-in-0", "name": "in"}],
+                    "outputPorts": [{"id": "int-1-out-0", "name": "out"}],
+                },
+                {
+                    "id": "scope-1",
+                    "type": "scope",
+                    "name": "Scope",
+                    "position": {"x": 400, "y": 100},
+                    "parameters": {},
+                    "inputPorts": [{"id": "scope-1-in-0", "name": "in"}],
+                    "outputPorts": [],
+                },
+            ],
+            "connections": [
+                {
+                    "id": "conn-1",
+                    "sourceBlockId": "step-1",
+                    "sourcePortId": "step-1-out-0",
+                    "targetBlockId": "int-1",
+                    "targetPortId": "int-1-in-0",
+                },
+                {
+                    "id": "conn-2",
+                    "sourceBlockId": "int-1",
+                    "sourcePortId": "int-1-out-0",
+                    "targetBlockId": "scope-1",
+                    "targetPortId": "scope-1-in-0",
+                },
+            ],
+            "simulationConfig": {
+                "startTime": 0.0,
+                "stopTime": 5.0,
+                "stepSize": 0.01,
+                "solver": "rk4",
+            },
+        }
+
+        for lang in [Language.PYTHON, Language.C, Language.CPP, Language.RUST]:
+            config = CodeGenerationConfig(language=lang)
+            project = generator.generate(integrator_model, config)
+            assert project is not None
+
+
+# =============================================================================
+# Language Generator Unit Tests
+# =============================================================================
+
+
+class TestCGeneratorDetails:
+    """Detailed tests for C code generator."""
+
+    def test_c_sanitize_identifier(self):
+        """Test C identifier sanitization."""
+        from src.codegen.languages.c.generator import CCodeGenerator
+
+        gen = CCodeGenerator()
+        assert gen.sanitize_identifier("my-block") == "my_block"
+        assert gen.sanitize_identifier("123start") == "_123start"
+        assert gen.sanitize_identifier("valid_name") == "valid_name"
+
+    def test_c_parse_connection(self):
+        """Test C connection parsing."""
+        from src.codegen.languages.c.generator import CCodeGenerator
+
+        gen = CCodeGenerator()
+        source_id, source_port, target_port = gen.parse_connection("block1:0->1")
+        assert source_id == "block1"
+
+    def test_c_generate_passthrough_block(self):
+        """Test C passthrough block generation."""
+        from src.codegen.languages.c.generator import CCodeGenerator
+
+        gen = CCodeGenerator()
+        block = BlockInfo(
+            id="unknown-1",
+            type="unknown_type",
+            name="Unknown",
+            parameters={},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = gen.generate_block_code(block)
+        assert "Unknown" in code or "unknown" in code.lower()
+
+
+class TestCppGeneratorDetails:
+    """Detailed tests for C++ code generator."""
+
+    def test_cpp_sanitize_identifier(self):
+        """Test C++ identifier sanitization."""
+        from src.codegen.languages.cpp.generator import CppCodeGenerator
+
+        gen = CppCodeGenerator()
+        assert gen.sanitize_identifier("my-block") == "my_block"
+        assert gen.sanitize_identifier("123start") == "_123start"
+
+    def test_cpp_generate_passthrough_block(self):
+        """Test C++ passthrough block generation."""
+        from src.codegen.languages.cpp.generator import CppCodeGenerator
+
+        gen = CppCodeGenerator()
+        block = BlockInfo(
+            id="unknown-1",
+            type="unknown_type",
+            name="Unknown",
+            parameters={},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = gen.generate_block_code(block)
+        assert "Unknown" in code or "unknown" in code.lower()
+
+
+class TestRustGeneratorDetails:
+    """Detailed tests for Rust code generator."""
+
+    def test_rust_sanitize_identifier(self):
+        """Test Rust identifier sanitization."""
+        from src.codegen.languages.rust.generator import RustCodeGenerator
+
+        gen = RustCodeGenerator()
+        assert gen.sanitize_identifier("my-block") == "my_block"
+        assert gen.sanitize_identifier("123start") == "_123start"
+
+    def test_rust_generate_passthrough_block(self):
+        """Test Rust passthrough block generation."""
+        from src.codegen.languages.rust.generator import RustCodeGenerator
+
+        gen = RustCodeGenerator()
+        block = BlockInfo(
+            id="unknown-1",
+            type="unknown_type",
+            name="Unknown",
+            parameters={},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = gen.generate_block_code(block)
+        assert "Unknown" in code or "unknown" in code.lower()
+
+
+class TestPythonGeneratorDetails:
+    """Detailed tests for Python code generator."""
+
+    def test_python_sanitize_identifier(self):
+        """Test Python identifier sanitization."""
+        from src.codegen.languages.python.generator import PythonCodeGenerator
+
+        gen = PythonCodeGenerator()
+        assert gen.sanitize_identifier("my-block") == "my_block"
+        assert gen.sanitize_identifier("123start") == "_123start"
+
+    def test_python_generate_passthrough_block(self):
+        """Test Python passthrough block generation."""
+        from src.codegen.languages.python.generator import PythonCodeGenerator
+
+        gen = PythonCodeGenerator()
+        block = BlockInfo(
+            id="unknown-1",
+            type="unknown_type",
+            name="Unknown",
+            parameters={},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = gen.generate_block_code(block)
+        assert "Unknown" in code or "Block_unknown_1" in code
+
+
+# =============================================================================
+# Additional Block Template Tests for Full Coverage
+# =============================================================================
+
+
+class TestCSourcesTemplatesAdditional:
+    """Additional tests for C source block templates."""
+
+    def test_c_white_noise_template(self):
+        """Test C White Noise template."""
+        from src.codegen.languages.c.blocks.sources import template_white_noise
+
+        block = BlockInfo(
+            id="wn1",
+            type="white_noise",
+            name="WhiteNoise1",
+            parameters={"seed": 12345, "sampleTime": 0.01},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_white_noise(block, "WhiteNoise1Block")
+        assert "WhiteNoise1Block" in code
+        assert "12345" in code
+
+    def test_c_band_limited_white_noise_template(self):
+        """Test C Band Limited White Noise template."""
+        from src.codegen.languages.c.blocks.sources import template_band_limited_white_noise
+
+        block = BlockInfo(
+            id="blwn1",
+            type="band_limited_white_noise",
+            name="BLWN1",
+            parameters={"noisePower": 0.1, "sampleTime": 0.01},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_band_limited_white_noise(block, "BLWN1Block")
+        assert "BLWN1Block" in code
+
+
+class TestCppSourcesTemplatesExtended:
+    """Extended tests for C++ source block templates."""
+
+    def test_cpp_white_noise_template_extended(self):
+        """Test C++ White Noise template with additional params."""
+        from src.codegen.languages.cpp.blocks.sources import template_white_noise
+
+        block = BlockInfo(
+            id="wn1",
+            type="white_noise",
+            name="WhiteNoise1",
+            parameters={"seed": 54321, "sampleTime": 0.001},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_white_noise(block, "WhiteNoise1Class")
+        assert "WhiteNoise1Class" in code
+
+    def test_cpp_band_limited_white_noise_template_extended(self):
+        """Test C++ Band Limited White Noise template with additional params."""
+        from src.codegen.languages.cpp.blocks.sources import template_band_limited_white_noise
+
+        block = BlockInfo(
+            id="blwn1",
+            type="band_limited_white_noise",
+            name="BLWN1",
+            parameters={"noisePower": 0.5, "sampleTime": 0.01},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_band_limited_white_noise(block, "BLWN1Class")
+        assert "BLWN1Class" in code
+
+
+class TestRustSourcesTemplatesExtended:
+    """Extended tests for Rust source block templates."""
+
+    def test_rust_white_noise_template_extended(self):
+        """Test Rust White Noise template with additional params."""
+        from src.codegen.languages.rust.blocks.sources import template_white_noise
+
+        block = BlockInfo(
+            id="wn1",
+            type="white_noise",
+            name="WhiteNoise1",
+            parameters={"seed": 99999, "sampleTime": 0.02},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_white_noise(block, "WhiteNoise1Struct")
+        assert "WhiteNoise1Struct" in code
+
+    def test_rust_band_limited_white_noise_template_extended(self):
+        """Test Rust Band Limited White Noise template with additional params."""
+        from src.codegen.languages.rust.blocks.sources import template_band_limited_white_noise
+
+        block = BlockInfo(
+            id="blwn1",
+            type="band_limited_white_noise",
+            name="BLWN1",
+            parameters={"noisePower": 0.2, "sampleTime": 0.005},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_band_limited_white_noise(block, "BLWN1Struct")
+        assert "BLWN1Struct" in code
+
+
+class TestPythonSourcesTemplatesExtended:
+    """Additional tests for Python source block templates."""
+
+    def test_python_white_noise_template(self):
+        """Test Python White Noise template."""
+        from src.codegen.languages.python.blocks.sources import white_noise_template
+
+        block = BlockInfo(
+            id="wn1",
+            type="white_noise",
+            name="WhiteNoise1",
+            parameters={"seed": 11111, "sampleTime": 0.01},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = white_noise_template(block, "WhiteNoise1Class")
+        assert "WhiteNoise1Class" in code
+
+    def test_python_band_limited_white_noise_template(self):
+        """Test Python Band Limited White Noise template."""
+        from src.codegen.languages.python.blocks.sources import band_limited_white_noise_template
+
+        block = BlockInfo(
+            id="blwn1",
+            type="band_limited_white_noise",
+            name="BLWN1",
+            parameters={"noisePower": 0.3, "sampleTime": 0.01},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = band_limited_white_noise_template(block, "BLWN1Class")
+        assert "BLWN1Class" in code
+
+
+# =============================================================================
+# Simulation Compiler Tests
+# =============================================================================
+
+
+class TestSimulationCompiler:
+    """Tests for simulation compiler module."""
+
+    def test_compile_simple_model(self):
+        """Test compiling a simple model."""
+        from src.models.block import Block, Connection
+        from src.models.model import Model, ModelMetadata
+        from src.simulation.compiler import ModelCompiler
+
+        blocks = [
+            Block(
+                id="const-1",
+                type="constant",
+                name="Const",
+                position={"x": 0, "y": 0},
+                parameters={"value": 1.0},
+                input_ports=[],
+                output_ports=[{"id": "const-1-out-0", "name": "out"}],
+            ),
+            Block(
+                id="scope-1",
+                type="scope",
+                name="Scope",
+                position={"x": 200, "y": 0},
+                parameters={},
+                input_ports=[{"id": "scope-1-in-0", "name": "in"}],
+                output_ports=[],
+            ),
+        ]
+        connections = [
+            Connection(
+                id="conn-1",
+                source_block_id="const-1",
+                source_port_id="const-1-out-0",
+                target_block_id="scope-1",
+                target_port_id="scope-1-in-0",
+            ),
+        ]
+        metadata = ModelMetadata(name="Test Model")
+        model = Model(id="test-model", metadata=metadata, blocks=blocks, connections=connections)
+
+        compiler = ModelCompiler()
+        compiled = compiler.compile(model)
+        assert compiled is not None
+        assert compiled.success
+        assert len(compiled.blocks) == 2
+
+    def test_compile_model_with_integrators(self):
+        """Test compiling a model with integrator blocks."""
+        from src.models.block import Block, Connection
+        from src.models.model import Model, ModelMetadata
+        from src.simulation.compiler import ModelCompiler
+
+        blocks = [
+            Block(
+                id="step-1",
+                type="step",
+                name="Step",
+                position={"x": 0, "y": 0},
+                parameters={"step_time": 0.0, "initial_value": 0.0, "final_value": 1.0},
+                input_ports=[],
+                output_ports=[{"id": "step-1-out-0", "name": "out"}],
+            ),
+            Block(
+                id="int-1",
+                type="integrator",
+                name="Integrator",
+                position={"x": 150, "y": 0},
+                parameters={"initialCondition": 0.0},
+                input_ports=[{"id": "int-1-in-0", "name": "in"}],
+                output_ports=[{"id": "int-1-out-0", "name": "out"}],
+            ),
+            Block(
+                id="scope-1",
+                type="scope",
+                name="Scope",
+                position={"x": 300, "y": 0},
+                parameters={},
+                input_ports=[{"id": "scope-1-in-0", "name": "in"}],
+                output_ports=[],
+            ),
+        ]
+        connections = [
+            Connection(
+                id="conn-1",
+                source_block_id="step-1",
+                source_port_id="step-1-out-0",
+                target_block_id="int-1",
+                target_port_id="int-1-in-0",
+            ),
+            Connection(
+                id="conn-2",
+                source_block_id="int-1",
+                source_port_id="int-1-out-0",
+                target_block_id="scope-1",
+                target_port_id="scope-1-in-0",
+            ),
+        ]
+        metadata = ModelMetadata(name="Integrator Model")
+        model = Model(id="int-model", metadata=metadata, blocks=blocks, connections=connections)
+
+        compiler = ModelCompiler()
+        compiled = compiler.compile(model)
+        assert compiled is not None
+        assert compiled.success
+        # Check that integrator is in the compiled blocks
+        integrator_found = any(b.type == "integrator" for b in compiled.blocks)
+        assert integrator_found
+
+
+# =============================================================================
+# Additional Math Operation Template Tests
+# =============================================================================
+
+
+class TestCMathOpsTemplatesAdditional:
+    """Additional tests for C math operation templates."""
+
+    def test_c_math_function_template(self):
+        """Test C Math Function template."""
+        from src.codegen.languages.c.blocks.math_ops import template_math_function
+
+        block = BlockInfo(
+            id="mf1",
+            type="math_function",
+            name="MathFunc1",
+            parameters={"function": "exp"},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_math_function(block, "MathFunc1Block")
+        assert "MathFunc1Block" in code
+        assert "exp" in code
+
+    def test_c_trigonometry_template(self):
+        """Test C Trigonometry template."""
+        from src.codegen.languages.c.blocks.math_ops import template_trigonometry
+
+        block = BlockInfo(
+            id="trig1",
+            type="trigonometry",
+            name="Trig1",
+            parameters={"function": "sin"},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_trigonometry(block, "Trig1Block")
+        assert "Trig1Block" in code
+        assert "sin" in code
+
+
+class TestCppMathOpsTemplatesAdditional:
+    """Additional tests for C++ math operation templates."""
+
+    def test_cpp_math_function_template(self):
+        """Test C++ Math Function template."""
+        from src.codegen.languages.cpp.blocks.math_ops import template_math_function
+
+        block = BlockInfo(
+            id="mf1",
+            type="math_function",
+            name="MathFunc1",
+            parameters={"function": "log"},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_math_function(block, "MathFunc1Class")
+        assert "MathFunc1Class" in code
+
+    def test_cpp_trigonometry_template(self):
+        """Test C++ Trigonometry template."""
+        from src.codegen.languages.cpp.blocks.math_ops import template_trigonometry
+
+        block = BlockInfo(
+            id="trig1",
+            type="trigonometry",
+            name="Trig1",
+            parameters={"function": "cos"},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_trigonometry(block, "Trig1Class")
+        assert "Trig1Class" in code
+
+
+class TestRustMathOpsTemplatesAdditional:
+    """Additional tests for Rust math operation templates."""
+
+    def test_rust_math_function_template(self):
+        """Test Rust Math Function template."""
+        from src.codegen.languages.rust.blocks.math_ops import template_math_function
+
+        block = BlockInfo(
+            id="mf1",
+            type="math_function",
+            name="MathFunc1",
+            parameters={"function": "sqrt"},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_math_function(block, "MathFunc1Struct")
+        assert "MathFunc1Struct" in code
+
+    def test_rust_trigonometry_template(self):
+        """Test Rust Trigonometry template."""
+        from src.codegen.languages.rust.blocks.math_ops import template_trigonometry
+
+        block = BlockInfo(
+            id="trig1",
+            type="trigonometry",
+            name="Trig1",
+            parameters={"function": "tan"},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = template_trigonometry(block, "Trig1Struct")
+        assert "Trig1Struct" in code
+
+
+class TestPythonMathOpsTemplatesAdditional:
+    """Additional tests for Python math operation templates."""
+
+    def test_python_math_function_template(self):
+        """Test Python Math Function template."""
+        from src.codegen.languages.python.blocks.math_ops import math_function_template
+
+        block = BlockInfo(
+            id="mf1",
+            type="math_function",
+            name="MathFunc1",
+            parameters={"function": "abs"},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = math_function_template(block, "MathFunc1Class")
+        assert "MathFunc1Class" in code
+
+    def test_python_trigonometry_template(self):
+        """Test Python Trigonometry template."""
+        from src.codegen.languages.python.blocks.math_ops import trigonometry_template
+
+        block = BlockInfo(
+            id="trig1",
+            type="trigonometry",
+            name="Trig1",
+            parameters={"function": "asin"},
+            input_connections=[],
+            output_connections=[],
+            execution_order=0,
+        )
+        code = trigonometry_template(block, "Trig1Class")
+        assert "Trig1Class" in code
