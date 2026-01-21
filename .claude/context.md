@@ -736,5 +736,65 @@ Improved from 75% to 78% overall coverage:
 - Fixed C discrete template imports (snake_case vs template_ prefix)
 - Fixed Python logic template imports (`compare_to_zero_template` not `compare_template`)
 
+## Session 2026-01-21 (Frontend Testing Improvements)
+
+### Summary
+Improved frontend test coverage and fixed failing tests.
+
+### Coverage Progress
+| Metric | Before | After | Notes |
+|--------|--------|-------|-------|
+| **Backend Tests** | 1904 | 1904 | Unchanged (84% coverage) |
+| **Frontend Tests** | 391 (3 failing) | 425 (all passing) | Fixed failures + added tests |
+| **Frontend Coverage** | 27.3% | 30% | Improved |
+
+### Tests Fixed
+1. **`src/blocks/index.test.ts`** - Block categories list expected 11 categories but there are now 20
+   - Updated expected categories to include all 20: aerospace, dsp, rf, navigation, sensor_fusion, etc.
+   - Fixed category count assertion from 11 to 20
+
+2. **`src/components/Editor/BlockNode.test.tsx`** - TypeError when block is undefined
+   - Fixed `handleResizeEnd` callback to check for `block` before accessing `block.id`
+   - Changed dependency array from `[block.id, updateBlockSize]` to `[block, updateBlockSize]`
+
+### Tests Added
+
+**`src/store/modelStore.test.ts`** (75 total, 24 new):
+- Undo/redo: `canUndo`, `canRedo`, `pushHistory`, `undo`, `redo`
+- Connection waypoints: `addConnectionWaypoint`, `updateConnectionWaypoint`, `removeConnectionWaypoint`, `clearConnectionWaypoints`, `updateConnectionWaypoints`, `updateConnectionSignalName`, `updateConnectionLabelOffset`
+- Block operations: `updateBlockSize`, `rotateSelectedBlocks`, `spreadBlocks`, `addScopeInput`
+- Model operations: `saveModel`, `expandSubsystem`
+
+**`src/store/simulationStore.test.ts`** (19 total, 2 new):
+- `setStepModeActive` - tests step mode toggle
+- `setStepHistorySize` - tests history size setting
+- Enhanced `reset` test to verify step mode state reset
+
+**`src/store/uiStore.test.ts`** (27 total, 5 new):
+- `openHelpModal` / `closeHelpModal` with tab parameter
+- `openExamplesModal` / `closeExamplesModal`
+- `openCodeGenModal` / `closeCodeGenModal`
+- `openSaveAsModal` / `closeSaveAsModal`
+
+### Coverage by Module (After)
+| Module | Coverage |
+|--------|----------|
+| `src/blocks/` | 100% |
+| `src/store/simulationStore.ts` | 100% |
+| `src/store/uiStore.ts` | 100% |
+| `src/types/` | 100% |
+| `src/utils/nanoid.ts` | 100% |
+| `src/utils/mdlExporter.ts` | 100% |
+| `src/store/modelStore.ts` | 54% |
+| `src/utils/mdlImporter.ts` | 69% |
+| `src/components/` | ~4% (React components need DOM testing) |
+
+### Documentation Updated
+- Updated `docs/testing.md` with:
+  - Corrected frontend test count (425 passing)
+  - Added frontend coverage statistics (30%)
+  - Listed high-coverage and low-coverage modules
+  - Noted that React components need additional testing
+
 ## Development Workflow
 - **Wait for user confirmation** before committing changes to git. The user will test fixes before commits are made.

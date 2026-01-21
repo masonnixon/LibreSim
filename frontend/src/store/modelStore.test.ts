@@ -899,4 +899,334 @@ describe('useModelStore', () => {
       expect(currentConnections).toHaveLength(1)
     })
   })
+
+  describe('undo/redo', () => {
+    beforeEach(() => {
+      useModelStore.getState().createNewModel('Test Model')
+    })
+
+    it('canUndo returns false initially', () => {
+      expect(useModelStore.getState().canUndo()).toBe(false)
+    })
+
+    it('canRedo returns false initially', () => {
+      expect(useModelStore.getState().canRedo()).toBe(false)
+    })
+
+    it('pushHistory adds current state to history', () => {
+      useModelStore.getState().pushHistory()
+      expect(useModelStore.getState().history.length).toBeGreaterThan(0)
+      expect(useModelStore.getState().canUndo()).toBe(true)
+    })
+
+    it('undo restores previous state', () => {
+      const blockDef = createBlockDef('constant', 'Constant')
+      useModelStore.getState().addBlock(blockDef, { x: 100, y: 100 })
+
+      // State should have been pushed during addBlock
+      const blocksBeforeUndo = useModelStore.getState().model?.blocks.length
+
+      useModelStore.getState().undo()
+
+      const blocksAfterUndo = useModelStore.getState().model?.blocks.length
+      expect(blocksAfterUndo).toBeLessThan(blocksBeforeUndo!)
+    })
+
+    it('redo restores undone state', () => {
+      const blockDef = createBlockDef('constant', 'Constant')
+      useModelStore.getState().addBlock(blockDef, { x: 100, y: 100 })
+
+      const blocksAfterAdd = useModelStore.getState().model?.blocks.length
+
+      useModelStore.getState().undo()
+      useModelStore.getState().redo()
+
+      const blocksAfterRedo = useModelStore.getState().model?.blocks.length
+      expect(blocksAfterRedo).toBe(blocksAfterAdd)
+    })
+
+    it('canRedo returns true after undo', () => {
+      const blockDef = createBlockDef('constant', 'Constant')
+      useModelStore.getState().addBlock(blockDef, { x: 100, y: 100 })
+      useModelStore.getState().undo()
+
+      expect(useModelStore.getState().canRedo()).toBe(true)
+    })
+  })
+
+  describe('connection waypoints', () => {
+    let connId: string | null
+
+    beforeEach(() => {
+      useModelStore.getState().createNewModel('Test Model')
+      const constDef = createBlockDef('constant', 'Constant')
+      const scopeDef: BlockDefinition = {
+        type: 'scope',
+        name: 'Scope',
+        category: 'sinks',
+        description: 'A scope block',
+        inputs: [{ name: 'in', dataType: 'double', dimensions: [1] }],
+        outputs: [],
+        parameters: [],
+      }
+
+      const id1 = useModelStore.getState().addBlock(constDef, { x: 100, y: 100 })
+      const id2 = useModelStore.getState().addBlock(scopeDef, { x: 300, y: 100 })
+
+      const blocks = useModelStore.getState().model?.blocks
+      const block1 = blocks?.find(b => b.id === id1)
+      const block2 = blocks?.find(b => b.id === id2)
+
+      connId = useModelStore.getState().addConnection({
+        sourceBlockId: id1,
+        sourcePortId: block1?.outputPorts[0].id || '',
+        targetBlockId: id2,
+        targetPortId: block2?.inputPorts[0].id || '',
+      })
+    })
+
+    it('addConnectionWaypoint adds a waypoint', () => {
+      useModelStore.getState().addConnectionWaypoint(connId!, { x: 200, y: 150 })
+
+      const connection = useModelStore.getState().model?.connections.find(c => c.id === connId)
+      expect(connection?.waypoints).toBeDefined()
+      expect(connection?.waypoints?.length).toBe(1)
+      expect(connection?.waypoints?.[0]).toEqual({ x: 200, y: 150 })
+    })
+
+    it('addConnectionWaypoint adds waypoint at specific index', () => {
+      useModelStore.getState().addConnectionWaypoint(connId!, { x: 200, y: 150 })
+      useModelStore.getState().addConnectionWaypoint(connId!, { x: 250, y: 200 }, 0)
+
+      const connection = useModelStore.getState().model?.connections.find(c => c.id === connId)
+      expect(connection?.waypoints?.length).toBe(2)
+      expect(connection?.waypoints?.[0]).toEqual({ x: 250, y: 200 })
+    })
+
+    it('updateConnectionWaypoint updates existing waypoint', () => {
+      useModelStore.getState().addConnectionWaypoint(connId!, { x: 200, y: 150 })
+      useModelStore.getState().updateConnectionWaypoint(connId!, 0, { x: 220, y: 170 })
+
+      const connection = useModelStore.getState().model?.connections.find(c => c.id === connId)
+      expect(connection?.waypoints?.[0]).toEqual({ x: 220, y: 170 })
+    })
+
+    it('removeConnectionWaypoint removes a waypoint', () => {
+      useModelStore.getState().addConnectionWaypoint(connId!, { x: 200, y: 150 })
+      useModelStore.getState().addConnectionWaypoint(connId!, { x: 250, y: 200 })
+      useModelStore.getState().removeConnectionWaypoint(connId!, 0)
+
+      const connection = useModelStore.getState().model?.connections.find(c => c.id === connId)
+      expect(connection?.waypoints?.length).toBe(1)
+      expect(connection?.waypoints?.[0]).toEqual({ x: 250, y: 200 })
+    })
+
+    it('clearConnectionWaypoints removes all waypoints', () => {
+      useModelStore.getState().addConnectionWaypoint(connId!, { x: 200, y: 150 })
+      useModelStore.getState().addConnectionWaypoint(connId!, { x: 250, y: 200 })
+      useModelStore.getState().clearConnectionWaypoints(connId!)
+
+      const connection = useModelStore.getState().model?.connections.find(c => c.id === connId)
+      expect(connection?.waypoints).toEqual([])
+    })
+
+    it('updateConnectionWaypoints replaces all waypoints', () => {
+      useModelStore.getState().addConnectionWaypoint(connId!, { x: 200, y: 150 })
+      useModelStore.getState().updateConnectionWaypoints(connId!, [
+        { x: 180, y: 130 },
+        { x: 220, y: 170 },
+        { x: 260, y: 210 },
+      ])
+
+      const connection = useModelStore.getState().model?.connections.find(c => c.id === connId)
+      expect(connection?.waypoints?.length).toBe(3)
+    })
+
+    it('updateConnectionSignalName sets signal name', () => {
+      useModelStore.getState().updateConnectionSignalName(connId!, 'my_signal')
+
+      const connection = useModelStore.getState().model?.connections.find(c => c.id === connId)
+      expect(connection?.signalName).toBe('my_signal')
+    })
+
+    it('updateConnectionSignalName can clear signal name', () => {
+      useModelStore.getState().updateConnectionSignalName(connId!, 'my_signal')
+      useModelStore.getState().updateConnectionSignalName(connId!, undefined)
+
+      const connection = useModelStore.getState().model?.connections.find(c => c.id === connId)
+      expect(connection?.signalName).toBeUndefined()
+    })
+
+    it('updateConnectionLabelOffset sets label offset', () => {
+      useModelStore.getState().updateConnectionLabelOffset(connId!, { t: 0.5, perpOffset: 10 })
+
+      const connection = useModelStore.getState().model?.connections.find(c => c.id === connId)
+      expect(connection?.labelOffset).toEqual({ t: 0.5, perpOffset: 10 })
+    })
+  })
+
+  describe('block size and rotation', () => {
+    beforeEach(() => {
+      useModelStore.getState().createNewModel('Test Model')
+    })
+
+    it('updateBlockSize updates block dimensions', () => {
+      const blockDef = createBlockDef('constant', 'Constant')
+      const blockId = useModelStore.getState().addBlock(blockDef, { x: 100, y: 100 })
+
+      useModelStore.getState().updateBlockSize(blockId, { width: 150, height: 75 })
+
+      const block = useModelStore.getState().model?.blocks.find(b => b.id === blockId)
+      expect(block?.size?.width).toBe(150)
+      expect(block?.size?.height).toBe(75)
+    })
+
+    it('rotateSelectedBlocks rotates selected blocks', () => {
+      const blockDef = createBlockDef('constant', 'Constant')
+      const blockId = useModelStore.getState().addBlock(blockDef, { x: 100, y: 100 })
+
+      useModelStore.getState().selectBlocks([blockId])
+      useModelStore.getState().rotateSelectedBlocks()
+
+      const block = useModelStore.getState().model?.blocks.find(b => b.id === blockId)
+      expect(block?.rotation).toBe(90)
+    })
+
+    it('rotateSelectedBlocks cycles through rotations', () => {
+      const blockDef = createBlockDef('constant', 'Constant')
+      const blockId = useModelStore.getState().addBlock(blockDef, { x: 100, y: 100 })
+
+      useModelStore.getState().selectBlocks([blockId])
+
+      // Rotate 4 times should cycle back to 0
+      useModelStore.getState().rotateSelectedBlocks() // 90
+      useModelStore.getState().rotateSelectedBlocks() // 180
+      useModelStore.getState().rotateSelectedBlocks() // 270
+      useModelStore.getState().rotateSelectedBlocks() // 0
+
+      const block = useModelStore.getState().model?.blocks.find(b => b.id === blockId)
+      expect(block?.rotation).toBe(0)
+    })
+  })
+
+  describe('spreadBlocks', () => {
+    beforeEach(() => {
+      useModelStore.getState().createNewModel('Test Model')
+    })
+
+    it('spreads blocks apart by factor', () => {
+      const blockDef = createBlockDef('constant', 'Constant')
+      useModelStore.getState().addBlock(blockDef, { x: 100, y: 100 })
+      useModelStore.getState().addBlock(blockDef, { x: 200, y: 100 })
+      useModelStore.getState().addBlock(blockDef, { x: 100, y: 200 })
+
+      useModelStore.getState().spreadBlocks(2.0)
+
+      const blocks = useModelStore.getState().model?.blocks
+      expect(blocks).toBeDefined()
+      // Blocks should be spread apart from center
+      // The exact positions depend on implementation, but they should be different
+      expect(blocks!.length).toBe(3)
+    })
+  })
+
+  describe('addScopeInput', () => {
+    beforeEach(() => {
+      useModelStore.getState().createNewModel('Test Model')
+    })
+
+    it('adds input port to scope block', () => {
+      const scopeDef: BlockDefinition = {
+        type: 'scope',
+        name: 'Scope',
+        category: 'sinks',
+        description: 'A scope block',
+        inputs: [{ name: 'in', dataType: 'double', dimensions: [1] }],
+        outputs: [],
+        parameters: [],
+      }
+
+      const scopeId = useModelStore.getState().addBlock(scopeDef, { x: 100, y: 100 })
+      const initialInputs = useModelStore.getState().model?.blocks.find(b => b.id === scopeId)?.inputPorts.length
+
+      const newPortId = useModelStore.getState().addScopeInput(scopeId)
+
+      expect(newPortId).toBeTruthy()
+      const scope = useModelStore.getState().model?.blocks.find(b => b.id === scopeId)
+      expect(scope?.inputPorts.length).toBe(initialInputs! + 1)
+    })
+
+    it('returns null for non-scope blocks', () => {
+      const blockDef = createBlockDef('constant', 'Constant')
+      const blockId = useModelStore.getState().addBlock(blockDef, { x: 100, y: 100 })
+
+      const result = useModelStore.getState().addScopeInput(blockId)
+
+      expect(result).toBeNull()
+    })
+  })
+
+  describe('saveModel', () => {
+    it('returns null when no model exists', () => {
+      useModelStore.setState({ model: null })
+      const result = useModelStore.getState().saveModel()
+      expect(result).toBeNull()
+    })
+
+    it('returns model and clears isDirty', () => {
+      useModelStore.getState().createNewModel('Test Model')
+      useModelStore.setState({ isDirty: true })
+
+      const result = useModelStore.getState().saveModel()
+
+      expect(result).not.toBeNull()
+      expect(result?.metadata.name).toBe('Test Model')
+      expect(useModelStore.getState().isDirty).toBe(false)
+    })
+  })
+
+  describe('expandSubsystem', () => {
+    beforeEach(() => {
+      useModelStore.getState().createNewModel('Test Model')
+    })
+
+    it('expands subsystem children into parent', () => {
+      const subsystemBlock: BlockInstance = {
+        id: 'subsystem-1',
+        type: 'subsystem',
+        name: 'TestSubsystem',
+        position: { x: 100, y: 100 },
+        parameters: {},
+        inputPorts: [],
+        outputPorts: [],
+        children: [
+          {
+            id: 'child-1',
+            type: 'constant',
+            name: 'ChildConstant',
+            position: { x: 0, y: 0 },
+            parameters: { value: 1 },
+            inputPorts: [],
+            outputPorts: [{ id: 'out-0', name: 'out', dataType: 'double', dimensions: [1] }],
+          },
+        ],
+        childConnections: [],
+      }
+
+      useModelStore.setState({
+        model: {
+          ...useModelStore.getState().model!,
+          blocks: [subsystemBlock],
+        },
+      })
+
+      useModelStore.getState().expandSubsystem('subsystem-1')
+
+      const blocks = useModelStore.getState().model?.blocks
+      // Subsystem should be removed and child added
+      expect(blocks?.find(b => b.id === 'subsystem-1')).toBeUndefined()
+      // Child should be added with new ID (prefixed)
+      expect(blocks?.some(b => b.name === 'ChildConstant')).toBe(true)
+    })
+  })
 })

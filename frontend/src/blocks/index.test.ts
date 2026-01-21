@@ -312,19 +312,28 @@ describe('blockCategories', () => {
       'continuous',
       'discrete',
       'math',
+      'logic',
       'routing',
       'subsystems',
       'signal_processing',
       'nonlinear',
       'observers',
       'control_analysis',
+      'data_types',
+      'matrix_ops',
+      'control_design',
+      'aerospace',
+      'dsp',
+      'rf',
+      'navigation',
+      'sensor_fusion',
     ]
 
     expect(blockCategories).toEqual(expectedCategories)
   })
 
   it('has correct number of categories', () => {
-    expect(blockCategories).toHaveLength(11)
+    expect(blockCategories).toHaveLength(20)
   })
 })
 

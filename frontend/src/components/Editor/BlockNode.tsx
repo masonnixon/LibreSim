@@ -27,9 +27,11 @@ function BlockNodeComponent({ data, selected }: NodeProps<BlockNode>) {
 
   const handleResizeEnd = useCallback(
     (_event: unknown, params: { width: number; height: number }) => {
-      updateBlockSize(block.id, { width: params.width, height: params.height })
+      if (block) {
+        updateBlockSize(block.id, { width: params.width, height: params.height })
+      }
     },
-    [block.id, updateBlockSize]
+    [block, updateBlockSize]
   )
 
   if (!block || !definition) {

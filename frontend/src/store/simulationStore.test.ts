@@ -211,6 +211,24 @@ describe('useSimulationStore', () => {
     })
   })
 
+  describe('step mode', () => {
+    it('sets step mode active', () => {
+      useSimulationStore.getState().setStepModeActive(true)
+      expect(useSimulationStore.getState().stepModeActive).toBe(true)
+
+      useSimulationStore.getState().setStepModeActive(false)
+      expect(useSimulationStore.getState().stepModeActive).toBe(false)
+    })
+
+    it('sets step history size', () => {
+      useSimulationStore.getState().setStepHistorySize(100)
+      expect(useSimulationStore.getState().stepHistorySize).toBe(100)
+
+      useSimulationStore.getState().setStepHistorySize(500)
+      expect(useSimulationStore.getState().stepHistorySize).toBe(500)
+    })
+  })
+
   describe('reset', () => {
     it('resets all state to initial values', () => {
       // Set up some state
@@ -220,6 +238,8 @@ describe('useSimulationStore', () => {
         signals: [],
         statistics: { totalSteps: 100, executionTime: 1, finalTime: 10 },
       })
+      useSimulationStore.getState().setStepModeActive(true)
+      useSimulationStore.getState().setStepHistorySize(100)
 
       // Reset
       useSimulationStore.getState().reset()
@@ -229,6 +249,8 @@ describe('useSimulationStore', () => {
       expect(state.state.currentTime).toBe(0)
       expect(state.state.progress).toBe(0)
       expect(state.results).toBeNull()
+      expect(state.stepModeActive).toBe(false)
+      expect(state.stepHistorySize).toBe(0)
     })
   })
 })

@@ -254,5 +254,54 @@ describe('useUIStore', () => {
       closeImportModal()
       expect(useUIStore.getState().showImportModal).toBe(false)
     })
+
+    it('opens and closes help modal', () => {
+      const { openHelpModal, closeHelpModal } = useUIStore.getState()
+
+      openHelpModal()
+      expect(useUIStore.getState().showHelpModal).toBe(true)
+      expect(useUIStore.getState().helpModalTab).toBe('shortcuts')
+
+      closeHelpModal()
+      expect(useUIStore.getState().showHelpModal).toBe(false)
+    })
+
+    it('opens help modal with specific tab', () => {
+      const { openHelpModal } = useUIStore.getState()
+
+      openHelpModal('about')
+      expect(useUIStore.getState().showHelpModal).toBe(true)
+      expect(useUIStore.getState().helpModalTab).toBe('about')
+    })
+
+    it('opens and closes examples modal', () => {
+      const { openExamplesModal, closeExamplesModal } = useUIStore.getState()
+
+      openExamplesModal()
+      expect(useUIStore.getState().showExamplesModal).toBe(true)
+
+      closeExamplesModal()
+      expect(useUIStore.getState().showExamplesModal).toBe(false)
+    })
+
+    it('opens and closes code gen modal', () => {
+      const { openCodeGenModal, closeCodeGenModal } = useUIStore.getState()
+
+      openCodeGenModal()
+      expect(useUIStore.getState().showCodeGenModal).toBe(true)
+
+      closeCodeGenModal()
+      expect(useUIStore.getState().showCodeGenModal).toBe(false)
+    })
+
+    it('opens and closes save as modal', () => {
+      const { openSaveAsModal, closeSaveAsModal } = useUIStore.getState()
+
+      openSaveAsModal()
+      expect(useUIStore.getState().showSaveAsModal).toBe(true)
+
+      closeSaveAsModal()
+      expect(useUIStore.getState().showSaveAsModal).toBe(false)
+    })
   })
 })
