@@ -38,10 +38,10 @@ LibreSim employs three types of tests:
 
 | Metric | Value |
 |--------|-------|
-| **Tests Passing** | 454 |
-| **Overall Coverage** | 31% |
+| **Tests Passing** | 659 |
+| **Overall Coverage** | 40% |
 | **Test Framework** | Vitest |
-| **Test Files** | 11 |
+| **Test Files** | 14 |
 
 **High-coverage modules (90%+):**
 - `src/blocks/` - Block definitions and registry (100%)
@@ -50,28 +50,37 @@ LibreSim employs three types of tests:
 - `src/types/` - TypeScript type definitions (100%)
 - `src/utils/nanoid.ts` - ID generation (100%)
 - `src/utils/mdlExporter.ts` - MDL export (100%)
+- `src/components/Toast/Toast.tsx` - Toast notifications (100%)
 - `src/api/client.ts` - API client (98%)
-- `src/store/libraryStore.ts` - Library state management (94%)
+- `src/store/libraryStore.ts` - Library state management (92%)
+- `src/store/modelStore.ts` - Model state management (88%)
 
-**Moderate-coverage modules (50-75%):**
-- `src/store/modelStore.ts` - Model state management (54%)
-- `src/utils/mdlImporter.ts` - MDL import (69%)
+**Moderate-coverage modules (50-85%):**
+- `src/components/Editor/BlockNode.tsx` - Block node component (82%)
+- `src/utils/mdlImporter.ts` - MDL import (74%)
+- `src/components/Sidebar/Sidebar.tsx` - Block library sidebar (63%)
 
 **Lower-coverage modules (needs improvement):**
-- `src/components/` - React components (0% - need component tests with React Testing Library)
+- `src/components/Toolbar/Toolbar.tsx` - Toolbar (16% - complex component)
+- `src/components/Editor/Editor.tsx` - Main editor (0% - requires ReactFlow mocking)
+- `src/components/Editor/CustomEdge.tsx` - Edge routing (0% - requires ReactFlow mocking)
+- `src/components/*/` - Modal components (0% - need component tests)
 
 **Test files:**
-- `src/api/client.test.ts` - API client tests
+- `src/api/client.test.ts` - API client tests (36 tests)
 - `src/blocks/index.test.ts` - Block registry tests
 - `src/store/libraryStore.test.ts` - Library store tests
-- `src/store/modelStore.test.ts` - Model store tests
+- `src/store/modelStore.test.ts` - Model store tests (156 tests)
 - `src/store/simulationStore.test.ts` - Simulation store tests
 - `src/store/uiStore.test.ts` - UI store tests
 - `src/types/library.test.ts` - Type tests
 - `src/utils/mdlExporter.test.ts` - MDL export tests
 - `src/utils/mdlImporter.test.ts` - MDL import tests
 - `src/utils/nanoid.test.ts` - ID generation tests
-- `src/components/Editor/BlockNode.test.tsx` - Component tests
+- `src/components/Editor/BlockNode.test.tsx` - Block node component tests (45 tests)
+- `src/components/Toast/Toast.test.tsx` - Toast notification tests (14 tests)
+- `src/components/Sidebar/Sidebar.test.tsx` - Sidebar component tests (16 tests)
+- `src/components/Toolbar/Toolbar.test.tsx` - Toolbar component tests (27 tests)
 
 ## Running Tests
 
@@ -257,21 +266,30 @@ class TestGainBlock:
 ```
 frontend/src/
 ├── test/
-│   └── setup.ts           # Test setup (mocks)
+│   └── setup.ts              # Test setup (mocks)
 ├── api/
-│   └── client.test.ts     # API client tests
+│   └── client.test.ts        # API client tests
 ├── store/
-│   ├── modelStore.test.ts # Store tests
-│   └── ...
+│   ├── modelStore.test.ts    # Store tests (156 tests)
+│   ├── libraryStore.test.ts  # Library store tests
+│   ├── simulationStore.test.ts
+│   └── uiStore.test.ts
 ├── utils/
-│   ├── mdlImporter.test.ts # Utility tests
-│   └── ...
+│   ├── mdlImporter.test.ts   # Utility tests
+│   ├── mdlExporter.test.ts
+│   └── nanoid.test.ts
 └── components/
-    └── Editor/
-        └── BlockNode.test.tsx # Component tests
+    ├── Editor/
+    │   └── BlockNode.test.tsx    # Block node tests (45 tests)
+    ├── Toast/
+    │   └── Toast.test.tsx        # Toast tests (14 tests)
+    ├── Sidebar/
+    │   └── Sidebar.test.tsx      # Sidebar tests (16 tests)
+    └── Toolbar/
+        └── Toolbar.test.tsx      # Toolbar tests (27 tests)
 ```
 
-**Example test:**
+**Example store test:**
 ```typescript
 import { describe, it, expect, beforeEach } from 'vitest'
 import { useModelStore } from './modelStore'
@@ -289,6 +307,51 @@ describe('modelStore', () => {
     expect(blocks).toHaveLength(1)
     expect(blocks[0].type).toBe('constant')
   })
+})
+```
+
+### React Component Testing Patterns
+
+**Mocking Zustand stores:**
+```typescript
+import { vi } from 'vitest'
+
+vi.mock('../../store/uiStore', () => ({
+  useUIStore: vi.fn(),
+}))
+
+const mockedUseUIStore = vi.mocked(useUIStore)
+mockedUseUIStore.mockReturnValue({
+  sidebarCollapsed: false,
+  toggleSidebar: vi.fn(),
+})
+```
+
+**Mocking useSyncExternalStore (stable references required):**
+```typescript
+// IMPORTANT: Return stable reference to avoid infinite re-render loop
+const emptyArray: never[] = []
+vi.mock('../../blocks', () => ({
+  blockRegistry: {
+    getLibraryBlocks: () => emptyArray,  // Same reference each call
+    subscribe: vi.fn(() => () => {}),
+  },
+}))
+```
+
+**Mocking drag events with dataTransfer:**
+```typescript
+const dataTransfer = { effectAllowed: '', setData: vi.fn() }
+fireEvent.dragStart(element, { dataTransfer })
+expect(dataTransfer.effectAllowed).toBe('move')
+```
+
+**Module state isolation with vi.resetModules():**
+```typescript
+beforeEach(async () => {
+  vi.resetModules()
+  const module = await import('./Toast')
+  toast = module.toast
 })
 ```
 
