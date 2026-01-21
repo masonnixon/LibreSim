@@ -676,10 +676,65 @@ Starting from 63% overall coverage, improved to 69%:
 - Fixed Rounding parameter: `mode` not `function`
 - Fixed ZeroPole test: Replaced DC gain test with order test
 
-### Final Test Results
+### Final Test Results (Previous Session)
 - Total tests: 1135 passed, 1 skipped
 - Overall coverage: 69%
 - All linting/type checking passes
+
+## Session 2026-01-20 (Continued - Coverage Improvements)
+
+### Summary
+Continued from previous session to improve code coverage toward 100%.
+
+### Coverage Progress
+Improved from 75% to 78% overall coverage:
+
+| Module | Before | After | Notes |
+|--------|--------|-------|-------|
+| codegen/controller.py | 33% | higher | Added sanitize_project_name comprehensive tests |
+| codegen/languages/c/blocks/math_ops.py | 10% | 98% | All template functions tested |
+| codegen/languages/python/blocks/math_ops.py | 75% | 100% | All template functions tested |
+| codegen/languages/c/blocks/sources.py | 54% | 76% | Added pulse, ground, white_noise tests |
+| codegen/languages/python/blocks/continuous.py | 33% | 51% | Added integrator, derivative, transfer_function tests |
+| codegen/languages/python/blocks/logic.py | 70% | 93% | Added compare, relational operator tests |
+| codegen/languages/rust/blocks/math_ops.py | 41% | 88% | Added trig, saturation, mux, demux, bias tests |
+| codegen/languages/cpp/blocks/math_ops.py | 36% | higher | Added saturation, bias, dead_zone, switch, mux, demux tests |
+
+### Tests Added to test_codegen.py
+- **TestCMathOpsTemplates** - 15 tests for C math operation templates
+- **TestPythonMathOpsTemplates** - 14 tests for Python math operation templates
+- **TestCSourceTemplates** - 7 tests for C source templates
+- **TestPythonSourceTemplates** - 5 tests for Python source templates
+- **TestCSinkTemplates** - 3 tests for C sink templates
+- **TestPythonSinkTemplates** - 3 tests for Python sink templates
+- **TestCContinuousTemplates** - 3 tests for C continuous templates
+- **TestPythonContinuousTemplates** - 3 tests for Python continuous templates
+- **TestCDiscreteTemplates** - 4 tests for C discrete templates
+- **TestPythonDiscreteTemplates** - 3 tests for Python discrete templates
+- **TestCLogicTemplates** - 4 tests for C logic templates
+- **TestPythonLogicTemplates** - 4 tests for Python logic templates
+- **TestRustMathOpsTemplates** - 5 tests for Rust math templates
+- **TestCppMathOpsTemplates** - 5 tests for C++ math templates
+- **TestRustSourceTemplates** - 2 tests for Rust source templates
+- **TestCppSourceTemplates** - 2 tests for C++ source templates
+- **TestCodegenNonlinearTemplates** - 2 tests for nonlinear templates
+- **TestCodegenDSPTemplates** - 4 tests for DSP templates
+- **TestCodegenAerospaceTemplates** - 4 tests for aerospace templates
+- **TestCodegenSignalProcessingTemplates** - 2 tests for signal processing templates
+- **TestCodegenController** - 12 tests for controller functions and Pydantic models
+- **TestRustBlockTemplates** - 5 tests for additional Rust templates
+- **TestCppBlockTemplates** - 8 tests for additional C++ templates
+
+### Final Test Results (Current Session)
+- Total tests: 1677 passed, 1 skipped
+- Overall coverage: 78%
+- All linting/type checking passes
+
+### Key Bug Fixes
+- Fixed import names for template functions (e.g., `template_transfer_function` not `template_transfer_fcn`)
+- Fixed Python scope template test assertion (checks for `outputs` not `times`)
+- Fixed C discrete template imports (snake_case vs template_ prefix)
+- Fixed Python logic template imports (`compare_to_zero_template` not `compare_template`)
 
 ## Development Workflow
 - **Wait for user confirmation** before committing changes to git. The user will test fixes before commits are made.

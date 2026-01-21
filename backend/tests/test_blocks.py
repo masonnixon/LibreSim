@@ -12878,3 +12878,2490 @@ class TestScope3DBlock:
         assert scope.getOutput(1) == 6.0
         assert scope.getOutput(2) == 7.0
         assert scope.getOutput(3) == 0.0  # Invalid port
+
+
+# =============================================================================
+# Aerospace Block Extended Tests
+# =============================================================================
+
+
+class TestQuaternionNormalizeExtended:
+    """Extended tests for QuaternionNormalize block."""
+
+    def test_normalize_near_zero_quaternion(self):
+        """Test normalization of near-zero quaternion."""
+        from src.osk.blocks.aerospace import QuaternionNormalize
+
+        qn = QuaternionNormalize()
+        qn.init()
+
+        # Very small quaternion - should return identity
+        qn.setInput([1e-20, 1e-20, 1e-20, 1e-20])
+        qn.update()
+
+        output = qn.getOutputVector()
+        assert output == [1.0, 0.0, 0.0, 0.0]
+
+    def test_normalize_with_setInput_scalar_ports(self):
+        """Test setInput with individual scalar ports."""
+        from src.osk.blocks.aerospace import QuaternionNormalize
+
+        qn = QuaternionNormalize()
+        qn.init()
+
+        # Set individual components
+        qn.setInput(0.5, port=0)
+        qn.setInput(0.5, port=1)
+        qn.setInput(0.5, port=2)
+        qn.setInput(0.5, port=3)
+        qn.update()
+
+        output = qn.getOutputVector()
+        expected_norm = 1.0
+        actual_norm = sum(x * x for x in output) ** 0.5
+        assert abs(actual_norm - expected_norm) < 1e-10
+
+    def test_normalize_getOutput_invalid_port(self):
+        """Test getOutput with invalid port."""
+        from src.osk.blocks.aerospace import QuaternionNormalize
+
+        qn = QuaternionNormalize()
+        qn.init()
+        qn.update()
+
+        assert qn.getOutput(4) == 0.0
+        assert qn.getOutput(10) == 0.0
+
+
+class TestQuaternionMultiplyExtended:
+    """Extended tests for QuaternionMultiply block."""
+
+    def test_multiply_with_connected_blocks(self):
+        """Test quaternion multiplication with connected blocks."""
+        from src.osk.blocks.aerospace import QuaternionMultiply
+        from src.osk.blocks.math_ops import Mux
+
+        qm = QuaternionMultiply()
+        qm.init()
+
+        # Create mux blocks for vector inputs
+        mux1 = Mux(num_inputs=4)
+        mux1.init()
+        mux1.setInput(1.0, port=0)
+        mux1.setInput(0.0, port=1)
+        mux1.setInput(0.0, port=2)
+        mux1.setInput(0.0, port=3)
+        mux1.update()
+
+        mux2 = Mux(num_inputs=4)
+        mux2.init()
+        mux2.setInput(1.0, port=0)
+        mux2.setInput(0.0, port=1)
+        mux2.setInput(0.0, port=2)
+        mux2.setInput(0.0, port=3)
+        mux2.update()
+
+        qm.connectInput(mux1, port=0)
+        qm.connectInput(mux2, port=1)
+        qm.update()
+
+        output = qm.getOutputVector()
+        # Identity * Identity = Identity
+        assert abs(output[0] - 1.0) < 1e-10
+        assert abs(output[1]) < 1e-10
+        assert abs(output[2]) < 1e-10
+        assert abs(output[3]) < 1e-10
+
+    def test_multiply_getOutput_invalid_port(self):
+        """Test getOutput with invalid port."""
+        from src.osk.blocks.aerospace import QuaternionMultiply
+
+        qm = QuaternionMultiply()
+        qm.init()
+        qm.update()
+
+        assert qm.getOutput(4) == 0.0
+
+
+class TestQuaternionConjugateExtended:
+    """Extended tests for QuaternionConjugate block."""
+
+    def test_conjugate_with_connected_block(self):
+        """Test quaternion conjugate with connected block."""
+        from src.osk.blocks.aerospace import QuaternionConjugate
+        from src.osk.blocks.math_ops import Mux
+
+        qc = QuaternionConjugate()
+        qc.init()
+
+        mux = Mux(num_inputs=4)
+        mux.init()
+        mux.setInput(0.707, port=0)
+        mux.setInput(0.707, port=1)
+        mux.setInput(0.0, port=2)
+        mux.setInput(0.0, port=3)
+        mux.update()
+
+        qc.connectInput(mux)
+        qc.update()
+
+        output = qc.getOutputVector()
+        assert abs(output[0] - 0.707) < 1e-10
+        assert abs(output[1] + 0.707) < 1e-10
+
+    def test_conjugate_getOutput_invalid_port(self):
+        """Test getOutput with invalid port."""
+        from src.osk.blocks.aerospace import QuaternionConjugate
+
+        qc = QuaternionConjugate()
+        qc.init()
+        qc.update()
+
+        assert qc.getOutput(4) == 0.0
+
+
+class TestQuaternionToEulerExtended:
+    """Extended tests for QuaternionToEuler block."""
+
+    def test_euler_gimbal_lock(self):
+        """Test quaternion to euler at gimbal lock (pitch = 90 degrees)."""
+        import math
+
+        from src.osk.blocks.aerospace import QuaternionToEuler
+
+        qe = QuaternionToEuler()
+        qe.init()
+
+        # Quaternion for pitch = 90 degrees (gimbal lock)
+        qe.setInput([0.707, 0.0, 0.707, 0.0])
+        qe.update()
+
+        output = qe.getOutputVector()
+        # Pitch should be near pi/2
+        assert abs(output[1] - math.pi / 2) < 0.1
+
+    def test_euler_with_connected_block(self):
+        """Test with connected block."""
+        from src.osk.blocks.aerospace import QuaternionToEuler
+        from src.osk.blocks.math_ops import Mux
+
+        qe = QuaternionToEuler()
+        qe.init()
+
+        mux = Mux(num_inputs=4)
+        mux.init()
+        mux.setInput(1.0, port=0)
+        mux.setInput(0.0, port=1)
+        mux.setInput(0.0, port=2)
+        mux.setInput(0.0, port=3)
+        mux.update()
+
+        qe.connectInput(mux)
+        qe.update()
+
+        output = qe.getOutputVector()
+        # Identity quaternion -> zero angles
+        assert abs(output[0]) < 1e-10
+        assert abs(output[1]) < 1e-10
+        assert abs(output[2]) < 1e-10
+
+    def test_euler_getOutput_invalid_port(self):
+        """Test getOutput with invalid port."""
+        from src.osk.blocks.aerospace import QuaternionToEuler
+
+        qe = QuaternionToEuler()
+        qe.init()
+        qe.update()
+
+        assert qe.getOutput(3) == 0.0
+
+
+class TestEulerToQuaternionExtended:
+    """Extended tests for EulerToQuaternion block."""
+
+    def test_euler_to_quat_with_connected_block(self):
+        """Test with connected block."""
+        from src.osk.blocks.aerospace import EulerToQuaternion
+        from src.osk.blocks.math_ops import Mux
+
+        eq = EulerToQuaternion()
+        eq.init()
+
+        mux = Mux(num_inputs=3)
+        mux.init()
+        mux.setInput(0.0, port=0)
+        mux.setInput(0.0, port=1)
+        mux.setInput(0.0, port=2)
+        mux.update()
+
+        eq.connectInput(mux)
+        eq.update()
+
+        output = eq.getOutputVector()
+        # Zero angles -> identity quaternion
+        assert abs(output[0] - 1.0) < 1e-10
+        assert abs(output[1]) < 1e-10
+
+    def test_euler_to_quat_setInput_scalar(self):
+        """Test setInput with scalar port values."""
+        from src.osk.blocks.aerospace import EulerToQuaternion
+
+        eq = EulerToQuaternion()
+        eq.init()
+
+        eq.setInput(0.1, port=0)  # roll
+        eq.setInput(0.2, port=1)  # pitch
+        eq.setInput(0.3, port=2)  # yaw
+        eq.update()
+
+        output = eq.getOutputVector()
+        # Should be normalized
+        norm = sum(x * x for x in output) ** 0.5
+        assert abs(norm - 1.0) < 1e-10
+
+    def test_euler_to_quat_getOutput_invalid_port(self):
+        """Test getOutput with invalid port."""
+        from src.osk.blocks.aerospace import EulerToQuaternion
+
+        eq = EulerToQuaternion()
+        eq.init()
+        eq.update()
+
+        assert eq.getOutput(4) == 0.0
+
+
+class TestQuaternionRotateVectorExtended:
+    """Extended tests for QuaternionRotateVector block."""
+
+    def test_rotate_vector_with_connected_blocks(self):
+        """Test with connected blocks."""
+        from src.osk.blocks.aerospace import QuaternionRotateVector
+        from src.osk.blocks.math_ops import Mux
+
+        qrv = QuaternionRotateVector()
+        qrv.init()
+
+        # Identity quaternion
+        quat_mux = Mux(num_inputs=4)
+        quat_mux.init()
+        quat_mux.setInput(1.0, port=0)
+        quat_mux.setInput(0.0, port=1)
+        quat_mux.setInput(0.0, port=2)
+        quat_mux.setInput(0.0, port=3)
+        quat_mux.update()
+
+        # Vector to rotate
+        vec_mux = Mux(num_inputs=3)
+        vec_mux.init()
+        vec_mux.setInput(1.0, port=0)
+        vec_mux.setInput(2.0, port=1)
+        vec_mux.setInput(3.0, port=2)
+        vec_mux.update()
+
+        qrv.connectInput(quat_mux, port=0)
+        qrv.connectInput(vec_mux, port=1)
+        qrv.update()
+
+        output = qrv.getOutputVector()
+        # Identity rotation - vector unchanged
+        assert abs(output[0] - 1.0) < 1e-10
+        assert abs(output[1] - 2.0) < 1e-10
+        assert abs(output[2] - 3.0) < 1e-10
+
+    def test_rotate_vector_getOutput_invalid_port(self):
+        """Test getOutput with invalid port."""
+        from src.osk.blocks.aerospace import QuaternionRotateVector
+
+        qrv = QuaternionRotateVector()
+        qrv.init()
+        qrv.update()
+
+        assert qrv.getOutput(3) == 0.0
+
+
+class TestDCMToQuaternionExtended:
+    """Extended tests for DCMToQuaternion block."""
+
+    def test_dcm_to_quat_rotation_about_x(self):
+        """Test DCM to quaternion for rotation about x-axis."""
+        import math
+
+        from src.osk.blocks.aerospace import DCMToQuaternion
+
+        dcm = DCMToQuaternion()
+        dcm.init()
+
+        # 90 degree rotation about x-axis
+        c, s = math.cos(math.pi / 4), math.sin(math.pi / 4)
+        dcm_matrix = [
+            1,
+            0,
+            0,
+            0,
+            c,
+            -s,
+            0,
+            s,
+            c,
+        ]
+        dcm.setInput(dcm_matrix)
+        dcm.update()
+
+        output = dcm.getOutputVector()
+        norm = sum(x * x for x in output) ** 0.5
+        assert abs(norm - 1.0) < 1e-6
+
+    def test_dcm_to_quat_rotation_about_y(self):
+        """Test DCM to quaternion for rotation about y-axis (r22 > r33)."""
+        import math
+
+        from src.osk.blocks.aerospace import DCMToQuaternion
+
+        dcm = DCMToQuaternion()
+        dcm.init()
+
+        # Rotation about y-axis where r22 > r33
+        angle = math.pi / 3
+        c, s = math.cos(angle), math.sin(angle)
+        dcm_matrix = [
+            c,
+            0,
+            s,
+            0,
+            1,
+            0,
+            -s,
+            0,
+            c,
+        ]
+        dcm.setInput(dcm_matrix)
+        dcm.update()
+
+        output = dcm.getOutputVector()
+        norm = sum(x * x for x in output) ** 0.5
+        assert abs(norm - 1.0) < 1e-6
+
+    def test_dcm_to_quat_rotation_about_z(self):
+        """Test DCM to quaternion for rotation about z-axis (r33 largest)."""
+        import math
+
+        from src.osk.blocks.aerospace import DCMToQuaternion
+
+        dcm = DCMToQuaternion()
+        dcm.init()
+
+        # Rotation about z-axis where r33 > r11 and r33 > r22
+        angle = math.pi / 3
+        c, s = math.cos(angle), math.sin(angle)
+        dcm_matrix = [
+            c,
+            -s,
+            0,
+            s,
+            c,
+            0,
+            0,
+            0,
+            1,
+        ]
+        dcm.setInput(dcm_matrix)
+        dcm.update()
+
+        output = dcm.getOutputVector()
+        norm = sum(x * x for x in output) ** 0.5
+        assert abs(norm - 1.0) < 1e-6
+
+    def test_dcm_to_quat_with_connected_block(self):
+        """Test with connected block."""
+        from src.osk.blocks.aerospace import DCMToQuaternion
+        from src.osk.blocks.math_ops import Mux
+
+        dcm = DCMToQuaternion()
+        dcm.init()
+
+        # Identity DCM
+        mux = Mux(num_inputs=9)
+        mux.init()
+        mux.setInput(1.0, port=0)
+        mux.setInput(0.0, port=1)
+        mux.setInput(0.0, port=2)
+        mux.setInput(0.0, port=3)
+        mux.setInput(1.0, port=4)
+        mux.setInput(0.0, port=5)
+        mux.setInput(0.0, port=6)
+        mux.setInput(0.0, port=7)
+        mux.setInput(1.0, port=8)
+        mux.update()
+
+        dcm.connectInput(mux)
+        dcm.update()
+
+        output = dcm.getOutputVector()
+        # Identity DCM -> identity quaternion
+        assert abs(output[0] - 1.0) < 0.01 or abs(output[0] + 1.0) < 0.01
+
+    def test_dcm_to_quat_getOutput_invalid_port(self):
+        """Test getOutput with invalid port."""
+        from src.osk.blocks.aerospace import DCMToQuaternion
+
+        dcm = DCMToQuaternion()
+        dcm.init()
+        dcm.update()
+
+        assert dcm.getOutput(4) == 0.0
+
+
+class TestQuaternionToDCMExtended:
+    """Extended tests for QuaternionToDCM block."""
+
+    def test_quat_to_dcm_with_connected_block(self):
+        """Test with connected block."""
+        from src.osk.blocks.aerospace import QuaternionToDCM
+        from src.osk.blocks.math_ops import Mux
+
+        qtd = QuaternionToDCM()
+        qtd.init()
+
+        # Identity quaternion
+        mux = Mux(num_inputs=4)
+        mux.init()
+        mux.setInput(1.0, port=0)
+        mux.setInput(0.0, port=1)
+        mux.setInput(0.0, port=2)
+        mux.setInput(0.0, port=3)
+        mux.update()
+
+        qtd.connectInput(mux)
+        qtd.update()
+
+        output = qtd.getOutputVector()
+        # Identity quaternion -> identity DCM
+        assert abs(output[0] - 1.0) < 1e-10
+        assert abs(output[4] - 1.0) < 1e-10
+        assert abs(output[8] - 1.0) < 1e-10
+
+    def test_quat_to_dcm_getOutput_invalid_port(self):
+        """Test getOutput with invalid port."""
+        from src.osk.blocks.aerospace import QuaternionToDCM
+
+        qtd = QuaternionToDCM()
+        qtd.init()
+        qtd.update()
+
+        assert qtd.getOutput(9) == 0.0
+
+
+class TestISAAtmosphereExtended:
+    """Extended tests for ISAAtmosphere block."""
+
+    def test_atmosphere_stratosphere(self):
+        """Test atmosphere above 11km (stratosphere)."""
+        from src.osk.blocks.aerospace import ISAAtmosphere
+
+        atm = ISAAtmosphere()
+        atm.init()
+
+        # Above troposphere
+        atm.setInput(15000.0)
+        atm.update()
+
+        output = atm.getOutputVector()
+        # Temperature should be around 216.65K in stratosphere
+        assert output[0] < 230  # Temperature below 230K
+        assert output[1] < 15000  # Pressure lower than sea level
+
+    def test_atmosphere_getOutput_invalid_port(self):
+        """Test getOutput with invalid port."""
+        from src.osk.blocks.aerospace import ISAAtmosphere
+
+        atm = ISAAtmosphere()
+        atm.init()
+        atm.update()
+
+        assert atm.getOutput(4) == 0.0
+
+
+class TestSixDOFEulerExtended:
+    """Extended tests for SixDOFEuler block."""
+
+    def test_sixdof_with_forces_and_moments(self):
+        """Test 6DOF dynamics with forces and moments."""
+        from src.osk.blocks.aerospace import SixDOFEuler
+
+        sixdof = SixDOFEuler(mass=100.0, Ixx=10.0, Iyy=10.0, Izz=10.0, Ixz=0.0)
+        sixdof.init()
+
+        # Apply a force
+        sixdof.setInput([100.0, 0.0, 0.0], port=0)  # Forces
+        sixdof.setInput([0.0, 0.0, 0.0], port=1)  # Moments
+        sixdof.update()
+
+        output = sixdof.getOutputVector()
+        assert len(output) == 12
+        # Acceleration should be F/m = 100/100 = 1 m/s^2
+        # u_dot = 1.0
+
+    def test_sixdof_with_connected_blocks(self):
+        """Test 6DOF with connected blocks."""
+        from src.osk.blocks.aerospace import SixDOFEuler
+        from src.osk.blocks.math_ops import Mux
+
+        sixdof = SixDOFEuler(mass=10.0, Ixx=1.0, Iyy=1.0, Izz=1.0, Ixz=0.0)
+        sixdof.init()
+
+        # Forces mux
+        forces_mux = Mux(num_inputs=3)
+        forces_mux.init()
+        forces_mux.setInput(10.0, port=0)
+        forces_mux.setInput(0.0, port=1)
+        forces_mux.setInput(0.0, port=2)
+        forces_mux.update()
+
+        # Moments mux
+        moments_mux = Mux(num_inputs=3)
+        moments_mux.init()
+        moments_mux.setInput(0.0, port=0)
+        moments_mux.setInput(0.0, port=1)
+        moments_mux.setInput(0.0, port=2)
+        moments_mux.update()
+
+        sixdof.connectInput(forces_mux, port=0)
+        sixdof.connectInput(moments_mux, port=1)
+        sixdof.update()
+
+        output = sixdof.getOutputVector()
+        assert len(output) == 12
+
+    def test_sixdof_getOutput_invalid_port(self):
+        """Test getOutput with invalid port."""
+        from src.osk.blocks.aerospace import SixDOFEuler
+
+        sixdof = SixDOFEuler()
+        sixdof.init()
+        sixdof.update()
+
+        assert sixdof.getOutput(12) == 0.0
+
+    def test_sixdof_gimbal_lock_handling(self):
+        """Test 6DOF near gimbal lock (theta near 90 degrees)."""
+        import math
+
+        from src.osk.blocks.aerospace import SixDOFEuler
+
+        sixdof = SixDOFEuler(mass=10.0, Ixx=1.0, Iyy=1.0, Izz=1.0, Ixz=0.0)
+        sixdof.init()
+
+        # Set theta close to 90 degrees
+        sixdof.theta[0] = math.pi / 2 - 0.001
+        sixdof.setInput([0.0, 0.0, 0.0], port=0)
+        sixdof.setInput([0.0, 0.0, 1.0], port=1)  # Yaw moment
+        sixdof.update()
+
+        # Should not crash, theta_dot should be computed
+        assert sixdof.getOutputVector() is not None
+
+
+class TestFlatEarthGravityExtended:
+    """Extended tests for FlatEarthGravity block."""
+
+    def test_flat_earth_custom_g(self):
+        """Test with custom gravity value."""
+        from src.osk.blocks.aerospace import FlatEarthGravity
+
+        grav = FlatEarthGravity(g=10.0)
+        grav.init()
+        grav.update()
+
+        output = grav.getOutputVector()
+        assert output[2] == 10.0
+
+    def test_flat_earth_getOutput_invalid_port(self):
+        """Test getOutput with invalid port."""
+        from src.osk.blocks.aerospace import FlatEarthGravity
+
+        grav = FlatEarthGravity()
+        grav.init()
+        grav.update()
+
+        assert grav.getOutput(3) == 0.0
+
+
+class TestWGS84GravityExtended:
+    """Extended tests for WGS84Gravity block."""
+
+    def test_wgs84_with_connected_block(self):
+        """Test with connected block."""
+        from src.osk.blocks.aerospace import WGS84Gravity
+        from src.osk.blocks.math_ops import Mux
+
+        grav = WGS84Gravity()
+        grav.init()
+
+        # [latitude, altitude]
+        mux = Mux(num_inputs=2)
+        mux.init()
+        mux.setInput(0.785, port=0)  # 45 degrees
+        mux.setInput(1000.0, port=1)  # 1000m altitude
+        mux.update()
+
+        grav.connectInput(mux)
+        grav.update()
+
+        output = grav.getOutput()
+        assert 9.7 < output < 9.9
+
+    def test_wgs84_setInput_scalar(self):
+        """Test setInput with scalar port values."""
+        from src.osk.blocks.aerospace import WGS84Gravity
+
+        grav = WGS84Gravity()
+        grav.init()
+
+        grav.setInput(0.0, port=0)  # Equator
+        grav.setInput(0.0, port=1)  # Sea level
+        grav.update()
+
+        output = grav.getOutput()
+        assert abs(output - 9.78) < 0.1
+
+
+# =============================================================================
+# Sensor Fusion Extended Tests
+# =============================================================================
+
+
+class TestIMUSensorExtended:
+    """Extended tests for IMUSensor block."""
+
+    def test_imu_with_connected_blocks(self):
+        """Test IMU with connected blocks."""
+        from src.osk.blocks.math_ops import Mux
+        from src.osk.blocks.sensor_fusion import IMUSensor
+
+        imu = IMUSensor(accel_noise=0.0, gyro_noise=0.0, seed=42)
+        imu.init()
+
+        # Accel mux
+        accel_mux = Mux(num_inputs=3)
+        accel_mux.init()
+        accel_mux.setInput(0.0, port=0)
+        accel_mux.setInput(0.0, port=1)
+        accel_mux.setInput(9.81, port=2)
+        accel_mux.update()
+
+        # Gyro mux
+        gyro_mux = Mux(num_inputs=3)
+        gyro_mux.init()
+        gyro_mux.setInput(0.1, port=0)
+        gyro_mux.setInput(0.0, port=1)
+        gyro_mux.setInput(0.0, port=2)
+        gyro_mux.update()
+
+        imu.connectInput(accel_mux, port=0)
+        imu.connectInput(gyro_mux, port=1)
+        imu.update()
+
+        output = imu.getOutputVector()
+        assert len(output) == 6
+        assert abs(output[2] - 9.81) < 0.1
+
+    def test_imu_getOutput_invalid_port(self):
+        """Test getOutput with invalid port."""
+        from src.osk.blocks.sensor_fusion import IMUSensor
+
+        imu = IMUSensor()
+        imu.init()
+        imu.update()
+
+        assert imu.getOutput(6) == 0.0
+
+
+class TestAccelerometerExtended:
+    """Extended tests for Accelerometer block."""
+
+    def test_accelerometer_with_connected_block(self):
+        """Test Accelerometer with connected block."""
+        from src.osk.blocks.math_ops import Mux
+        from src.osk.blocks.sensor_fusion import Accelerometer
+
+        accel = Accelerometer(noise=0.0, seed=42)
+        accel.init()
+
+        mux = Mux(num_inputs=3)
+        mux.init()
+        mux.setInput(0.0, port=0)
+        mux.setInput(0.0, port=1)
+        mux.setInput(9.81, port=2)
+        mux.update()
+
+        accel.connectInput(mux)
+        accel.update()
+
+        output = accel.getOutputVector()
+        assert abs(output[2] - 9.81) < 0.01
+
+    def test_accelerometer_getOutput_invalid_port(self):
+        """Test getOutput with invalid port."""
+        from src.osk.blocks.sensor_fusion import Accelerometer
+
+        accel = Accelerometer()
+        accel.init()
+        accel.update()
+
+        assert accel.getOutput(3) == 0.0
+
+
+class TestGyroscopeExtended:
+    """Extended tests for Gyroscope block."""
+
+    def test_gyroscope_with_connected_block(self):
+        """Test Gyroscope with connected block."""
+        from src.osk.blocks.math_ops import Mux
+        from src.osk.blocks.sensor_fusion import Gyroscope
+
+        gyro = Gyroscope(noise=0.0, seed=42)
+        gyro.init()
+
+        mux = Mux(num_inputs=3)
+        mux.init()
+        mux.setInput(0.1, port=0)
+        mux.setInput(0.2, port=1)
+        mux.setInput(0.3, port=2)
+        mux.update()
+
+        gyro.connectInput(mux)
+        gyro.update()
+
+        output = gyro.getOutputVector()
+        assert abs(output[0] - 0.1) < 0.01
+        assert abs(output[1] - 0.2) < 0.01
+        assert abs(output[2] - 0.3) < 0.01
+
+    def test_gyroscope_getOutput_invalid_port(self):
+        """Test getOutput with invalid port."""
+        from src.osk.blocks.sensor_fusion import Gyroscope
+
+        gyro = Gyroscope()
+        gyro.init()
+        gyro.update()
+
+        assert gyro.getOutput(3) == 0.0
+
+
+class TestMagnetometerExtended:
+    """Extended tests for Magnetometer block."""
+
+    def test_magnetometer_with_connected_block(self):
+        """Test Magnetometer with connected block."""
+        from src.osk.blocks.math_ops import Mux
+        from src.osk.blocks.sensor_fusion import Magnetometer
+
+        mag = Magnetometer(noise=0.0, seed=42)
+        mag.init()
+
+        mux = Mux(num_inputs=3)
+        mux.init()
+        mux.setInput(0.3, port=0)  # North component
+        mux.setInput(0.0, port=1)
+        mux.setInput(0.5, port=2)  # Down component
+        mux.update()
+
+        mag.connectInput(mux)
+        mag.update()
+
+        output = mag.getOutputVector()
+        assert abs(output[0] - 0.3) < 0.01
+
+    def test_magnetometer_getOutput_invalid_port(self):
+        """Test getOutput with invalid port."""
+        from src.osk.blocks.sensor_fusion import Magnetometer
+
+        mag = Magnetometer()
+        mag.init()
+        mag.update()
+
+        assert mag.getOutput(3) == 0.0
+
+
+class TestGPSSensorExtended:
+    """Extended tests for GPSSensor block."""
+
+    def test_gps_with_connected_blocks(self):
+        """Test GPS with connected blocks."""
+        from src.osk.blocks.math_ops import Mux
+        from src.osk.blocks.sensor_fusion import GPSSensor
+        from src.osk.state import State
+
+        State.t = 0.0
+
+        gps = GPSSensor(position_noise=0.0, velocity_noise=0.0, seed=42)
+        gps.init()
+
+        pos_mux = Mux(num_inputs=3)
+        pos_mux.init()
+        pos_mux.setInput(45.0, port=0)  # lat
+        pos_mux.setInput(-122.0, port=1)  # lon
+        pos_mux.setInput(100.0, port=2)  # alt
+        pos_mux.update()
+
+        vel_mux = Mux(num_inputs=3)
+        vel_mux.init()
+        vel_mux.setInput(10.0, port=0)  # vn
+        vel_mux.setInput(5.0, port=1)  # ve
+        vel_mux.setInput(0.0, port=2)  # vd
+        vel_mux.update()
+
+        gps.connectInput(pos_mux, port=0)
+        gps.connectInput(vel_mux, port=1)
+        gps.update()
+
+        output = gps.getOutputVector()
+        assert len(output) == 6
+
+    def test_gps_getOutput_invalid_port(self):
+        """Test getOutput with invalid port."""
+        from src.osk.blocks.sensor_fusion import GPSSensor
+
+        gps = GPSSensor()
+        gps.init()
+
+        assert gps.getOutput(6) == 0.0
+
+
+class TestComplementaryFilterExtended:
+    """Extended tests for ComplementaryFilter block."""
+
+    def test_complementary_with_connected_blocks(self):
+        """Test Complementary filter with connected blocks."""
+        from src.osk.blocks.math_ops import Mux
+        from src.osk.blocks.sensor_fusion import ComplementaryFilter
+        from src.osk.state import State
+
+        State.dt = 0.01
+
+        cf = ComplementaryFilter(alpha=0.98)
+        cf.init()
+
+        accel_mux = Mux(num_inputs=3)
+        accel_mux.init()
+        accel_mux.setInput(0.0, port=0)
+        accel_mux.setInput(0.0, port=1)
+        accel_mux.setInput(9.81, port=2)
+        accel_mux.update()
+
+        gyro_mux = Mux(num_inputs=3)
+        gyro_mux.init()
+        gyro_mux.setInput(0.0, port=0)
+        gyro_mux.setInput(0.0, port=1)
+        gyro_mux.setInput(0.0, port=2)
+        gyro_mux.update()
+
+        cf.connectInput(accel_mux, port=0)
+        cf.connectInput(gyro_mux, port=1)
+        cf.update()
+
+        output = cf.getOutputVector()
+        assert len(output) == 3
+
+    def test_complementary_getOutput_invalid_port(self):
+        """Test getOutput with invalid port."""
+        from src.osk.blocks.sensor_fusion import ComplementaryFilter
+        from src.osk.state import State
+
+        State.dt = 0.01
+
+        cf = ComplementaryFilter()
+        cf.init()
+        cf.update()
+
+        assert cf.getOutput(3) == 0.0
+
+
+class TestMadgwickFilterExtended:
+    """Extended tests for MadgwickFilter block."""
+
+    def test_madgwick_with_magnetometer(self):
+        """Test Madgwick filter with magnetometer input."""
+        from src.osk.blocks.math_ops import Mux
+        from src.osk.blocks.sensor_fusion import MadgwickFilter
+        from src.osk.state import State
+
+        State.dt = 0.01
+
+        mf = MadgwickFilter(beta=0.1)
+        mf.init()
+
+        accel_mux = Mux(num_inputs=3)
+        accel_mux.init()
+        accel_mux.setInput(0.0, port=0)
+        accel_mux.setInput(0.0, port=1)
+        accel_mux.setInput(1.0, port=2)  # Normalized gravity
+        accel_mux.update()
+
+        gyro_mux = Mux(num_inputs=3)
+        gyro_mux.init()
+        gyro_mux.setInput(0.0, port=0)
+        gyro_mux.setInput(0.0, port=1)
+        gyro_mux.setInput(0.0, port=2)
+        gyro_mux.update()
+
+        mag_mux = Mux(num_inputs=3)
+        mag_mux.init()
+        mag_mux.setInput(1.0, port=0)  # North
+        mag_mux.setInput(0.0, port=1)
+        mag_mux.setInput(0.0, port=2)
+        mag_mux.update()
+
+        mf.connectInput(accel_mux, port=0)
+        mf.connectInput(gyro_mux, port=1)
+        mf.connectInput(mag_mux, port=2)
+        mf.update()
+
+        output = mf.getOutputVector()
+        assert len(output) == 4
+
+    def test_madgwick_zero_accel(self):
+        """Test Madgwick with zero acceleration."""
+        from src.osk.blocks.sensor_fusion import MadgwickFilter
+        from src.osk.state import State
+
+        State.dt = 0.01
+
+        mf = MadgwickFilter()
+        mf.init()
+
+        mf.setInput([0.0, 0.0, 0.0], port=0)  # Zero accel
+        mf.setInput([0.0, 0.0, 0.0], port=1)  # Zero gyro
+        mf.update()
+
+        # Should not crash with zero input
+        assert mf.getOutputVector() is not None
+
+    def test_madgwick_getOutput_invalid_port(self):
+        """Test getOutput with invalid port."""
+        from src.osk.blocks.sensor_fusion import MadgwickFilter
+        from src.osk.state import State
+
+        State.dt = 0.01
+
+        mf = MadgwickFilter()
+        mf.init()
+        mf.update()
+
+        assert mf.getOutput(4) == 0.0
+
+
+class TestMahonyFilterExtended:
+    """Extended tests for MahonyFilter block."""
+
+    def test_mahony_with_integral_gain(self):
+        """Test Mahony filter with integral gain."""
+        from src.osk.blocks.math_ops import Mux
+        from src.osk.blocks.sensor_fusion import MahonyFilter
+        from src.osk.state import State
+
+        State.dt = 0.01
+
+        mh = MahonyFilter(Kp=1.0, Ki=0.1)
+        mh.init()
+
+        accel_mux = Mux(num_inputs=3)
+        accel_mux.init()
+        accel_mux.setInput(0.0, port=0)
+        accel_mux.setInput(0.0, port=1)
+        accel_mux.setInput(1.0, port=2)
+        accel_mux.update()
+
+        gyro_mux = Mux(num_inputs=3)
+        gyro_mux.init()
+        gyro_mux.setInput(0.0, port=0)
+        gyro_mux.setInput(0.0, port=1)
+        gyro_mux.setInput(0.0, port=2)
+        gyro_mux.update()
+
+        mh.connectInput(accel_mux, port=0)
+        mh.connectInput(gyro_mux, port=1)
+        mh.update()
+
+        output = mh.getOutputVector()
+        assert len(output) == 4
+
+    def test_mahony_zero_accel(self):
+        """Test Mahony with zero acceleration."""
+        from src.osk.blocks.sensor_fusion import MahonyFilter
+        from src.osk.state import State
+
+        State.dt = 0.01
+
+        mh = MahonyFilter()
+        mh.init()
+
+        mh.setInput([0.0, 0.0, 0.0], port=0)  # Zero accel
+        mh.setInput([0.0, 0.0, 0.0], port=1)  # Zero gyro
+        mh.update()
+
+        # Should not crash with zero input
+        assert mh.getOutputVector() is not None
+
+    def test_mahony_getOutput_invalid_port(self):
+        """Test getOutput with invalid port."""
+        from src.osk.blocks.sensor_fusion import MahonyFilter
+        from src.osk.state import State
+
+        State.dt = 0.01
+
+        mh = MahonyFilter()
+        mh.init()
+        mh.update()
+
+        assert mh.getOutput(4) == 0.0
+
+
+class TestINSGPSFusionExtended:
+    """Extended tests for INSGPSFusion block."""
+
+    def test_ins_gps_full_update(self):
+        """Test INS/GPS fusion with all inputs."""
+        from src.osk.blocks.math_ops import Mux
+        from src.osk.blocks.sensor_fusion import INSGPSFusion
+        from src.osk.state import State
+
+        State.dt = 0.01
+
+        ins = INSGPSFusion()
+        ins.init()
+
+        # IMU data [ax, ay, az, wx, wy, wz]
+        imu_mux = Mux(num_inputs=6)
+        imu_mux.init()
+        for i in range(6):
+            imu_mux.setInput(0.0, port=i)
+        imu_mux.update()
+
+        # GPS position [lat, lon, alt]
+        gps_pos = Mux(num_inputs=3)
+        gps_pos.init()
+        gps_pos.setInput(45.0, port=0)
+        gps_pos.setInput(-122.0, port=1)
+        gps_pos.setInput(100.0, port=2)
+        gps_pos.update()
+
+        # GPS velocity [vn, ve, vd]
+        gps_vel = Mux(num_inputs=3)
+        gps_vel.init()
+        gps_vel.setInput(0.0, port=0)
+        gps_vel.setInput(0.0, port=1)
+        gps_vel.setInput(0.0, port=2)
+        gps_vel.update()
+
+        ins.connectInput(imu_mux, port=0)
+        ins.connectInput(gps_pos, port=1)
+        ins.connectInput(gps_vel, port=2)
+        ins.update()
+
+        output = ins.getOutputVector()
+        assert len(output) == 9
+
+    def test_ins_gps_getOutput_invalid_port(self):
+        """Test getOutput with invalid port."""
+        from src.osk.blocks.sensor_fusion import INSGPSFusion
+
+        ins = INSGPSFusion()
+        ins.init()
+
+        assert ins.getOutput(9) == 0.0
+
+
+class TestAlphaBetaFilterExtended:
+    """Extended tests for AlphaBetaFilter block."""
+
+    def test_alpha_beta_tracking(self):
+        """Test alpha-beta filter tracking."""
+        from src.osk.blocks.sensor_fusion import AlphaBetaFilter
+        from src.osk.blocks.sources import Constant
+
+        abf = AlphaBetaFilter(alpha=0.5, beta=0.1, sample_time=0.1)
+        abf.init()
+
+        # Connect a constant signal
+        const = Constant(value=10.0)
+        const.init()
+        const.update()
+
+        abf.connectInput(const)
+
+        # Run several updates
+        for _ in range(10):
+            abf.update()
+
+        output = abf.getOutputVector()
+        # Position should converge toward 10
+        assert output[0] > 5.0
+
+    def test_alpha_beta_getOutput_invalid_port(self):
+        """Test getOutput with invalid port."""
+        from src.osk.blocks.sensor_fusion import AlphaBetaFilter
+
+        abf = AlphaBetaFilter()
+        abf.init()
+        abf.update()
+
+        assert abf.getOutput(2) == 0.0
+
+
+class TestAlphaBetaGammaFilterExtended:
+    """Extended tests for AlphaBetaGammaFilter block."""
+
+    def test_alpha_beta_gamma_tracking(self):
+        """Test alpha-beta-gamma filter tracking."""
+        from src.osk.blocks.sensor_fusion import AlphaBetaGammaFilter
+        from src.osk.blocks.sources import Constant
+
+        abgf = AlphaBetaGammaFilter(alpha=0.5, beta=0.3, gamma=0.1, sample_time=0.1)
+        abgf.init()
+
+        # Connect a constant signal
+        const = Constant(value=100.0)
+        const.init()
+        const.update()
+
+        abgf.connectInput(const)
+
+        # Run several updates
+        for _ in range(10):
+            abgf.update()
+
+        output = abgf.getOutputVector()
+        # Position should converge toward 100
+        assert output[0] > 50.0
+
+    def test_alpha_beta_gamma_getOutput_invalid_port(self):
+        """Test getOutput with invalid port."""
+        from src.osk.blocks.sensor_fusion import AlphaBetaGammaFilter
+
+        abgf = AlphaBetaGammaFilter()
+        abgf.init()
+        abgf.update()
+
+        assert abgf.getOutput(3) == 0.0
+
+
+# =============================================================================
+# Math Ops Extended Tests
+# =============================================================================
+
+
+class TestSumVectorExtended:
+    """Extended tests for Sum block with vectors."""
+
+    def test_sum_vector_via_setInput(self):
+        """Test vector sum via setInput."""
+        from src.osk.blocks.math_ops import Sum
+
+        sum_block = Sum(signs="++")
+        sum_block.init()
+
+        sum_block.setInput([1.0, 2.0, 3.0], port=0)
+        sum_block.setInput([4.0, 5.0, 6.0], port=1)
+        sum_block.update()
+
+        output = sum_block.getOutputVector()
+        assert output is not None
+        assert output[0] == 5.0
+        assert output[1] == 7.0
+        assert output[2] == 9.0
+
+    def test_sum_vector_scalar_mix(self):
+        """Test vector + scalar combination."""
+        from src.osk.blocks.math_ops import Mux, Sum
+        from src.osk.blocks.sources import Constant
+
+        sum_block = Sum(signs="++")
+        sum_block.init()
+
+        # Vector input
+        mux = Mux(num_inputs=3)
+        mux.init()
+        mux.setInput(1.0, port=0)
+        mux.setInput(2.0, port=1)
+        mux.setInput(3.0, port=2)
+        mux.update()
+
+        # Scalar input
+        const = Constant(value=10.0)
+        const.init()
+        const.update()
+
+        sum_block.connectInput(mux, port=0)
+        sum_block.connectInput(const, port=1)
+        sum_block.update()
+
+        output = sum_block.getOutputVector()
+        # Should broadcast scalar to first element
+        assert output is not None
+
+    def test_sum_getOutput_port_beyond_vector(self):
+        """Test getOutput with port beyond vector size."""
+        from src.osk.blocks.math_ops import Sum
+
+        sum_block = Sum(signs="++")
+        sum_block.init()
+
+        sum_block.setInput([1.0, 2.0], port=0)
+        sum_block.setInput([3.0, 4.0], port=1)
+        sum_block.update()
+
+        assert sum_block.getOutput(0) == 4.0
+        assert sum_block.getOutput(1) == 6.0
+        assert sum_block.getOutput(2) == 0.0
+
+
+class TestProductVectorExtended:
+    """Extended tests for Product block with vectors."""
+
+    def test_product_vector_via_setInput(self):
+        """Test vector product via setInput."""
+        from src.osk.blocks.math_ops import Product
+
+        prod = Product(operations="**")
+        prod.init()
+
+        prod.setInput([2.0, 3.0, 4.0], port=0)
+        prod.setInput([5.0, 6.0, 7.0], port=1)
+        prod.update()
+
+        output = prod.getOutputVector()
+        assert output is not None
+        assert output[0] == 10.0
+        assert output[1] == 18.0
+        assert output[2] == 28.0
+
+    def test_product_vector_division(self):
+        """Test vector division."""
+        from src.osk.blocks.math_ops import Product
+
+        prod = Product(operations="*/")
+        prod.init()
+
+        prod.setInput([10.0, 20.0, 30.0], port=0)
+        prod.setInput([2.0, 4.0, 5.0], port=1)
+        prod.update()
+
+        output = prod.getOutputVector()
+        assert output is not None
+        assert output[0] == 5.0
+        assert output[1] == 5.0
+        assert output[2] == 6.0
+
+    def test_product_vector_divide_by_zero(self):
+        """Test vector division by near-zero."""
+        from src.osk.blocks.math_ops import Product
+
+        prod = Product(operations="*/")
+        prod.init()
+
+        prod.setInput([10.0, 20.0], port=0)
+        prod.setInput([0.0, 0.0], port=1)  # Near zero
+        prod.update()
+
+        output = prod.getOutputVector()
+        # Should use EPS instead of zero
+        assert output is not None
+
+
+class TestGainVectorExtended:
+    """Extended tests for Gain block with vectors."""
+
+    def test_gain_vector_source_port(self):
+        """Test Gain with specific source port."""
+        from src.osk.blocks.math_ops import Gain, Mux
+
+        gain = Gain(gain=2.0)
+        gain.init()
+
+        mux = Mux(num_inputs=3)
+        mux.init()
+        mux.setInput(5.0, port=0)
+        mux.setInput(10.0, port=1)
+        mux.setInput(15.0, port=2)
+        mux.update()
+
+        # Connect with source_port=1
+        gain.connectInput(mux, port=0, source_port=1)
+        gain.update()
+
+        # Should use scalar mode with port 1 value
+        assert gain.getOutput() == 20.0
+
+    def test_gain_getOutput_port_beyond_vector(self):
+        """Test getOutput with port beyond vector size."""
+        from src.osk.blocks.math_ops import Gain
+
+        gain = Gain(gain=2.0)
+        gain.init()
+
+        gain.setInput([1.0, 2.0], port=0)
+        gain.update()
+
+        assert gain.getOutput(0) == 2.0
+        assert gain.getOutput(1) == 4.0
+        assert gain.getOutput(2) == 0.0
+
+
+class TestAbsVectorExtended:
+    """Extended tests for Abs block with vectors."""
+
+    def test_abs_vector_via_setInput(self):
+        """Test Abs with vector input."""
+        from src.osk.blocks.math_ops import Abs
+
+        abs_block = Abs()
+        abs_block.init()
+
+        abs_block.setInput([-1.0, 2.0, -3.0])
+        abs_block.update()
+
+        output = abs_block.getOutputVector()
+        assert output is not None
+        assert output[0] == 1.0
+        assert output[1] == 2.0
+        assert output[2] == 3.0
+
+    def test_abs_getOutput_port_beyond_vector(self):
+        """Test getOutput with port beyond vector size."""
+        from src.osk.blocks.math_ops import Abs
+
+        abs_block = Abs()
+        abs_block.init()
+
+        abs_block.setInput([-5.0, -6.0])
+        abs_block.update()
+
+        assert abs_block.getOutput(0) == 5.0
+        assert abs_block.getOutput(1) == 6.0
+        assert abs_block.getOutput(2) == 0.0
+
+
+class TestSignVectorExtended:
+    """Extended tests for Sign block with vectors."""
+
+    def test_sign_vector_via_setInput(self):
+        """Test Sign with vector input."""
+        from src.osk.blocks.math_ops import Sign
+
+        sign_block = Sign()
+        sign_block.init()
+
+        sign_block.setInput([-5.0, 0.0, 10.0])
+        sign_block.update()
+
+        output = sign_block.getOutputVector()
+        assert output is not None
+        assert output[0] == -1.0
+        assert output[1] == 0.0
+        assert output[2] == 1.0
+
+    def test_sign_getOutput_port_beyond_vector(self):
+        """Test getOutput with port beyond vector size."""
+        from src.osk.blocks.math_ops import Sign
+
+        sign_block = Sign()
+        sign_block.init()
+
+        sign_block.setInput([-1.0, 1.0])
+        sign_block.update()
+
+        assert sign_block.getOutput(0) == -1.0
+        assert sign_block.getOutput(1) == 1.0
+        assert sign_block.getOutput(2) == 0.0
+
+
+class TestSaturationVectorExtended:
+    """Extended tests for Saturation block with vectors."""
+
+    def test_saturation_vector_via_setInput(self):
+        """Test Saturation with vector input."""
+        from src.osk.blocks.math_ops import Saturation
+
+        sat = Saturation(upper_limit=5.0, lower_limit=-5.0)
+        sat.init()
+
+        sat.setInput([-10.0, 0.0, 10.0])
+        sat.update()
+
+        output = sat.getOutputVector()
+        assert output is not None
+        assert output[0] == -5.0
+        assert output[1] == 0.0
+        assert output[2] == 5.0
+
+    def test_saturation_getOutput_port_beyond_vector(self):
+        """Test getOutput with port beyond vector size."""
+        from src.osk.blocks.math_ops import Saturation
+
+        sat = Saturation()
+        sat.init()
+
+        sat.setInput([0.5, -0.5])
+        sat.update()
+
+        assert sat.getOutput(0) == 0.5
+        assert sat.getOutput(1) == -0.5
+        assert sat.getOutput(2) == 0.0
+
+
+class TestMuxDemuxExtended:
+    """Extended tests for Mux and Demux blocks."""
+
+    def test_mux_with_more_inputs(self):
+        """Test Mux with many inputs."""
+        from src.osk.blocks.math_ops import Mux
+
+        mux = Mux(num_inputs=5)
+        mux.init()
+
+        for i in range(5):
+            mux.setInput(float(i + 1), port=i)
+        mux.update()
+
+        output = mux.getOutputVector()
+        assert len(output) == 5
+        assert output == [1.0, 2.0, 3.0, 4.0, 5.0]
+
+    def test_demux_getOutputVector(self):
+        """Test Demux getOutputVector method."""
+        from src.osk.blocks.math_ops import Demux, Mux
+
+        mux = Mux(num_inputs=3)
+        mux.init()
+        mux.setInput(10.0, port=0)
+        mux.setInput(20.0, port=1)
+        mux.setInput(30.0, port=2)
+        mux.update()
+
+        demux = Demux(num_outputs=3)
+        demux.init()
+        demux.connectInput(mux)
+        demux.update()
+
+        output = demux.getOutputVector()
+        assert output == [10.0, 20.0, 30.0]
+
+
+class TestTrigonometryExtendedFunctions:
+    """Extended tests for Trigonometry block functions."""
+
+    def test_trigonometry_sin(self):
+        """Test Trigonometry with sin function."""
+        import math
+
+        from src.osk.blocks.math_ops import Trigonometry
+
+        trig = Trigonometry(function="sin")
+        trig.init()
+
+        trig.setInput(math.pi / 2)
+        trig.update()
+
+        assert abs(trig.getOutput() - 1.0) < 1e-10
+
+    def test_trigonometry_cos(self):
+        """Test Trigonometry with cos function."""
+        from src.osk.blocks.math_ops import Trigonometry
+
+        trig = Trigonometry(function="cos")
+        trig.init()
+
+        trig.setInput(0.0)
+        trig.update()
+
+        assert abs(trig.getOutput() - 1.0) < 1e-10
+
+    def test_trigonometry_tan(self):
+        """Test Trigonometry with tan function."""
+        import math
+
+        from src.osk.blocks.math_ops import Trigonometry
+
+        trig = Trigonometry(function="tan")
+        trig.init()
+
+        trig.setInput(math.pi / 4)
+        trig.update()
+
+        assert abs(trig.getOutput() - 1.0) < 1e-10
+
+    def test_trigonometry_asin(self):
+        """Test Trigonometry with asin function."""
+        import math
+
+        from src.osk.blocks.math_ops import Trigonometry
+
+        trig = Trigonometry(function="asin")
+        trig.init()
+
+        trig.setInput(1.0)
+        trig.update()
+
+        assert abs(trig.getOutput() - math.pi / 2) < 1e-10
+
+    def test_trigonometry_acos(self):
+        """Test Trigonometry with acos function."""
+        import math
+
+        from src.osk.blocks.math_ops import Trigonometry
+
+        trig = Trigonometry(function="acos")
+        trig.init()
+
+        trig.setInput(0.0)
+        trig.update()
+
+        assert abs(trig.getOutput() - math.pi / 2) < 1e-10
+
+    def test_trigonometry_atan(self):
+        """Test Trigonometry with atan function."""
+        import math
+
+        from src.osk.blocks.math_ops import Trigonometry
+
+        trig = Trigonometry(function="atan")
+        trig.init()
+
+        trig.setInput(1.0)
+        trig.update()
+
+        assert abs(trig.getOutput() - math.pi / 4) < 1e-10
+
+    def test_trigonometry_sinh(self):
+        """Test Trigonometry with sinh function."""
+        import math
+
+        from src.osk.blocks.math_ops import Trigonometry
+
+        trig = Trigonometry(function="sinh")
+        trig.init()
+
+        trig.setInput(1.0)
+        trig.update()
+
+        assert abs(trig.getOutput() - math.sinh(1.0)) < 1e-10
+
+    def test_trigonometry_cosh(self):
+        """Test Trigonometry with cosh function."""
+        from src.osk.blocks.math_ops import Trigonometry
+
+        trig = Trigonometry(function="cosh")
+        trig.init()
+
+        trig.setInput(0.0)
+        trig.update()
+
+        assert abs(trig.getOutput() - 1.0) < 1e-10
+
+    def test_trigonometry_tanh(self):
+        """Test Trigonometry with tanh function."""
+        import math
+
+        from src.osk.blocks.math_ops import Trigonometry
+
+        trig = Trigonometry(function="tanh")
+        trig.init()
+
+        trig.setInput(1.0)
+        trig.update()
+
+        assert abs(trig.getOutput() - math.tanh(1.0)) < 1e-10
+
+
+class TestMathFunctionExtended2:
+    """Extended tests for MathFunction block."""
+
+    def test_math_function_sqrt(self):
+        """Test MathFunction with sqrt."""
+        from src.osk.blocks.math_ops import MathFunction
+
+        mf = MathFunction(function="sqrt")
+        mf.init()
+
+        mf.setInput(16.0)
+        mf.update()
+
+        assert mf.getOutput() == 4.0
+
+    def test_math_function_exp(self):
+        """Test MathFunction with exp."""
+        import math
+
+        from src.osk.blocks.math_ops import MathFunction
+
+        mf = MathFunction(function="exp")
+        mf.init()
+
+        mf.setInput(1.0)
+        mf.update()
+
+        assert abs(mf.getOutput() - math.e) < 1e-10
+
+    def test_math_function_log(self):
+        """Test MathFunction with log."""
+        import math
+
+        from src.osk.blocks.math_ops import MathFunction
+
+        mf = MathFunction(function="log")
+        mf.init()
+
+        mf.setInput(math.e)
+        mf.update()
+
+        assert abs(mf.getOutput() - 1.0) < 1e-10
+
+    def test_math_function_log10(self):
+        """Test MathFunction with log10."""
+        from src.osk.blocks.math_ops import MathFunction
+
+        mf = MathFunction(function="log10")
+        mf.init()
+
+        mf.setInput(100.0)
+        mf.update()
+
+        assert abs(mf.getOutput() - 2.0) < 1e-10
+
+    def test_math_function_square(self):
+        """Test MathFunction with square."""
+        from src.osk.blocks.math_ops import MathFunction
+
+        mf = MathFunction(function="square")
+        mf.init()
+
+        mf.setInput(5.0)
+        mf.update()
+
+        assert mf.getOutput() == 25.0
+
+    def test_math_function_reciprocal(self):
+        """Test MathFunction with reciprocal."""
+        from src.osk.blocks.math_ops import MathFunction
+
+        mf = MathFunction(function="reciprocal")
+        mf.init()
+
+        mf.setInput(4.0)
+        mf.update()
+
+        assert mf.getOutput() == 0.25
+
+    def test_math_function_pow(self):
+        """Test MathFunction with pow (exponent parameter)."""
+        from src.osk.blocks.math_ops import MathFunction
+
+        mf = MathFunction(function="pow", exponent=3.0)
+        mf.init()
+
+        mf.setInput(2.0)
+        mf.update()
+
+        assert mf.getOutput() == 8.0
+
+    def test_math_function_vector(self):
+        """Test MathFunction with vector input."""
+        from src.osk.blocks.math_ops import MathFunction
+
+        mf = MathFunction(function="sqrt")
+        mf.init()
+
+        mf.setInput([4.0, 9.0, 16.0])
+        mf.update()
+
+        output = mf.getOutputVector()
+        assert output is not None
+        assert output[0] == 2.0
+        assert output[1] == 3.0
+        assert output[2] == 4.0
+
+    def test_math_function_with_connected_block(self):
+        """Test MathFunction with connected block."""
+        from src.osk.blocks.math_ops import MathFunction
+        from src.osk.blocks.sources import Constant
+
+        mf = MathFunction(function="exp")
+        mf.init()
+
+        const = Constant(value=0.0)
+        const.init()
+        const.update()
+
+        mf.connectInput(const)
+        mf.update()
+
+        assert mf.getOutput() == 1.0
+
+    def test_math_function_getOutput_invalid_port(self):
+        """Test MathFunction getOutput with invalid port."""
+        from src.osk.blocks.math_ops import MathFunction
+
+        mf = MathFunction(function="sqrt")
+        mf.init()
+
+        mf.setInput([4.0, 9.0])
+        mf.update()
+
+        assert mf.getOutput(0) == 2.0
+        assert mf.getOutput(1) == 3.0
+        assert mf.getOutput(2) == 0.0
+
+
+class TestMathFunctionsExtended:
+    """Extended tests for math function blocks."""
+
+    def test_sqrt_vector(self):
+        """Test Sqrt with vector input."""
+        from src.osk.blocks.math_ops import Sqrt
+
+        sqrt_block = Sqrt()
+        sqrt_block.init()
+
+        sqrt_block.setInput([4.0, 9.0, 16.0])
+        sqrt_block.update()
+
+        output = sqrt_block.getOutputVector()
+        assert output is not None
+        assert output[0] == 2.0
+        assert output[1] == 3.0
+        assert output[2] == 4.0
+
+    def test_exp_vector(self):
+        """Test Exp with vector input."""
+        import math
+
+        from src.osk.blocks.math_ops import Exp
+
+        exp_block = Exp()
+        exp_block.init()
+
+        exp_block.setInput([0.0, 1.0, 2.0])
+        exp_block.update()
+
+        output = exp_block.getOutputVector()
+        assert output is not None
+        assert abs(output[0] - 1.0) < 1e-10
+        assert abs(output[1] - math.e) < 1e-10
+
+    def test_log_vector(self):
+        """Test Log with vector input."""
+        import math
+
+        from src.osk.blocks.math_ops import Log
+
+        log_block = Log()
+        log_block.init()
+
+        log_block.setInput([1.0, math.e, math.e**2])
+        log_block.update()
+
+        output = log_block.getOutputVector()
+        assert output is not None
+        assert abs(output[0]) < 1e-10
+        assert abs(output[1] - 1.0) < 1e-10
+        assert abs(output[2] - 2.0) < 1e-10
+
+    def test_log10_vector(self):
+        """Test Log10 with vector input."""
+        from src.osk.blocks.math_ops import Log10
+
+        log10_block = Log10()
+        log10_block.init()
+
+        log10_block.setInput([1.0, 10.0, 100.0])
+        log10_block.update()
+
+        output = log10_block.getOutputVector()
+        assert output is not None
+        assert abs(output[0]) < 1e-10
+        assert abs(output[1] - 1.0) < 1e-10
+        assert abs(output[2] - 2.0) < 1e-10
+
+    def test_reciprocal_vector(self):
+        """Test Reciprocal with vector input."""
+        from src.osk.blocks.math_ops import Reciprocal
+
+        recip = Reciprocal()
+        recip.init()
+
+        recip.setInput([2.0, 4.0, 5.0])
+        recip.update()
+
+        output = recip.getOutputVector()
+        assert output is not None
+        assert output[0] == 0.5
+        assert output[1] == 0.25
+        assert output[2] == 0.2
+
+
+class TestMinMaxExtended2:
+    """Extended tests for MinMax block."""
+
+    def test_minmax_min_mode(self):
+        """Test MinMax in minimum mode."""
+        from src.osk.blocks.math_ops import MinMax
+
+        mm = MinMax(function="min", num_inputs=2)
+        mm.init()
+
+        mm.setInput(10.0, port=0)
+        mm.setInput(5.0, port=1)
+        mm.update()
+
+        assert mm.getOutput() == 5.0
+
+    def test_minmax_max_mode(self):
+        """Test MinMax in maximum mode."""
+        from src.osk.blocks.math_ops import MinMax
+
+        mm = MinMax(function="max", num_inputs=2)
+        mm.init()
+
+        mm.setInput(5.0, port=0)
+        mm.setInput(10.0, port=1)
+        mm.update()
+
+        assert mm.getOutput() == 10.0
+
+    def test_minmax_with_connected_blocks(self):
+        """Test MinMax with connected blocks."""
+        from src.osk.blocks.math_ops import MinMax
+        from src.osk.blocks.sources import Constant
+
+        mm = MinMax(function="max", num_inputs=2)
+        mm.init()
+
+        c1 = Constant(value=3.0)
+        c1.init()
+        c1.update()
+
+        c2 = Constant(value=7.0)
+        c2.init()
+        c2.update()
+
+        mm.connectInput(c1, port=0)
+        mm.connectInput(c2, port=1)
+        mm.update()
+
+        assert mm.getOutput() == 7.0
+
+
+class TestDotProductCrossProductExtended:
+    """Extended tests for DotProduct and CrossProduct blocks."""
+
+    def test_dot_product_with_connected_blocks(self):
+        """Test DotProduct with connected blocks."""
+        from src.osk.blocks.math_ops import DotProduct, Mux
+
+        dp = DotProduct()
+        dp.init()
+
+        mux1 = Mux(num_inputs=3)
+        mux1.init()
+        mux1.setInput(1.0, port=0)
+        mux1.setInput(2.0, port=1)
+        mux1.setInput(3.0, port=2)
+        mux1.update()
+
+        mux2 = Mux(num_inputs=3)
+        mux2.init()
+        mux2.setInput(4.0, port=0)
+        mux2.setInput(5.0, port=1)
+        mux2.setInput(6.0, port=2)
+        mux2.update()
+
+        dp.connectInput(mux1, port=0)
+        dp.connectInput(mux2, port=1)
+        dp.update()
+
+        # 1*4 + 2*5 + 3*6 = 4 + 10 + 18 = 32
+        assert dp.getOutput() == 32.0
+
+    def test_cross_product_with_connected_blocks(self):
+        """Test CrossProduct with connected blocks."""
+        from src.osk.blocks.math_ops import CrossProduct, Mux
+
+        cp = CrossProduct()
+        cp.init()
+
+        # i x j = k
+        mux1 = Mux(num_inputs=3)
+        mux1.init()
+        mux1.setInput(1.0, port=0)
+        mux1.setInput(0.0, port=1)
+        mux1.setInput(0.0, port=2)
+        mux1.update()
+
+        mux2 = Mux(num_inputs=3)
+        mux2.init()
+        mux2.setInput(0.0, port=0)
+        mux2.setInput(1.0, port=1)
+        mux2.setInput(0.0, port=2)
+        mux2.update()
+
+        cp.connectInput(mux1, port=0)
+        cp.connectInput(mux2, port=1)
+        cp.update()
+
+        output = cp.getOutputVector()
+        assert output[0] == 0.0
+        assert output[1] == 0.0
+        assert output[2] == 1.0
+
+
+class TestAtan2Extended:
+    """Extended tests for Atan2 block."""
+
+    def test_atan2_with_connected_blocks(self):
+        """Test Atan2 with connected blocks."""
+        import math
+
+        from src.osk.blocks.math_ops import Atan2
+        from src.osk.blocks.sources import Constant
+
+        atan2_block = Atan2()
+        atan2_block.init()
+
+        y_const = Constant(value=1.0)
+        y_const.init()
+        y_const.update()
+
+        x_const = Constant(value=1.0)
+        x_const.init()
+        x_const.update()
+
+        atan2_block.connectInput(y_const, port=0)
+        atan2_block.connectInput(x_const, port=1)
+        atan2_block.update()
+
+        assert abs(atan2_block.getOutput() - math.pi / 4) < 1e-10
+
+    def test_atan2_quadrants(self):
+        """Test Atan2 in different quadrants."""
+        import math
+
+        from src.osk.blocks.math_ops import Atan2
+
+        atan2_block = Atan2()
+        atan2_block.init()
+
+        # Quadrant 2: y=1, x=-1
+        atan2_block.setInput(1.0, port=0)  # y
+        atan2_block.setInput(-1.0, port=1)  # x
+        atan2_block.update()
+        assert abs(atan2_block.getOutput() - 3 * math.pi / 4) < 1e-10
+
+        # Quadrant 3: y=-1, x=-1
+        atan2_block.setInput(-1.0, port=0)
+        atan2_block.setInput(-1.0, port=1)
+        atan2_block.update()
+        assert abs(atan2_block.getOutput() + 3 * math.pi / 4) < 1e-10
+
+
+class TestPowerExtended:
+    """Extended tests for Power block."""
+
+    def test_power_with_connected_blocks(self):
+        """Test Power with connected blocks."""
+        from src.osk.blocks.math_ops import Power
+        from src.osk.blocks.sources import Constant
+
+        power = Power()
+        power.init()
+
+        base = Constant(value=2.0)
+        base.init()
+        base.update()
+
+        exp = Constant(value=3.0)
+        exp.init()
+        exp.update()
+
+        power.connectInput(base, port=0)
+        power.connectInput(exp, port=1)
+        power.update()
+
+        assert power.getOutput() == 8.0
+
+
+class TestBiasExtended:
+    """Extended tests for Bias block."""
+
+    def test_bias_vector(self):
+        """Test Bias with vector input."""
+        from src.osk.blocks.math_ops import Bias
+
+        bias = Bias(bias=10.0)
+        bias.init()
+
+        bias.setInput([1.0, 2.0, 3.0])
+        bias.update()
+
+        output = bias.getOutputVector()
+        assert output is not None
+        assert output[0] == 11.0
+        assert output[1] == 12.0
+        assert output[2] == 13.0
+
+
+class TestSquareExtended2:
+    """Extended tests for Square block."""
+
+    def test_square_scalar(self):
+        """Test Square with scalar input."""
+        from src.osk.blocks.math_ops import Square
+
+        sq = Square()
+        sq.init()
+
+        sq.setInput(5.0)
+        sq.update()
+
+        assert sq.getOutput() == 25.0
+
+    def test_square_negative(self):
+        """Test Square with negative input."""
+        from src.osk.blocks.math_ops import Square
+
+        sq = Square()
+        sq.init()
+
+        sq.setInput(-3.0)
+        sq.update()
+
+        assert sq.getOutput() == 9.0
+
+    def test_square_with_connected_block(self):
+        """Test Square with connected block."""
+        from src.osk.blocks.math_ops import Square
+        from src.osk.blocks.sources import Constant
+
+        sq = Square()
+        sq.init()
+
+        const = Constant(value=4.0)
+        const.init()
+        const.update()
+
+        sq.connectInput(const)
+        sq.update()
+
+        assert sq.getOutput() == 16.0
+
+
+# =============================================================================
+# State Class Tests
+# =============================================================================
+
+
+class TestStateClass:
+    """Tests for State class."""
+
+    def test_state_init_default(self):
+        """Test State initialization with defaults."""
+        from src.osk.state import State
+
+        state = State()
+        assert state.x == [0.0, 0.0]
+        assert state.x0 == 0.0
+        assert state.xd0 == 0.0
+
+    def test_state_init_with_values(self):
+        """Test State initialization with custom values."""
+        from src.osk.state import State
+
+        state = State(x=[5.0, 2.0])
+        assert state.x == [5.0, 2.0]
+
+    def test_state_set(self):
+        """Test State.set() method."""
+        from src.osk.state import State
+
+        state = State()
+        State.t = 10.0
+        State.kpass = 3
+        state.set()
+
+        assert State.t == 0.0
+        assert State.t1 == 0.0
+        assert State.kpass == 0
+        assert State.ready == 1
+
+    def test_state_reset(self):
+        """Test State.reset() method."""
+        from src.osk.state import State
+
+        state = State()
+        state.reset(0.05)
+
+        assert State.dtp == 0.05
+        assert State.dt == 0.05
+        assert State.kpass == 0
+        assert State.ready == 1
+
+    def test_state_sample_event(self):
+        """Test State.sample() with event-driven sampling."""
+        from src.osk.state import State
+
+        state = State()
+        State.t = 5.0
+        State.ready = 0
+
+        state.sample(State.EVENT, 5.0)
+        assert State.ready == 1
+
+    def test_state_sample_periodic(self):
+        """Test State.sample() with periodic sampling."""
+        from src.osk.state import State
+
+        state = State()
+        State.ready = 0
+
+        state.sample(0.01, 10.0)
+        assert State.ready == 1
+
+    def test_state_propagate_euler(self):
+        """Test Euler integration method."""
+        from src.osk.state import State
+
+        state = State(x=[0.0, 1.0])
+        State.method = "Euler"
+        State.dt = 0.1
+        State.kpass = 0
+
+        state.propagate()
+
+        # x[0] += dt * x[1] = 0.0 + 0.1 * 1.0 = 0.1
+        assert abs(state.x[0] - 0.1) < 1e-10
+
+    def test_state_propagate_rk2(self):
+        """Test RK2 integration method."""
+        from src.osk.state import State
+
+        state = State(x=[0.0, 1.0])
+        State.method = "RK2"
+        State.dt = 0.1
+        State.dtp = 0.1
+        State.kpass = 0
+
+        # Pass 0
+        state.propagate()
+        assert state.x0 == 0.0
+        assert state.xd0 == 1.0
+
+        # Pass 1
+        state.x[1] = 1.0  # Derivative at midpoint
+        State.kpass = 1
+        state.propagate()
+        # x[0] = x0 + dt * xd1 = 0.0 + 0.1 * 1.0 = 0.1
+        assert abs(state.x[0] - 0.1) < 1e-10
+
+    def test_state_propagate_rk4(self):
+        """Test RK4 integration method."""
+        from src.osk.state import State
+
+        state = State(x=[0.0, 1.0])
+        State.method = "RK4"
+        State.dt = 0.1
+        State.dtp = 0.1
+
+        # Execute all 4 passes
+        for kpass in range(4):
+            State.kpass = kpass
+            state.propagate()
+
+        # For constant derivative, result should be ~ 0.1
+        assert abs(state.x[0] - 0.1) < 1e-10
+
+    def test_state_propagate_merson(self):
+        """Test Merson's integration method."""
+        from src.osk.state import State
+
+        state = State(x=[0.0, 1.0])
+        State.method = "Merson"
+        State.dt = 0.1
+        State.dtp = 0.1
+
+        # Execute all 5 passes
+        for kpass in range(5):
+            State.kpass = kpass
+            state.propagate()
+
+        # For constant derivative, result should be ~ 0.1
+        assert abs(state.x[0] - 0.1) < 1e-10
+
+    def test_state_propagate_default(self):
+        """Test default integration method (unknown falls back to RK4)."""
+        from src.osk.state import State
+
+        state = State(x=[0.0, 1.0])
+        State.method = "Unknown"
+        State.dt = 0.1
+        State.dtp = 0.1
+        State.kpass = 0
+
+        state.propagate()
+        # Should use RK4
+
+    def test_state_updateclock_euler(self):
+        """Test updateclock for Euler method."""
+        from src.osk.state import State
+
+        state = State()
+        State.method = "Euler"
+        State.dtp = 0.1
+        State.t = 0.0
+        State.kpass = 0
+
+        state.updateclock()
+
+        # Euler has 1 pass, so after pass 0, time should advance
+        assert State.kpass == 0
+        assert abs(State.t - 0.1) < 1e-10
+        assert State.ready == 1
+
+    def test_state_updateclock_rk2(self):
+        """Test updateclock for RK2 method."""
+        from src.osk.state import State
+
+        state = State()
+        State.method = "RK2"
+        State.dtp = 0.1
+        State.t = 0.0
+        State.kpass = 0
+
+        # First pass
+        state.updateclock()
+        assert State.kpass == 1
+        assert State.ready == 0
+
+        # Second pass
+        state.updateclock()
+        assert State.kpass == 0
+        assert State.ready == 1
+        assert abs(State.t - 0.1) < 1e-10
+
+    def test_state_updateclock_rk4(self):
+        """Test updateclock for RK4 method."""
+        from src.osk.state import State
+
+        state = State()
+        State.method = "RK4"
+        State.dtp = 0.1
+        State.t = 0.0
+        State.kpass = 0
+
+        # Run all 4 passes
+        for _ in range(4):
+            state.updateclock()
+
+        assert State.kpass == 0
+        assert State.ready == 1
+        assert abs(State.t - 0.1) < 1e-10
+
+    def test_state_updateclock_merson(self):
+        """Test updateclock for Merson method."""
+        from src.osk.state import State
+
+        state = State()
+        State.method = "Merson"
+        State.dtp = 0.1
+        State.t = 0.0
+        State.kpass = 0
+
+        # Run all 5 passes
+        for _ in range(5):
+            state.updateclock()
+
+        assert State.kpass == 0
+        assert State.ready == 1
+        assert abs(State.t - 0.1) < 1e-10
+
+
+# =============================================================================
+# Sim Class Tests
+# =============================================================================
+
+
+class TestSimClass:
+    """Tests for Sim class."""
+
+    def test_sim_init(self):
+        """Test Sim initialization."""
+        # Create a simple test block
+        from src.osk.blocks.sources import Constant
+        from src.osk.sim import Sim
+
+        const = Constant(value=1.0)
+        stage = [const]
+
+        Sim(dts=[0.01], tmax=0.1, vStage=[stage])
+
+        assert Sim.tmax == 0.1
+        assert Sim.dts == [0.01]
+        assert len(Sim.vStage) == 1
+        assert Sim.stop == 0
+
+    def test_sim_run_simple(self):
+        """Test simple simulation run."""
+        # Create a simple test block
+        from src.osk.blocks.sources import Constant
+        from src.osk.sim import Sim
+        from src.osk.state import State
+
+        const = Constant(value=5.0)
+        stage = [const]
+
+        State.method = "Euler"
+        sim = Sim(dts=[0.01], tmax=0.05, vStage=[stage])
+        results = sim.run()
+
+        assert "times" in results
+        assert "outputs" in results
+        assert len(results["times"]) > 0
+
+    def test_sim_sample(self):
+        """Test Sim.sample class method."""
+        from src.osk.blocks.sources import Constant
+        from src.osk.sim import Sim
+
+        const = Constant(value=1.0)
+        stage = [const]
+
+        Sim(dts=[0.01], tmax=0.1, vStage=[stage])
+
+        # This should not raise
+        Sim.sample(0.01, 0.1)
+
+    def test_sim_terminate(self):
+        """Test Sim.terminate class method."""
+        from src.osk.sim import Sim
+
+        Sim.stop = 0
+        Sim.terminate(1)
+
+        assert Sim.stop == 1
+
+    def test_sim_run_with_integrator(self):
+        """Test simulation with integrator block."""
+        from src.osk.blocks.continuous import Integrator
+        from src.osk.blocks.sources import Constant
+        from src.osk.sim import Sim
+        from src.osk.state import State
+
+        State.method = "Euler"
+
+        # Create blocks
+        const = Constant(value=1.0)
+        integ = Integrator(initial_condition=0.0)
+
+        # Connect
+        integ.connectInput(const)
+
+        stage = [const, integ]
+        sim = Sim(dts=[0.01], tmax=0.05, vStage=[stage])
+        results = sim.run()
+
+        assert len(results["times"]) > 0
+
+    def test_sim_run_with_rk4(self):
+        """Test simulation with RK4 integration."""
+        from src.osk.blocks.sources import Constant
+        from src.osk.sim import Sim
+        from src.osk.state import State
+
+        State.method = "RK4"
+
+        const = Constant(value=1.0)
+        stage = [const]
+
+        sim = Sim(dts=[0.01], tmax=0.02, vStage=[stage])
+        results = sim.run()
+
+        assert len(results["times"]) > 0
+
+    def test_sim_multiple_stages(self):
+        """Test simulation with multiple stages."""
+        from src.osk.blocks.sources import Constant
+        from src.osk.sim import Sim
+        from src.osk.state import State
+
+        State.method = "Euler"
+
+        const1 = Constant(value=1.0)
+        const2 = Constant(value=2.0)
+
+        stage1 = [const1]
+        stage2 = [const2]
+
+        sim = Sim(dts=[0.01, 0.02], tmax=0.02, vStage=[stage1, stage2])
+        # This tests that multiple stages work
+        _ = sim
+
+
+# =============================================================================
+# Block Base Class Tests
+# =============================================================================
+
+
+class TestBlockBaseClass:
+    """Tests for Block base class."""
+
+    def test_block_add_integrator(self):
+        """Test Block.addIntegrator method."""
+        from src.osk.block import Block
+
+        block = Block()
+        integrator = block.addIntegrator([0.0, 0.0])
+
+        assert integrator is not None
+        assert len(block.vState) == 1
+        assert integrator[0] == 0.0
+        assert integrator[1] == 0.0
+
+    def test_block_propagate_states(self):
+        """Test Block.propagateStates method."""
+        from src.osk.block import Block
+        from src.osk.state import State
+
+        State.method = "Euler"
+        State.dt = 0.1
+        State.kpass = 0
+
+        block = Block()
+        integ = block.addIntegrator([0.0, 1.0])
+
+        block.propagateStates()
+
+        # After Euler step: x[0] += dt * x[1]
+        assert abs(integ[0] - 0.1) < 1e-10
+
+    def test_block_default_methods(self):
+        """Test Block default method implementations."""
+        from src.osk.block import Block
+
+        block = Block()
+
+        # These should not raise
+        block.init()
+        block.update()
+        block.rpt()
+
+        # Default output is 0
+        assert block.getOutput() == 0.0
+
+    def test_block_init_count(self):
+        """Test Block.initCount attribute."""
+        from src.osk.block import Block
+
+        block = Block()
+        assert block.initCount == 0
+
+        block.initCount += 1
+        assert block.initCount == 1

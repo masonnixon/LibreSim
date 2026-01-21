@@ -73,9 +73,16 @@ class Scope(Block):
                 # Get the source port index for this input
                 source_port = self.input_source_ports[i] if i < len(self.input_source_ports) else 0
 
+                # Check if source is a multi-output block (like Demux) where each port is scalar
+                # Demux has getOutputVector() that returns all outputs, but each port is scalar
+                # Note: Selector is NOT included here because it genuinely outputs a vector
+                # when multiple indices are selected (single output port with vector value)
+                is_multi_output_block = block.__class__.__name__ == "Demux"
+
                 # Check if source has vector output (Mux, Outport with vector, etc.)
+                # BUT skip vector handling for multi-output blocks - their outputs are scalars
                 vec = None
-                if hasattr(block, "getOutputVector"):
+                if hasattr(block, "getOutputVector") and not is_multi_output_block:
                     vec = block.getOutputVector()
 
                 if vec is not None and len(vec) > 1:
