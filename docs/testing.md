@@ -38,18 +38,20 @@ LibreSim employs three types of tests:
 
 | Metric | Value |
 |--------|-------|
-| **Tests Passing** | 425 |
-| **Overall Coverage** | 30% |
+| **Tests Passing** | 454 |
+| **Overall Coverage** | 31% |
 | **Test Framework** | Vitest |
 | **Test Files** | 11 |
 
-**High-coverage modules (100%):**
-- `src/blocks/` - Block definitions and registry
-- `src/store/simulationStore.ts` - Simulation state management
-- `src/store/uiStore.ts` - UI state management
-- `src/types/` - TypeScript type definitions
-- `src/utils/nanoid.ts` - ID generation
-- `src/utils/mdlExporter.ts` - MDL export
+**High-coverage modules (90%+):**
+- `src/blocks/` - Block definitions and registry (100%)
+- `src/store/simulationStore.ts` - Simulation state management (100%)
+- `src/store/uiStore.ts` - UI state management (100%)
+- `src/types/` - TypeScript type definitions (100%)
+- `src/utils/nanoid.ts` - ID generation (100%)
+- `src/utils/mdlExporter.ts` - MDL export (100%)
+- `src/api/client.ts` - API client (98%)
+- `src/store/libraryStore.ts` - Library state management (94%)
 
 **Moderate-coverage modules (50-75%):**
 - `src/store/modelStore.ts` - Model state management (54%)
@@ -57,7 +59,6 @@ LibreSim employs three types of tests:
 
 **Lower-coverage modules (needs improvement):**
 - `src/components/` - React components (0% - need component tests with React Testing Library)
-- `src/api/client.ts` - API client (44% - WebSocket tests present, axios not mocked)
 
 **Test files:**
 - `src/api/client.test.ts` - API client tests

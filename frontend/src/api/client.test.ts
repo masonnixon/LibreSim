@@ -1,8 +1,29 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { SimulationWebSocket } from './client'
+import { SimulationWebSocket, api } from './client'
+import axios from 'axios'
 
-// Note: The api object relies on axios which is complex to mock at module level
-// We skip those tests and focus on SimulationWebSocket which can be properly tested
+// Mock axios
+vi.mock('axios', () => {
+  const mockAxiosInstance = {
+    get: vi.fn(),
+    post: vi.fn(),
+    put: vi.fn(),
+    delete: vi.fn(),
+  }
+  return {
+    default: {
+      create: vi.fn(() => mockAxiosInstance),
+    },
+  }
+})
+
+// Get the mocked axios instance
+const mockAxiosInstance = axios.create() as {
+  get: ReturnType<typeof vi.fn>
+  post: ReturnType<typeof vi.fn>
+  put: ReturnType<typeof vi.fn>
+  delete: ReturnType<typeof vi.fn>
+}
 
 describe('SimulationWebSocket', () => {
   let mockWebSocket: {
@@ -235,5 +256,313 @@ describe('SimulationWebSocket', () => {
     expect(MockWebSocketClass).toHaveBeenCalledTimes(1)
 
     vi.useRealTimers()
+  })
+})
+
+describe('api', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  describe('model operations', () => {
+    it('getModels fetches models list', async () => {
+      const mockModels = [{ id: '1', metadata: { name: 'Test' } }]
+      mockAxiosInstance.get.mockResolvedValueOnce({ data: mockModels })
+
+      const result = await api.getModels()
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/models')
+      expect(result).toEqual(mockModels)
+    })
+
+    it('getModel fetches single model', async () => {
+      const mockModel = { id: '1', metadata: { name: 'Test' } }
+      mockAxiosInstance.get.mockResolvedValueOnce({ data: mockModel })
+
+      const result = await api.getModel('1')
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/models/1')
+      expect(result).toEqual(mockModel)
+    })
+
+    it('saveModel creates new model when no id', async () => {
+      const mockModel = { metadata: { name: 'New Model' }, blocks: [], connections: [] }
+      const savedModel = { ...mockModel, id: 'new-id' }
+      mockAxiosInstance.post.mockResolvedValueOnce({ data: savedModel })
+
+      const result = await api.saveModel(mockModel as any)
+
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/models', mockModel)
+      expect(result).toEqual(savedModel)
+    })
+
+    it('saveModel updates existing model when has id', async () => {
+      const mockModel = { id: '1', metadata: { name: 'Updated' }, blocks: [], connections: [] }
+      mockAxiosInstance.put.mockResolvedValueOnce({ data: mockModel })
+
+      const result = await api.saveModel(mockModel as any)
+
+      expect(mockAxiosInstance.put).toHaveBeenCalledWith('/models/1', mockModel)
+      expect(result).toEqual(mockModel)
+    })
+
+    it('deleteModel deletes a model', async () => {
+      mockAxiosInstance.delete.mockResolvedValueOnce({})
+
+      await api.deleteModel('1')
+
+      expect(mockAxiosInstance.delete).toHaveBeenCalledWith('/models/1')
+    })
+  })
+
+  describe('simulation operations', () => {
+    it('validateModel validates a model', async () => {
+      const mockResult = { valid: true, errors: [] }
+      mockAxiosInstance.post.mockResolvedValueOnce({ data: mockResult })
+
+      const result = await api.validateModel('1')
+
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/models/1/validate')
+      expect(result).toEqual(mockResult)
+    })
+
+    it('compileModel compiles a model', async () => {
+      const mockResult = { success: true, message: 'Compiled' }
+      mockAxiosInstance.post.mockResolvedValueOnce({ data: mockResult })
+
+      const result = await api.compileModel('1')
+
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/models/1/compile')
+      expect(result).toEqual(mockResult)
+    })
+
+    it('startSimulation starts a simulation', async () => {
+      const mockModel = { id: '1' }
+      const mockConfig = { solver: 'rk4', startTime: 0, stopTime: 10, stepSize: 0.01 }
+      const mockResult = { sessionId: 'session-1' }
+      mockAxiosInstance.post.mockResolvedValueOnce({ data: mockResult })
+
+      const result = await api.startSimulation(mockModel as any, mockConfig)
+
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/simulate/start', {
+        model: mockModel,
+        config: mockConfig,
+      })
+      expect(result).toEqual(mockResult)
+    })
+
+    it('stopSimulation stops a simulation', async () => {
+      mockAxiosInstance.post.mockResolvedValueOnce({})
+
+      await api.stopSimulation()
+
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/simulate/stop')
+    })
+
+    it('resetSimulation resets a simulation', async () => {
+      const mockResult = { success: true, message: 'Reset', currentTime: 0, progress: 0, status: 'idle' }
+      mockAxiosInstance.post.mockResolvedValueOnce({ data: mockResult })
+
+      const result = await api.resetSimulation()
+
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/simulate/reset')
+      expect(result).toEqual(mockResult)
+    })
+
+    it('pauseSimulation pauses a simulation', async () => {
+      mockAxiosInstance.post.mockResolvedValueOnce({})
+
+      await api.pauseSimulation()
+
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/simulate/pause')
+    })
+
+    it('resumeSimulation resumes a simulation', async () => {
+      mockAxiosInstance.post.mockResolvedValueOnce({})
+
+      await api.resumeSimulation()
+
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/simulate/resume')
+    })
+
+    it('getSimulationStatus gets simulation status', async () => {
+      const mockResult = { status: 'running', progress: 0.5 }
+      mockAxiosInstance.get.mockResolvedValueOnce({ data: mockResult })
+
+      const result = await api.getSimulationStatus()
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/simulate/status')
+      expect(result).toEqual(mockResult)
+    })
+
+    it('getSimulationResults gets simulation results', async () => {
+      const mockResult = { signals: [], statistics: {} }
+      mockAxiosInstance.get.mockResolvedValueOnce({ data: mockResult })
+
+      const result = await api.getSimulationResults()
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/simulate/results')
+      expect(result).toEqual(mockResult)
+    })
+  })
+
+  describe('step mode operations', () => {
+    it('initStepMode initializes step mode', async () => {
+      const mockModel = { id: '1' }
+      const mockConfig = { solver: 'rk4', startTime: 0, stopTime: 10, stepSize: 0.01 }
+      const mockResult = { success: true, sessionId: 's1', currentTime: 0, status: 'step_mode' }
+      mockAxiosInstance.post.mockResolvedValueOnce({ data: mockResult })
+
+      const result = await api.initStepMode(mockModel as any, mockConfig)
+
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/simulate/step/init', {
+        model: mockModel,
+        config: mockConfig,
+      })
+      expect(result).toEqual(mockResult)
+    })
+
+    it('stepForward advances simulation', async () => {
+      const mockResult = {
+        success: true,
+        stepsExecuted: 1,
+        currentTime: 0.01,
+        progress: 0.001,
+        completed: false,
+        status: 'step_mode',
+        historySize: 1,
+      }
+      mockAxiosInstance.post.mockResolvedValueOnce({ data: mockResult })
+
+      const result = await api.stepForward(1)
+
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/simulate/step/forward', { numSteps: 1 })
+      expect(result).toEqual(mockResult)
+    })
+
+    it('stepBackward reverses simulation', async () => {
+      const mockResult = {
+        success: true,
+        stepsExecuted: 1,
+        currentTime: 0,
+        progress: 0,
+        historySize: 0,
+        status: 'step_mode',
+      }
+      mockAxiosInstance.post.mockResolvedValueOnce({ data: mockResult })
+
+      const result = await api.stepBackward(1)
+
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/simulate/step/backward', { numSteps: 1 })
+      expect(result).toEqual(mockResult)
+    })
+
+    it('resetStepMode resets step mode', async () => {
+      const mockResult = { success: true, currentTime: 0, status: 'step_mode' }
+      mockAxiosInstance.post.mockResolvedValueOnce({ data: mockResult })
+
+      const result = await api.resetStepMode()
+
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/simulate/step/reset')
+      expect(result).toEqual(mockResult)
+    })
+
+    it('continueFromStepMode continues simulation', async () => {
+      const mockResult = { success: true, currentTime: 0.5, status: 'running' }
+      mockAxiosInstance.post.mockResolvedValueOnce({ data: mockResult })
+
+      const result = await api.continueFromStepMode()
+
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/simulate/step/continue')
+      expect(result).toEqual(mockResult)
+    })
+
+    it('enterStepMode enters step mode from running', async () => {
+      const mockResult = {
+        success: true,
+        currentTime: 0.5,
+        progress: 0.05,
+        status: 'step_mode',
+        historySize: 1,
+      }
+      mockAxiosInstance.post.mockResolvedValueOnce({ data: mockResult })
+
+      const result = await api.enterStepMode()
+
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/simulate/step/enter')
+      expect(result).toEqual(mockResult)
+    })
+  })
+
+  describe('import operations', () => {
+    it('importMDL imports MDL file', async () => {
+      const mockFile = new File(['content'], 'test.mdl', { type: 'text/plain' })
+      const mockModel = { id: '1', metadata: { name: 'Imported' } }
+      mockAxiosInstance.post.mockResolvedValueOnce({ data: mockModel })
+
+      const result = await api.importMDL(mockFile)
+
+      expect(mockAxiosInstance.post).toHaveBeenCalled()
+      // Verify FormData was used
+      const callArgs = mockAxiosInstance.post.mock.calls[0]
+      expect(callArgs[0]).toBe('/import/mdl')
+      expect(result).toEqual(mockModel)
+    })
+  })
+
+  describe('block library operations', () => {
+    it('getBlockDefinitions fetches block definitions', async () => {
+      const mockBlocks = [{ type: 'constant', name: 'Constant' }]
+      mockAxiosInstance.get.mockResolvedValueOnce({ data: mockBlocks })
+
+      const result = await api.getBlockDefinitions()
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/blocks')
+      expect(result).toEqual(mockBlocks)
+    })
+  })
+
+  describe('documentation operations', () => {
+    it('getProjectReadme fetches project readme', async () => {
+      const mockReadme = '# Project'
+      mockAxiosInstance.get.mockResolvedValueOnce({ data: mockReadme })
+
+      const result = await api.getProjectReadme()
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/docs/readme', expect.any(Object))
+      expect(result).toEqual(mockReadme)
+    })
+
+    it('getExamplesReadme fetches examples readme', async () => {
+      const mockReadme = '# Examples'
+      mockAxiosInstance.get.mockResolvedValueOnce({ data: mockReadme })
+
+      const result = await api.getExamplesReadme()
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/docs/examples', expect.any(Object))
+      expect(result).toEqual(mockReadme)
+    })
+  })
+
+  describe('examples operations', () => {
+    it('getExampleList fetches examples list', async () => {
+      const mockExamples = [{ id: '1', name: 'Test', description: 'Desc', category: 'basic' }]
+      mockAxiosInstance.get.mockResolvedValueOnce({ data: mockExamples })
+
+      const result = await api.getExampleList()
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/examples')
+      expect(result).toEqual(mockExamples)
+    })
+
+    it('getExample fetches single example', async () => {
+      const mockModel = { id: '1', metadata: { name: 'Example' } }
+      mockAxiosInstance.get.mockResolvedValueOnce({ data: mockModel })
+
+      const result = await api.getExample('1')
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/examples/1')
+      expect(result).toEqual(mockModel)
+    })
   })
 })

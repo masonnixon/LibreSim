@@ -386,3 +386,58 @@ describe('useLibraries hook', () => {
     expect(libraries).toHaveLength(1)
   })
 })
+
+describe('duplicate block handling', () => {
+  beforeEach(() => {
+    useLibraryStore.getState().clearAllLibraries()
+  })
+
+  it('fails when reimporting same library without replaceExisting', () => {
+    // Import library first time
+    const libraryData = createMockLibraryData('Test Library')
+    useLibraryStore.getState().importLibrary(libraryData)
+
+    // Try to import same library again without replaceExisting
+    // This should fail at the library level (not block level)
+    const result = useLibraryStore.getState().importLibrary(libraryData, { replaceExisting: false })
+
+    // Should have error about library already existing
+    expect(result.success).toBe(false)
+    expect(result.errors.some(e => e.includes('already exists'))).toBe(true)
+  })
+
+  it('replaces library when replaceExisting is true', () => {
+    // Import first library
+    const libraryData1 = createMockLibraryData('Test Library')
+    useLibraryStore.getState().importLibrary(libraryData1)
+
+    // Import same library again with replaceExisting
+    const libraryData2 = createMockLibraryData('Test Library')
+    libraryData2.description = 'Updated description'
+
+    const result = useLibraryStore.getState().importLibrary(libraryData2, { replaceExisting: true })
+
+    // Should succeed
+    expect(result.success).toBe(true)
+    expect(result.errors).toHaveLength(0)
+
+    // Library should be updated
+    const library = useLibraryStore.getState().libraries.find(l => l.name === 'Test Library')
+    expect(library?.description).toBe('Updated description')
+  })
+
+  it('allows importing libraries with different names', () => {
+    // Import first library
+    const libraryData1 = createMockLibraryData('Library1')
+    const result1 = useLibraryStore.getState().importLibrary(libraryData1)
+
+    // Import second library with different name
+    const libraryData2 = createMockLibraryData('Library2')
+    const result2 = useLibraryStore.getState().importLibrary(libraryData2)
+
+    // Both should succeed
+    expect(result1.success).toBe(true)
+    expect(result2.success).toBe(true)
+    expect(useLibraryStore.getState().libraries).toHaveLength(2)
+  })
+})
