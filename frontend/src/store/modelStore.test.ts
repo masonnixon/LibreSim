@@ -2116,4 +2116,813 @@ describe('useModelStore', () => {
       expect(useModelStore.getState().model?.connections.length).toBe(0)
     })
   })
+
+  describe('updateBlockParameters dynamic port updates', () => {
+    beforeEach(() => {
+      useModelStore.getState().createNewModel('Test Model')
+    })
+
+    it('clamps mux numInputs to valid range', () => {
+      const muxDef: BlockDefinition = {
+        type: 'mux',
+        name: 'Mux',
+        category: 'routing',
+        description: 'A mux block',
+        inputs: [
+          { name: 'in1', dataType: 'double', dimensions: [1] },
+          { name: 'in2', dataType: 'double', dimensions: [1] },
+        ],
+        outputs: [{ name: 'out', dataType: 'double', dimensions: [2] }],
+        parameters: [{ name: 'numInputs', label: 'Number of Inputs', type: 'number', default: 2 }],
+      }
+
+      const id = useModelStore.getState().addBlock(muxDef, { x: 100, y: 100 })
+
+      // Try setting too low - should clamp to 2
+      useModelStore.getState().updateBlockParameters(id, { numInputs: 0 })
+      let block = useModelStore.getState().model?.blocks.find(b => b.id === id)
+      expect(block?.inputPorts.length).toBe(2)
+
+      // Try setting too high - should clamp to 32
+      useModelStore.getState().updateBlockParameters(id, { numInputs: 100 })
+      block = useModelStore.getState().model?.blocks.find(b => b.id === id)
+      expect(block?.inputPorts.length).toBe(32)
+    })
+
+    it('clamps demux numOutputs to valid range', () => {
+      const demuxDef: BlockDefinition = {
+        type: 'demux',
+        name: 'Demux',
+        category: 'routing',
+        description: 'A demux block',
+        inputs: [{ name: 'in', dataType: 'double', dimensions: [2] }],
+        outputs: [
+          { name: 'out1', dataType: 'double', dimensions: [1] },
+          { name: 'out2', dataType: 'double', dimensions: [1] },
+        ],
+        parameters: [{ name: 'numOutputs', label: 'Number of Outputs', type: 'number', default: 2 }],
+      }
+
+      const id = useModelStore.getState().addBlock(demuxDef, { x: 100, y: 100 })
+
+      // Try setting too low - should clamp to 2
+      useModelStore.getState().updateBlockParameters(id, { numOutputs: 1 })
+      let block = useModelStore.getState().model?.blocks.find(b => b.id === id)
+      expect(block?.outputPorts.length).toBe(2)
+
+      // Try setting too high - should clamp to 32
+      useModelStore.getState().updateBlockParameters(id, { numOutputs: 50 })
+      block = useModelStore.getState().model?.blocks.find(b => b.id === id)
+      expect(block?.outputPorts.length).toBe(32)
+    })
+
+    it('clamps scope numInputs to valid range', () => {
+      const scopeDef: BlockDefinition = {
+        type: 'scope',
+        name: 'Scope',
+        category: 'sinks',
+        description: 'A scope block',
+        inputs: [{ name: 'in1', dataType: 'double', dimensions: [1] }],
+        outputs: [],
+        parameters: [{ name: 'numInputs', label: 'Number of Inputs', type: 'number', default: 1 }],
+      }
+
+      const id = useModelStore.getState().addBlock(scopeDef, { x: 100, y: 100 })
+
+      // Try setting to 0 - should clamp to 1
+      useModelStore.getState().updateBlockParameters(id, { numInputs: 0 })
+      let block = useModelStore.getState().model?.blocks.find(b => b.id === id)
+      expect(block?.inputPorts.length).toBe(1)
+
+      // Try setting too high - should clamp to 16
+      useModelStore.getState().updateBlockParameters(id, { numInputs: 100 })
+      block = useModelStore.getState().model?.blocks.find(b => b.id === id)
+      expect(block?.inputPorts.length).toBe(16)
+    })
+
+    it('handles integrator externalIC parameter', () => {
+      const integratorDef: BlockDefinition = {
+        type: 'integrator',
+        name: 'Integrator',
+        category: 'continuous',
+        description: 'An integrator block',
+        inputs: [{ name: 'in', dataType: 'double', dimensions: [1] }],
+        outputs: [{ name: 'out', dataType: 'double', dimensions: [1] }],
+        parameters: [{ name: 'externalIC', label: 'External IC', type: 'boolean', default: false }],
+      }
+
+      const id = useModelStore.getState().addBlock(integratorDef, { x: 100, y: 100 })
+
+      // Initially should have 1 input
+      let block = useModelStore.getState().model?.blocks.find(b => b.id === id)
+      expect(block?.inputPorts.length).toBe(1)
+
+      // Enable external IC - should have 2 inputs
+      useModelStore.getState().updateBlockParameters(id, { externalIC: true })
+      block = useModelStore.getState().model?.blocks.find(b => b.id === id)
+      expect(block?.inputPorts.length).toBe(2)
+      expect(block?.inputPorts[1].name).toBe('x0')
+
+      // Disable external IC - should go back to 1 input
+      useModelStore.getState().updateBlockParameters(id, { externalIC: false })
+      block = useModelStore.getState().model?.blocks.find(b => b.id === id)
+      expect(block?.inputPorts.length).toBe(1)
+    })
+
+    it('handles reshape outputDimensions parameter', () => {
+      const reshapeDef: BlockDefinition = {
+        type: 'reshape',
+        name: 'Reshape',
+        category: 'routing',
+        description: 'A reshape block',
+        inputs: [{ name: 'in', dataType: 'double', dimensions: [1] }],
+        outputs: [{ name: 'out', dataType: 'double', dimensions: [1] }],
+        parameters: [{ name: 'outputDimensions', label: 'Output Dimensions', type: 'string', default: '[1]' }],
+      }
+
+      const id = useModelStore.getState().addBlock(reshapeDef, { x: 100, y: 100 })
+
+      // Set valid JSON dimensions
+      useModelStore.getState().updateBlockParameters(id, { outputDimensions: '[3, 4]' })
+      let block = useModelStore.getState().model?.blocks.find(b => b.id === id)
+      expect(block?.outputPorts[0].dimensions).toEqual([3, 4])
+
+      // Set invalid JSON but parseable string
+      useModelStore.getState().updateBlockParameters(id, { outputDimensions: '5x6' })
+      block = useModelStore.getState().model?.blocks.find(b => b.id === id)
+      expect(block?.outputPorts[0].dimensions).toEqual([5, 6])
+    })
+
+    it('removes orphaned connections when ports change', () => {
+      const scopeDef: BlockDefinition = {
+        type: 'scope',
+        name: 'Scope',
+        category: 'sinks',
+        description: 'A scope block',
+        inputs: [
+          { name: 'in1', dataType: 'double', dimensions: [1] },
+          { name: 'in2', dataType: 'double', dimensions: [1] },
+          { name: 'in3', dataType: 'double', dimensions: [1] },
+        ],
+        outputs: [],
+        parameters: [{ name: 'numInputs', label: 'Number of Inputs', type: 'number', default: 3 }],
+      }
+
+      const constDef: BlockDefinition = {
+        type: 'constant',
+        name: 'Constant',
+        category: 'sources',
+        description: 'A constant block',
+        inputs: [],
+        outputs: [{ name: 'out', dataType: 'double', dimensions: [1] }],
+        parameters: [],
+      }
+
+      const scopeId = useModelStore.getState().addBlock(scopeDef, { x: 300, y: 100 })
+      const constId = useModelStore.getState().addBlock(constDef, { x: 100, y: 100 })
+
+      const scopeBlock = useModelStore.getState().model?.blocks.find(b => b.id === scopeId)
+      const constBlock = useModelStore.getState().model?.blocks.find(b => b.id === constId)
+
+      // Connect to the third input port
+      if (scopeBlock && constBlock) {
+        useModelStore.getState().addConnection({
+          sourceBlockId: constId,
+          sourcePortId: constBlock.outputPorts[0].id,
+          targetBlockId: scopeId,
+          targetPortId: scopeBlock.inputPorts[2].id,
+        })
+      }
+
+      expect(useModelStore.getState().model?.connections.length).toBe(1)
+
+      // Reduce scope inputs to 1 - should remove the orphaned connection
+      useModelStore.getState().updateBlockParameters(scopeId, { numInputs: 1 })
+
+      expect(useModelStore.getState().model?.connections.length).toBe(0)
+    })
+  })
+
+  describe('operations without model', () => {
+    beforeEach(() => {
+      useModelStore.setState({ model: null })
+    })
+
+    it('removeBlock does nothing when no model', () => {
+      expect(() => useModelStore.getState().removeBlock('any-id')).not.toThrow()
+    })
+
+    it('updateBlockPosition does nothing when no model', () => {
+      expect(() => useModelStore.getState().updateBlockPosition('any-id', { x: 0, y: 0 })).not.toThrow()
+    })
+
+    it('updateBlockSize does nothing when no model', () => {
+      expect(() => useModelStore.getState().updateBlockSize('any-id', { width: 100, height: 50 })).not.toThrow()
+    })
+
+    it('updateBlockParameters does nothing when no model', () => {
+      expect(() => useModelStore.getState().updateBlockParameters('any-id', { value: 1 })).not.toThrow()
+    })
+
+    it('renameBlock does nothing when no model', () => {
+      expect(() => useModelStore.getState().renameBlock('any-id', 'New Name')).not.toThrow()
+    })
+
+    it('addConnection returns null when no model', () => {
+      const result = useModelStore.getState().addConnection({
+        sourceBlockId: 's',
+        sourcePortId: 'sp',
+        targetBlockId: 't',
+        targetPortId: 'tp',
+      })
+      expect(result).toBeNull()
+    })
+
+    it('removeConnection does nothing when no model', () => {
+      expect(() => useModelStore.getState().removeConnection('any-id')).not.toThrow()
+    })
+
+    it('addConnectionWaypoint does nothing when no model', () => {
+      expect(() => useModelStore.getState().addConnectionWaypoint('any-id', { x: 0, y: 0 })).not.toThrow()
+    })
+
+    it('updateConnectionWaypoint does nothing when no model', () => {
+      expect(() => useModelStore.getState().updateConnectionWaypoint('any-id', 0, { x: 0, y: 0 })).not.toThrow()
+    })
+
+    it('removeConnectionWaypoint does nothing when no model', () => {
+      expect(() => useModelStore.getState().removeConnectionWaypoint('any-id', 0)).not.toThrow()
+    })
+
+    it('clearConnectionWaypoints does nothing when no model', () => {
+      expect(() => useModelStore.getState().clearConnectionWaypoints('any-id')).not.toThrow()
+    })
+
+    it('updateConnectionWaypoints does nothing when no model', () => {
+      expect(() => useModelStore.getState().updateConnectionWaypoints('any-id', [])).not.toThrow()
+    })
+
+    it('updateConnectionSignalName does nothing when no model', () => {
+      expect(() => useModelStore.getState().updateConnectionSignalName('any-id', 'sig')).not.toThrow()
+    })
+
+    it('updateConnectionLabelOffset does nothing when no model', () => {
+      expect(() => useModelStore.getState().updateConnectionLabelOffset('any-id', { t: 0.5, perpOffset: 0 })).not.toThrow()
+    })
+
+    it('spreadBlocks does nothing when no model', () => {
+      expect(() => useModelStore.getState().spreadBlocks(2.0)).not.toThrow()
+    })
+
+    it('rotateSelectedBlocks does nothing when no model', () => {
+      expect(() => useModelStore.getState().rotateSelectedBlocks()).not.toThrow()
+    })
+
+    it('pushHistory does nothing when no model', () => {
+      expect(() => useModelStore.getState().pushHistory()).not.toThrow()
+    })
+
+    it('undo does nothing when no history', () => {
+      useModelStore.getState().createNewModel('Test')
+      expect(useModelStore.getState().history.length).toBe(0)
+      expect(() => useModelStore.getState().undo()).not.toThrow()
+    })
+
+    it('redo does nothing when no future', () => {
+      useModelStore.setState({ history: [], future: [] })
+      useModelStore.getState().createNewModel('Test')
+      expect(useModelStore.getState().future.length).toBe(0)
+      expect(() => useModelStore.getState().redo()).not.toThrow()
+    })
+
+    it('createSubsystem returns null when no model', () => {
+      const result = useModelStore.getState().createSubsystem(['block-1'])
+      expect(result).toBeNull()
+    })
+
+    it('toggleSubsystemExpanded does nothing when no model', () => {
+      expect(() => useModelStore.getState().toggleSubsystemExpanded('any-id')).not.toThrow()
+    })
+
+    it('enterSubsystem does nothing when no model', () => {
+      expect(() => useModelStore.getState().enterSubsystem('any-id')).not.toThrow()
+    })
+  })
+
+  describe('spreadBlocks edge cases', () => {
+    beforeEach(() => {
+      useModelStore.getState().createNewModel('Test Model')
+    })
+
+    it('does nothing when fewer than 2 blocks', () => {
+      const constDef = createBlockDef('constant', 'Constant')
+      const blockId = useModelStore.getState().addBlock(constDef, { x: 100, y: 100 })
+
+      const initialPosition = { ...useModelStore.getState().model?.blocks[0].position }
+
+      useModelStore.getState().spreadBlocks(2.0)
+
+      const finalPosition = useModelStore.getState().model?.blocks[0].position
+      expect(finalPosition).toEqual(initialPosition)
+    })
+
+    it('spreads only selected blocks when selection exists', () => {
+      const constDef = createBlockDef('constant', 'Constant')
+      const block1Id = useModelStore.getState().addBlock(constDef, { x: 100, y: 100 })
+      const block2Id = useModelStore.getState().addBlock(constDef, { x: 200, y: 100 })
+      const block3Id = useModelStore.getState().addBlock(constDef, { x: 100, y: 200 })
+
+      // Select only block1 and block2
+      useModelStore.getState().selectBlocks([block1Id, block2Id])
+
+      const block3InitialPos = { ...useModelStore.getState().model?.blocks.find(b => b.id === block3Id)?.position }
+
+      useModelStore.getState().spreadBlocks(2.0)
+
+      // Block3 should not have moved
+      const block3FinalPos = useModelStore.getState().model?.blocks.find(b => b.id === block3Id)?.position
+      expect(block3FinalPos).toEqual(block3InitialPos)
+    })
+
+    it('spreads blocks inside subsystem', () => {
+      const subsystemBlock: BlockInstance = {
+        id: 'subsystem-1',
+        type: 'subsystem',
+        name: 'TestSubsystem',
+        position: { x: 100, y: 100 },
+        parameters: {},
+        inputPorts: [],
+        outputPorts: [],
+        children: [
+          {
+            id: 'child-1',
+            type: 'constant',
+            name: 'Child1',
+            position: { x: 50, y: 50 },
+            parameters: {},
+            inputPorts: [],
+            outputPorts: [],
+          },
+          {
+            id: 'child-2',
+            type: 'constant',
+            name: 'Child2',
+            position: { x: 150, y: 50 },
+            parameters: {},
+            inputPorts: [],
+            outputPorts: [],
+          },
+        ],
+        childConnections: [],
+      }
+
+      useModelStore.setState({
+        model: {
+          ...useModelStore.getState().model!,
+          blocks: [subsystemBlock],
+        },
+        currentPath: [{ id: 'subsystem-1', name: 'TestSubsystem' }],
+      })
+
+      useModelStore.getState().spreadBlocks(2.0)
+
+      const currentBlocks = useModelStore.getState().getCurrentBlocks()
+      // Verify that spreading happened (blocks moved apart)
+      expect(currentBlocks.length).toBe(2)
+    })
+  })
+
+  describe('rotateSelectedBlocks inside subsystem', () => {
+    beforeEach(() => {
+      useModelStore.getState().createNewModel('Test Model')
+    })
+
+    it('rotates blocks inside subsystem', () => {
+      const subsystemBlock: BlockInstance = {
+        id: 'subsystem-1',
+        type: 'subsystem',
+        name: 'TestSubsystem',
+        position: { x: 100, y: 100 },
+        parameters: {},
+        inputPorts: [],
+        outputPorts: [],
+        children: [
+          {
+            id: 'child-1',
+            type: 'constant',
+            name: 'Child1',
+            position: { x: 50, y: 50 },
+            parameters: {},
+            inputPorts: [],
+            outputPorts: [],
+          },
+        ],
+        childConnections: [],
+      }
+
+      useModelStore.setState({
+        model: {
+          ...useModelStore.getState().model!,
+          blocks: [subsystemBlock],
+        },
+        currentPath: [{ id: 'subsystem-1', name: 'TestSubsystem' }],
+        selectedBlockIds: ['child-1'],
+      })
+
+      useModelStore.getState().rotateSelectedBlocks()
+
+      const currentBlocks = useModelStore.getState().getCurrentBlocks()
+      const child = currentBlocks.find(b => b.id === 'child-1')
+      expect(child?.rotation).toBe(90)
+    })
+  })
+
+  describe('waypoint operations with invalid indices', () => {
+    beforeEach(() => {
+      useModelStore.getState().createNewModel('Test Model')
+    })
+
+    it('updateConnectionWaypoint ignores invalid index', () => {
+      const constDef = createBlockDef('constant', 'Constant')
+      const scopeDef: BlockDefinition = {
+        type: 'scope',
+        name: 'Scope',
+        category: 'sinks',
+        description: 'A scope block',
+        inputs: [{ name: 'in', dataType: 'double', dimensions: [1] }],
+        outputs: [],
+        parameters: [],
+      }
+
+      const constId = useModelStore.getState().addBlock(constDef, { x: 100, y: 100 })
+      const scopeId = useModelStore.getState().addBlock(scopeDef, { x: 300, y: 100 })
+
+      const constBlock = useModelStore.getState().model?.blocks.find(b => b.id === constId)
+      const scopeBlock = useModelStore.getState().model?.blocks.find(b => b.id === scopeId)
+
+      const connId = useModelStore.getState().addConnection({
+        sourceBlockId: constId,
+        sourcePortId: constBlock?.outputPorts[0].id || '',
+        targetBlockId: scopeId,
+        targetPortId: scopeBlock?.inputPorts[0].id || '',
+      })
+
+      // Add one waypoint
+      useModelStore.getState().addConnectionWaypoint(connId!, { x: 200, y: 150 })
+
+      // Try to update at invalid index (negative)
+      useModelStore.getState().updateConnectionWaypoint(connId!, -1, { x: 0, y: 0 })
+
+      // Try to update at invalid index (too large)
+      useModelStore.getState().updateConnectionWaypoint(connId!, 10, { x: 0, y: 0 })
+
+      const conn = useModelStore.getState().model?.connections.find(c => c.id === connId)
+      expect(conn?.waypoints?.length).toBe(1)
+      expect(conn?.waypoints?.[0]).toEqual({ x: 200, y: 150 })
+    })
+
+    it('removeConnectionWaypoint ignores invalid index', () => {
+      const constDef = createBlockDef('constant', 'Constant')
+      const scopeDef: BlockDefinition = {
+        type: 'scope',
+        name: 'Scope',
+        category: 'sinks',
+        description: 'A scope block',
+        inputs: [{ name: 'in', dataType: 'double', dimensions: [1] }],
+        outputs: [],
+        parameters: [],
+      }
+
+      const constId = useModelStore.getState().addBlock(constDef, { x: 100, y: 100 })
+      const scopeId = useModelStore.getState().addBlock(scopeDef, { x: 300, y: 100 })
+
+      const constBlock = useModelStore.getState().model?.blocks.find(b => b.id === constId)
+      const scopeBlock = useModelStore.getState().model?.blocks.find(b => b.id === scopeId)
+
+      const connId = useModelStore.getState().addConnection({
+        sourceBlockId: constId,
+        sourcePortId: constBlock?.outputPorts[0].id || '',
+        targetBlockId: scopeId,
+        targetPortId: scopeBlock?.inputPorts[0].id || '',
+      })
+
+      // Add one waypoint
+      useModelStore.getState().addConnectionWaypoint(connId!, { x: 200, y: 150 })
+
+      // Try to remove at invalid index (negative)
+      useModelStore.getState().removeConnectionWaypoint(connId!, -1)
+
+      // Try to remove at invalid index (too large)
+      useModelStore.getState().removeConnectionWaypoint(connId!, 10)
+
+      const conn = useModelStore.getState().model?.connections.find(c => c.id === connId)
+      expect(conn?.waypoints?.length).toBe(1)
+    })
+  })
+
+  describe('createSubsystem with external connections', () => {
+    beforeEach(() => {
+      useModelStore.getState().createNewModel('Test Model')
+    })
+
+    it('creates inports and outports for external connections', () => {
+      const constDef: BlockDefinition = {
+        type: 'constant',
+        name: 'Constant',
+        category: 'sources',
+        description: 'A constant block',
+        inputs: [],
+        outputs: [{ name: 'out', dataType: 'double', dimensions: [1] }],
+        parameters: [],
+      }
+
+      const gainDef: BlockDefinition = {
+        type: 'gain',
+        name: 'Gain',
+        category: 'math',
+        description: 'A gain block',
+        inputs: [{ name: 'in', dataType: 'double', dimensions: [1] }],
+        outputs: [{ name: 'out', dataType: 'double', dimensions: [1] }],
+        parameters: [],
+      }
+
+      const scopeDef: BlockDefinition = {
+        type: 'scope',
+        name: 'Scope',
+        category: 'sinks',
+        description: 'A scope block',
+        inputs: [{ name: 'in', dataType: 'double', dimensions: [1] }],
+        outputs: [],
+        parameters: [],
+      }
+
+      const constId = useModelStore.getState().addBlock(constDef, { x: 100, y: 100 })
+      const gainId = useModelStore.getState().addBlock(gainDef, { x: 200, y: 100 })
+      const scopeId = useModelStore.getState().addBlock(scopeDef, { x: 300, y: 100 })
+
+      const blocks = useModelStore.getState().model?.blocks
+      const constBlock = blocks?.find(b => b.id === constId)
+      const gainBlock = blocks?.find(b => b.id === gainId)
+      const scopeBlock = blocks?.find(b => b.id === scopeId)
+
+      // Connect: const -> gain -> scope
+      useModelStore.getState().addConnection({
+        sourceBlockId: constId,
+        sourcePortId: constBlock?.outputPorts[0].id || '',
+        targetBlockId: gainId,
+        targetPortId: gainBlock?.inputPorts[0].id || '',
+      })
+
+      useModelStore.getState().addConnection({
+        sourceBlockId: gainId,
+        sourcePortId: gainBlock?.outputPorts[0].id || '',
+        targetBlockId: scopeId,
+        targetPortId: scopeBlock?.inputPorts[0].id || '',
+      })
+
+      // Create subsystem from just the gain block
+      const subsystemId = useModelStore.getState().createSubsystem([gainId], 'GainSubsystem')
+
+      expect(subsystemId).toBeTruthy()
+
+      const model = useModelStore.getState().model
+      const subsystem = model?.blocks.find(b => b.id === subsystemId)
+
+      // Subsystem should have 1 input port (from const) and 1 output port (to scope)
+      expect(subsystem?.inputPorts.length).toBe(1)
+      expect(subsystem?.outputPorts.length).toBe(1)
+
+      // Children should include Inport, Gain, and Outport
+      expect(subsystem?.children?.some(c => c.type === 'inport')).toBe(true)
+      expect(subsystem?.children?.some(c => c.type === 'gain')).toBe(true)
+      expect(subsystem?.children?.some(c => c.type === 'outport')).toBe(true)
+    })
+
+    it('returns null when blocks not found', () => {
+      const result = useModelStore.getState().createSubsystem(['non-existent-block'])
+      expect(result).toBeNull()
+    })
+  })
+
+  describe('subsystem operations at deeper nesting', () => {
+    beforeEach(() => {
+      useModelStore.getState().createNewModel('Test Model')
+
+      // Create a nested subsystem structure
+      const subsystemBlock: BlockInstance = {
+        id: 'subsystem-1',
+        type: 'subsystem',
+        name: 'OuterSubsystem',
+        position: { x: 100, y: 100 },
+        parameters: {},
+        inputPorts: [],
+        outputPorts: [],
+        children: [
+          {
+            id: 'inner-subsystem',
+            type: 'subsystem',
+            name: 'InnerSubsystem',
+            position: { x: 50, y: 50 },
+            parameters: {},
+            inputPorts: [],
+            outputPorts: [],
+            children: [
+              {
+                id: 'innermost-block',
+                type: 'constant',
+                name: 'InnermostConstant',
+                position: { x: 25, y: 25 },
+                parameters: { value: 1 },
+                inputPorts: [],
+                outputPorts: [{ id: 'out-0', name: 'out', dataType: 'double', dimensions: [1] }],
+              },
+            ],
+            childConnections: [],
+          },
+        ],
+        childConnections: [],
+      }
+
+      useModelStore.setState({
+        model: {
+          ...useModelStore.getState().model!,
+          blocks: [subsystemBlock],
+        },
+      })
+    })
+
+    it('handles connection operations at nested path', () => {
+      // Navigate to outer subsystem
+      useModelStore.setState({
+        currentPath: [{ id: 'subsystem-1', name: 'OuterSubsystem' }],
+      })
+
+      const scopeDef: BlockDefinition = {
+        type: 'scope',
+        name: 'Scope',
+        category: 'sinks',
+        description: 'A scope block',
+        inputs: [{ name: 'in', dataType: 'double', dimensions: [1] }],
+        outputs: [],
+        parameters: [],
+      }
+
+      const scopeId = useModelStore.getState().addBlock(scopeDef, { x: 200, y: 50 })
+
+      // The scope should be added inside the outer subsystem
+      const currentBlocks = useModelStore.getState().getCurrentBlocks()
+      expect(currentBlocks.some(b => b.id === scopeId)).toBe(true)
+    })
+
+    it('removes block inside nested subsystem', () => {
+      // Navigate to inner subsystem (2 levels deep)
+      useModelStore.setState({
+        currentPath: [
+          { id: 'subsystem-1', name: 'OuterSubsystem' },
+          { id: 'inner-subsystem', name: 'InnerSubsystem' },
+        ],
+      })
+
+      let currentBlocks = useModelStore.getState().getCurrentBlocks()
+      expect(currentBlocks.some(b => b.id === 'innermost-block')).toBe(true)
+
+      useModelStore.getState().removeBlock('innermost-block')
+
+      currentBlocks = useModelStore.getState().getCurrentBlocks()
+      expect(currentBlocks.some(b => b.id === 'innermost-block')).toBe(false)
+    })
+  })
+
+  describe('waypoint and signal name operations inside subsystems', () => {
+    beforeEach(() => {
+      useModelStore.getState().createNewModel('Test Model')
+
+      const subsystemBlock: BlockInstance = {
+        id: 'subsystem-1',
+        type: 'subsystem',
+        name: 'TestSubsystem',
+        position: { x: 100, y: 100 },
+        parameters: {},
+        inputPorts: [],
+        outputPorts: [],
+        children: [
+          {
+            id: 'child-const',
+            type: 'constant',
+            name: 'ChildConst',
+            position: { x: 50, y: 50 },
+            parameters: {},
+            inputPorts: [],
+            outputPorts: [{ id: 'c-out-0', name: 'out', dataType: 'double', dimensions: [1] }],
+          },
+          {
+            id: 'child-scope',
+            type: 'scope',
+            name: 'ChildScope',
+            position: { x: 200, y: 50 },
+            parameters: {},
+            inputPorts: [{ id: 's-in-0', name: 'in', dataType: 'double', dimensions: [1] }],
+            outputPorts: [],
+          },
+        ],
+        childConnections: [
+          {
+            id: 'child-conn-1',
+            sourceBlockId: 'child-const',
+            sourcePortId: 'c-out-0',
+            targetBlockId: 'child-scope',
+            targetPortId: 's-in-0',
+          },
+        ],
+      }
+
+      useModelStore.setState({
+        model: {
+          ...useModelStore.getState().model!,
+          blocks: [subsystemBlock],
+        },
+        currentPath: [{ id: 'subsystem-1', name: 'TestSubsystem' }],
+      })
+    })
+
+    it('updates connection signal name inside subsystem', () => {
+      useModelStore.getState().updateConnectionSignalName('child-conn-1', 'inner_signal')
+
+      const currentConnections = useModelStore.getState().getCurrentConnections()
+      const conn = currentConnections.find(c => c.id === 'child-conn-1')
+      expect(conn?.signalName).toBe('inner_signal')
+    })
+
+    it('updates connection label offset inside subsystem', () => {
+      useModelStore.getState().updateConnectionLabelOffset('child-conn-1', { t: 0.3, perpOffset: 15 })
+
+      const currentConnections = useModelStore.getState().getCurrentConnections()
+      const conn = currentConnections.find(c => c.id === 'child-conn-1')
+      expect(conn?.labelOffset).toEqual({ t: 0.3, perpOffset: 15 })
+    })
+  })
+
+  describe('expandSubsystem inside subsystem', () => {
+    beforeEach(() => {
+      useModelStore.getState().createNewModel('Test Model')
+
+      // Create an outer subsystem with a nested inner subsystem
+      const outerSubsystem: BlockInstance = {
+        id: 'outer-sub',
+        type: 'subsystem',
+        name: 'OuterSubsystem',
+        position: { x: 100, y: 100 },
+        parameters: {},
+        inputPorts: [],
+        outputPorts: [],
+        children: [
+          {
+            id: 'inner-sub',
+            type: 'subsystem',
+            name: 'InnerSubsystem',
+            position: { x: 50, y: 50 },
+            parameters: {},
+            inputPorts: [],
+            outputPorts: [],
+            children: [
+              {
+                id: 'deep-block',
+                type: 'constant',
+                name: 'DeepConstant',
+                position: { x: 25, y: 25 },
+                parameters: { value: 42 },
+                inputPorts: [],
+                outputPorts: [{ id: 'd-out-0', name: 'out', dataType: 'double', dimensions: [1] }],
+              },
+            ],
+            childConnections: [],
+          },
+        ],
+        childConnections: [],
+      }
+
+      useModelStore.setState({
+        model: {
+          ...useModelStore.getState().model!,
+          blocks: [outerSubsystem],
+        },
+        currentPath: [{ id: 'outer-sub', name: 'OuterSubsystem' }],
+      })
+    })
+
+    it('expands nested subsystem into parent', () => {
+      let currentBlocks = useModelStore.getState().getCurrentBlocks()
+      expect(currentBlocks.some(b => b.id === 'inner-sub')).toBe(true)
+
+      useModelStore.getState().expandSubsystem('inner-sub')
+
+      currentBlocks = useModelStore.getState().getCurrentBlocks()
+
+      // Inner subsystem should be removed
+      expect(currentBlocks.some(b => b.id === 'inner-sub')).toBe(false)
+
+      // Deep block should now be at this level
+      expect(currentBlocks.some(b => b.name === 'DeepConstant')).toBe(true)
+    })
+  })
 })

@@ -2097,4 +2097,675 @@ describe('mdlImporter', () => {
       expect(model.connections).toEqual([])
     })
   })
+
+  describe('Block parameter variations', () => {
+    it('should handle step block with all parameters', () => {
+      const mdl = `Model {
+        Name "StepTest"
+        System {
+          Name "StepTest"
+          Block {
+            BlockType Step
+            Name "Step1"
+            Time "1.0"
+            Before "0"
+            After "1"
+          }
+        }
+      }`
+
+      const model = importMDL(mdl)
+      const step = model.blocks[0]
+      expect(step.type).toBe('step')
+      expect(step.parameters.stepTime).toBe(1.0)
+      expect(step.parameters.initialValue).toBe(0)
+      expect(step.parameters.finalValue).toBe(1)
+    })
+
+    it('should handle ramp block with all parameters', () => {
+      const mdl = `Model {
+        Name "RampTest"
+        System {
+          Name "RampTest"
+          Block {
+            BlockType Ramp
+            Name "Ramp1"
+            Slope "2.0"
+            Start "0.5"
+            X0 "0"
+          }
+        }
+      }`
+
+      const model = importMDL(mdl)
+      const ramp = model.blocks[0]
+      expect(ramp.type).toBe('ramp')
+      expect(ramp.parameters.slope).toBe(2.0)
+      expect(ramp.parameters.startTime).toBe(0.5)
+      expect(ramp.parameters.initialOutput).toBe(0)
+    })
+
+    it('should handle sine wave block with all parameters', () => {
+      const mdl = `Model {
+        Name "SineTest"
+        System {
+          Name "SineTest"
+          Block {
+            BlockType "Sine Wave"
+            Name "Sine1"
+            Amplitude "2.0"
+            Frequency "10"
+            Phase "0.5"
+            Bias "1"
+          }
+        }
+      }`
+
+      const model = importMDL(mdl)
+      const sine = model.blocks[0]
+      expect(sine.type).toBe('sine_wave')
+      expect(sine.parameters.amplitude).toBe(2.0)
+      expect(sine.parameters.frequency).toBe(10)
+      expect(sine.parameters.phase).toBe(0.5)
+      expect(sine.parameters.bias).toBe(1)
+    })
+
+    it('should handle pulse generator block', () => {
+      const mdl = `Model {
+        Name "PulseTest"
+        System {
+          Name "PulseTest"
+          Block {
+            BlockType DiscretePulseGenerator
+            Name "Pulse1"
+            Amplitude "1"
+            Period "2"
+            PulseWidth "50"
+          }
+        }
+      }`
+
+      const model = importMDL(mdl)
+      const pulse = model.blocks[0]
+      expect(pulse.type).toBe('pulse_generator')
+      expect(pulse.parameters.amplitude).toBe(1)
+      expect(pulse.parameters.period).toBe(2)
+      expect(pulse.parameters.dutyCycle).toBe(50)
+    })
+
+    it('should handle integrator with external reset', () => {
+      const mdl = `Model {
+        Name "IntegratorExtTest"
+        System {
+          Name "IntegratorExtTest"
+          Block {
+            BlockType Integrator
+            Name "Integrator1"
+            InitialCondition "0.5"
+            ExternalReset "rising"
+          }
+        }
+      }`
+
+      const model = importMDL(mdl)
+      const integrator = model.blocks[0]
+      expect(integrator.type).toBe('integrator')
+      expect(integrator.parameters.initialCondition).toBe(0.5)
+      expect(integrator.parameters.externalIC).toBe(true)
+    })
+
+    it('should handle integrator with output limits', () => {
+      const mdl = `Model {
+        Name "IntegratorLimitTest"
+        System {
+          Name "IntegratorLimitTest"
+          Block {
+            BlockType Integrator
+            Name "Integrator1"
+            LimitOutput "on"
+            UpperSaturationLimit "10"
+            LowerSaturationLimit "-10"
+          }
+        }
+      }`
+
+      const model = importMDL(mdl)
+      const integrator = model.blocks[0]
+      expect(integrator.parameters.limitOutput).toBe(true)
+      expect(integrator.parameters.upperLimit).toBe(10)
+      expect(integrator.parameters.lowerLimit).toBe(-10)
+    })
+
+    it('should handle derivative block', () => {
+      const mdl = `Model {
+        Name "DerivativeTest"
+        System {
+          Name "DerivativeTest"
+          Block {
+            BlockType Derivative
+            Name "Derivative1"
+            Coefficient "2.5"
+          }
+        }
+      }`
+
+      const model = importMDL(mdl)
+      const deriv = model.blocks[0]
+      expect(deriv.type).toBe('derivative')
+      expect(deriv.parameters.coefficient).toBe(2.5)
+    })
+
+    it('should handle scope with multiple inputs', () => {
+      const mdl = `Model {
+        Name "ScopeMultiTest"
+        System {
+          Name "ScopeMultiTest"
+          Block {
+            BlockType Scope
+            Name "Scope1"
+            NumInputPorts "4"
+          }
+        }
+      }`
+
+      const model = importMDL(mdl)
+      const scope = model.blocks[0]
+      expect(scope.type).toBe('scope')
+      expect(scope.parameters.numInputs).toBe(4)
+    })
+
+    it('should handle state space block', () => {
+      const mdl = `Model {
+        Name "StateSpaceTest"
+        System {
+          Name "StateSpaceTest"
+          Block {
+            BlockType StateSpace
+            Name "StateSpace1"
+            A "[1 2; 3 4]"
+            B "[1; 0]"
+            C "[1 0]"
+            D "0"
+          }
+        }
+      }`
+
+      const model = importMDL(mdl)
+      const ss = model.blocks[0]
+      expect(ss.type).toBe('state_space')
+    })
+
+    it('should handle unit delay block', () => {
+      const mdl = `Model {
+        Name "UnitDelayTest"
+        System {
+          Name "UnitDelayTest"
+          Block {
+            BlockType UnitDelay
+            Name "Delay1"
+            InitialCondition "0"
+            SampleTime "0.1"
+          }
+        }
+      }`
+
+      const model = importMDL(mdl)
+      const delay = model.blocks[0]
+      expect(delay.type).toBe('unit_delay')
+    })
+
+    it('should handle zero order hold block', () => {
+      const mdl = `Model {
+        Name "ZOHTest"
+        System {
+          Name "ZOHTest"
+          Block {
+            BlockType ZeroOrderHold
+            Name "ZOH1"
+            SampleTime "0.01"
+          }
+        }
+      }`
+
+      const model = importMDL(mdl)
+      const zoh = model.blocks[0]
+      expect(zoh.type).toBe('zero_order_hold')
+    })
+
+    it('should handle product block with operations string', () => {
+      const mdl = `Model {
+        Name "ProductOpsTest"
+        System {
+          Name "ProductOpsTest"
+          Block {
+            BlockType Product
+            Name "Product1"
+            Inputs "*/"
+          }
+        }
+      }`
+
+      const model = importMDL(mdl)
+      const prod = model.blocks[0]
+      expect(prod.type).toBe('product')
+      expect(prod.parameters.operations).toBe('*/')
+    })
+
+    it('should handle product block with numeric inputs', () => {
+      const mdl = `Model {
+        Name "ProductNumTest"
+        System {
+          Name "ProductNumTest"
+          Block {
+            BlockType Product
+            Name "Product1"
+            Inputs "3"
+          }
+        }
+      }`
+
+      const model = importMDL(mdl)
+      const prod = model.blocks[0]
+      expect(prod.type).toBe('product')
+      expect(prod.parameters.operations).toBe('***')
+      expect(prod.inputPorts.length).toBe(3)
+    })
+
+    it('should handle abs block', () => {
+      const mdl = `Model {
+        Name "AbsTest"
+        System {
+          Name "AbsTest"
+          Block {
+            BlockType Abs
+            Name "Abs1"
+          }
+        }
+      }`
+
+      const model = importMDL(mdl)
+      const abs = model.blocks[0]
+      expect(abs.type).toBe('abs')
+    })
+
+    it('should handle saturation block', () => {
+      const mdl = `Model {
+        Name "SaturationTest"
+        System {
+          Name "SaturationTest"
+          Block {
+            BlockType Saturate
+            Name "Saturation1"
+            UpperLimit "10"
+            LowerLimit "-5"
+          }
+        }
+      }`
+
+      const model = importMDL(mdl)
+      const sat = model.blocks[0]
+      expect(sat.type).toBe('saturation')
+    })
+
+    it('should handle dead zone block', () => {
+      const mdl = `Model {
+        Name "DeadZoneTest"
+        System {
+          Name "DeadZoneTest"
+          Block {
+            BlockType DeadZone
+            Name "DeadZone1"
+            LowerValue "-1"
+            UpperValue "1"
+          }
+        }
+      }`
+
+      const model = importMDL(mdl)
+      const dz = model.blocks[0]
+      expect(dz.type).toBe('dead_zone')
+    })
+
+    it('should handle switch block', () => {
+      const mdl = `Model {
+        Name "SwitchTest"
+        System {
+          Name "SwitchTest"
+          Block {
+            BlockType Switch
+            Name "Switch1"
+            Threshold "0.5"
+          }
+        }
+      }`
+
+      const model = importMDL(mdl)
+      const sw = model.blocks[0]
+      expect(sw.type).toBe('switch')
+    })
+
+    it('should handle minmax block', () => {
+      const mdl = `Model {
+        Name "MinMaxTest"
+        System {
+          Name "MinMaxTest"
+          Block {
+            BlockType MinMax
+            Name "MinMax1"
+            Function "min"
+            Inputs "3"
+          }
+        }
+      }`
+
+      const model = importMDL(mdl)
+      const mm = model.blocks[0]
+      expect(mm.type).toBe('minmax')
+    })
+
+    it('should handle bias block', () => {
+      const mdl = `Model {
+        Name "BiasTest"
+        System {
+          Name "BiasTest"
+          Block {
+            BlockType Bias
+            Name "Bias1"
+            Bias "2.5"
+          }
+        }
+      }`
+
+      const model = importMDL(mdl)
+      const bias = model.blocks[0]
+      expect(bias.type).toBe('bias')
+    })
+
+    it('should handle unary minus block', () => {
+      const mdl = `Model {
+        Name "UnaryMinusTest"
+        System {
+          Name "UnaryMinusTest"
+          Block {
+            BlockType UnaryMinus
+            Name "UnaryMinus1"
+          }
+        }
+      }`
+
+      const model = importMDL(mdl)
+      const um = model.blocks[0]
+      expect(um.type).toBe('unary_minus')
+    })
+
+    it('should handle selector block', () => {
+      const mdl = `Model {
+        Name "SelectorTest"
+        System {
+          Name "SelectorTest"
+          Block {
+            BlockType Selector
+            Name "Selector1"
+            InputPortWidth "3"
+            Indices "[1 2]"
+          }
+        }
+      }`
+
+      const model = importMDL(mdl)
+      const sel = model.blocks[0]
+      expect(sel.type).toBe('selector')
+    })
+
+    it('should handle merge block', () => {
+      const mdl = `Model {
+        Name "MergeTest"
+        System {
+          Name "MergeTest"
+          Block {
+            BlockType Merge
+            Name "Merge1"
+            Inputs "2"
+          }
+        }
+      }`
+
+      const model = importMDL(mdl)
+      const merge = model.blocks[0]
+      expect(merge.type).toBe('merge')
+    })
+
+    it('should handle goto/from blocks', () => {
+      const mdl = `Model {
+        Name "GotoFromTest"
+        System {
+          Name "GotoFromTest"
+          Block {
+            BlockType Goto
+            Name "Goto1"
+            GotoTag "signal1"
+          }
+          Block {
+            BlockType From
+            Name "From1"
+            GotoTag "signal1"
+          }
+        }
+      }`
+
+      const model = importMDL(mdl)
+      expect(model.blocks.length).toBe(2)
+      expect(model.blocks.some(b => b.type === 'goto')).toBe(true)
+      expect(model.blocks.some(b => b.type === 'from')).toBe(true)
+    })
+
+    it('should handle rate limiter block', () => {
+      const mdl = `Model {
+        Name "RateLimiterTest"
+        System {
+          Name "RateLimiterTest"
+          Block {
+            BlockType RateLimiter
+            Name "RateLimiter1"
+            RisingSlewLimit "10"
+            FallingSlewLimit "-10"
+          }
+        }
+      }`
+
+      const model = importMDL(mdl)
+      const rl = model.blocks[0]
+      expect(rl.type).toBe('rate_limiter')
+    })
+
+    it('should handle quantizer block', () => {
+      const mdl = `Model {
+        Name "QuantizerTest"
+        System {
+          Name "QuantizerTest"
+          Block {
+            BlockType Quantizer
+            Name "Quantizer1"
+            QuantizationInterval "0.5"
+          }
+        }
+      }`
+
+      const model = importMDL(mdl)
+      const q = model.blocks[0]
+      expect(q.type).toBe('quantizer')
+    })
+
+    it('should handle relay block', () => {
+      const mdl = `Model {
+        Name "RelayTest"
+        System {
+          Name "RelayTest"
+          Block {
+            BlockType Relay
+            Name "Relay1"
+            OnSwitchValue "1"
+            OffSwitchValue "-1"
+          }
+        }
+      }`
+
+      const model = importMDL(mdl)
+      const relay = model.blocks[0]
+      expect(relay.type).toBe('relay')
+    })
+
+    it('should handle memory block', () => {
+      const mdl = `Model {
+        Name "MemoryTest"
+        System {
+          Name "MemoryTest"
+          Block {
+            BlockType Memory
+            Name "Memory1"
+            InitialCondition "0"
+          }
+        }
+      }`
+
+      const model = importMDL(mdl)
+      const mem = model.blocks[0]
+      expect(mem.type).toBe('memory')
+    })
+
+    it('should handle logic operator block', () => {
+      const mdl = `Model {
+        Name "LogicTest"
+        System {
+          Name "LogicTest"
+          Block {
+            BlockType Logic
+            Name "Logic1"
+            Operator "AND"
+            Inputs "2"
+          }
+        }
+      }`
+
+      const model = importMDL(mdl)
+      const logic = model.blocks[0]
+      expect(logic.type).toBe('logic')
+    })
+
+    it('should handle relational operator block', () => {
+      const mdl = `Model {
+        Name "RelationalTest"
+        System {
+          Name "RelationalTest"
+          Block {
+            BlockType RelationalOperator
+            Name "Relational1"
+            Operator ">"
+          }
+        }
+      }`
+
+      const model = importMDL(mdl)
+      const rel = model.blocks[0]
+      expect(rel.type).toBe('relational_operator')
+    })
+
+    it('should handle compare to constant block', () => {
+      const mdl = `Model {
+        Name "CompareConstTest"
+        System {
+          Name "CompareConstTest"
+          Block {
+            BlockType "Compare To Constant"
+            Name "Compare1"
+            Operator "<"
+            Constant "5"
+          }
+        }
+      }`
+
+      const model = importMDL(mdl)
+      const cmp = model.blocks[0]
+      expect(cmp.type).toBe('compare_to_constant')
+    })
+
+    it('should handle compare to zero block', () => {
+      const mdl = `Model {
+        Name "CompareZeroTest"
+        System {
+          Name "CompareZeroTest"
+          Block {
+            BlockType "Compare To Zero"
+            Name "Compare1"
+            Operator ">="
+          }
+        }
+      }`
+
+      const model = importMDL(mdl)
+      const cmp = model.blocks[0]
+      expect(cmp.type).toBe('compare_to_zero')
+    })
+  })
+
+  describe('Solver mappings', () => {
+    it('should map ode1 to euler', () => {
+      const mdl = `Model {
+        Name "ODE1Test"
+        Solver "ode1"
+        System {
+          Name "ODE1Test"
+        }
+      }`
+
+      const model = importMDL(mdl)
+      expect(model.simulationConfig.solver).toBe('euler')
+    })
+
+    it('should map ode45 to merson', () => {
+      const mdl = `Model {
+        Name "ODE45Test"
+        Solver "ode45"
+        System {
+          Name "ODE45Test"
+        }
+      }`
+
+      const model = importMDL(mdl)
+      expect(model.simulationConfig.solver).toBe('merson')
+    })
+
+    it('should map VariableStepAuto to rk4', () => {
+      const mdl = `Model {
+        Name "VarStepTest"
+        Solver "VariableStepAuto"
+        System {
+          Name "VarStepTest"
+        }
+      }`
+
+      const model = importMDL(mdl)
+      expect(model.simulationConfig.solver).toBe('rk4')
+    })
+  })
+
+  describe('Position parsing', () => {
+    it('should parse position string format', () => {
+      const mdl = `Model {
+        Name "PositionTest"
+        System {
+          Name "PositionTest"
+          Block {
+            BlockType Constant
+            Name "Const1"
+            Position "[100, 200, 150, 230]"
+          }
+        }
+      }`
+
+      const model = importMDL(mdl)
+      // Position should be extracted from string
+      expect(model.blocks[0].position).toBeDefined()
+    })
+  })
 })

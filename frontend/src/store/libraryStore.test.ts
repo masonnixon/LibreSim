@@ -441,3 +441,92 @@ describe('duplicate block handling', () => {
     expect(useLibraryStore.getState().libraries).toHaveLength(2)
   })
 })
+
+describe('importLibrary warnings', () => {
+  beforeEach(() => {
+    useLibraryStore.getState().clearAllLibraries()
+  })
+
+  it('warns about duplicate block types when not replacing', () => {
+    // First, import a library
+    const libraryData1 = createMockLibraryData('Library A')
+    useLibraryStore.getState().importLibrary(libraryData1)
+
+    // Now import a library with same internal block types but different name
+    // Note: The types are transformed to library_name__block_type, so this tests
+    // the case where the same block type would be duplicated if it weren't transformed
+    const libraryData2 = createMockLibraryData('Library B')
+    const result = useLibraryStore.getState().importLibrary(libraryData2)
+
+    // Should succeed since block types include library name prefix
+    expect(result.success).toBe(true)
+    // Library A blocks are library_a__block1, Library B blocks are library_b__block1
+    expect(useLibraryStore.getState().isLibraryBlock('library_a__block1')).toBe(true)
+    expect(useLibraryStore.getState().isLibraryBlock('library_b__block1')).toBe(true)
+  })
+})
+
+describe('library name transformations', () => {
+  beforeEach(() => {
+    useLibraryStore.getState().clearAllLibraries()
+  })
+
+  it('transforms library names with spaces to underscores', () => {
+    const libraryData = createMockLibraryData('My Test Library')
+    const result = useLibraryStore.getState().importLibrary(libraryData)
+
+    expect(result.success).toBe(true)
+    // Block type should have underscores for spaces
+    expect(useLibraryStore.getState().isLibraryBlock('my_test_library__block1')).toBe(true)
+  })
+
+  it('transforms library names to lowercase', () => {
+    const libraryData = createMockLibraryData('UPPERCASE Library')
+    const result = useLibraryStore.getState().importLibrary(libraryData)
+
+    expect(result.success).toBe(true)
+    expect(useLibraryStore.getState().isLibraryBlock('uppercase_library__block1')).toBe(true)
+  })
+})
+
+describe('empty library handling', () => {
+  beforeEach(() => {
+    useLibraryStore.getState().clearAllLibraries()
+  })
+
+  it('imports library with no blocks', () => {
+    const libraryData: Omit<Library, 'id' | 'importedAt'> = {
+      name: 'Empty Library',
+      description: 'A library with no blocks',
+      version: '1.0.0',
+      sourcePath: 'empty.mdl',
+      sourceFormat: 'mdl',
+      blocks: [],
+    }
+
+    const result = useLibraryStore.getState().importLibrary(libraryData)
+
+    expect(result.success).toBe(true)
+    expect(result.library?.blocks).toHaveLength(0)
+    expect(useLibraryStore.getState().getLibraryBlocks(result.library!.id)).toHaveLength(0)
+  })
+})
+
+describe('_rebuildMaps with empty libraries', () => {
+  beforeEach(() => {
+    useLibraryStore.getState().clearAllLibraries()
+  })
+
+  it('handles empty libraries array', () => {
+    // Start with empty state
+    useLibraryStore.setState({
+      libraries: [],
+      libraryMap: new Map(),
+      libraryBlockMap: new Map(),
+    })
+
+    // Rebuild maps should work without error
+    expect(() => useLibraryStore.getState()._rebuildMaps()).not.toThrow()
+    expect(useLibraryStore.getState().getAllLibraryBlocks()).toHaveLength(0)
+  })
+})

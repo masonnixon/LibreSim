@@ -566,3 +566,117 @@ describe('api', () => {
     })
   })
 })
+
+describe('SimulationWebSocket additional scenarios', () => {
+  let mockWebSocket: {
+    onopen: (() => void) | null
+    onmessage: ((event: { data: string }) => void) | null
+    onerror: (() => void) | null
+    onclose: (() => void) | null
+    send: ReturnType<typeof vi.fn>
+    close: ReturnType<typeof vi.fn>
+    readyState: number
+  }
+  let MockWebSocketClass: ReturnType<typeof vi.fn> & {
+    OPEN: number
+    CLOSED: number
+  }
+
+  beforeEach(() => {
+    mockWebSocket = {
+      onopen: null,
+      onmessage: null,
+      onerror: null,
+      onclose: null,
+      send: vi.fn(),
+      close: vi.fn(),
+      readyState: 1,
+    }
+
+    const mockFn = vi.fn(() => mockWebSocket)
+    MockWebSocketClass = Object.assign(mockFn, {
+      OPEN: 1,
+      CLOSED: 3,
+    }) as ReturnType<typeof vi.fn> & { OPEN: number; CLOSED: number }
+    vi.stubGlobal('WebSocket', MockWebSocketClass)
+    vi.stubGlobal('window', { location: { protocol: 'http:', host: 'localhost:4200' } })
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('stops reconnecting after max attempts', () => {
+    vi.useFakeTimers()
+
+    const ws = new SimulationWebSocket(vi.fn(), vi.fn(), vi.fn(), vi.fn(), vi.fn())
+    ws.connect()
+
+    // Simulate 5 disconnects (max reconnect attempts)
+    for (let i = 0; i < 5; i++) {
+      MockWebSocketClass.mockClear()
+      mockWebSocket.onclose?.()
+      // Fast forward past the reconnect delay (exponentially increasing)
+      vi.advanceTimersByTime(Math.pow(2, i + 1) * 1000)
+    }
+
+    // Clear the call count after reconnects
+    MockWebSocketClass.mockClear()
+
+    // One more disconnect should not trigger reconnect
+    mockWebSocket.onclose?.()
+    vi.advanceTimersByTime(100000) // Wait a long time
+
+    // Should not have attempted to reconnect
+    expect(MockWebSocketClass).not.toHaveBeenCalled()
+
+    vi.useRealTimers()
+  })
+
+  it('does not send when websocket is null', () => {
+    const ws = new SimulationWebSocket(vi.fn(), vi.fn(), vi.fn(), vi.fn(), vi.fn())
+    // Don't call connect, so ws is null
+
+    // Should not throw
+    expect(() => ws.send({ type: 'test' })).not.toThrow()
+  })
+
+  it('stepForward uses default numSteps', async () => {
+    vi.clearAllMocks()
+    const mockResult = {
+      success: true,
+      stepsExecuted: 1,
+      currentTime: 0.01,
+      progress: 0.001,
+      completed: false,
+      status: 'step_mode',
+      historySize: 1,
+    }
+    mockAxiosInstance.post.mockResolvedValueOnce({ data: mockResult })
+
+    // Call without providing numSteps to test default parameter
+    const result = await api.stepForward()
+
+    expect(mockAxiosInstance.post).toHaveBeenCalledWith('/simulate/step/forward', { numSteps: 1 })
+    expect(result).toEqual(mockResult)
+  })
+
+  it('stepBackward uses default numSteps', async () => {
+    vi.clearAllMocks()
+    const mockResult = {
+      success: true,
+      stepsExecuted: 1,
+      currentTime: 0,
+      progress: 0,
+      historySize: 0,
+      status: 'step_mode',
+    }
+    mockAxiosInstance.post.mockResolvedValueOnce({ data: mockResult })
+
+    // Call without providing numSteps to test default parameter
+    const result = await api.stepBackward()
+
+    expect(mockAxiosInstance.post).toHaveBeenCalledWith('/simulate/step/backward', { numSteps: 1 })
+    expect(result).toEqual(mockResult)
+  })
+})
