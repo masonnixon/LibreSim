@@ -357,20 +357,46 @@ beforeEach(async () => {
 
 ## Validation Tests
 
-Validation tests verify simulation accuracy against reference implementations (MATLAB/Simulink).
+Validation tests verify that generated code produces correct simulation results.
 
 ### Location
-- `codegen_verification/` - Generated code validation
-- `examples/` - Reference models with known outputs
+- `scripts/validate_codegen.py` - Official validation against headless simulation
+- `codegen_verification/compare_languages.py` - Cross-language consistency check
+- `codegen_verification/builds/` - Built examples with results
+- `examples/` - Reference models
+
+### Two Validation Approaches
+
+| Approach | Script | Purpose | Tolerance | Status |
+|----------|--------|---------|-----------|--------|
+| **Official Validation** | `scripts/validate_codegen.py` | Compare generated code vs LibreSim headless simulation | 3% (final values) | 100% PASS |
+| **Cross-Language Check** | `codegen_verification/compare_languages.py` | Compare C vs C++ vs Python vs Rust | 0.01% (full series) | 46% PASS |
+
+**Official Validation** is the ground truth test. It verifies that generated code produces the same
+results as running the model in the LibreSim GUI/headless simulation.
+
+**Cross-Language Check** is a stricter consistency test. Some numerical drift between languages
+is expected due to floating-point precision differences, but significant structural differences
+(like missing outputs) indicate bugs.
 
 ### Running Validation
+
 ```bash
-# Run codegen validation script
+# Official validation (must pass 100%)
 python scripts/validate_codegen.py
 
-# Compare with reference outputs
-python scripts/compare_gui_models.py
+# Cross-language consistency (informational)
+cd codegen_verification
+python compare_languages.py --tolerance 1e-4
+
+# With looser tolerance matching official validation
+python compare_languages.py --tolerance 0.03
 ```
+
+### Validation Reports
+- `docs/codegen-validation-report.md` - Official validation results
+- `codegen_verification/VERIFICATION_REPORT.md` - Cross-language comparison
+- `codegen_verification/IMPROVEMENT_PLAN.md` - Plan to address discrepancies
 
 ## Continuous Integration
 

@@ -590,6 +590,8 @@ def run_simulation(
         """Generate output recording code."""
         init_lines = []
         record_lines = []
+        # Track used names to ensure uniqueness (Python uses dict keys)
+        used_names: set[str] = set()
 
         for block_id in model_info.sink_blocks:
             block = next((b for b in model_info.blocks if b.id == block_id), None)
@@ -601,8 +603,8 @@ def run_simulation(
                 # Use the source block name if available
                 num_inputs = block.parameters.get("numInputs", 1)
                 if block.type == "scope" and num_inputs > 1:
-                    # Build a map of port index -> source name
-                    port_names = {}
+                    # Build a map of port index -> (source name, source port)
+                    port_info: dict[int, tuple[str, int | None]] = {}
                     for conn in block.input_connections:
                         source_id, source_port, target_port = self.parse_connection(conn)
                         source_block = next(
@@ -613,23 +615,46 @@ def run_simulation(
                                 source_block.name or source_block.id
                             )
                             port_idx = target_port if target_port is not None else 0
-                            port_names[port_idx] = source_name
+                            port_info[port_idx] = (source_name, source_port)
 
                     for i in range(num_inputs):
                         # Use source block name if we found it, otherwise use index
-                        if i in port_names:
-                            port_name = port_names[i]
+                        if i in port_info:
+                            base_name, source_port = port_info[i]
+                            # If source has multiple outputs, include source port in name
+                            if source_port is not None and source_port > 0:
+                                port_name = f"{base_name}_{source_port}"
+                            else:
+                                port_name = base_name
                         else:
                             port_name = f"{signal_name}_{i}"
+
+                        # Ensure unique names by appending index if needed
+                        original_name = port_name
+                        suffix = 0
+                        while port_name in used_names:
+                            suffix += 1
+                            port_name = f"{original_name}_{suffix}"
+                        used_names.add(port_name)
+
                         init_lines.append(f"    results['{port_name}'] = []")
                         record_lines.append(
                             f"                results['{port_name}'].append("
                             f"model.{var_name}.get_output({i}))"
                         )
                 else:
-                    init_lines.append(f"    results['{signal_name}'] = []")
+                    # Ensure unique names for single-input sinks too
+                    port_name = signal_name
+                    original_name = port_name
+                    suffix = 0
+                    while port_name in used_names:
+                        suffix += 1
+                        port_name = f"{original_name}_{suffix}"
+                    used_names.add(port_name)
+
+                    init_lines.append(f"    results['{port_name}'] = []")
                     record_lines.append(
-                        f"                results['{signal_name}'].append("
+                        f"                results['{port_name}'].append("
                         f"model.{var_name}.get_output())"
                     )
 

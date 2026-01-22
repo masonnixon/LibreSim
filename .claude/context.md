@@ -1,5 +1,7 @@
 # LibreSim Project Context
 
+> **See Also**: For a comprehensive repository analysis, refer to [libresim-repo-context.md](../libresim-repo-context.md) in the project root.
+
 ## Project Overview
 LibreSim is a web-based block diagram simulation tool designed as an alternative to MathWorks Simulink. It allows users to create, edit, and simulate dynamic systems using a visual block diagram interface.
 
@@ -833,6 +835,163 @@ Improved frontend test coverage and fixed failing tests.
   - Added frontend coverage statistics (30%)
   - Listed high-coverage and low-coverage modules
   - Noted that React components need additional testing
+
+## Session 2026-01-21 (Continued - DOM Testing Setup)
+
+### Summary
+Added React component tests with proper mocking for stores and DOM testing.
+
+### Coverage Progress (Session 3)
+| Metric | Before | After | Notes |
+|--------|--------|-------|-------|
+| **Frontend Tests** | 579 | 636 | Added 57 component tests |
+| **Total Tests** | 609 | 636 | Includes new component tests |
+
+### Tests Added (Session 3)
+
+**`src/components/Toast/Toast.test.tsx`** (14 tests - NEW FILE):
+- toast.show: Creates success, info, warning toasts with custom duration
+- toast.dismiss: Removes toast by ID
+- toast.subscribe: Tests subscription and unsubscribe functionality
+- ToastContainer: Renders empty state, renders toasts, renders multiple toasts
+- ToastContainer timing: Auto-dismiss after duration (success 4s, warning 8s)
+- ToastContainer interaction: Dismiss on click, CSS classes based on type
+
+**`src/components/Sidebar/Sidebar.test.tsx`** (16 tests - NEW FILE):
+- Rendering: Block library header, search input, category headers, blocks in expanded categories
+- Collapsed state: Renders collapsed view, expand button, toggleSidebar call
+- Collapse button: Shows when expanded, toggleSidebar on click
+- Category toggle: Toggles expansion on click
+- Search: Filters blocks by name, shows no blocks for no matches
+- Drag and drop: Sets dragging block type on drag start, blocks are draggable
+- Libraries section: Shows imported libraries, hidden when no libraries
+
+**`src/components/Toolbar/Toolbar.test.tsx`** (27 tests - NEW FILE):
+- Rendering: LibreSim logo, model name, dirty indicator, file operation buttons, simulation controls, status indicator
+- Simulation status display: Running, paused, step mode, error states with messages
+- Button states: Save disabled/enabled based on dirty state, run/stop disabled based on state, undo/redo states
+- View toggles: Properties, scopes with count, toggle callbacks
+- Menu interactions: Export menu, import menu, examples modal, code gen modal, settings, help
+
+### Testing Patterns Established
+
+**Mocking Zustand stores with vi.mock**:
+```typescript
+vi.mock('../../store/uiStore', () => ({
+  useUIStore: vi.fn(),
+}))
+const mockedUseUIStore = vi.mocked(useUIStore)
+mockedUseUIStore.mockReturnValue({ ... })
+```
+
+**Mocking for useSyncExternalStore (blockRegistry)**:
+```typescript
+// IMPORTANT: getLibraryBlocks must return a STABLE reference to avoid infinite loop
+const emptyLibraryBlocks: never[] = []
+vi.mock('../../blocks', () => ({
+  blockRegistry: {
+    getLibraryBlocks: () => emptyLibraryBlocks,  // Same reference each call
+    subscribe: vi.fn(() => () => {}),
+    // ...
+  },
+}))
+```
+
+**Mocking dataTransfer for drag events**:
+```typescript
+const dataTransfer = { effectAllowed: '', setData: vi.fn() }
+fireEvent.dragStart(element, { dataTransfer })
+expect(dataTransfer.effectAllowed).toBe('move')
+```
+
+**Using vi.resetModules() for module state isolation**:
+```typescript
+beforeEach(async () => {
+  vi.resetModules()
+  const module = await import('./Toast')
+  toast = module.toast
+})
+```
+
+### Coverage by Module (After Session 3)
+| Module | Coverage | Notes |
+|--------|----------|-------|
+| `src/blocks/` | 100% | Complete |
+| `src/api/client.ts` | 97.89% | Near complete |
+| `src/store/simulationStore.ts` | 100% | Complete |
+| `src/store/uiStore.ts` | 100% | Complete |
+| `src/store/libraryStore.ts` | 92.3% | High coverage |
+| `src/store/modelStore.ts` | 87.96% | Improved |
+| `src/types/` | 100% | Complete |
+| `src/utils/nanoid.ts` | 100% | Complete |
+| `src/utils/mdlExporter.ts` | 100% | Complete |
+| `src/utils/mdlImporter.ts` | 74.36% | Moderate |
+| `src/components/Toast/Toast.tsx` | 100% | Complete |
+| `src/components/Sidebar/Sidebar.tsx` | 62.62% | New tests |
+| `src/components/Toolbar/Toolbar.tsx` | 16.32% | Partial (complex component) |
+| `src/components/Editor/BlockNode.tsx` | 56.81% | Moderate |
+
+### Packages Added
+- `@testing-library/user-event` - For simulating user interactions in tests
+
+## Session 2026-01-21 (Continued - Codegen Cross-Language Consistency Fix)
+
+### Summary
+Fixed a bug in the Python code generator that was causing output column loss due to dictionary key overwrites.
+
+### Problem
+When Python code generated for models with multi-input scopes (e.g., a demux feeding 3 signals to one scope),
+all outputs got the same dictionary key name, causing data overwrites:
+```python
+# Before fix - data loss due to overwriting
+results['Split_XYZ'] = []
+results['Split_XYZ'] = []  # Overwrites!
+results['Split_XYZ'] = []  # Overwrites again!
+```
+
+### Root Cause
+In `backend/src/codegen/languages/python/generator.py`, the `_generate_output_recording()` function
+used source block names as dict keys without ensuring uniqueness.
+
+### Fix Applied
+Added `used_names: set[str]` to track used names and append numeric suffixes for duplicates:
+```python
+# After fix - unique keys preserve all data
+results['Split_XYZ'] = []
+results['Split_XYZ_1'] = []
+results['Split_XYZ_2'] = []
+```
+
+### Examples Fixed
+| Example | Before | After |
+|---------|--------|-------|
+| 11_vector_signal_processing | 3 cols | 5 cols (matching C/C++/Rust) |
+| 06b_kalman_position_velocity | 5 cols | 6 cols (matching C/C++/Rust) |
+| 46_sensor_fusion_tracking | 6 cols | 9 cols (matching C/C++/Rust) |
+
+### Verification
+- All 392 backend codegen tests pass
+- All 39 Python validation tests pass against headless simulation
+- Regenerated example ZIP files contain correct column counts
+
+### C vs C++ Discrepancies Investigation
+Investigated C vs C++ discrepancies in cross-language comparison (05a, 05b, 06b, 41, 45, 46).
+
+**Finding**: These are NOT bugs - they're due to different RNG implementations:
+- **C**: Uses custom Mersenne Twister to match Python's `random.Random`
+- **C++**: Uses `std::mt19937` with `std::normal_distribution`
+
+Even with the same seed, different RNG implementations produce different random sequences.
+All languages still pass official validation (100% pass rate against headless simulation).
+
+### Documentation Updated
+- `codegen_verification/VERIFICATION_REPORT.md` - Documented fix and expected behavior
+- `codegen_verification/IMPROVEMENT_PLAN.md` - Marked all phases complete
+- `docs/testing.md` - Already documented two validation approaches
+
+### Files Modified
+- `backend/src/codegen/languages/python/generator.py` (lines 589-664) - Fixed unique output names
+- `codegen_verification/*.md` - Updated documentation
 
 ## Development Workflow
 - **Wait for user confirmation** before committing changes to git. The user will test fixes before commits are made.
