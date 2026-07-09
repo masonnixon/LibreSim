@@ -29,6 +29,9 @@ class SimulationRunner:
         self._should_stop = False
         self._is_paused = False
         self._error_message: str | None = None
+        self._run_started = False
+        self._run_finished = asyncio.Event()
+        self._run_finished.set()
 
         self._results: dict[str, list[tuple[float, float]]] = {}
         self._start_time: float = 0
@@ -64,6 +67,28 @@ class SimulationRunner:
     def stop(self):
         """Request simulation stop."""
         self._should_stop = True
+
+    def mark_scheduled(self) -> None:
+        """Mark this runner as owning a scheduled background run."""
+        self._run_started = True
+        self._run_finished.clear()
+        self._status = SimulationStatus.COMPILING
+
+    @property
+    def has_live_run(self) -> bool:
+        return self._run_started and not self._run_finished.is_set()
+
+    async def stop_and_wait(self, timeout: float = 5.0) -> bool:
+        """Request stop and wait until the background run has exited."""
+        self._should_stop = True
+        self._is_paused = False
+        if not self.has_live_run:
+            return True
+        try:
+            await asyncio.wait_for(self._run_finished.wait(), timeout=timeout)
+        except TimeoutError:
+            return False
+        return True
 
     def pause(self):
         """Pause the simulation."""
@@ -373,6 +398,8 @@ class SimulationRunner:
 
     async def run(self):
         """Run the simulation."""
+        if not self._run_started:
+            self.mark_scheduled()
         try:
             # Compile model
             self._status = SimulationStatus.COMPILING
@@ -438,6 +465,8 @@ class SimulationRunner:
             self._error_message = str(e)
             print(f"Simulation error: {e}")
             traceback.print_exc()
+        finally:
+            self._run_finished.set()
 
     def _record_outputs(self, t: float, outputs: dict[str, float]):
         """Record simulation outputs."""

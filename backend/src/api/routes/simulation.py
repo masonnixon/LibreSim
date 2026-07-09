@@ -1,5 +1,6 @@
 """Simulation control API routes."""
 
+import asyncio
 import traceback
 from typing import Any
 
@@ -22,6 +23,20 @@ async def test_endpoint() -> dict[str, str]:
 
 # Global simulation runner instance (single-user for now)
 _runner: SimulationRunner | None = None
+_runner_lock = asyncio.Lock()
+
+
+async def _install_runner(runner: SimulationRunner, *, scheduled: bool) -> None:
+    """Stop any live run and atomically install its replacement."""
+    global _runner
+
+    async with _runner_lock:
+        if _runner is not None and _runner.has_live_run:
+            if not await _runner.stop_and_wait():
+                raise HTTPException(status_code=409, detail="Previous simulation did not stop")
+        _runner = runner
+        if scheduled:
+            _runner.mark_scheduled()
 
 
 def get_runner() -> SimulationRunner | None:
@@ -67,7 +82,8 @@ async def start_simulation(
 
     try:
         # Create and start runner
-        _runner = SimulationRunner(model, config)
+        runner = SimulationRunner(model, config)
+        await _install_runner(runner, scheduled=True)
         session_id = _runner.session_id
 
         # Run simulation in background
@@ -196,7 +212,8 @@ async def init_step_mode(request: dict[str, Any]) -> dict[str, Any]:
         raise HTTPException(status_code=400, detail=f"Invalid config data: {str(e)}")
 
     try:
-        _runner = SimulationRunner(model, config)
+        runner = SimulationRunner(model, config)
+        await _install_runner(runner, scheduled=False)
         success = _runner.initialize_step_mode()
 
         if not success:

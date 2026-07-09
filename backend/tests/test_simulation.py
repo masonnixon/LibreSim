@@ -1810,6 +1810,29 @@ class TestSimulationRunnerExtended:
         assert runner.current_time < 10.0
 
     @pytest.mark.asyncio
+    async def test_stop_and_wait_unblocks_paused_runner(self):
+        """Stopping a paused run waits for the run coroutine to exit."""
+        import asyncio
+
+        from src.models.simulation import SimulationStatus
+        from src.simulation.runner import SimulationRunner
+
+        runner = SimulationRunner(
+            self._create_simple_model(),
+            SimulationConfig(stopTime=10.0, stepSize=0.001),
+        )
+        runner.mark_scheduled()
+        task = asyncio.create_task(runner.run())
+        while runner.status == SimulationStatus.COMPILING:
+            await asyncio.sleep(0)
+        runner.pause()
+
+        assert await runner.stop_and_wait(timeout=1.0)
+        await task
+        assert not runner.has_live_run
+        assert runner.status == SimulationStatus.IDLE
+
+    @pytest.mark.asyncio
     async def test_runner_pause_resume(self):
         """Test pausing and resuming - verify pause state without running full sim."""
         from src.models.simulation import SimulationStatus
