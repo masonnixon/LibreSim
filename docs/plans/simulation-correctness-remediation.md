@@ -497,7 +497,7 @@ Agents: update this table in the same commit as the work.
 | LS-3 | complete | this commit | Serialized replacement and waited for scheduled/paused runs to exit. |
 | LS-4 | complete | this commit | Hardened CI gates, app-path ground truth, and validator output matching/baseline. |
 | LS-5 | complete | this commit | Bounded results and replaced runner/scope history copies with lengths. |
-| LS-6 | not started | | |
+| LS-6 | complete | this commit | Recursively flattened nested subsystem contents. |
 | LS-7 | not started | | |
 | LS-8 | not started | | |
 | LS-9 | not started | | |

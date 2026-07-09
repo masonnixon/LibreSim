@@ -46,6 +46,40 @@ class TestModelCompiler:
         assert len(result.blocks) == 1
         assert result.blocks[0].type == "constant"
 
+    def test_nested_subsystems_are_flattened_recursively(self):
+        gain = Block(
+            id="gain",
+            type="gain",
+            name="Gain",
+            position={"x": 0, "y": 0},
+            parameters={"gain": 2.0},
+        )
+        inner = Block(
+            id="B",
+            type="subsystem",
+            name="Inner",
+            position={"x": 0, "y": 0},
+            children=[gain],
+        )
+        outer = Block(
+            id="A",
+            type="subsystem",
+            name="Outer",
+            position={"x": 0, "y": 0},
+            children=[inner],
+        )
+        model = Model(
+            id="nested",
+            metadata=make_metadata("Nested"),
+            blocks=[outer],
+            connections=[],
+        )
+
+        result = ModelCompiler().compile(model)
+
+        assert result.success
+        assert "A__B__gain" in result.execution_order
+
     def test_compile_connected_blocks(self):
         """Test compiling connected blocks with proper execution order."""
         compiler = ModelCompiler()

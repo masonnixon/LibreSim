@@ -295,8 +295,12 @@ class ModelCompiler:
             subsystem_inport_map[subsystem_id] = {}
             subsystem_outport_map[subsystem_id] = {}
 
+            child_blocks, child_connections = self._flatten_subsystems(
+                block.children, block.child_connections or []
+            )
+
             # Add child blocks with prefixed IDs
-            for child in block.children:
+            for child in child_blocks:
                 # Create a new block with prefixed ID
                 prefixed_id = f"{subsystem_id}__{child.id}"
                 child_copy = Block(
@@ -321,8 +325,8 @@ class ModelCompiler:
                         subsystem_outport_map[subsystem_id][int(port_num) - 1] = prefixed_id
 
             # Add child connections with prefixed IDs
-            if block.child_connections:
-                for conn in block.child_connections:
+            if child_connections:
+                for conn in child_connections:
                     prefixed_conn = Connection(
                         id=f"{subsystem_id}__{conn.id}",
                         source_block_id=f"{subsystem_id}__{conn.source_block_id}",
