@@ -15016,18 +15016,19 @@ class TestStateClass:
         State.t = 5.0
         State.ready = 0
 
-        state.sample(State.EVENT, 5.0)
+        state.sample(5.0)
         assert State.ready == 1
 
-    def test_state_sample_periodic(self):
-        """Test State.sample() with periodic sampling."""
+    def test_state_sample_before_event(self):
+        """Test State.sample() before the event time."""
         from src.osk.state import State
 
         state = State()
+        State.t = 5.0
         State.ready = 0
 
-        state.sample(0.01, 10.0)
-        assert State.ready == 1
+        state.sample(10.0)
+        assert State.ready == 0
 
     def test_state_propagate_euler(self):
         """Test Euler integration method."""
@@ -15240,7 +15241,7 @@ class TestSimClass:
         Sim(dts=[0.01], tmax=0.1, vStage=[stage])
 
         # This should not raise
-        Sim.sample(0.01, 0.1)
+        Sim.sample(0.1)
 
     def test_sim_terminate(self):
         """Test Sim.terminate class method."""

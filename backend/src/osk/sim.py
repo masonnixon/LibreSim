@@ -62,10 +62,10 @@ class Sim:
         Sim.stop0 = 0
 
     @classmethod
-    def sample(cls, sdt, t_event):
+    def sample(cls, t_event):
         """Class method for sampling - delegates to clock."""
         if cls.clock:
-            cls.clock.sample(sdt, t_event)
+            cls.clock.sample(t_event)
 
     def run(self):
         """Execute the simulation.
@@ -116,7 +116,7 @@ class Sim:
             # Main simulation loop
             while True:
                 if Sim.clock is not None and State.kpass == 0:
-                    Sim.clock.sample(State.EVENT, Sim.tmax)
+                    Sim.clock.sample(Sim.tmax)
 
                 # Update all blocks
                 for obj in stage:

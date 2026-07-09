@@ -72,19 +72,9 @@ class State:
         State.kpass = 0
         State.ready = 1
 
-    def sample(self, sdt, t_event):
-        """Determine if it's time to sample based on sample time or event time.
-
-        Args:
-            sdt: Sample time interval (use State.EVENT for event-driven)
-            t_event: Event time to check against
-        """
-        if sdt == State.EVENT:
-            # Event-driven sampling
-            if State.t >= t_event - State.EPS:
-                State.ready = 1
-        else:
-            # Periodic sampling
+    def sample(self, t_event):
+        """Mark outputs ready when an event time has been reached."""
+        if State.t >= t_event - State.EPS:
             State.ready = 1
 
     def propagate(self):

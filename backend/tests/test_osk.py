@@ -209,13 +209,14 @@ class TestStateClass:
         state = State()
 
         # Event at t=5
-        state.sample(State.EVENT, 5.0)
+        state.sample(5.0)
         assert State.ready == 1
 
-    def test_state_sample_periodic(self):
-        """Test periodic sampling."""
+    def test_state_sample_at_zero(self):
+        """Test an event at the initial time."""
+        State.t = 0.0
         state = State()
-        state.sample(0.1, 0.0)  # Non-event sample
+        state.sample(0.0)
         assert State.ready == 1
 
 
@@ -241,7 +242,7 @@ class TestSimClass:
         """Test Sim sample class method."""
         Sim.clock = State()
         State.t = 5.0
-        Sim.sample(State.EVENT, 5.0)
+        Sim.sample(5.0)
         assert State.ready == 1
 
 
