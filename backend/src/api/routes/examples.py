@@ -288,6 +288,10 @@ async def list_examples() -> list[ExampleInfo]:
 @router.get("/{example_id}")
 async def get_example(example_id: str) -> dict[str, Any]:
     """Get a specific example model by ID."""
+    manifest_ids = {example["id"] for example in EXAMPLE_MANIFEST}
+    if example_id not in manifest_ids:
+        raise HTTPException(status_code=404, detail=f"Example '{example_id}' not found")
+
     json_path = EXAMPLES_DIR / f"{example_id}.json"
     if not json_path.exists():
         raise HTTPException(status_code=404, detail=f"Example '{example_id}' not found")
