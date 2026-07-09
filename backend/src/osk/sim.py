@@ -39,11 +39,10 @@ class Sim:
 
     stop0: int = 0  # Previous stop flag
     stop: int = 0  # Current stop flag (set by blocks to terminate)
-    dts: list[float] = []  # Time steps for each stage
+    dts: list[float]  # Time steps for each stage
     dt: float = 0  # Current time step
     tmax: float = 0  # Maximum simulation time
-    vObj: list[Any] = []  # (unused, kept for compatibility)
-    vStage: list[list[Any]] = []  # Vector of stages (each stage is a list of blocks)
+    vStage: list[list[Any]]  # Vector of stages (each stage is a list of blocks)
     clock: State | None = None  # Clock State object
 
     def __init__(self, dts, tmax, vStage):

@@ -499,6 +499,6 @@ Agents: update this table in the same commit as the work.
 | LS-5 | complete | this commit | Bounded results and replaced runner/scope history copies with lengths. |
 | LS-6 | complete | this commit | Recursively flattened nested subsystem contents. |
 | LS-7 | complete | this commit | Removed unity-gain fallbacks for unknown/invalid blocks. |
-| LS-8 | not started | | |
+| LS-8 | complete | this commit series | Simplified sampling, stabilized result keys, removed mutable defaults. |
 | LS-9 | not started | | |
 | LS-10 | blocked (needs sign-off) | | |
