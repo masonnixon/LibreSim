@@ -169,6 +169,7 @@ class State:
         max_pass = passes.get(State.method, 4)
 
         State.kpass += 1
+        State.dt = State.dtp
 
         if State.kpass >= max_pass:
             # All passes complete, advance time
@@ -178,14 +179,3 @@ class State:
             State.ready = 1
         else:
             State.ready = 0
-            # Set appropriate dt for intermediate passes
-            if State.method == "RK2":
-                State.dt = State.dtp / 2.0 if State.kpass == 0 else State.dtp
-            elif State.method == "RK4":
-                if State.kpass in [0, 1]:
-                    State.dt = State.dtp / 2.0
-                else:
-                    State.dt = State.dtp
-            elif State.method == "Merson":
-                # Merson uses various fractions
-                State.dt = State.dtp
