@@ -750,6 +750,21 @@ class TestSimulationRunner:
         assert runner._results["block-1:out:Signal"][0] == (0.0, 5.0)
         assert runner._results["block-1:out:Signal"][1] == (0.1, 10.0)
 
+    def test_runner_decimates_results_without_losing_time_range(self):
+        from src.simulation.runner import SimulationRunner
+
+        runner = SimulationRunner(
+            self._create_simple_model(), SimulationConfig(maxResultPoints=4)
+        )
+        for index in range(20):
+            runner._record_outputs(float(index), {"block-1:out:Signal": float(index)})
+
+        data = runner._results["block-1:out:Signal"]
+        assert len(data) <= 4
+        assert data[0][0] == 0.0
+        assert data[-1][0] == 19.0
+        assert runner.get_results()["statistics"]["decimationFactors"]["block-1:out:Signal"] > 1
+
     def test_runner_get_results_multi_trace(self):
         """Test get_results with multiple traces for same block."""
         from src.simulation.runner import SimulationRunner

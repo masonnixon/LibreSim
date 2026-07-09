@@ -1712,10 +1712,12 @@ class OSKAdapter:
                 and hasattr(osk_block, "y_values")
                 and hasattr(osk_block, "z_values")
             ):
-                block_state["scope3d_times"] = list(osk_block.times) if osk_block.times else []
-                block_state["scope3d_x"] = list(osk_block.x_values) if osk_block.x_values else []
-                block_state["scope3d_y"] = list(osk_block.y_values) if osk_block.y_values else []
-                block_state["scope3d_z"] = list(osk_block.z_values) if osk_block.z_values else []
+                block_state["scope3d_lengths"] = {
+                    "times": len(osk_block.times),
+                    "x": len(osk_block.x_values),
+                    "y": len(osk_block.y_values),
+                    "z": len(osk_block.z_values),
+                }
 
             # Save regular Scope internal data arrays for step backward
             if (
@@ -1723,12 +1725,10 @@ class OSKAdapter:
                 and hasattr(osk_block, "input_blocks")
                 and not hasattr(osk_block, "x_values")
             ):
-                block_state["scope_times"] = list(osk_block.times) if osk_block.times else []
-                # Deep copy the values (list of lists for multi-input scopes)
-                if osk_block.values:
-                    block_state["scope_values"] = [list(v) if v else [] for v in osk_block.values]
-                else:
-                    block_state["scope_values"] = []
+                block_state["scope_lengths"] = {
+                    "times": len(osk_block.times),
+                    "values": [len(values) for values in osk_block.values],
+                }
 
             if block_state:
                 state["block_states"][block_id] = block_state
@@ -1794,18 +1794,20 @@ class OSKAdapter:
                 osk_block._prev_input = block_state["_prev_input"]
 
             # Restore Scope3D internal data arrays
-            if "scope3d_times" in block_state and hasattr(osk_block, "x_values"):
-                osk_block.times = list(block_state["scope3d_times"])
-                osk_block.x_values = list(block_state["scope3d_x"])
-                osk_block.y_values = list(block_state["scope3d_y"])
-                osk_block.z_values = list(block_state["scope3d_z"])
+            if "scope3d_lengths" in block_state and hasattr(osk_block, "x_values"):
+                lengths = block_state["scope3d_lengths"]
+                del osk_block.times[lengths["times"] :]
+                del osk_block.x_values[lengths["x"] :]
+                del osk_block.y_values[lengths["y"] :]
+                del osk_block.z_values[lengths["z"] :]
 
             # Restore regular Scope internal data arrays
             if (
-                "scope_times" in block_state
+                "scope_lengths" in block_state
                 and hasattr(osk_block, "values")
                 and not hasattr(osk_block, "x_values")
             ):
-                osk_block.times = list(block_state["scope_times"])
-                # Deep copy the values (list of lists for multi-input scopes)
-                osk_block.values = [list(v) if v else [] for v in block_state["scope_values"]]
+                lengths = block_state["scope_lengths"]
+                del osk_block.times[lengths["times"] :]
+                for values, length in zip(osk_block.values, lengths["values"], strict=False):
+                    del values[length:]

@@ -1,7 +1,6 @@
 """Simulation runner - executes compiled models."""
 
 import asyncio
-import copy
 import time
 import uuid
 from typing import Any
@@ -34,6 +33,7 @@ class SimulationRunner:
         self._run_finished.set()
 
         self._results: dict[str, list[tuple[float, float]]] = {}
+        self._result_decimation: dict[str, int] = {}
         self._start_time: float = 0
         self._execution_time: float = 0
         self._total_steps: int = 0
@@ -186,7 +186,7 @@ class SimulationRunner:
             "time": self._current_time,
             "progress": self._progress,
             "total_steps": self._total_steps,
-            "results": copy.deepcopy(self._results),
+            "result_lengths": {key: len(values) for key, values in self._results.items()},
             "adapter_state": adapter_state,
         }
 
@@ -204,7 +204,10 @@ class SimulationRunner:
         self._current_time = state["time"]
         self._progress = state["progress"]
         self._total_steps = state["total_steps"]
-        self._results = copy.deepcopy(state["results"])
+        lengths = state["result_lengths"]
+        self._results = {
+            key: values[: lengths[key]] for key, values in self._results.items() if key in lengths
+        }
 
         # Restore adapter state if available
         if state.get("adapter_state") and hasattr(self._adapter, "set_state"):
@@ -473,7 +476,14 @@ class SimulationRunner:
         for key, value in outputs.items():
             if key not in self._results:
                 self._results[key] = []
+                self._result_decimation[key] = 1
             self._results[key].append((t, value))
+            if len(self._results[key]) > self.config.max_result_points:
+                latest = self._results[key][-1]
+                self._results[key] = self._results[key][::2]
+                if self._results[key][-1] != latest:
+                    self._results[key].append(latest)
+                self._result_decimation[key] *= 2
 
     def get_results(self) -> dict[str, Any]:
         """Get simulation results."""
@@ -532,5 +542,6 @@ class SimulationRunner:
                 "totalSteps": self._total_steps,
                 "executionTime": self._execution_time * 1000,  # ms
                 "finalTime": self._current_time,
+                "decimationFactors": dict(self._result_decimation),
             },
         }

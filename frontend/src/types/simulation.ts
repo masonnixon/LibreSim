@@ -9,6 +9,7 @@ export interface SimulationConfig {
   minStep?: number
   relativeTolerance?: number
   absoluteTolerance?: number
+  maxResultPoints?: number
 }
 
 export type SimulationStatus =
@@ -81,5 +82,6 @@ export interface SimulationResults {
     totalSteps: number
     executionTime: number
     finalTime: number
+    decimationFactors?: Record<string, number>
   }
 }

@@ -26,6 +26,7 @@ class SimulationConfig(BaseModel):
     min_step: float | None = Field(default=None, alias="minStep")
     relative_tolerance: float = Field(default=1e-3, alias="relativeTolerance")
     absolute_tolerance: float = Field(default=1e-6, alias="absoluteTolerance")
+    max_result_points: int = Field(default=100_000, alias="maxResultPoints", ge=2)
 
 
 class SimulationStatus(str, Enum):
