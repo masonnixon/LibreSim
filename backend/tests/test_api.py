@@ -408,7 +408,9 @@ class TestWebSocket:
 
     def test_websocket_simulation_endpoint(self, test_client: TestClient):
         """Test WebSocket simulation endpoint connection."""
-        with test_client.websocket_connect("/ws/simulation") as websocket:
+        with test_client.websocket_connect(
+            "/ws/simulation", headers={"origin": "http://localhost:4200"}
+        ) as websocket:
             # Send a subscribe message
             websocket.send_json({"type": "subscribe"})
             # Should receive subscribed response
@@ -417,14 +419,18 @@ class TestWebSocket:
 
     def test_websocket_parameter_update(self, test_client: TestClient):
         """Test WebSocket parameter update message."""
-        with test_client.websocket_connect("/ws/simulation") as websocket:
+        with test_client.websocket_connect(
+            "/ws/simulation", headers={"origin": "http://localhost:4200"}
+        ) as websocket:
             # Send a parameter update message
             websocket.send_json({"type": "parameter_update", "param": "test"})
             # No response expected for parameter_update, just verify no error
 
     def test_websocket_unknown_message_type(self, test_client: TestClient):
         """Test WebSocket with unknown message type."""
-        with test_client.websocket_connect("/ws/simulation") as websocket:
+        with test_client.websocket_connect(
+            "/ws/simulation", headers={"origin": "http://localhost:4200"}
+        ) as websocket:
             # Send an unknown message type
             websocket.send_json({"type": "unknown_type"})
             # Should not crash

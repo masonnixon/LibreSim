@@ -4,6 +4,8 @@ import json
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from ..config import settings
+
 router = APIRouter()
 
 # Connected clients
@@ -51,6 +53,11 @@ manager = ConnectionManager()
 @router.websocket("/ws/simulation")
 async def websocket_simulation(websocket: WebSocket):
     """WebSocket endpoint for simulation data streaming."""
+    origin = websocket.headers.get("origin")
+    if origin not in settings.cors_origins_list:
+        await websocket.close(code=1008)
+        return
+
     await manager.connect(websocket)
 
     try:
