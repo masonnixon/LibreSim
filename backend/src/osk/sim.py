@@ -132,7 +132,7 @@ class Sim:
                         obj.rpt()
 
                         # Collect outputs from blocks that have them
-                        block_id = id(obj)
+                        block_id = getattr(obj, "block_id", None) or id(obj)
                         if block_id not in results["outputs"]:
                             results["outputs"][block_id] = []
                         results["outputs"][block_id].append(obj.getOutput())

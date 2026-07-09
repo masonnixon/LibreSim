@@ -38,6 +38,7 @@ class Block:
         """Initialize the block with empty state vector."""
         self.vState = []  # Vector of State objects (integrators)
         self.initCount = 0  # Initialization counter
+        self.block_id: str | None = None
 
     def init(self):
         """Initialize block - override in subclass.
