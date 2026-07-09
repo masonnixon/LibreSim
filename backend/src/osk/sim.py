@@ -115,7 +115,7 @@ class Sim:
 
             # Main simulation loop
             while True:
-                if Sim.clock is not None:
+                if Sim.clock is not None and State.kpass == 0:
                     Sim.clock.sample(State.EVENT, Sim.tmax)
 
                 # Update all blocks

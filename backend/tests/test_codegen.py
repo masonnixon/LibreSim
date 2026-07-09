@@ -128,12 +128,15 @@ class TestIntegrationCodeGenerator:
         assert "merson_propagate" in code
         assert "get_propagate_function" in code
         assert "get_num_passes" in code
+        assert "get_stage_offsets" in code
+        assert '"rk4": (0.0, 0.5, 0.5, 1.0)' in code
 
     def test_c_header_generator(self):
         """Test C header generation."""
         code = IntegrationCodeGenerator.generate_c_header()
         assert "#ifndef INTEGRATION_H" in code
         assert "get_num_passes" in code
+        assert "get_stage_offsets" in code
         assert "propagate_integrator" in code
 
     def test_c_source_generator(self):
@@ -141,6 +144,7 @@ class TestIntegrationCodeGenerator:
         code = IntegrationCodeGenerator.generate_c_source()
         assert '#include "integration.h"' in code
         assert "get_num_passes" in code
+        assert "get_stage_offsets" in code
         assert "propagate_integrator" in code
         assert "euler" in code
         assert "rk4" in code
@@ -150,6 +154,7 @@ class TestIntegrationCodeGenerator:
         code = IntegrationCodeGenerator.generate_cpp_header()
         assert "#ifndef INTEGRATION_HPP" in code
         assert "get_num_passes" in code
+        assert "get_stage_offsets" in code
         assert "propagate_integrator" in code
 
     def test_cpp_source_generator(self):
@@ -159,6 +164,7 @@ class TestIntegrationCodeGenerator:
         assert "euler_step" in code
         assert "rk4_step" in code
         assert "merson_step" in code
+        assert "get_stage_offsets" in code
 
     def test_rust_generator(self):
         """Test Rust integration code generation."""
@@ -170,6 +176,7 @@ class TestIntegrationCodeGenerator:
         assert "fn rk4_step" in code
         assert "pub fn propagate_integrator" in code
         assert "pub fn get_num_passes" in code
+        assert "pub fn get_stage_offsets" in code
         assert "from_str" in code
 
 
@@ -284,6 +291,7 @@ class TestCodeGenerator:
         assert self._has_file(project, "integration.py")
         assert self._has_file(project, "main.py")
         assert self._has_file(project, "requirements.txt")
+        assert "stage_offsets[kpass] * dt" in project.get_file("simulation.py").content
 
     def test_generate_c_project(self, generator, simple_model):
         """Test generating a C project."""
@@ -300,6 +308,7 @@ class TestCodeGenerator:
         assert self._has_file(project, "include/integration.h")
         assert self._has_file(project, "src/main.c")
         assert self._has_file(project, "CMakeLists.txt")
+        assert "stage_offsets[kpass] * dt" in project.get_file("src/main.c").content
 
     def test_generate_cpp_project(self, generator, simple_model):
         """Test generating a C++ project."""
@@ -316,6 +325,7 @@ class TestCodeGenerator:
         assert self._has_file(project, "include/integration.hpp")
         assert self._has_file(project, "src/main.cpp")
         assert self._has_file(project, "CMakeLists.txt")
+        assert "stage_offsets[kpass] * dt" in project.get_file("src/main.cpp").content
 
     def test_generate_rust_project(self, generator, simple_model):
         """Test generating a Rust project."""
@@ -332,6 +342,7 @@ class TestCodeGenerator:
         assert self._has_file(project, "src/integration.rs")
         assert self._has_file(project, "src/main.rs")
         assert self._has_file(project, "Cargo.toml")
+        assert "stage_offsets[kpass] * dt" in project.get_file("src/main.rs").content
 
     def test_generate_without_main(self, generator, simple_model):
         """Test generating without main file."""

@@ -5,6 +5,14 @@ Supports Euler, RK2, RK4, and Merson's integration methods.
 """
 
 
+STAGE_TIME_OFFSETS = {
+    "Euler": (0.0,),
+    "RK2": (0.0, 0.5),
+    "RK4": (0.0, 0.5, 0.5, 1.0),
+    "Merson": (0.0, 1.0 / 3.0, 1.0 / 3.0, 0.5, 1.0),
+}
+
+
 class State:
     """Numerical integrator for state variables.
 
@@ -17,7 +25,7 @@ class State:
 
     # Class-level simulation timing variables
     t = 0.0  # Current simulation time
-    t1 = 0.0  # Previous time
+    t1 = 0.0  # Start time of the current integration step
     dt = 0.01  # Current time step
     dtp = 0.01  # Primary time step
     ready = 1  # Flag indicating when outputs are ready
@@ -167,6 +175,10 @@ class State:
         # Number of passes for each method
         passes = {"Euler": 1, "RK2": 2, "RK4": 4, "Merson": 5}
         max_pass = passes.get(State.method, 4)
+        offsets = STAGE_TIME_OFFSETS.get(State.method, STAGE_TIME_OFFSETS["RK4"])
+
+        if State.kpass == 0:
+            State.t1 = State.t
 
         State.kpass += 1
         State.dt = State.dtp
@@ -174,8 +186,9 @@ class State:
         if State.kpass >= max_pass:
             # All passes complete, advance time
             State.kpass = 0
-            State.t1 = State.t
-            State.t += State.dtp
+            State.t1 += State.dtp
+            State.t = State.t1
             State.ready = 1
         else:
             State.ready = 0
+            State.t = State.t1 + offsets[State.kpass] * State.dtp

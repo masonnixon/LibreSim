@@ -215,6 +215,13 @@ from ..osk.blocks.sensor_fusion import (
     Magnetometer,
     MahonyFilter,
 )
+
+STAGE_TIME_OFFSETS = {
+    "Euler": (0.0,),
+    "RK2": (0.0, 0.5),
+    "RK4": (0.0, 0.5, 0.5, 1.0),
+    "Merson": (0.0, 1.0 / 3.0, 1.0 / 3.0, 0.5, 1.0),
+}
 from ..osk.blocks.sinks import Display, Terminator
 from ..osk.blocks.sources import (
     BandLimitedWhiteNoise,
@@ -1209,6 +1216,7 @@ class OSKAdapter:
 
         # Set OSK timing
         State.t = t
+        State.t1 = t
         State.dt = dt
         State.dtp = dt
         State.kpass = 0
@@ -1318,6 +1326,7 @@ class OSKAdapter:
 
             for kpass in range(num_passes):
                 State.kpass = kpass
+                State.t = t + STAGE_TIME_OFFSETS[State.method][kpass] * dt
                 State.ready = 0  # Don't record during integration passes
 
                 # First pass: Update all non-integrator blocks
@@ -1417,6 +1426,7 @@ class OSKAdapter:
             # Now run the integration passes to advance state
             for kpass in range(num_passes):
                 State.kpass = kpass
+                State.t = t + STAGE_TIME_OFFSETS[State.method][kpass] * dt
                 State.ready = 0  # Don't record during integration
 
                 # Update non-integrator blocks (compute derivative inputs for integrators)
@@ -1463,8 +1473,11 @@ class OSKAdapter:
                 for osk_block in self._osk_blocks.values():
                     osk_block.propagateStates()
 
-        # Reset kpass to 0 for next step (avoid polluting global state)
+        # Leave global timing at the completed step boundary.
+        State.t = t + dt
+        State.t1 = State.t
         State.kpass = 0
+        State.ready = 1
 
         return recorded_outputs
 

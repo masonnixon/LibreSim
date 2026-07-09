@@ -188,12 +188,13 @@ int main() {{
 
     // Get integration parameters
     int num_passes = get_num_passes("{config.integration_method.value}");
+    const double* stage_offsets = get_stage_offsets("{config.integration_method.value}");
 
     while (t <= t_end) {{
         // Integration passes
         // OSK records outputs after update() but BEFORE propagation for kpass=0
         for (int kpass = 0; kpass < num_passes; kpass++) {{
-            model.step(t, dt, kpass);
+            model.step(t + stage_offsets[kpass] * dt, dt, kpass);
 
             // Record outputs after kpass=0 update, before propagation (matches OSK)
             if (kpass == 0 && sample_idx < n_samples) {{

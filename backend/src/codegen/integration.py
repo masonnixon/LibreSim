@@ -130,6 +130,17 @@ def get_num_passes(method: str) -> int:
         "merson": 5,
     }}
     return passes.get(method.lower(), 4)
+
+
+def get_stage_offsets(method: str) -> tuple[float, ...]:
+    """Get normalized stage-time offsets for an integration method."""
+    offsets = {{
+        "euler": (0.0,),
+        "rk2": (0.0, 0.5),
+        "rk4": (0.0, 0.5, 0.5, 1.0),
+        "merson": (0.0, 1.0 / 3.0, 1.0 / 3.0, 0.5, 1.0),
+    }}
+    return offsets.get(method.lower(), offsets["rk4"])
 '''
 
     # =========================================================================
@@ -148,6 +159,9 @@ def get_num_passes(method: str) -> int:
 // Get number of passes for a method (string-based for simple API)
 int get_num_passes(const char* method);
 
+// Get normalized stage-time offsets for a method
+const double* get_stage_offsets(const char* method);
+
 // Propagate a single integrator state
 // Each integrator MUST provide its own x0 storage to avoid conflicts
 void propagate_integrator(
@@ -165,12 +179,24 @@ void propagate_integrator(
         return """
 #include "integration.h"
 
+static const double EULER_OFFSETS[] = {0.0};
+static const double RK2_OFFSETS[] = {0.0, 0.5};
+static const double RK4_OFFSETS[] = {0.0, 0.5, 0.5, 1.0};
+static const double MERSON_OFFSETS[] = {0.0, 1.0 / 3.0, 1.0 / 3.0, 0.5, 1.0};
+
 int get_num_passes(const char* method) {
     if (strcmp(method, "euler") == 0) return 1;
     if (strcmp(method, "rk2") == 0) return 2;
     if (strcmp(method, "rk4") == 0) return 4;
     if (strcmp(method, "merson") == 0) return 5;
     return 4;  // Default to RK4
+}
+
+const double* get_stage_offsets(const char* method) {
+    if (strcmp(method, "euler") == 0) return EULER_OFFSETS;
+    if (strcmp(method, "rk2") == 0) return RK2_OFFSETS;
+    if (strcmp(method, "merson") == 0) return MERSON_OFFSETS;
+    return RK4_OFFSETS;
 }
 
 void propagate_integrator(
@@ -252,6 +278,9 @@ void propagate_integrator(
 // Get number of passes for a method
 int get_num_passes(const std::string& method);
 
+// Get normalized stage-time offsets for a method
+const double* get_stage_offsets(const std::string& method);
+
 // Propagate a single integrator state
 // Each integrator MUST provide its own x0 storage to avoid conflicts
 void propagate_integrator(
@@ -273,12 +302,24 @@ void propagate_integrator(
 
 #include "integration.hpp"
 
+static const double EULER_OFFSETS[] = {0.0};
+static const double RK2_OFFSETS[] = {0.0, 0.5};
+static const double RK4_OFFSETS[] = {0.0, 0.5, 0.5, 1.0};
+static const double MERSON_OFFSETS[] = {0.0, 1.0 / 3.0, 1.0 / 3.0, 0.5, 1.0};
+
 int get_num_passes(const std::string& method) {
     if (method == "euler") return 1;
     if (method == "rk2") return 2;
     if (method == "rk4") return 4;
     if (method == "merson") return 5;
     return 4;  // Default to RK4
+}
+
+const double* get_stage_offsets(const std::string& method) {
+    if (method == "euler") return EULER_OFFSETS;
+    if (method == "rk2") return RK2_OFFSETS;
+    if (method == "merson") return MERSON_OFFSETS;
+    return RK4_OFFSETS;
 }
 
 static void euler_step(double& state, double derivative, double dt) {
@@ -412,6 +453,16 @@ impl IntegrationMethod {
 /// Get number of passes for an integration method
 pub fn get_num_passes(method: IntegrationMethod) -> usize {
     method.passes()
+}
+
+/// Get normalized stage-time offsets for an integration method
+pub fn get_stage_offsets(method: IntegrationMethod) -> &'static [f64] {
+    match method {
+        IntegrationMethod::Euler => &[0.0],
+        IntegrationMethod::Rk2 => &[0.0, 0.5],
+        IntegrationMethod::Rk4 => &[0.0, 0.5, 0.5, 1.0],
+        IntegrationMethod::Merson => &[0.0, 1.0 / 3.0, 1.0 / 3.0, 0.5, 1.0],
+    }
 }
 
 /// State for an integrator during multi-pass integration

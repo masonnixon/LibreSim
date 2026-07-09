@@ -37,7 +37,7 @@ class UnitDelay(Block):
             self.input = self.input_block.getOutput(self.input_source_port)
 
         # Check if it's time to sample
-        if State.t - self.last_sample_time >= self.sample_time - State.EPS:
+        if State.ready and State.t - self.last_sample_time >= self.sample_time - State.EPS:
             self.output = self.prev_value
             self.prev_value = self.input
             self.last_sample_time = State.t
@@ -74,7 +74,7 @@ class ZeroOrderHold(Block):
             self.input = self.input_block.getOutput(self.input_source_port)
 
         # Check if it's time to sample
-        if State.t - self.last_sample_time >= self.sample_time - State.EPS:
+        if State.ready and State.t - self.last_sample_time >= self.sample_time - State.EPS:
             self.held_value = self.input
             self.last_sample_time = State.t
 
@@ -114,7 +114,7 @@ class DiscreteIntegrator(Block):
             self.input = self.input_block.getOutput(self.input_source_port)
 
         # Check if it's time to update
-        if State.t - self.last_sample_time >= self.sample_time - State.EPS:
+        if State.ready and State.t - self.last_sample_time >= self.sample_time - State.EPS:
             if self.method == "forward":
                 # Forward Euler: y[n] = y[n-1] + T*u[n-1]
                 self.output += self.sample_time * self.prev_input
@@ -163,7 +163,7 @@ class DiscreteDerivative(Block):
             self.input = self.input_block.getOutput(self.input_source_port)
 
         # Check if it's time to update
-        if State.t - self.last_sample_time >= self.sample_time - State.EPS:
+        if State.ready and State.t - self.last_sample_time >= self.sample_time - State.EPS:
             # Discrete derivative: y[n] = (u[n] - u[n-1]) / T
             self.output = (self.input - self.prev_input) / self.sample_time
             self.prev_input = self.input
@@ -213,7 +213,7 @@ class DiscreteTransferFunction(Block):
             self.input = self.input_block.getOutput(self.input_source_port)
 
         # Check if it's time to update
-        if State.t - self.last_sample_time >= self.sample_time - State.EPS:
+        if State.ready and State.t - self.last_sample_time >= self.sample_time - State.EPS:
             # Shift buffers
             for i in range(self.order, 0, -1):
                 self.input_buffer[i] = self.input_buffer[i - 1]
@@ -337,7 +337,7 @@ class DiscreteStateSpace(Block):
             self.input = self.input_block.getOutput(self.input_source_port)
 
         # Check if it's time to update
-        if State.t - self.last_sample_time >= self.sample_time - State.EPS:
+        if State.ready and State.t - self.last_sample_time >= self.sample_time - State.EPS:
             # Compute output: y = C*x + D*u
             self._output = 0.0
             for i in range(self.n):
@@ -396,7 +396,7 @@ class FirstOrderHold(Block):
             self.input = self.input_block.getOutput(self.input_source_port)
 
         # Check if it's time to sample
-        if State.t - self.last_sample_time >= self.sample_time - State.EPS:
+        if State.ready and State.t - self.last_sample_time >= self.sample_time - State.EPS:
             self._prev_sample = self._curr_sample
             self._curr_sample = self.input
             # Calculate slope for extrapolation
@@ -458,7 +458,7 @@ class DiscretePIDController(Block):
             self.input = self.input_block.getOutput(self.input_source_port)
 
         # Check if it's time to update
-        if State.t - self.last_sample_time >= self.sample_time - State.EPS:
+        if State.ready and State.t - self.last_sample_time >= self.sample_time - State.EPS:
             error = self.input
             Ts = self.sample_time
 

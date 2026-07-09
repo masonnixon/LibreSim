@@ -333,8 +333,9 @@ class VariableTransportDelay(Block):
         signal = self.inputs[0]
         self.delay_time = max(0.0, min(self.inputs[1], self.max_delay))
 
-        # Add current sample to buffer
-        self.buffer.append((State.t, signal))
+        # Add one sample per completed integration step.
+        if State.ready:
+            self.buffer.append((State.t, signal))
 
         # Find the delayed output
         target_time = State.t - self.delay_time

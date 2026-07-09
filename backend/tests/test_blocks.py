@@ -6428,6 +6428,7 @@ class TestFirstOrderHoldBlock:
         from src.osk.blocks.discrete import FirstOrderHold
 
         State.dt = 0.1
+        State.ready = 1
         foh = FirstOrderHold(sample_time=0.1)
         foh.init()
 
@@ -6444,6 +6445,7 @@ class TestDiscretePIDControllerBlock:
         from src.osk.blocks.discrete import DiscretePIDController
 
         State.dt = 0.01
+        State.ready = 1
         pid = DiscretePIDController(Kp=2.0, Ki=0.0, Kd=0.0, N=100, sample_time=0.01)
         pid.init()
 
@@ -6465,6 +6467,7 @@ class TestDiscreteStateSpaceBlock:
             A=[[0.9]], B=[[0.1]], C=[[1.0]], D=[[0.0]], initial_state=[0.0], sample_time=0.1
         )
         State.t = 0.0
+        State.ready = 1
         dss.init()
 
         dss.setInput(1.0)

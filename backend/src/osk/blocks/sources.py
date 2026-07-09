@@ -293,6 +293,9 @@ class WhiteNoise(Block):
         self._last_sample_time = 0.0
 
     def update(self):
+        if not State.ready:
+            return
+
         # If sample_time is 0, generate new noise every step
         # Otherwise, only generate new noise at sample intervals
         if self.sample_time <= 0:
@@ -342,6 +345,9 @@ class UniformNoise(Block):
         self._last_sample_time = 0.0
 
     def update(self):
+        if not State.ready:
+            return
+
         if self.sample_time <= 0:
             self.output = self._rng.uniform(self.minimum, self.maximum)
         else:
@@ -495,6 +501,9 @@ class BandLimitedWhiteNoise(Block):
         self._last_sample_time = 0.0
 
     def update(self):
+        if not State.ready:
+            return
+
         if State.t >= self._last_sample_time + self.sample_time - State.EPS:
             self.output = self._rng.gauss(0.0, self._std_dev)
             self._last_sample_time = State.t
@@ -614,6 +623,9 @@ class SignalGenerator(Block):
             self.output = 0.0
 
     def update(self):
+        if self.wave_type == "random" and not State.ready:
+            return
+
         if self.freq_hz <= 0:
             self.output = 0.0
             return

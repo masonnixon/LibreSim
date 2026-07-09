@@ -581,9 +581,10 @@ class TransportDelay(Block):
 
         current_time = State.t
 
-        # Add current value to buffer
-        self.buffer.append(self.input)
-        self.time_buffer.append(current_time)
+        # Buffer one sample per completed integration step.
+        if State.ready:
+            self.buffer.append(self.input)
+            self.time_buffer.append(current_time)
 
         # Calculate delayed time
         delayed_time = current_time - self.delay_time
