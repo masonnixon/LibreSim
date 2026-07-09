@@ -601,6 +601,7 @@ class TestCodegenControllerModels:
         assert sanitize_project_name("test@project!") == "testproject"
         assert sanitize_project_name("project#1") == "project1"
         assert sanitize_project_name("...project...") == "project"
+        assert sanitize_project_name('x"; rm -rf') == "x_rm_rf"
 
     def test_sanitize_project_name_empty(self):
         """Test sanitization of empty/invalid names."""

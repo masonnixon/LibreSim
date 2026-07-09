@@ -79,7 +79,8 @@ async def generate_code(request: CodeGenRequest):
             # Try to get name from model metadata
             model_name = request.model.get("name", "")
             if model_name:
-                project_name = sanitize_project_name(model_name)
+                project_name = model_name
+        project_name = sanitize_project_name(project_name)
 
         # Create config
         config = CodeGenerationConfig(
@@ -213,7 +214,8 @@ async def compile_code(request: CompileRequest):
         if project_name == "simulation":
             model_name = request.model.get("name", "")
             if model_name:
-                project_name = sanitize_project_name(model_name)
+                project_name = model_name
+        project_name = sanitize_project_name(project_name)
 
         # Create config
         config = CodeGenerationConfig(
