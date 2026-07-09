@@ -56,30 +56,15 @@ def run_backend_simulation(model_data: dict, dt: float = 0.01, t_end: float = 10
     adapter = OSKAdapter()
     adapter.initialize(compiled, config)
 
-    # Run simulation
-    sim_results = adapter.run_simulation()
-
-    # Extract scope results
     results = {"time": []}
-    signals = sim_results.get("signals", [])
-    if signals:
-        sig = signals[0]
-        results["time"] = sig.get("times", [])
-
-        # Handle multi-input vs single-input scope
-        values = sig.get("values", [])
-        input_names = sig.get("inputNames", [])
-        num_inputs = sig.get("numInputs", 1)
-
-        if num_inputs > 1 and isinstance(values, list) and len(values) == num_inputs:
-            # Multi-input scope
-            for i, vals in enumerate(values):
-                name = input_names[i] if i < len(input_names) else f"Signal_{i}"
-                results[name] = vals
-        else:
-            # Single-input scope
-            name = sig.get("name", "Output")
-            results[name] = values
+    t = config.start_time
+    while t <= t_end + 1e-12:
+        outputs = adapter.step(t, dt)
+        results["time"].append(t)
+        for key, value in outputs.items():
+            signal_name = key.rsplit(":", 1)[-1]
+            results.setdefault(signal_name, []).append(value)
+        t += dt
 
     return results
 

@@ -87,13 +87,6 @@ jobs:
           python scripts/validate_codegen.py
           cat docs/codegen-validation-report.md
 
-      - name: Check validation passed
-        run: |
-          # Extract pass rate and ensure it's above 90%
-          PASS_RATE=$(grep -oP '\d+\.\d+%' docs/codegen-validation-report.md | head -1)
-          echo "Pass rate: $PASS_RATE"
-          # This is a soft check - validation report is for informational purposes
-
   frontend-tests:
     name: Frontend Tests (TypeScript)
     runs-on: ubuntu-latest
@@ -123,4 +116,3 @@ jobs:
 
       - name: Run tests
         run: npm test -- --run
-        continue-on-error: true  # Frontend tests may not exist yet

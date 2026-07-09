@@ -495,7 +495,7 @@ Agents: update this table in the same commit as the work.
 | LS-1 | complete | this commit | Restored RK4 fourth-order autonomous convergence. |
 | LS-2 | complete | this commit | Added stage-local time to backend/codegen loops; guarded stateful major-step updates. |
 | LS-3 | complete | this commit | Serialized replacement and waited for scheduled/paused runs to exit. |
-| LS-4 | not started | | |
+| LS-4 | complete | this commit | Hardened CI gates, app-path ground truth, and validator output matching/baseline. |
 | LS-5 | not started | | |
 | LS-6 | not started | | |
 | LS-7 | not started | | |

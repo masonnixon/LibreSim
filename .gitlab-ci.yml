@@ -74,10 +74,6 @@ codegen-validation:
     # Run validation
     - python scripts/validate_codegen.py
     - cat docs/codegen-validation-report.md
-    # Check pass rate (soft check - informational)
-    - |
-      PASS_RATE=$(grep -oP '\d+\.\d+%' docs/codegen-validation-report.md | head -1)
-      echo "Pass rate: $PASS_RATE"
   artifacts:
     when: always
     paths:
@@ -98,5 +94,5 @@ frontend-tests:
     - npm run lint
     # Type checking
     - npx tsc --noEmit
-    # Tests (may not exist yet)
-    - npm test -- --run || true
+    # Tests
+    - npm test -- --run
