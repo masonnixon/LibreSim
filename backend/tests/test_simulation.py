@@ -1141,7 +1141,7 @@ class TestOSKAdapterExtended:
         self.adapter = OSKAdapter()
 
     def test_create_osk_block_unknown_type(self):
-        """Test creating OSK block with unknown type falls back to Gain."""
+        """Unknown block types fail adapter initialization."""
         compiled_block = CompiledBlock(
             id="unknown-1",
             type="unknown_type_xyz",
@@ -1157,14 +1157,17 @@ class TestOSKAdapterExtended:
         )
 
         config = SimulationConfig()
-        self.adapter.initialize(compiled_model, config)
+        with pytest.raises(ValueError, match="unknown_type_xyz.*unknown-1"):
+            self.adapter.initialize(compiled_model, config)
 
-        # Should create a pass-through Gain block
-        osk_block = self.adapter.get_block("unknown-1")
-        assert osk_block is not None
+    def test_create_osk_block_with_error(self, monkeypatch):
+        """Block constructor failures identify the block and type."""
+        class FailingBlock:
+            def __init__(self, **kwargs):
+                raise TypeError("invalid constructor parameters")
 
-    def test_create_osk_block_with_error(self):
-        """Test creating OSK block with invalid parameters falls back to Gain."""
+        monkeypatch.setitem(BLOCK_TYPE_MAP, "state_space", FailingBlock)
+
         # Create a block with invalid parameters that will cause construction error
         compiled_block = CompiledBlock(
             id="bad-1",
@@ -1182,11 +1185,8 @@ class TestOSKAdapterExtended:
         )
 
         config = SimulationConfig()
-        self.adapter.initialize(compiled_model, config)
-
-        # Should create a fallback Gain block
-        osk_block = self.adapter.get_block("bad-1")
-        assert osk_block is not None
+        with pytest.raises(ValueError, match="bad-1.*state_space"):
+            self.adapter.initialize(compiled_model, config)
 
     def test_setup_connections_no_model(self):
         """Test _setup_connections with no model does nothing."""

@@ -918,10 +918,9 @@ class OSKAdapter:
         block_class = BLOCK_TYPE_MAP.get(block_type)
 
         if not block_class:
-            # Unknown block type, create a pass-through block
-            print(f"Warning: Unknown block type '{block_type}', using pass-through")
-            self._osk_blocks[compiled_block.id] = Gain(gain=1.0)
-            return
+            raise ValueError(
+                f"Unknown block type '{block_type}' for block '{compiled_block.id}'"
+            )
 
         # Map parameters
         osk_params = self._map_parameters(block_type, compiled_block.parameters)
@@ -940,9 +939,9 @@ class OSKAdapter:
                 self._analysis_blocks.append(compiled_block.id)
 
         except Exception as e:
-            print(f"Error creating block '{compiled_block.name}': {e}")
-            # Create a default block as fallback
-            self._osk_blocks[compiled_block.id] = Gain(gain=1.0)
+            raise ValueError(
+                f"Failed to create block '{compiled_block.id}' of type '{block_type}': {e}"
+            ) from e
 
     def _map_parameters(self, block_type: str, params: dict[str, Any]) -> dict[str, Any]:
         """Map LibreSim parameter names to OSK constructor arguments.
