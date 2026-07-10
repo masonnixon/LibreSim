@@ -30,7 +30,15 @@ MAX_RMS = 0.01  # Maximum RMS error (1%)
 
 def load_example(example_name: str) -> dict:
     """Load an example model from the examples directory."""
-    examples_dir = Path(__file__).parent.parent.parent / "examples"
+    # Docker Compose mounts repository examples under /project, while a local test
+    # run reaches them from the repository root above backend/.  Checking both keeps
+    # the documented Docker command and direct repository runs equivalent.
+    docker_examples = Path("/project/examples")
+    examples_dir = (
+        docker_examples
+        if docker_examples.is_dir()
+        else Path(__file__).resolve().parents[2] / "examples"
+    )
     example_path = examples_dir / f"{example_name}.json"
     with open(example_path) as f:
         return json.load(f)
