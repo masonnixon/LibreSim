@@ -93,6 +93,7 @@ const mockedUseModelStore = vi.mocked(useModelStore)
 const mockedUseSimulationStore = vi.mocked(useSimulationStore)
 const mockedUseUIStore = vi.mocked(useUIStore)
 const mockedUseLibraryStore = vi.mocked(useLibraryStore)
+type LibraryState = ReturnType<typeof useLibraryStore.getState>
 
 describe('Toolbar', () => {
   const mockModel = {
@@ -158,6 +159,21 @@ describe('Toolbar', () => {
   }
 
   const mockImportLibrary = vi.fn()
+  const mockLibraryState: LibraryState = {
+    libraries: [],
+    libraryMap: new Map(),
+    libraryBlockMap: new Map(),
+    importLibrary: mockImportLibrary,
+    removeLibrary: vi.fn(),
+    getLibrary: vi.fn(),
+    getLibraryBlock: vi.fn(),
+    getLibraryBlocks: vi.fn(() => []),
+    getAllLibraryBlocks: vi.fn(() => []),
+    isLibraryBlock: vi.fn(() => false),
+    getBlockImplementation: vi.fn(),
+    clearAllLibraries: vi.fn(),
+    _rebuildMaps: vi.fn(),
+  }
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -179,10 +195,7 @@ describe('Toolbar', () => {
     mockedUseModelStore.mockReturnValue(mockModelStore as unknown as ReturnType<typeof useModelStore>)
     mockedUseSimulationStore.mockReturnValue(mockSimulationStore as unknown as ReturnType<typeof useSimulationStore>)
     mockedUseUIStore.mockReturnValue(mockUIStore as unknown as ReturnType<typeof useUIStore>)
-    mockedUseLibraryStore.mockImplementation((selector?: (state: { importLibrary: typeof mockImportLibrary }) => unknown) => {
-      const state = { importLibrary: mockImportLibrary }
-      return selector ? selector(state) : state
-    })
+    mockedUseLibraryStore.mockImplementation((selector) => selector(mockLibraryState))
   })
 
   describe('rendering', () => {

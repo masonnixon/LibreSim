@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { useModelStore } from './modelStore'
 import type { Model } from '../types/model'
 import type { BlockDefinition, BlockInstance } from '../types/block'
+import type { LibraryBlockDefinition } from '../types/library'
 
 // Helper to create a test model
 function createTestModel(): Model {
@@ -1414,7 +1415,7 @@ describe('useModelStore', () => {
 
     it('adds library block with implementation', () => {
       // Create a library block definition with implementation
-      const libraryBlockDef: BlockDefinition = {
+      const libraryBlockDef: LibraryBlockDefinition = {
         type: 'my_library__gain_system',
         name: 'Gain System',
         category: 'subsystems',
@@ -1441,7 +1442,7 @@ describe('useModelStore', () => {
           connections: [],
           portMappings: [],
         },
-      } as any
+      }
 
       const blockId = useModelStore.getState().addBlock(libraryBlockDef, { x: 100, y: 100 })
 
@@ -2029,8 +2030,8 @@ describe('useModelStore', () => {
     })
 
     it('updates solver via updateSimulationConfig', () => {
-      useModelStore.getState().updateSimulationConfig({ solver: 'ode45' })
-      expect(useModelStore.getState().model?.simulationConfig.solver).toBe('ode45')
+      useModelStore.getState().updateSimulationConfig({ solver: 'merson' })
+      expect(useModelStore.getState().model?.simulationConfig.solver).toBe('merson')
     })
 
     it('updates stop time via updateSimulationConfig', () => {
@@ -2055,7 +2056,7 @@ describe('useModelStore', () => {
 
     it('updateSimulationConfig does nothing when model is null', () => {
       useModelStore.setState({ model: null })
-      useModelStore.getState().updateSimulationConfig({ solver: 'ode45' })
+      useModelStore.getState().updateSimulationConfig({ solver: 'merson' })
       expect(useModelStore.getState().model).toBeNull()
     })
 
@@ -2416,7 +2417,7 @@ describe('useModelStore', () => {
 
     it('does nothing when fewer than 2 blocks', () => {
       const constDef = createBlockDef('constant', 'Constant')
-      const blockId = useModelStore.getState().addBlock(constDef, { x: 100, y: 100 })
+      useModelStore.getState().addBlock(constDef, { x: 100, y: 100 })
 
       const initialPosition = { ...useModelStore.getState().model?.blocks[0].position }
 

@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { SimulationWebSocket, api } from './client'
 import axios from 'axios'
+import type { Model } from '../types/model'
+import type { SimulationConfig } from '../types/simulation'
 
 // Mock axios
 vi.mock('axios', () => {
@@ -18,12 +20,33 @@ vi.mock('axios', () => {
 })
 
 // Get the mocked axios instance
-const mockAxiosInstance = axios.create() as {
+const mockAxiosInstance = axios.create() as unknown as {
   get: ReturnType<typeof vi.fn>
   post: ReturnType<typeof vi.fn>
   put: ReturnType<typeof vi.fn>
   delete: ReturnType<typeof vi.fn>
 }
+
+const createMockModel = (overrides: Partial<Model> = {}): Model => ({
+  id: 'model-1',
+  metadata: {
+    name: 'Test Model',
+    description: '',
+    author: '',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    modifiedAt: '2026-01-01T00:00:00.000Z',
+    version: '1.0.0',
+  },
+  blocks: [],
+  connections: [],
+  simulationConfig: {
+    solver: 'rk4',
+    startTime: 0,
+    stopTime: 10,
+    stepSize: 0.01,
+  },
+  ...overrides,
+})
 
 describe('SimulationWebSocket', () => {
   let mockWebSocket: {
@@ -286,21 +309,33 @@ describe('api', () => {
     })
 
     it('saveModel creates new model when no id', async () => {
-      const mockModel = { metadata: { name: 'New Model' }, blocks: [], connections: [] }
+      const mockModel = createMockModel({
+        id: '',
+        metadata: {
+          ...createMockModel().metadata,
+          name: 'New Model',
+        },
+      })
       const savedModel = { ...mockModel, id: 'new-id' }
       mockAxiosInstance.post.mockResolvedValueOnce({ data: savedModel })
 
-      const result = await api.saveModel(mockModel as any)
+      const result = await api.saveModel(mockModel)
 
       expect(mockAxiosInstance.post).toHaveBeenCalledWith('/models', mockModel)
       expect(result).toEqual(savedModel)
     })
 
     it('saveModel updates existing model when has id', async () => {
-      const mockModel = { id: '1', metadata: { name: 'Updated' }, blocks: [], connections: [] }
+      const mockModel = createMockModel({
+        id: '1',
+        metadata: {
+          ...createMockModel().metadata,
+          name: 'Updated',
+        },
+      })
       mockAxiosInstance.put.mockResolvedValueOnce({ data: mockModel })
 
-      const result = await api.saveModel(mockModel as any)
+      const result = await api.saveModel(mockModel)
 
       expect(mockAxiosInstance.put).toHaveBeenCalledWith('/models/1', mockModel)
       expect(result).toEqual(mockModel)
@@ -337,12 +372,12 @@ describe('api', () => {
     })
 
     it('startSimulation starts a simulation', async () => {
-      const mockModel = { id: '1' }
-      const mockConfig = { solver: 'rk4', startTime: 0, stopTime: 10, stepSize: 0.01 }
+      const mockModel = createMockModel({ id: '1' })
+      const mockConfig: SimulationConfig = { solver: 'rk4', startTime: 0, stopTime: 10, stepSize: 0.01 }
       const mockResult = { sessionId: 'session-1' }
       mockAxiosInstance.post.mockResolvedValueOnce({ data: mockResult })
 
-      const result = await api.startSimulation(mockModel as any, mockConfig)
+      const result = await api.startSimulation(mockModel, mockConfig)
 
       expect(mockAxiosInstance.post).toHaveBeenCalledWith('/simulate/start', {
         model: mockModel,
@@ -408,12 +443,12 @@ describe('api', () => {
 
   describe('step mode operations', () => {
     it('initStepMode initializes step mode', async () => {
-      const mockModel = { id: '1' }
-      const mockConfig = { solver: 'rk4', startTime: 0, stopTime: 10, stepSize: 0.01 }
+      const mockModel = createMockModel({ id: '1' })
+      const mockConfig: SimulationConfig = { solver: 'rk4', startTime: 0, stopTime: 10, stepSize: 0.01 }
       const mockResult = { success: true, sessionId: 's1', currentTime: 0, status: 'step_mode' }
       mockAxiosInstance.post.mockResolvedValueOnce({ data: mockResult })
 
-      const result = await api.initStepMode(mockModel as any, mockConfig)
+      const result = await api.initStepMode(mockModel, mockConfig)
 
       expect(mockAxiosInstance.post).toHaveBeenCalledWith('/simulate/step/init', {
         model: mockModel,

@@ -90,12 +90,31 @@ import { useLibraryStore } from '../../store/libraryStore'
 const mockedUseUIStore = vi.mocked(useUIStore)
 const mockedUseModelStore = vi.mocked(useModelStore)
 const mockedUseLibraryStore = vi.mocked(useLibraryStore)
+type LibraryState = ReturnType<typeof useLibraryStore.getState>
 
 describe('Sidebar', () => {
   const mockToggleSidebar = vi.fn()
   const mockSetDraggingBlockType = vi.fn()
   const mockAddBlock = vi.fn()
   const mockRemoveLibrary = vi.fn()
+
+  const createMockLibraryState = (
+    libraries: LibraryState['libraries'] = []
+  ): LibraryState => ({
+    libraries,
+    libraryMap: new Map(libraries.map((library) => [library.id, library])),
+    libraryBlockMap: new Map(),
+    importLibrary: vi.fn(),
+    removeLibrary: mockRemoveLibrary,
+    getLibrary: vi.fn(),
+    getLibraryBlock: vi.fn(),
+    getLibraryBlocks: vi.fn(() => []),
+    getAllLibraryBlocks: vi.fn(() => []),
+    isLibraryBlock: vi.fn(() => false),
+    getBlockImplementation: vi.fn(),
+    clearAllLibraries: vi.fn(),
+    _rebuildMaps: vi.fn(),
+  })
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -113,13 +132,7 @@ describe('Sidebar', () => {
     } as unknown as ReturnType<typeof useModelStore>)
 
     // useLibraryStore is called with selectors, so we need to handle that
-    mockedUseLibraryStore.mockImplementation((selector?: (state: { libraries: unknown[]; removeLibrary: typeof mockRemoveLibrary }) => unknown) => {
-      const state = {
-        libraries: [],
-        removeLibrary: mockRemoveLibrary,
-      }
-      return selector ? selector(state) : state
-    })
+    mockedUseLibraryStore.mockImplementation((selector) => selector(createMockLibraryState()))
   })
 
   describe('rendering', () => {
@@ -282,9 +295,7 @@ describe('Sidebar', () => {
 
   describe('libraries section', () => {
     it('shows imported libraries section when libraries exist', () => {
-      mockedUseLibraryStore.mockImplementation((selector?: (state: { libraries: unknown[]; removeLibrary: typeof mockRemoveLibrary }) => unknown) => {
-        const state = {
-          libraries: [
+      const state = createMockLibraryState([
             {
               id: 'lib-1',
               name: 'Test Library',
@@ -295,11 +306,8 @@ describe('Sidebar', () => {
               importedAt: new Date().toISOString(),
               blocks: [],
             },
-          ],
-          removeLibrary: mockRemoveLibrary,
-        }
-        return selector ? selector(state) : state
-      })
+      ])
+      mockedUseLibraryStore.mockImplementation((selector) => selector(state))
 
       render(<Sidebar />)
 

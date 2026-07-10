@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
-import { ReactFlowProvider, Position } from '@xyflow/react'
+import { ReactFlowProvider } from '@xyflow/react'
 import { BlockNode } from './BlockNode'
 import type { BlockDefinition, BlockInstance, BlockCategory, BlockRotation } from '../../types/block'
 
