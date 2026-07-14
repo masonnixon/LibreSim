@@ -8,6 +8,7 @@ from .continuous import CONTINUOUS_TEMPLATES
 from .control_design import CONTROL_DESIGN_TEMPLATES
 from .discrete import DISCRETE_TEMPLATES
 from .dsp import DSP_TEMPLATES
+from .estimation import ESTIMATION_TEMPLATES
 from .logic import LOGIC_TEMPLATES
 from .math_ops import MATH_TEMPLATES
 from .nonlinear import NONLINEAR_TEMPLATES
@@ -30,6 +31,7 @@ BLOCK_TEMPLATES: dict[str, Callable[[BlockInfo, str], str]] = {
     **CONTROL_DESIGN_TEMPLATES,
     **AEROSPACE_TEMPLATES,
     **DSP_TEMPLATES,
+    **ESTIMATION_TEMPLATES,
 }
 
 

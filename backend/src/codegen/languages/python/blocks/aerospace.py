@@ -209,17 +209,18 @@ class {class_name}:
     """
 
     def __init__(self):
-        self.quaternion = [1.0, 0.0, 0.0, 0.0]  # [w, x, y, z]
-        self.vector = [0.0, 0.0, 0.0]
+        self.input = [1.0, 0.0, 0.0, 0.0]  # quaternion [w, x, y, z]
+        self.input1 = [0.0, 0.0, 0.0]  # vector
         self.output = [0.0, 0.0, 0.0]
-        self.input = 0.0
 
     def init(self):
+        self.input = [1.0, 0.0, 0.0, 0.0]
+        self.input1 = [0.0, 0.0, 0.0]
         self.output = [0.0, 0.0, 0.0]
 
     def update(self, t: float):
-        w, x, y, z = self.quaternion
-        vx, vy, vz = self.vector
+        w, x, y, z = self.input
+        vx, vy, vz = self.input1
 
         # v' = v + 2*w*(q_v x v) + 2*(q_v x (q_v x v))
         # Cross product: q_v x v

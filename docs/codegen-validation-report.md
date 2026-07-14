@@ -13,8 +13,8 @@ This report compares the outputs of generated code against the headless simulati
 | 04b_mass_spring_damper_underdamped | PASS | PASS | PASS | PASS |
 | 05a_moving_average_filter | PASS | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH |
 | 05b_lowpass_filter | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH |
-| 06_kalman_filter_estimation | NUMERICAL MISMATCH | PASS | PASS | PASS |
-| 06b_kalman_position_velocity | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH |
+| 06_kalman_filter_estimation | PASS | PASS | PASS | PASS |
+| 06b_kalman_position_velocity | PASS | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH |
 | 07_thermostat_relay_control | PASS | PASS | PASS | PASS |
 | 07a_bode_plot_analysis | MISSING OR EMPTY OUTPUT SET | MISSING OR EMPTY OUTPUT SET | MISSING OR EMPTY OUTPUT SET | MISSING OR EMPTY OUTPUT SET |
 | 07b_nyquist_plot_analysis | MISSING OR EMPTY OUTPUT SET | MISSING OR EMPTY OUTPUT SET | MISSING OR EMPTY OUTPUT SET | MISSING OR EMPTY OUTPUT SET |
@@ -28,7 +28,7 @@ This report compares the outputs of generated code against the headless simulati
 | 21_isa_atmosphere_model | PASS | PASS | PASS | PASS |
 | 22_gravity_models_comparison | PASS | PASS | PASS | PASS |
 | 23_dcm_quaternion_conversion | PASS | PASS | PASS | PASS |
-| 24_quaternion_vector_rotation | NUMERICAL MISMATCH | PASS | PASS | PASS |
+| 24_quaternion_vector_rotation | PASS | PASS | PASS | PASS |
 | 30_pid_speed_control | PASS | PASS | PASS | PASS |
 | 31_discrete_pid_sampled_control | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH |
 | 32_lqr_state_feedback | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH |
@@ -49,11 +49,11 @@ This report compares the outputs of generated code against the headless simulati
 ## Statistics
 
 - Total tests: 156
-- Passed: 89 (57.1%)
+- Passed: 92 (59.0%)
 - Simulation failures: 0
 - Build failures: 0
 - Run failures: 16
-- Output validation failures: 51
+- Output validation failures: 48
 
 ## Detailed Failures
 
@@ -112,22 +112,6 @@ This report compares the outputs of generated code against the headless simulati
 - Codegen final values: {'sink=scope1|in=0|source=sine_signal|out=0|element=scalar': -0.006283, 'sink=scope1|in=1|source=sum1|out=0|element=scalar': -0.144362, 'sink=scope1|in=2|source=lpf_1st|out=0|element=scalar': -0.026044, 'sink=scope1|in=3|source=butter_1st|out=0|element=scalar': -0.144362, 'sink=scope1|in=4|source=butter_2nd|out=0|element=scalar': -0.144362, 'sink=scope1|in=5|source=butter_4th|out=0|element=scalar': -0.144362, 'sink=scope1|in=6|source=bessel_2nd|out=0|element=scalar': -0.144362}
 - Failure category: `numerical_mismatch`
 - Mismatched outputs: ['sink=scope1|in=1|source=sum1|out=0|element=scalar', 'sink=scope1|in=2|source=lpf_1st|out=0|element=scalar', 'sink=scope1|in=3|source=butter_1st|out=0|element=scalar', 'sink=scope1|in=4|source=butter_2nd|out=0|element=scalar', 'sink=scope1|in=5|source=butter_4th|out=0|element=scalar', 'sink=scope1|in=6|source=bessel_2nd|out=0|element=scalar']
-
-### 06_kalman_filter_estimation (python)
-
-- Max relative error: 100.0000%
-- Headless final values: {'sink=scope1|in=0|source=ramp1|out=0|element=scalar': 4.999999999999916, 'sink=scope1|in=1|source=kalman1|out=0|element=scalar': 4.947437539013666}
-- Codegen final values: {'sink=scope1|in=0|source=ramp1|out=0|element=scalar': 4.999999999999916, 'sink=scope1|in=1|source=kalman1|out=0|element=scalar': 0.0}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope1|in=1|source=kalman1|out=0|element=scalar']
-
-### 06b_kalman_position_velocity (python)
-
-- Max relative error: 100.0000%
-- Headless final values: {'sink=scope_vel|in=0|source=const_true_vel|out=0|element=scalar': 1.0, 'sink=scope_vel|in=1|source=demux1|out=1|element=scalar': 1.0608059627693, 'sink=scope_pos|in=0|source=ramp_true|out=0|element=scalar': 9.999999999999831, 'sink=scope_pos|in=1|source=sum_noisy|out=0|element=scalar': 10.444632029639543, 'sink=scope_pos|in=2|source=demux1|out=0|element=scalar': 10.023836475305469}
-- Codegen final values: {'sink=scope_vel|in=0|source=const_true_vel|out=0|element=scalar': 1.0, 'sink=scope_vel|in=1|source=demux1|out=1|element=scalar': 0.0, 'sink=scope_pos|in=0|source=ramp_true|out=0|element=scalar': 9.999999999999831, 'sink=scope_pos|in=1|source=sum_noisy|out=0|element=scalar': 10.444632029639543, 'sink=scope_pos|in=2|source=demux1|out=0|element=scalar': 0.0}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_pos|in=2|source=demux1|out=0|element=scalar', 'sink=scope_vel|in=1|source=demux1|out=1|element=scalar']
 
 ### 06b_kalman_position_velocity (cpp)
 
@@ -232,14 +216,6 @@ This report compares the outputs of generated code against the headless simulati
 
 - Run failed: Results CSV contains no output columns
 - Failure category: `missing_or_empty_output_set`
-
-### 24_quaternion_vector_rotation (python)
-
-- Max relative error: 100.0000%
-- Headless final values: {'sink=scope_angle|in=0|source=angle|out=0|element=scalar': 6.2799999999999105, 'sink=scope_quat|in=0|source=q_norm|out=0|element=0': -0.9999987317275395, 'sink=scope_quat|in=0|source=q_norm|out=0|element=1': 0.0, 'sink=scope_quat|in=0|source=q_norm|out=0|element=2': 0.0, 'sink=scope_quat|in=0|source=q_norm|out=0|element=3': 0.0015926529165316812, 'sink=scope_rotated|in=0|source=rotate|out=0|element=0': 0.9999949269133749, 'sink=scope_rotated|in=0|source=rotate|out=0|element=1': -0.003185301793227696, 'sink=scope_rotated|in=0|source=rotate|out=0|element=2': 0.0}
-- Codegen final values: {'sink=scope_angle|in=0|source=angle|out=0|element=scalar': 6.2799999999999105, 'sink=scope_quat|in=0|source=q_norm|out=0|element=0': -0.9999987317275395, 'sink=scope_quat|in=0|source=q_norm|out=0|element=1': 0.0, 'sink=scope_quat|in=0|source=q_norm|out=0|element=2': 0.0, 'sink=scope_quat|in=0|source=q_norm|out=0|element=3': 0.0015926529165316812, 'sink=scope_rotated|in=0|source=rotate|out=0|element=0': 0.0, 'sink=scope_rotated|in=0|source=rotate|out=0|element=1': 0.0, 'sink=scope_rotated|in=0|source=rotate|out=0|element=2': 0.0}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_rotated|in=0|source=rotate|out=0|element=0', 'sink=scope_rotated|in=0|source=rotate|out=0|element=1']
 
 ### 31_discrete_pid_sampled_control (python)
 
