@@ -30,7 +30,7 @@ This report compares the outputs of generated code against the headless simulati
 | 23_dcm_quaternion_conversion | PASS | PASS | PASS | PASS |
 | 24_quaternion_vector_rotation | PASS | PASS | PASS | PASS |
 | 30_pid_speed_control | PASS | PASS | PASS | PASS |
-| 31_discrete_pid_sampled_control | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH |
+| 31_discrete_pid_sampled_control | PASS | PASS | PASS | PASS |
 | 32_lqr_state_feedback | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH |
 | 33_lead_lag_compensator | PASS | PASS | PASS | PASS |
 | 34_anti_windup_pid | PASS | PASS | PASS | PASS |
@@ -49,11 +49,11 @@ This report compares the outputs of generated code against the headless simulati
 ## Statistics
 
 - Total tests: 156
-- Passed: 92 (59.0%)
+- Passed: 96 (61.5%)
 - Simulation failures: 0
 - Build failures: 0
 - Run failures: 16
-- Output validation failures: 48
+- Output validation failures: 44
 
 ## Detailed Failures
 
@@ -216,38 +216,6 @@ This report compares the outputs of generated code against the headless simulati
 
 - Run failed: Results CSV contains no output columns
 - Failure category: `missing_or_empty_output_set`
-
-### 31_discrete_pid_sampled_control (python)
-
-- Max relative error: 52.4531%
-- Headless final values: {'sink=scope_response|in=0|source=setpoint|out=0|element=scalar': 1.0, 'sink=scope_response|in=1|source=plant|out=0|element=scalar': 1.0129558168546957, 'sink=scope_control|in=0|source=discrete_pid|out=0|element=scalar': 1.0719544787179742}
-- Codegen final values: {'sink=scope_response|in=0|source=setpoint|out=0|element=scalar': 1.0, 'sink=scope_response|in=1|source=plant|out=0|element=scalar': 0.4902800544361296, 'sink=scope_control|in=0|source=discrete_pid|out=0|element=scalar': 0.5096816220119439}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_control|in=0|source=discrete_pid|out=0|element=scalar', 'sink=scope_response|in=1|source=plant|out=0|element=scalar']
-
-### 31_discrete_pid_sampled_control (cpp)
-
-- Max relative error: 52.4530%
-- Headless final values: {'sink=scope_response|in=0|source=setpoint|out=0|element=scalar': 1.0, 'sink=scope_response|in=1|source=plant|out=0|element=scalar': 1.0129558168546957, 'sink=scope_control|in=0|source=discrete_pid|out=0|element=scalar': 1.0719544787179742}
-- Codegen final values: {'sink=scope_response|in=0|source=setpoint|out=0|element=scalar': 1.0, 'sink=scope_response|in=1|source=plant|out=0|element=scalar': 0.49028, 'sink=scope_control|in=0|source=discrete_pid|out=0|element=scalar': 0.509682}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_control|in=0|source=discrete_pid|out=0|element=scalar', 'sink=scope_response|in=1|source=plant|out=0|element=scalar']
-
-### 31_discrete_pid_sampled_control (c)
-
-- Max relative error: 52.4530%
-- Headless final values: {'sink=scope_response|in=0|source=setpoint|out=0|element=scalar': 1.0, 'sink=scope_response|in=1|source=plant|out=0|element=scalar': 1.0129558168546957, 'sink=scope_control|in=0|source=discrete_pid|out=0|element=scalar': 1.0719544787179742}
-- Codegen final values: {'sink=scope_response|in=0|source=setpoint|out=0|element=scalar': 1.0, 'sink=scope_response|in=1|source=plant|out=0|element=scalar': 0.49028, 'sink=scope_control|in=0|source=discrete_pid|out=0|element=scalar': 0.509682}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_control|in=0|source=discrete_pid|out=0|element=scalar', 'sink=scope_response|in=1|source=plant|out=0|element=scalar']
-
-### 31_discrete_pid_sampled_control (rust)
-
-- Max relative error: 52.4530%
-- Headless final values: {'sink=scope_response|in=0|source=setpoint|out=0|element=scalar': 1.0, 'sink=scope_response|in=1|source=plant|out=0|element=scalar': 1.0129558168546957, 'sink=scope_control|in=0|source=discrete_pid|out=0|element=scalar': 1.0719544787179742}
-- Codegen final values: {'sink=scope_response|in=0|source=setpoint|out=0|element=scalar': 1.0, 'sink=scope_response|in=1|source=plant|out=0|element=scalar': 0.49028, 'sink=scope_control|in=0|source=discrete_pid|out=0|element=scalar': 0.509682}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_control|in=0|source=discrete_pid|out=0|element=scalar', 'sink=scope_response|in=1|source=plant|out=0|element=scalar']
 
 ### 32_lqr_state_feedback (python)
 

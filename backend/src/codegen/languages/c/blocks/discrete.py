@@ -301,6 +301,89 @@ double {struct_name}_get_output({struct_name}* self, int port) {{
 """
 
 
+def discrete_pid_controller_template(block: BlockInfo, struct_name: str) -> str:
+    """Generate DiscretePIDController block code."""
+    kp = block.parameters.get("Kp", 1.0)
+    ki = block.parameters.get("Ki", 0.0)
+    kd = block.parameters.get("Kd", 0.0)
+    derivative_filter = block.parameters.get("N", 100.0)
+    sample_time = block.parameters.get("sampleTime", 0.1)
+    method = block.parameters.get("method", "forward")
+
+    # Match OSK: unrecognized methods use the trapezoidal branch.
+    method_map = {"forward": 0, "backward": 1, "trapezoidal": 2}
+    method_int = method_map.get(method, 2)
+
+    return f"""
+typedef struct {{
+    double Kp;
+    double Ki;
+    double Kd;
+    double N;
+    double sample_time;
+    int method;  // 0=forward, 1=backward, 2=trapezoidal
+    double input;
+    double output;
+    double last_sample_time;
+    double integral;
+    double prev_error;
+    double prev_derivative;
+}} {struct_name};
+
+void {struct_name}_init({struct_name}* self) {{
+    self->Kp = {kp};
+    self->Ki = {ki};
+    self->Kd = {kd};
+    self->N = {derivative_filter};
+    self->sample_time = {sample_time};
+    self->method = {method_int};
+    self->input = 0.0;
+    self->output = 0.0;
+    self->last_sample_time = -self->sample_time;
+    self->integral = 0.0;
+    self->prev_error = 0.0;
+    self->prev_derivative = 0.0;
+}}
+
+void {struct_name}_update({struct_name}* self, double t) {{
+    if (t - self->last_sample_time >= self->sample_time - 1e-10) {{
+        double error = self->input;
+        double Ts = self->sample_time;
+        double p_term = self->Kp * error;
+
+        if (self->method == 0) {{
+            self->integral += Ts * self->prev_error;
+        }} else if (self->method == 1) {{
+            self->integral += Ts * error;
+        }} else {{
+            self->integral += Ts * (error + self->prev_error) / 2.0;
+        }}
+        double i_term = self->Ki * self->integral;
+
+        double d_term;
+        if (self->N > 0.0 && Ts > 0.0) {{
+            double alpha = self->N * Ts;
+            d_term = (self->prev_derivative + self->Kd * self->N *
+                      (error - self->prev_error)) / (1.0 + alpha);
+            self->prev_derivative = d_term;
+        }} else if (Ts > 0.0) {{
+            d_term = self->Kd * (error - self->prev_error) / Ts;
+        }} else {{
+            d_term = 0.0;
+        }}
+
+        self->output = p_term + i_term + d_term;
+        self->prev_error = error;
+        self->last_sample_time = t;
+    }}
+}}
+
+double {struct_name}_get_output({struct_name}* self, int port) {{
+    return self->output;
+}}
+"""
+
+
 def memory_template(block: BlockInfo, struct_name: str) -> str:
     """Generate Memory block code."""
     initial_condition = block.parameters.get("initialCondition", 0.0)
@@ -346,5 +429,6 @@ DISCRETE_TEMPLATES = {
     "discrete_integrator": discrete_integrator_template,
     "discrete_derivative": discrete_derivative_template,
     "discrete_transfer_function": discrete_transfer_function_template,
+    "discrete_pid_controller": discrete_pid_controller_template,
     "memory": memory_template,
 }

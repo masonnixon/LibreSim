@@ -246,6 +246,77 @@ class {class_name}:
 '''
 
 
+def discrete_pid_controller_template(block: BlockInfo, class_name: str) -> str:
+    """Generate DiscretePIDController block code."""
+    kp = block.parameters.get("Kp", 1.0)
+    ki = block.parameters.get("Ki", 0.0)
+    kd = block.parameters.get("Kd", 0.0)
+    n = block.parameters.get("N", 100.0)
+    sample_time = block.parameters.get("sampleTime", 0.1)
+    method = block.parameters.get("method", "forward")
+
+    return f'''
+class {class_name}:
+    """Discrete PID controller block: {block.name}"""
+
+    def __init__(self):
+        self.Kp = {kp}
+        self.Ki = {ki}
+        self.Kd = {kd}
+        self.N = {n}
+        self.sample_time = {sample_time}
+        self.method = "{method}"
+        self.input = 0.0
+        self.output = 0.0
+        self.last_sample_time = -self.sample_time
+        self.integral = 0.0
+        self.prev_error = 0.0
+        self.prev_derivative = 0.0
+
+    def init(self):
+        self.output = 0.0
+        self.last_sample_time = -self.sample_time
+        self.integral = 0.0
+        self.prev_error = 0.0
+        self.prev_derivative = 0.0
+
+    def update(self, t: float):
+        if t - self.last_sample_time >= self.sample_time - 1e-10:
+            error = self.input
+            sample_time = self.sample_time
+            p_term = self.Kp * error
+
+            if self.method == "forward":
+                self.integral += sample_time * self.prev_error
+            elif self.method == "backward":
+                self.integral += sample_time * error
+            else:
+                self.integral += sample_time * (error + self.prev_error) / 2.0
+            i_term = self.Ki * self.integral
+
+            if self.N > 0 and sample_time > 0:
+                alpha = self.N * sample_time
+                d_term = (
+                    self.prev_derivative
+                    + self.Kd * self.N * (error - self.prev_error)
+                ) / (1.0 + alpha)
+                self.prev_derivative = d_term
+            else:
+                d_term = (
+                    self.Kd * (error - self.prev_error) / sample_time
+                    if sample_time > 0
+                    else 0.0
+                )
+
+            self.output = p_term + i_term + d_term
+            self.prev_error = error
+            self.last_sample_time = t
+
+    def get_output(self, port: int = 0) -> float:
+        return self.output
+'''
+
+
 def memory_template(block: BlockInfo, class_name: str) -> str:
     """Generate Memory block code."""
     initial_condition = block.parameters.get("initialCondition", 0.0)
@@ -287,5 +358,6 @@ DISCRETE_TEMPLATES = {
     "discrete_integrator": discrete_integrator_template,
     "discrete_derivative": discrete_derivative_template,
     "discrete_transfer_function": discrete_transfer_function_template,
+    "discrete_pid_controller": discrete_pid_controller_template,
     "memory": memory_template,
 }

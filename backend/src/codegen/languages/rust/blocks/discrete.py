@@ -406,6 +406,107 @@ impl Default for {struct_name} {{
 """
 
 
+def discrete_pid_controller_template(block: BlockInfo, struct_name: str) -> str:
+    """Generate DiscretePIDController block code."""
+    kp = float(block.parameters.get("Kp", 1.0))
+    ki = float(block.parameters.get("Ki", 0.0))
+    kd = float(block.parameters.get("Kd", 0.0))
+    n = float(block.parameters.get("N", 100.0))
+    sample_time = float(block.parameters.get("sampleTime", 0.1))
+    method = block.parameters.get("method", "forward")
+
+    return f"""
+#[derive(Clone)]
+pub struct {struct_name} {{
+    pub kp: f64,
+    pub ki: f64,
+    pub kd: f64,
+    pub n: f64,
+    pub sample_time: f64,
+    pub method: &'static str,
+    pub input: f64,
+    pub output: f64,
+    last_sample_time: f64,
+    integral: f64,
+    prev_error: f64,
+    prev_derivative: f64,
+}}
+
+impl {struct_name} {{
+    pub fn new() -> Self {{
+        let sample_time = {sample_time}_f64;
+        Self {{
+            kp: {kp}_f64,
+            ki: {ki}_f64,
+            kd: {kd}_f64,
+            n: {n}_f64,
+            sample_time,
+            method: "{method}",
+            input: 0.0,
+            output: 0.0,
+            last_sample_time: -sample_time,
+            integral: 0.0,
+            prev_error: 0.0,
+            prev_derivative: 0.0,
+        }}
+    }}
+
+    pub fn init(&mut self) {{
+        self.output = 0.0;
+        self.last_sample_time = -self.sample_time;
+        self.integral = 0.0;
+        self.prev_error = 0.0;
+        self.prev_derivative = 0.0;
+    }}
+
+    pub fn update(&mut self, t: f64) {{
+        if t - self.last_sample_time >= self.sample_time - 1e-10 {{
+            let error = self.input;
+            let sample_time = self.sample_time;
+            let p_term = self.kp * error;
+
+            if self.method == "forward" {{
+                self.integral += sample_time * self.prev_error;
+            }} else if self.method == "backward" {{
+                self.integral += sample_time * error;
+            }} else {{
+                self.integral += sample_time * (error + self.prev_error) / 2.0;
+            }}
+            let i_term = self.ki * self.integral;
+
+            let d_term = if self.n > 0.0 && sample_time > 0.0 {{
+                let alpha = self.n * sample_time;
+                let derivative = (
+                    self.prev_derivative
+                        + self.kd * self.n * (error - self.prev_error)
+                ) / (1.0 + alpha);
+                self.prev_derivative = derivative;
+                derivative
+            }} else if sample_time > 0.0 {{
+                self.kd * (error - self.prev_error) / sample_time
+            }} else {{
+                0.0
+            }};
+
+            self.output = p_term + i_term + d_term;
+            self.prev_error = error;
+            self.last_sample_time = t;
+        }}
+    }}
+
+    pub fn get_output(&self, _port: i32) -> f64 {{
+        self.output
+    }}
+}}
+
+impl Default for {struct_name} {{
+    fn default() -> Self {{
+        Self::new()
+    }}
+}}
+"""
+
+
 def memory_template(block: BlockInfo, struct_name: str) -> str:
     """Generate Memory block code."""
     initial_condition = block.parameters.get("initialCondition", 0.0)
@@ -469,5 +570,6 @@ DISCRETE_TEMPLATES = {
     "discrete_integrator": discrete_integrator_template,
     "discrete_derivative": discrete_derivative_template,
     "discrete_transfer_function": discrete_transfer_function_template,
+    "discrete_pid_controller": discrete_pid_controller_template,
     "memory": memory_template,
 }

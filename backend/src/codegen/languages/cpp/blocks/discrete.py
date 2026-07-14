@@ -279,6 +279,89 @@ public:
 """
 
 
+def discrete_pid_controller_template(block: BlockInfo, class_name: str) -> str:
+    """Generate DiscretePIDController block code."""
+    kp = block.parameters.get("Kp", 1.0)
+    ki = block.parameters.get("Ki", 0.0)
+    kd = block.parameters.get("Kd", 0.0)
+    derivative_filter = block.parameters.get("N", 100.0)
+    sample_time = block.parameters.get("sampleTime", 0.1)
+    method = block.parameters.get("method", "forward")
+
+    # Match OSK: unrecognized methods use the trapezoidal branch.
+    method_map = {"forward": "Forward", "backward": "Backward", "trapezoidal": "Trapezoidal"}
+    method_enum = method_map.get(method, "Trapezoidal")
+
+    return f"""
+class {class_name} {{
+public:
+    enum class Method {{ Forward, Backward, Trapezoidal }};
+
+    double Kp = {kp};
+    double Ki = {ki};
+    double Kd = {kd};
+    double N = {derivative_filter};
+    double sample_time = {sample_time};
+    Method method = Method::{method_enum};
+    double input = 0.0;
+    double output = 0.0;
+    double last_sample_time = -sample_time;
+    double integral = 0.0;
+    double prev_error = 0.0;
+    double prev_derivative = 0.0;
+
+    void init() {{
+        output = 0.0;
+        last_sample_time = -sample_time;
+        integral = 0.0;
+        prev_error = 0.0;
+        prev_derivative = 0.0;
+    }}
+
+    void update(double t) {{
+        if (t - last_sample_time >= sample_time - 1e-10) {{
+            double error = input;
+            double Ts = sample_time;
+            double p_term = Kp * error;
+
+            switch (method) {{
+                case Method::Forward:
+                    integral += Ts * prev_error;
+                    break;
+                case Method::Backward:
+                    integral += Ts * error;
+                    break;
+                case Method::Trapezoidal:
+                    integral += Ts * (error + prev_error) / 2.0;
+                    break;
+            }}
+            double i_term = Ki * integral;
+
+            double d_term;
+            if (N > 0.0 && Ts > 0.0) {{
+                double alpha = N * Ts;
+                d_term = (prev_derivative + Kd * N * (error - prev_error)) /
+                         (1.0 + alpha);
+                prev_derivative = d_term;
+            }} else if (Ts > 0.0) {{
+                d_term = Kd * (error - prev_error) / Ts;
+            }} else {{
+                d_term = 0.0;
+            }}
+
+            output = p_term + i_term + d_term;
+            prev_error = error;
+            last_sample_time = t;
+        }}
+    }}
+
+    double get_output(int port = 0) const {{
+        return output;
+    }}
+}};
+"""
+
+
 def memory_template(block: BlockInfo, class_name: str) -> str:
     """Generate Memory block code."""
     initial_condition = block.parameters.get("initialCondition", 0.0)
@@ -323,5 +406,6 @@ DISCRETE_TEMPLATES = {
     "discrete_integrator": discrete_integrator_template,
     "discrete_derivative": discrete_derivative_template,
     "discrete_transfer_function": discrete_transfer_function_template,
+    "discrete_pid_controller": discrete_pid_controller_template,
     "memory": memory_template,
 }
