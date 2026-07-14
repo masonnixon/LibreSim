@@ -68,8 +68,10 @@ class SimulationRunner:
         """Request simulation stop."""
         self._should_stop = True
 
-    def mark_scheduled(self) -> None:
+    def mark_scheduled(self, *, reset_stop: bool = False) -> None:
         """Mark this runner as owning a scheduled background run."""
+        if reset_stop:
+            self._should_stop = False
         self._run_started = True
         self._run_finished.clear()
         self._status = SimulationStatus.COMPILING
@@ -77,6 +79,11 @@ class SimulationRunner:
     @property
     def has_live_run(self) -> bool:
         return self._run_started and not self._run_finished.is_set()
+
+    @property
+    def can_continue_from_step_mode(self) -> bool:
+        """Whether a compiled step-mode simulation can continue in the background."""
+        return self._step_mode and self._compiled is not None
 
     async def stop_and_wait(self, timeout: float = 5.0) -> bool:
         """Request stop and wait until the background run has exited."""
@@ -344,15 +351,15 @@ class SimulationRunner:
 
     async def continue_from_step_mode(self):
         """Continue running simulation from current step mode position."""
-        if not self._step_mode or self._compiled is None:
+        if not self.can_continue_from_step_mode:
             return
-
+        if not self.has_live_run:
+            self.mark_scheduled(reset_stop=True)
         try:
             self._step_mode = False
             self._state_history = []  # Clear history since we're now running continuously
             self._status = SimulationStatus.RUNNING
             self._is_paused = False
-            self._should_stop = False
 
             # Run simulation loop from current position
             t = self._current_time
@@ -398,6 +405,8 @@ class SimulationRunner:
             self._error_message = str(e)
             print(f"Simulation error during continue: {e}")
             traceback.print_exc()
+        finally:
+            self._run_finished.set()
 
     async def run(self):
         """Run the simulation."""

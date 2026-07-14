@@ -84,12 +84,14 @@ async def start_simulation(
         # Create and start runner
         runner = SimulationRunner(model, config)
         await _install_runner(runner, scheduled=True)
-        session_id = _runner.session_id
+        session_id = runner.session_id
 
         # Run simulation in background
-        background_tasks.add_task(_runner.run)
+        background_tasks.add_task(runner.run)
 
         return {"sessionId": session_id}
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Runner creation error: {e}")
         traceback.print_exc()
@@ -214,18 +216,18 @@ async def init_step_mode(request: dict[str, Any]) -> dict[str, Any]:
     try:
         runner = SimulationRunner(model, config)
         await _install_runner(runner, scheduled=False)
-        success = _runner.initialize_step_mode()
+        success = runner.initialize_step_mode()
 
         if not success:
             raise HTTPException(
-                status_code=500, detail=_runner.error_message or "Failed to initialize step mode"
+                status_code=500, detail=runner.error_message or "Failed to initialize step mode"
             )
 
         return {
             "success": True,
-            "sessionId": _runner.session_id,
-            "currentTime": _runner.current_time,
-            "status": _runner.status.value,
+            "sessionId": runner.session_id,
+            "currentTime": runner.current_time,
+            "status": runner.status.value,
         }
     except HTTPException:
         raise
@@ -334,8 +336,14 @@ async def continue_from_step(background_tasks: BackgroundTasks) -> dict[str, Any
 
     if _runner is None:
         raise HTTPException(status_code=400, detail="No simulation initialized")
+    if _runner.has_live_run:
+        raise HTTPException(status_code=409, detail="Simulation is already running")
+    if not _runner.can_continue_from_step_mode:
+        raise HTTPException(status_code=400, detail="Simulation is not in step mode")
 
-    # Run continuation in background
+    # Mark the continuation live before returning control to the response machinery.
+    # This closes the same scheduled-before-coroutine window handled by /start.
+    _runner.mark_scheduled(reset_stop=True)
     background_tasks.add_task(_runner.continue_from_step_mode)
 
     return {
