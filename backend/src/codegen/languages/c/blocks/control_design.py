@@ -88,7 +88,9 @@ def pi_controller_template(block: BlockInfo, struct_name: str) -> str:
     """Generate PI controller block code."""
     kp = block.parameters.get("Kp", 1.0)
     ki = block.parameters.get("Ki", 1.0)
-    initial = block.parameters.get("initial_integrator", 0.0)
+    initial = block.parameters.get(
+        "initialIntegrator", block.parameters.get("initial_integrator", 0.0)
+    )
     return f"""
 // {block.name} - PI Controller
 typedef struct {{
@@ -98,6 +100,7 @@ typedef struct {{
     double initial_integrator;
     // Integrator state [value, derivative]
     double integrator[2];
+    double x0;
     double xd0, xd1, xd2, xd3;
 }} {struct_name};
 
@@ -109,6 +112,7 @@ void {struct_name}_init({struct_name}* b) {{
     b->initial_integrator = {initial};
     b->integrator[0] = {initial};
     b->integrator[1] = 0.0;
+    b->x0 = {initial};
     b->xd0 = b->xd1 = b->xd2 = b->xd3 = 0.0;
 }}
 
@@ -127,6 +131,16 @@ double {struct_name}_get_output({struct_name}* b, int port) {{
     (void)port;
     return b->output;
 }}
+
+void {struct_name}_propagate_states(
+    {struct_name}* b, double dt, int kpass, const char* method
+) {{
+    propagate_integrator(
+        &b->integrator[0], &b->x0,
+        &b->xd0, &b->xd1, &b->xd2, &b->xd3,
+        b->integrator[1], dt, kpass, method
+    );
+}}
 """
 
 
@@ -143,6 +157,7 @@ typedef struct {{
     double Kp, Kd, N;
     // Derivative filter state [value, derivative]
     double deriv_state[2];
+    double x0;
     double xd0, xd1, xd2, xd3;
 }} {struct_name};
 
@@ -154,6 +169,7 @@ void {struct_name}_init({struct_name}* b) {{
     b->N = {n};
     b->deriv_state[0] = 0.0;
     b->deriv_state[1] = 0.0;
+    b->x0 = 0.0;
     b->xd0 = b->xd1 = b->xd2 = b->xd3 = 0.0;
 }}
 
@@ -171,6 +187,16 @@ void {struct_name}_update({struct_name}* b, double t) {{
 double {struct_name}_get_output({struct_name}* b, int port) {{
     (void)port;
     return b->output;
+}}
+
+void {struct_name}_propagate_states(
+    {struct_name}* b, double dt, int kpass, const char* method
+) {{
+    propagate_integrator(
+        &b->deriv_state[0], &b->x0,
+        &b->xd0, &b->xd1, &b->xd2, &b->xd3,
+        b->deriv_state[1], dt, kpass, method
+    );
 }}
 """
 
@@ -399,8 +425,10 @@ double {struct_name}_get_output({struct_name}* b, int port) {{
 
 def model_reference_template(block: BlockInfo, struct_name: str) -> str:
     """Generate Model Reference block code."""
-    wn = block.parameters.get("natural_frequency", 1.0)
-    zeta = block.parameters.get("damping_ratio", 1.0)
+    wn = block.parameters.get(
+        "naturalFrequency", block.parameters.get("natural_frequency", 1.0)
+    )
+    zeta = block.parameters.get("dampingRatio", block.parameters.get("damping_ratio", 1.0))
     return f"""
 // {block.name} - Model Reference: wn^2 / (s^2 + 2*zeta*wn*s + wn^2)
 typedef struct {{
@@ -411,6 +439,7 @@ typedef struct {{
     // States [value, derivative]
     double x1[2];
     double x2[2];
+    double x0_1, x0_2;
     double xd0_1, xd1_1, xd2_1, xd3_1;
     double xd0_2, xd1_2, xd2_2, xd3_2;
 }} {struct_name};
@@ -422,6 +451,7 @@ void {struct_name}_init({struct_name}* b) {{
     b->zeta = {zeta};
     b->x1[0] = b->x1[1] = 0.0;
     b->x2[0] = b->x2[1] = 0.0;
+    b->x0_1 = b->x0_2 = 0.0;
     b->xd0_1 = b->xd1_1 = b->xd2_1 = b->xd3_1 = 0.0;
     b->xd0_2 = b->xd1_2 = b->xd2_2 = b->xd3_2 = 0.0;
 }}
@@ -440,6 +470,21 @@ void {struct_name}_update({struct_name}* b, double t) {{
 double {struct_name}_get_output({struct_name}* b, int port) {{
     (void)port;
     return b->output;
+}}
+
+void {struct_name}_propagate_states(
+    {struct_name}* b, double dt, int kpass, const char* method
+) {{
+    propagate_integrator(
+        &b->x1[0], &b->x0_1,
+        &b->xd0_1, &b->xd1_1, &b->xd2_1, &b->xd3_1,
+        b->x1[1], dt, kpass, method
+    );
+    propagate_integrator(
+        &b->x2[0], &b->x0_2,
+        &b->xd0_2, &b->xd1_2, &b->xd2_2, &b->xd3_2,
+        b->x2[1], dt, kpass, method
+    );
 }}
 """
 

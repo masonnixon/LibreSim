@@ -457,15 +457,12 @@ use crate::integration::{IntegrationMethod, propagate_integrator};
 
         return "\n".join(lines) if lines else "        // No connections"
 
-    # Block types that use propagate_states method for multi-state integration
-    MULTI_STATE_BLOCKS = {"transfer_function", "state_space", "second_order", "pid_controller"}
-
     def _generate_integrator_propagation(self, model_info: CompiledModelInfo) -> str:
         """Generate integrator propagation code for RK methods."""
         lines = []
-        for block_id in model_info.integrator_blocks:
-            block = next((b for b in model_info.blocks if b.id == block_id), None)
-            if block:
+        integrator_ids = set(model_info.integrator_blocks)
+        for block in model_info.blocks:
+            if block.id in integrator_ids or block.custom_state_propagation:
                 var_name = f"block_{self.sanitize_identifier(block.id)}"
                 if block.type == "integrator":
                     # Get derivative first to avoid borrow conflicts
@@ -481,7 +478,7 @@ use crate::integration::{IntegrationMethod, propagate_integrator};
             deriv_{self.sanitize_identifier(block.id)},
             dt, kpass, method
         );""")
-                elif block.type in self.MULTI_STATE_BLOCKS:
+                elif block.custom_state_propagation:
                     lines.append(f"""        // {block.type}: {block.name}
         self.{var_name}.propagate_states(dt, kpass, method);""")
 

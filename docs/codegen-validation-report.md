@@ -34,8 +34,8 @@ This report compares the outputs of generated code against the headless simulati
 | 32_lqr_state_feedback | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH |
 | 33_lead_lag_compensator | PASS | PASS | PASS | PASS |
 | 34_anti_windup_pid | PASS | PASS | PASS | PASS |
-| 35_pi_pd_controllers | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH |
-| 36_model_reference_control | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH |
+| 35_pi_pd_controllers | PASS | PASS | PASS | PASS |
+| 36_model_reference_control | PASS | PASS | PASS | PASS |
 | 37_pole_placement_control | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH |
 | 40_dsp_fft_spectrum | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH |
 | 41_dsp_fir_lowpass | PASS | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH |
@@ -49,11 +49,11 @@ This report compares the outputs of generated code against the headless simulati
 ## Statistics
 
 - Total tests: 156
-- Passed: 81 (51.9%)
+- Passed: 89 (57.1%)
 - Simulation failures: 0
 - Build failures: 0
 - Run failures: 16
-- Output validation failures: 59
+- Output validation failures: 51
 
 ## Detailed Failures
 
@@ -304,70 +304,6 @@ This report compares the outputs of generated code against the headless simulati
 - Codegen final values: {'sink=scope_states|in=0|source=mux_state|out=0|element=0': -0.00023, 'sink=scope_states|in=0|source=mux_state|out=0|element=1': 0.000326, 'sink=scope_control|in=0|source=lqr|out=0|element=scalar': -0.000335}
 - Failure category: `numerical_mismatch`
 - Mismatched outputs: ['sink=scope_control|in=0|source=lqr|out=0|element=scalar', 'sink=scope_states|in=0|source=mux_state|out=0|element=0', 'sink=scope_states|in=0|source=mux_state|out=0|element=1']
-
-### 35_pi_pd_controllers (python)
-
-- Max relative error: 47.9827%
-- Headless final values: {'sink=scope_response|in=0|source=setpoint|out=0|element=scalar': 1.0, 'sink=scope_response|in=1|source=plant_pi|out=0|element=scalar': 0.9552494198667797, 'sink=scope_response|in=2|source=plant_pd|out=0|element=scalar': 0.7142857142857073, 'sink=scope_control|in=0|source=pi_controller|out=0|element=scalar': 1.9224357584016698, 'sink=scope_control|in=1|source=pd_controller|out=0|element=scalar': 1.4285714285714468}
-- Codegen final values: {'sink=scope_response|in=0|source=setpoint|out=0|element=scalar': 1.0, 'sink=scope_response|in=1|source=plant_pi|out=0|element=scalar': 0.4999999999999993, 'sink=scope_response|in=2|source=plant_pd|out=0|element=scalar': 0.9813084112149533, 'sink=scope_control|in=0|source=pi_controller|out=0|element=scalar': 1.0000000000000013, 'sink=scope_control|in=1|source=pd_controller|out=0|element=scalar': 1.9626168224299068}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_control|in=0|source=pi_controller|out=0|element=scalar', 'sink=scope_control|in=1|source=pd_controller|out=0|element=scalar', 'sink=scope_response|in=1|source=plant_pi|out=0|element=scalar', 'sink=scope_response|in=2|source=plant_pd|out=0|element=scalar']
-
-### 35_pi_pd_controllers (cpp)
-
-- Max relative error: 47.9827%
-- Headless final values: {'sink=scope_response|in=0|source=setpoint|out=0|element=scalar': 1.0, 'sink=scope_response|in=1|source=plant_pi|out=0|element=scalar': 0.9552494198667797, 'sink=scope_response|in=2|source=plant_pd|out=0|element=scalar': 0.7142857142857073, 'sink=scope_control|in=0|source=pi_controller|out=0|element=scalar': 1.9224357584016698, 'sink=scope_control|in=1|source=pd_controller|out=0|element=scalar': 1.4285714285714468}
-- Codegen final values: {'sink=scope_response|in=0|source=setpoint|out=0|element=scalar': 1.0, 'sink=scope_response|in=1|source=plant_pi|out=0|element=scalar': 0.5, 'sink=scope_response|in=2|source=plant_pd|out=0|element=scalar': 0.981308, 'sink=scope_control|in=0|source=pi_controller|out=0|element=scalar': 1.0, 'sink=scope_control|in=1|source=pd_controller|out=0|element=scalar': 1.96262}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_control|in=0|source=pi_controller|out=0|element=scalar', 'sink=scope_control|in=1|source=pd_controller|out=0|element=scalar', 'sink=scope_response|in=1|source=plant_pi|out=0|element=scalar', 'sink=scope_response|in=2|source=plant_pd|out=0|element=scalar']
-
-### 35_pi_pd_controllers (c)
-
-- Max relative error: 47.9827%
-- Headless final values: {'sink=scope_response|in=0|source=setpoint|out=0|element=scalar': 1.0, 'sink=scope_response|in=1|source=plant_pi|out=0|element=scalar': 0.9552494198667797, 'sink=scope_response|in=2|source=plant_pd|out=0|element=scalar': 0.7142857142857073, 'sink=scope_control|in=0|source=pi_controller|out=0|element=scalar': 1.9224357584016698, 'sink=scope_control|in=1|source=pd_controller|out=0|element=scalar': 1.4285714285714468}
-- Codegen final values: {'sink=scope_response|in=0|source=setpoint|out=0|element=scalar': 1.0, 'sink=scope_response|in=1|source=plant_pi|out=0|element=scalar': 0.5, 'sink=scope_response|in=2|source=plant_pd|out=0|element=scalar': 0.981308, 'sink=scope_control|in=0|source=pi_controller|out=0|element=scalar': 1.0, 'sink=scope_control|in=1|source=pd_controller|out=0|element=scalar': 1.96262}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_control|in=0|source=pi_controller|out=0|element=scalar', 'sink=scope_control|in=1|source=pd_controller|out=0|element=scalar', 'sink=scope_response|in=1|source=plant_pi|out=0|element=scalar', 'sink=scope_response|in=2|source=plant_pd|out=0|element=scalar']
-
-### 35_pi_pd_controllers (rust)
-
-- Max relative error: 47.9827%
-- Headless final values: {'sink=scope_response|in=0|source=setpoint|out=0|element=scalar': 1.0, 'sink=scope_response|in=1|source=plant_pi|out=0|element=scalar': 0.9552494198667797, 'sink=scope_response|in=2|source=plant_pd|out=0|element=scalar': 0.7142857142857073, 'sink=scope_control|in=0|source=pi_controller|out=0|element=scalar': 1.9224357584016698, 'sink=scope_control|in=1|source=pd_controller|out=0|element=scalar': 1.4285714285714468}
-- Codegen final values: {'sink=scope_response|in=0|source=setpoint|out=0|element=scalar': 1.0, 'sink=scope_response|in=1|source=plant_pi|out=0|element=scalar': 0.5, 'sink=scope_response|in=2|source=plant_pd|out=0|element=scalar': 0.981308, 'sink=scope_control|in=0|source=pi_controller|out=0|element=scalar': 1.0, 'sink=scope_control|in=1|source=pd_controller|out=0|element=scalar': 1.962617}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_control|in=0|source=pi_controller|out=0|element=scalar', 'sink=scope_control|in=1|source=pd_controller|out=0|element=scalar', 'sink=scope_response|in=1|source=plant_pi|out=0|element=scalar', 'sink=scope_response|in=2|source=plant_pd|out=0|element=scalar']
-
-### 36_model_reference_control (python)
-
-- Max relative error: 100.0000%
-- Headless final values: {'sink=scope_tracking|in=0|source=command|out=0|element=scalar': 1.0, 'sink=scope_tracking|in=1|source=ref_model|out=0|element=scalar': 0.9999997115441777, 'sink=scope_tracking|in=2|source=plant|out=0|element=scalar': 0.9980620317306245, 'sink=scope_error|in=0|source=tracking_error|out=0|element=scalar': 0.0019376798135531947}
-- Codegen final values: {'sink=scope_tracking|in=0|source=command|out=0|element=scalar': 1.0, 'sink=scope_tracking|in=1|source=ref_model|out=0|element=scalar': 0.0, 'sink=scope_tracking|in=2|source=plant|out=0|element=scalar': 0.0, 'sink=scope_error|in=0|source=tracking_error|out=0|element=scalar': 0.0}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_error|in=0|source=tracking_error|out=0|element=scalar', 'sink=scope_tracking|in=1|source=ref_model|out=0|element=scalar', 'sink=scope_tracking|in=2|source=plant|out=0|element=scalar']
-
-### 36_model_reference_control (cpp)
-
-- Max relative error: 100.0000%
-- Headless final values: {'sink=scope_tracking|in=0|source=command|out=0|element=scalar': 1.0, 'sink=scope_tracking|in=1|source=ref_model|out=0|element=scalar': 0.9999997115441777, 'sink=scope_tracking|in=2|source=plant|out=0|element=scalar': 0.9980620317306245, 'sink=scope_error|in=0|source=tracking_error|out=0|element=scalar': 0.0019376798135531947}
-- Codegen final values: {'sink=scope_tracking|in=0|source=command|out=0|element=scalar': 1.0, 'sink=scope_tracking|in=1|source=ref_model|out=0|element=scalar': 0.0, 'sink=scope_tracking|in=2|source=plant|out=0|element=scalar': 0.0, 'sink=scope_error|in=0|source=tracking_error|out=0|element=scalar': 0.0}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_error|in=0|source=tracking_error|out=0|element=scalar', 'sink=scope_tracking|in=1|source=ref_model|out=0|element=scalar', 'sink=scope_tracking|in=2|source=plant|out=0|element=scalar']
-
-### 36_model_reference_control (c)
-
-- Max relative error: 100.0000%
-- Headless final values: {'sink=scope_tracking|in=0|source=command|out=0|element=scalar': 1.0, 'sink=scope_tracking|in=1|source=ref_model|out=0|element=scalar': 0.9999997115441777, 'sink=scope_tracking|in=2|source=plant|out=0|element=scalar': 0.9980620317306245, 'sink=scope_error|in=0|source=tracking_error|out=0|element=scalar': 0.0019376798135531947}
-- Codegen final values: {'sink=scope_tracking|in=0|source=command|out=0|element=scalar': 1.0, 'sink=scope_tracking|in=1|source=ref_model|out=0|element=scalar': 0.0, 'sink=scope_tracking|in=2|source=plant|out=0|element=scalar': 0.0, 'sink=scope_error|in=0|source=tracking_error|out=0|element=scalar': 0.0}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_error|in=0|source=tracking_error|out=0|element=scalar', 'sink=scope_tracking|in=1|source=ref_model|out=0|element=scalar', 'sink=scope_tracking|in=2|source=plant|out=0|element=scalar']
-
-### 36_model_reference_control (rust)
-
-- Max relative error: 100.0000%
-- Headless final values: {'sink=scope_tracking|in=0|source=command|out=0|element=scalar': 1.0, 'sink=scope_tracking|in=1|source=ref_model|out=0|element=scalar': 0.9999997115441777, 'sink=scope_tracking|in=2|source=plant|out=0|element=scalar': 0.9980620317306245, 'sink=scope_error|in=0|source=tracking_error|out=0|element=scalar': 0.0019376798135531947}
-- Codegen final values: {'sink=scope_tracking|in=0|source=command|out=0|element=scalar': 1.0, 'sink=scope_tracking|in=1|source=ref_model|out=0|element=scalar': 0.0, 'sink=scope_tracking|in=2|source=plant|out=0|element=scalar': 0.0, 'sink=scope_error|in=0|source=tracking_error|out=0|element=scalar': 0.0}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_error|in=0|source=tracking_error|out=0|element=scalar', 'sink=scope_tracking|in=1|source=ref_model|out=0|element=scalar', 'sink=scope_tracking|in=2|source=plant|out=0|element=scalar']
 
 ### 37_pole_placement_control (python)
 

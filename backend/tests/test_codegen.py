@@ -582,6 +582,19 @@ class TestGeneratedProjectZip:
         assert len(project.warnings) == 1
         assert "Block X" in project.warnings[0]
 
+    def test_to_zip_is_byte_reproducible(self):
+        """Repeated serialization does not change member metadata or bytes."""
+        import zipfile
+
+        project = GeneratedProject(name="test", language=Language.PYTHON)
+        project.add_file("main.py", "print('stable')")
+
+        first = project.to_zip()
+        second = project.to_zip()
+        assert first.getvalue() == second.getvalue()
+        with zipfile.ZipFile(first) as archive:
+            assert archive.getinfo("test/main.py").date_time == (1980, 1, 1, 0, 0, 0)
+
 
 class TestCodegenControllerModels:
     """Tests for codegen controller request/response models."""

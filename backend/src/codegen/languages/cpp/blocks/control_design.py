@@ -85,7 +85,9 @@ def pi_controller_template(block: BlockInfo, class_name: str) -> str:
     """Generate PI controller block code."""
     kp = block.parameters.get("Kp", 1.0)
     ki = block.parameters.get("Ki", 1.0)
-    initial = block.parameters.get("initial_integrator", 0.0)
+    initial = block.parameters.get(
+        "initialIntegrator", block.parameters.get("initial_integrator", 0.0)
+    )
     return f"""
 // {block.name} - PI Controller
 class {class_name} {{
@@ -98,11 +100,13 @@ public:
 
     // Integrator state [value, derivative]
     double integrator[2] = {{{initial}, 0.0}};
+    double x0 = {initial};
     double xd0 = 0.0, xd1 = 0.0, xd2 = 0.0, xd3 = 0.0;
 
     void init() {{
         integrator[0] = initial_integrator;
         integrator[1] = 0.0;
+        x0 = initial_integrator;
         output = 0.0;
     }}
 
@@ -120,6 +124,13 @@ public:
     double get_output(int port = 0) const {{
         (void)port;
         return output;
+    }}
+
+    void propagate_states(double dt, int kpass, const std::string& method) {{
+        propagate_integrator(
+            integrator[0], x0, xd0, xd1, xd2, xd3,
+            integrator[1], dt, kpass, method
+        );
     }}
 }};
 """
@@ -142,10 +153,12 @@ public:
 
     // Derivative filter state [value, derivative]
     double deriv_state[2] = {{0.0, 0.0}};
+    double x0 = 0.0;
     double xd0 = 0.0, xd1 = 0.0, xd2 = 0.0, xd3 = 0.0;
 
     void init() {{
         deriv_state[0] = deriv_state[1] = 0.0;
+        x0 = 0.0;
         output = 0.0;
     }}
 
@@ -163,6 +176,13 @@ public:
     double get_output(int port = 0) const {{
         (void)port;
         return output;
+    }}
+
+    void propagate_states(double dt, int kpass, const std::string& method) {{
+        propagate_integrator(
+            deriv_state[0], x0, xd0, xd1, xd2, xd3,
+            deriv_state[1], dt, kpass, method
+        );
     }}
 }};
 """
@@ -384,8 +404,10 @@ public:
 
 def model_reference_template(block: BlockInfo, class_name: str) -> str:
     """Generate Model Reference block code."""
-    wn = block.parameters.get("natural_frequency", 1.0)
-    zeta = block.parameters.get("damping_ratio", 1.0)
+    wn = block.parameters.get(
+        "naturalFrequency", block.parameters.get("natural_frequency", 1.0)
+    )
+    zeta = block.parameters.get("dampingRatio", block.parameters.get("damping_ratio", 1.0))
     return f"""
 // {block.name} - Model Reference: wn^2 / (s^2 + 2*zeta*wn*s + wn^2)
 class {class_name} {{
@@ -398,12 +420,14 @@ public:
     // States [value, derivative]
     double x1[2] = {{0.0, 0.0}};
     double x2[2] = {{0.0, 0.0}};
+    double x0_1 = 0.0, x0_2 = 0.0;
     double xd0_1 = 0.0, xd1_1 = 0.0, xd2_1 = 0.0, xd3_1 = 0.0;
     double xd0_2 = 0.0, xd1_2 = 0.0, xd2_2 = 0.0, xd3_2 = 0.0;
 
     void init() {{
         x1[0] = x1[1] = 0.0;
         x2[0] = x2[1] = 0.0;
+        x0_1 = x0_2 = 0.0;
         output = 0.0;
     }}
 
@@ -420,6 +444,17 @@ public:
     double get_output(int port = 0) const {{
         (void)port;
         return output;
+    }}
+
+    void propagate_states(double dt, int kpass, const std::string& method) {{
+        propagate_integrator(
+            x1[0], x0_1, xd0_1, xd1_1, xd2_1, xd3_1,
+            x1[1], dt, kpass, method
+        );
+        propagate_integrator(
+            x2[0], x0_2, xd0_2, xd1_2, xd2_2, xd3_2,
+            x2[1], dt, kpass, method
+        );
     }}
 }};
 """

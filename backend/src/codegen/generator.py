@@ -27,6 +27,17 @@ INTEGRATOR_BLOCKS = {
     "pid_controller",  # Has two internal integrators (integral and derivative filter)
 }
 
+# Blocks with template-owned continuous states and a propagate_states method.
+CUSTOM_STATE_PROPAGATION_BLOCKS = {
+    "transfer_function",
+    "state_space",
+    "second_order",
+    "pid_controller",
+    "pi_controller",
+    "pd_controller",
+    "model_reference",
+}
+
 # Block types that hold state but use their own internal update mechanism
 # These blocks don't need external integration - they update their own state
 STATE_HOLDING_BLOCKS = {
@@ -252,6 +263,9 @@ class CodeGenerator:
                 input_dimensions=input_dimensions,
                 output_dimensions=output_dimensions,
                 ready_only=compiled_block.type in READY_ONLY_BLOCKS,
+                custom_state_propagation=(
+                    compiled_block.type in CUSTOM_STATE_PROPAGATION_BLOCKS
+                ),
             )
             blocks.append(block_info)
 

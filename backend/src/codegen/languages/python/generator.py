@@ -331,14 +331,9 @@ class {class_name}:
             if block_match is not None:
                 var_name = self.get_block_var_name(block_match)
                 integrator_list.append(f"self.{var_name}")
-                # Multi-state blocks need additional propagation
-                if block_match.type in (
-                    "transfer_function",
-                    "state_space",
-                    "second_order",
-                    "pid_controller",
-                ):
-                    multi_state_list.append(f"self.{var_name}")
+        for block in model_info.blocks:
+            if block.custom_state_propagation:
+                multi_state_list.append(f"self.{self.get_block_var_name(block)}")
 
         # Build output recording code
         output_recording = self._generate_output_recording(model_info)

@@ -48,16 +48,17 @@ class GeneratedProject:
         self.files.append(GeneratedFile(path=path, content=content, is_binary=is_binary))
 
     def to_zip(self) -> BytesIO:
-        """Create a ZIP archive of the project."""
+        """Create a byte-reproducible ZIP archive of the project."""
         buffer = BytesIO()
         with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
             for file in self.files:
                 # Prefix with project name
                 full_path = f"{self.name}/{file.path}"
-                if file.is_binary:
-                    zf.writestr(full_path, file.content.encode("utf-8"))
-                else:
-                    zf.writestr(full_path, file.content)
+                info = zipfile.ZipInfo(full_path, date_time=(1980, 1, 1, 0, 0, 0))
+                info.compress_type = zipfile.ZIP_DEFLATED
+                info.external_attr = 0o644 << 16
+                data = file.content.encode("utf-8") if file.is_binary else file.content
+                zf.writestr(info, data)
         buffer.seek(0)
         return buffer
 
@@ -134,6 +135,8 @@ class BlockInfo:
     output_signals: list[SignalInfo] = field(default_factory=list)
     # True when OSK mutates this block only during its major/ready update phase.
     ready_only: bool = False
+    # True when the generated template owns and propagates one or more RK states.
+    custom_state_propagation: bool = False
 
 
 @dataclass

@@ -131,7 +131,9 @@ def pi_controller_template(block: BlockInfo, struct_name: str) -> str:
     """Generate PI controller block code."""
     kp = block.parameters.get("Kp", 1.0)
     ki = block.parameters.get("Ki", 1.0)
-    initial = block.parameters.get("initial_integrator", 0.0)
+    initial = block.parameters.get(
+        "initialIntegrator", block.parameters.get("initial_integrator", 0.0)
+    )
     return f"""
 /// {block.name} - PI Controller
 #[derive(Clone)]
@@ -143,6 +145,7 @@ pub struct {struct_name} {{
     pub initial_integrator: f64,
     // Integrator state [value, derivative]
     pub integrator: [f64; 2],
+    pub x0: f64,
     pub xd0: f64,
     pub xd1: f64,
     pub xd2: f64,
@@ -158,6 +161,7 @@ impl {struct_name} {{
             ki: {_format_f64(ki)},
             initial_integrator: {_format_f64(initial)},
             integrator: [{_format_f64(initial)}, 0.0],
+            x0: {_format_f64(initial)},
             xd0: 0.0,
             xd1: 0.0,
             xd2: 0.0,
@@ -167,6 +171,7 @@ impl {struct_name} {{
 
     pub fn init(&mut self) {{
         self.integrator = [self.initial_integrator, 0.0];
+        self.x0 = self.initial_integrator;
         self.output = 0.0;
     }}
 
@@ -182,6 +187,15 @@ impl {struct_name} {{
 
     pub fn get_output(&self, _port: i32) -> f64 {{
         self.output
+    }}
+
+    pub fn propagate_states(&mut self, dt: f64, kpass: usize, method: IntegrationMethod) {{
+        let derivative = self.integrator[1];
+        propagate_integrator(
+            &mut self.integrator[0], &mut self.x0,
+            &mut self.xd0, &mut self.xd1, &mut self.xd2, &mut self.xd3,
+            derivative, dt, kpass, method,
+        );
     }}
 }}
 """
@@ -203,6 +217,7 @@ pub struct {struct_name} {{
     pub n: f64,  // Derivative filter coefficient
     // Derivative filter state [value, derivative]
     pub deriv_state: [f64; 2],
+    pub x0: f64,
     pub xd0: f64,
     pub xd1: f64,
     pub xd2: f64,
@@ -218,6 +233,7 @@ impl {struct_name} {{
             kd: {_format_f64(kd)},
             n: {_format_f64(n)},
             deriv_state: [0.0, 0.0],
+            x0: 0.0,
             xd0: 0.0,
             xd1: 0.0,
             xd2: 0.0,
@@ -227,6 +243,7 @@ impl {struct_name} {{
 
     pub fn init(&mut self) {{
         self.deriv_state = [0.0, 0.0];
+        self.x0 = 0.0;
         self.output = 0.0;
     }}
 
@@ -242,6 +259,15 @@ impl {struct_name} {{
 
     pub fn get_output(&self, _port: i32) -> f64 {{
         self.output
+    }}
+
+    pub fn propagate_states(&mut self, dt: f64, kpass: usize, method: IntegrationMethod) {{
+        let derivative = self.deriv_state[1];
+        propagate_integrator(
+            &mut self.deriv_state[0], &mut self.x0,
+            &mut self.xd0, &mut self.xd1, &mut self.xd2, &mut self.xd3,
+            derivative, dt, kpass, method,
+        );
     }}
 }}
 """
@@ -535,8 +561,10 @@ impl {struct_name} {{
 
 def model_reference_template(block: BlockInfo, struct_name: str) -> str:
     """Generate Model Reference block code."""
-    wn = block.parameters.get("natural_frequency", 1.0)
-    zeta = block.parameters.get("damping_ratio", 1.0)
+    wn = block.parameters.get(
+        "naturalFrequency", block.parameters.get("natural_frequency", 1.0)
+    )
+    zeta = block.parameters.get("dampingRatio", block.parameters.get("damping_ratio", 1.0))
     return f"""
 /// {block.name} - Model Reference: wn^2 / (s^2 + 2*zeta*wn*s + wn^2)
 #[derive(Clone)]
@@ -548,6 +576,8 @@ pub struct {struct_name} {{
     // States [value, derivative]
     pub x1: [f64; 2],
     pub x2: [f64; 2],
+    pub x0_1: f64,
+    pub x0_2: f64,
     pub xd0_1: f64,
     pub xd1_1: f64,
     pub xd2_1: f64,
@@ -567,6 +597,8 @@ impl {struct_name} {{
             zeta: {_format_f64(zeta)},
             x1: [0.0, 0.0],
             x2: [0.0, 0.0],
+            x0_1: 0.0,
+            x0_2: 0.0,
             xd0_1: 0.0,
             xd1_1: 0.0,
             xd2_1: 0.0,
@@ -581,6 +613,8 @@ impl {struct_name} {{
     pub fn init(&mut self) {{
         self.x1 = [0.0, 0.0];
         self.x2 = [0.0, 0.0];
+        self.x0_1 = 0.0;
+        self.x0_2 = 0.0;
         self.output = 0.0;
     }}
 
@@ -595,6 +629,21 @@ impl {struct_name} {{
 
     pub fn get_output(&self, _port: i32) -> f64 {{
         self.output
+    }}
+
+    pub fn propagate_states(&mut self, dt: f64, kpass: usize, method: IntegrationMethod) {{
+        let derivative_1 = self.x1[1];
+        let derivative_2 = self.x2[1];
+        propagate_integrator(
+            &mut self.x1[0], &mut self.x0_1,
+            &mut self.xd0_1, &mut self.xd1_1, &mut self.xd2_1, &mut self.xd3_1,
+            derivative_1, dt, kpass, method,
+        );
+        propagate_integrator(
+            &mut self.x2[0], &mut self.x0_2,
+            &mut self.xd0_2, &mut self.xd1_2, &mut self.xd2_2, &mut self.xd3_2,
+            derivative_2, dt, kpass, method,
+        );
     }}
 }}
 """

@@ -94,7 +94,9 @@ def pi_controller_template(block: BlockInfo, class_name: str) -> str:
     """Generate PI controller block code."""
     kp = block.parameters.get("Kp", 1.0)
     ki = block.parameters.get("Ki", 1.0)
-    initial = block.parameters.get("initial_integrator", 0.0)
+    initial = block.parameters.get(
+        "initialIntegrator", block.parameters.get("initial_integrator", 0.0)
+    )
     return f'''
 class {class_name}:
     """PI Controller block: {block.name}"""
@@ -107,6 +109,7 @@ class {class_name}:
         self.output = 0.0
         # Integrator state [value, derivative]
         self.integrator = [{initial}, 0.0]
+        self.x0 = {initial}
         self.xd0 = 0.0
         self.xd1 = 0.0
         self.xd2 = 0.0
@@ -114,6 +117,7 @@ class {class_name}:
 
     def init(self):
         self.integrator = [self.initial_integrator, 0.0]
+        self.x0 = self.initial_integrator
         self.output = 0.0
 
     def update(self, t: float):
@@ -124,6 +128,23 @@ class {class_name}:
         i_term = self.Ki * self.integrator[0]
 
         self.output = p_term + i_term
+
+    def propagate_states(self, dt: float, kpass: int):
+        if kpass == 0:
+            self.x0 = self.integrator[0]
+            self.xd0 = self.integrator[1]
+            self.integrator[0] = self.x0 + dt / 2.0 * self.xd0
+        elif kpass == 1:
+            self.xd1 = self.integrator[1]
+            self.integrator[0] = self.x0 + dt / 2.0 * self.xd1
+        elif kpass == 2:
+            self.xd2 = self.integrator[1]
+            self.integrator[0] = self.x0 + dt * self.xd2
+        elif kpass == 3:
+            self.xd3 = self.integrator[1]
+            self.integrator[0] = self.x0 + dt / 6.0 * (
+                self.xd0 + 2.0 * self.xd1 + 2.0 * self.xd2 + self.xd3
+            )
 
     def get_output(self, port: int = 0) -> float:
         return self.output
@@ -147,6 +168,7 @@ class {class_name}:
         self.output = 0.0
         # Derivative filter state [value, derivative]
         self.deriv_state = [0.0, 0.0]
+        self.x0 = 0.0
         self.xd0 = 0.0
         self.xd1 = 0.0
         self.xd2 = 0.0
@@ -154,6 +176,7 @@ class {class_name}:
 
     def init(self):
         self.deriv_state = [0.0, 0.0]
+        self.x0 = 0.0
         self.output = 0.0
 
     def update(self, t: float):
@@ -164,6 +187,23 @@ class {class_name}:
         d_term = self.Kd * self.deriv_state[1]
 
         self.output = self.Kp * error + d_term
+
+    def propagate_states(self, dt: float, kpass: int):
+        if kpass == 0:
+            self.x0 = self.deriv_state[0]
+            self.xd0 = self.deriv_state[1]
+            self.deriv_state[0] = self.x0 + dt / 2.0 * self.xd0
+        elif kpass == 1:
+            self.xd1 = self.deriv_state[1]
+            self.deriv_state[0] = self.x0 + dt / 2.0 * self.xd1
+        elif kpass == 2:
+            self.xd2 = self.deriv_state[1]
+            self.deriv_state[0] = self.x0 + dt * self.xd2
+        elif kpass == 3:
+            self.xd3 = self.deriv_state[1]
+            self.deriv_state[0] = self.x0 + dt / 6.0 * (
+                self.xd0 + 2.0 * self.xd1 + 2.0 * self.xd2 + self.xd3
+            )
 
     def get_output(self, port: int = 0) -> float:
         return self.output
@@ -356,8 +396,10 @@ class {class_name}:
 
 def model_reference_template(block: BlockInfo, class_name: str) -> str:
     """Generate Model Reference block code."""
-    wn = block.parameters.get("natural_frequency", 1.0)
-    zeta = block.parameters.get("damping_ratio", 1.0)
+    wn = block.parameters.get(
+        "naturalFrequency", block.parameters.get("natural_frequency", 1.0)
+    )
+    zeta = block.parameters.get("dampingRatio", block.parameters.get("damping_ratio", 1.0))
     return f'''
 class {class_name}:
     """Model Reference block: {block.name}
@@ -373,6 +415,8 @@ class {class_name}:
         # States [value, derivative]
         self.x1 = [0.0, 0.0]
         self.x2 = [0.0, 0.0]
+        self.x0_1 = 0.0
+        self.x0_2 = 0.0
         self.xd0_1 = 0.0
         self.xd1_1 = 0.0
         self.xd2_1 = 0.0
@@ -385,6 +429,8 @@ class {class_name}:
     def init(self):
         self.x1 = [0.0, 0.0]
         self.x2 = [0.0, 0.0]
+        self.x0_1 = 0.0
+        self.x0_2 = 0.0
         self.output = 0.0
 
     def update(self, t: float):
@@ -395,6 +441,34 @@ class {class_name}:
         self.x2[1] = -wn2 * self.x1[0] - 2 * self.zeta * wn * self.x2[0] + wn2 * self.input
 
         self.output = self.x1[0]
+
+    def propagate_states(self, dt: float, kpass: int):
+        if kpass == 0:
+            self.x0_1 = self.x1[0]
+            self.x0_2 = self.x2[0]
+            self.xd0_1 = self.x1[1]
+            self.xd0_2 = self.x2[1]
+            self.x1[0] = self.x0_1 + dt / 2.0 * self.xd0_1
+            self.x2[0] = self.x0_2 + dt / 2.0 * self.xd0_2
+        elif kpass == 1:
+            self.xd1_1 = self.x1[1]
+            self.xd1_2 = self.x2[1]
+            self.x1[0] = self.x0_1 + dt / 2.0 * self.xd1_1
+            self.x2[0] = self.x0_2 + dt / 2.0 * self.xd1_2
+        elif kpass == 2:
+            self.xd2_1 = self.x1[1]
+            self.xd2_2 = self.x2[1]
+            self.x1[0] = self.x0_1 + dt * self.xd2_1
+            self.x2[0] = self.x0_2 + dt * self.xd2_2
+        elif kpass == 3:
+            self.xd3_1 = self.x1[1]
+            self.xd3_2 = self.x2[1]
+            self.x1[0] = self.x0_1 + dt / 6.0 * (
+                self.xd0_1 + 2.0 * self.xd1_1 + 2.0 * self.xd2_1 + self.xd3_1
+            )
+            self.x2[0] = self.x0_2 + dt / 6.0 * (
+                self.xd0_2 + 2.0 * self.xd1_2 + 2.0 * self.xd2_2 + self.xd3_2
+            )
 
     def get_output(self, port: int = 0) -> float:
         return self.output
