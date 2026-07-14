@@ -339,12 +339,11 @@ class {class_name}:
         self.K = {K}
         self.num_states = {num_states}
         self.num_inputs = {num_inputs}
-        self.state = [0.0] * {num_states}
+        self.input = [0.0] * {num_states}
         self.output = [0.0] * {num_inputs}
-        self.input = 0.0
 
     def init(self):
-        self.state = [0.0] * self.num_states
+        self.input = [0.0] * self.num_states
         self.output = [0.0] * self.num_inputs
 
     def update(self, t: float):
@@ -352,7 +351,7 @@ class {class_name}:
         for i in range(self.num_inputs):
             u = 0.0
             for j in range(self.num_states):
-                u -= self.K[i][j] * self.state[j]
+                u -= self.K[i][j] * self.input[j]
             self.output[i] = u
 
     def get_output(self, port: int = 0) -> float:
@@ -377,17 +376,16 @@ class {class_name}:
     def __init__(self):
         self.K = {K}
         self.num_states = {num_states}
-        self.state = [0.0] * {num_states}
+        self.input = [0.0] * {num_states}
         self.output = 0.0
-        self.input = 0.0
 
     def init(self):
-        self.state = [0.0] * self.num_states
+        self.input = [0.0] * self.num_states
         self.output = 0.0
 
     def update(self, t: float):
         # u = -K * x (SISO)
-        self.output = -sum(k * x for k, x in zip(self.K, self.state))
+        self.output = -sum(k * x for k, x in zip(self.K, self.input))
 
     def get_output(self, port: int = 0) -> float:
         return self.output

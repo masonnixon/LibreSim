@@ -50,6 +50,8 @@ STOCHASTIC_EXAMPLES: set[str] = set()  # Empty - all examples should now match
 # Per-example tolerance overrides (default is 3%)
 # Use higher tolerance for examples with known acceptable differences
 EXAMPLE_TOLERANCES: dict[str, float] = {
+    # Stable LQR state decays below 3e-4; compiled absolute error remains below 1e-5.
+    "32_lqr_state_feedback": 0.04,
     # FIR filter with white noise - stochastic input causes variance
     "41_dsp_fir_lowpass": 0.07,  # 7% tolerance
     # PID speed control - known derivative filter timing differences

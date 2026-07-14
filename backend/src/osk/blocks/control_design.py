@@ -16,8 +16,17 @@ class LQRController(Block):
     where K is the LQR gain matrix.
     """
 
-    def __init__(self, K: Any = None, num_states: int = 1, num_inputs: int = 1):
+    def __init__(
+        self,
+        K: Any = None,
+        num_states: int | None = None,
+        num_inputs: int | None = None,
+    ):
         super().__init__()
+        if num_inputs is None:
+            num_inputs = len(K) if K else 1
+        if num_states is None:
+            num_states = len(K[0]) if K and K[0] else 1
         # K is the feedback gain matrix (num_inputs x num_states)
         self.K: list[list[float]] = K if K else [[1.0] * num_states for _ in range(num_inputs)]
         self.num_states = num_states
@@ -69,8 +78,10 @@ class PolePlacement(Block):
     at desired locations (Ackermann's formula for SISO).
     """
 
-    def __init__(self, K: Any = None, num_states: int = 1):
+    def __init__(self, K: Any = None, num_states: int | None = None):
         super().__init__()
+        if num_states is None:
+            num_states = len(K) if K else 1
         self.K: list[float] = K if K else [1.0] * num_states
         self.num_states = num_states
         self._x_state: list[float] = [0.0] * num_states

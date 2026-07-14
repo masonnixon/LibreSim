@@ -31,12 +31,12 @@ This report compares the outputs of generated code against the headless simulati
 | 24_quaternion_vector_rotation | PASS | PASS | PASS | PASS |
 | 30_pid_speed_control | PASS | PASS | PASS | PASS |
 | 31_discrete_pid_sampled_control | PASS | PASS | PASS | PASS |
-| 32_lqr_state_feedback | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH |
+| 32_lqr_state_feedback | PASS | PASS | PASS | PASS |
 | 33_lead_lag_compensator | PASS | PASS | PASS | PASS |
 | 34_anti_windup_pid | PASS | PASS | PASS | PASS |
 | 35_pi_pd_controllers | PASS | PASS | PASS | PASS |
 | 36_model_reference_control | PASS | PASS | PASS | PASS |
-| 37_pole_placement_control | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH |
+| 37_pole_placement_control | PASS | PASS | PASS | PASS |
 | 40_dsp_fft_spectrum | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH |
 | 41_dsp_fir_lowpass | PASS | PASS | PASS | PASS |
 | 42_rf_receiver_chain | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH |
@@ -49,11 +49,11 @@ This report compares the outputs of generated code against the headless simulati
 ## Statistics
 
 - Total tests: 156
-- Passed: 109 (69.9%)
+- Passed: 117 (75.0%)
 - Simulation failures: 0
 - Build failures: 0
 - Run failures: 16
-- Output validation failures: 31
+- Output validation failures: 23
 
 ## Detailed Failures
 
@@ -136,70 +136,6 @@ This report compares the outputs of generated code against the headless simulati
 
 - Run failed: Results CSV contains no output columns
 - Failure category: `missing_or_empty_output_set`
-
-### 32_lqr_state_feedback (python)
-
-- Max relative error: 219.1794%
-- Headless final values: {'sink=scope_states|in=0|source=mux_state|out=0|element=0': -0.8390715295239608, 'sink=scope_states|in=0|source=mux_state|out=0|element=1': 0.5440211101863909, 'sink=scope_control|in=0|source=lqr|out=0|element=scalar': 0.8390715295239608}
-- Codegen final values: {'sink=scope_states|in=0|source=mux_state|out=0|element=0': 1.0, 'sink=scope_states|in=0|source=mux_state|out=0|element=1': 0.0, 'sink=scope_control|in=0|source=lqr|out=0|element=scalar': 0.0}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_control|in=0|source=lqr|out=0|element=scalar', 'sink=scope_states|in=0|source=mux_state|out=0|element=0', 'sink=scope_states|in=0|source=mux_state|out=0|element=1']
-
-### 32_lqr_state_feedback (cpp)
-
-- Max relative error: 100.0399%
-- Headless final values: {'sink=scope_states|in=0|source=mux_state|out=0|element=0': -0.8390715295239608, 'sink=scope_states|in=0|source=mux_state|out=0|element=1': 0.5440211101863909, 'sink=scope_control|in=0|source=lqr|out=0|element=scalar': 0.8390715295239608}
-- Codegen final values: {'sink=scope_states|in=0|source=mux_state|out=0|element=0': -0.000230238, 'sink=scope_states|in=0|source=mux_state|out=0|element=1': 0.000326138, 'sink=scope_control|in=0|source=lqr|out=0|element=scalar': -0.000334633}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_control|in=0|source=lqr|out=0|element=scalar', 'sink=scope_states|in=0|source=mux_state|out=0|element=0', 'sink=scope_states|in=0|source=mux_state|out=0|element=1']
-
-### 32_lqr_state_feedback (c)
-
-- Max relative error: 100.0399%
-- Headless final values: {'sink=scope_states|in=0|source=mux_state|out=0|element=0': -0.8390715295239608, 'sink=scope_states|in=0|source=mux_state|out=0|element=1': 0.5440211101863909, 'sink=scope_control|in=0|source=lqr|out=0|element=scalar': 0.8390715295239608}
-- Codegen final values: {'sink=scope_states|in=0|source=mux_state|out=0|element=0': -0.000230238, 'sink=scope_states|in=0|source=mux_state|out=0|element=1': 0.000326138, 'sink=scope_control|in=0|source=lqr|out=0|element=scalar': -0.000334633}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_control|in=0|source=lqr|out=0|element=scalar', 'sink=scope_states|in=0|source=mux_state|out=0|element=0', 'sink=scope_states|in=0|source=mux_state|out=0|element=1']
-
-### 32_lqr_state_feedback (rust)
-
-- Max relative error: 100.0399%
-- Headless final values: {'sink=scope_states|in=0|source=mux_state|out=0|element=0': -0.8390715295239608, 'sink=scope_states|in=0|source=mux_state|out=0|element=1': 0.5440211101863909, 'sink=scope_control|in=0|source=lqr|out=0|element=scalar': 0.8390715295239608}
-- Codegen final values: {'sink=scope_states|in=0|source=mux_state|out=0|element=0': -0.00023, 'sink=scope_states|in=0|source=mux_state|out=0|element=1': 0.000326, 'sink=scope_control|in=0|source=lqr|out=0|element=scalar': -0.000335}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_control|in=0|source=lqr|out=0|element=scalar', 'sink=scope_states|in=0|source=mux_state|out=0|element=0', 'sink=scope_states|in=0|source=mux_state|out=0|element=1']
-
-### 37_pole_placement_control (python)
-
-- Max relative error: 3700.6667%
-- Headless final values: {'sink=scope_states|in=0|source=mux_state|out=0|element=0': 0.24999999999999967, 'sink=scope_states|in=0|source=mux_state|out=0|element=1': 2.31291666666666, 'sink=scope_control|in=0|source=pole_place|out=0|element=scalar': -0.9999999999999987}
-- Codegen final values: {'sink=scope_states|in=0|source=mux_state|out=0|element=0': 9.501666666666509, 'sink=scope_states|in=0|source=mux_state|out=0|element=1': 45.14083333333274, 'sink=scope_control|in=0|source=pole_place|out=0|element=scalar': -0.0}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_control|in=0|source=pole_place|out=0|element=scalar', 'sink=scope_states|in=0|source=mux_state|out=0|element=0', 'sink=scope_states|in=0|source=mux_state|out=0|element=1']
-
-### 37_pole_placement_control (cpp)
-
-- Max relative error: 100.0000%
-- Headless final values: {'sink=scope_states|in=0|source=mux_state|out=0|element=0': 0.24999999999999967, 'sink=scope_states|in=0|source=mux_state|out=0|element=1': 2.31291666666666, 'sink=scope_control|in=0|source=pole_place|out=0|element=scalar': -0.9999999999999987}
-- Codegen final values: {'sink=scope_states|in=0|source=mux_state|out=0|element=0': 6.20555e-08, 'sink=scope_states|in=0|source=mux_state|out=0|element=1': 0.25, 'sink=scope_control|in=0|source=pole_place|out=0|element=scalar': -1.0}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_states|in=0|source=mux_state|out=0|element=0', 'sink=scope_states|in=0|source=mux_state|out=0|element=1']
-
-### 37_pole_placement_control (c)
-
-- Max relative error: 100.0000%
-- Headless final values: {'sink=scope_states|in=0|source=mux_state|out=0|element=0': 0.24999999999999967, 'sink=scope_states|in=0|source=mux_state|out=0|element=1': 2.31291666666666, 'sink=scope_control|in=0|source=pole_place|out=0|element=scalar': -0.9999999999999987}
-- Codegen final values: {'sink=scope_states|in=0|source=mux_state|out=0|element=0': 6.20555e-08, 'sink=scope_states|in=0|source=mux_state|out=0|element=1': 0.25, 'sink=scope_control|in=0|source=pole_place|out=0|element=scalar': -1.0}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_states|in=0|source=mux_state|out=0|element=0', 'sink=scope_states|in=0|source=mux_state|out=0|element=1']
-
-### 37_pole_placement_control (rust)
-
-- Max relative error: 100.0000%
-- Headless final values: {'sink=scope_states|in=0|source=mux_state|out=0|element=0': 0.24999999999999967, 'sink=scope_states|in=0|source=mux_state|out=0|element=1': 2.31291666666666, 'sink=scope_control|in=0|source=pole_place|out=0|element=scalar': -0.9999999999999987}
-- Codegen final values: {'sink=scope_states|in=0|source=mux_state|out=0|element=0': 0.0, 'sink=scope_states|in=0|source=mux_state|out=0|element=1': 0.25, 'sink=scope_control|in=0|source=pole_place|out=0|element=scalar': -1.0}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_states|in=0|source=mux_state|out=0|element=0', 'sink=scope_states|in=0|source=mux_state|out=0|element=1']
 
 ### 40_dsp_fft_spectrum (python)
 
