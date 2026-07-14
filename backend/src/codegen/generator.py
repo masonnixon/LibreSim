@@ -60,6 +60,7 @@ STATE_HOLDING_BLOCKS = {
     "discrete_pid_controller",
     "moving_average",
     "low_pass_filter",
+    "analog_filter",
     "high_pass_filter",
     "band_pass_filter",
     "rate_limiter",
@@ -215,6 +216,9 @@ class CodeGenerator:
         source_blocks: list[str] = []
         sink_blocks: list[str] = []
 
+        sim_config = model.get("simulationConfig", {})
+        resolved_step_size = config.step_size or sim_config.get("stepSize", 0.01)
+
         # Build a map of block ID to block data from original model
         block_map = {b["id"]: b for b in model.get("blocks", [])}
 
@@ -266,6 +270,7 @@ class CodeGenerator:
                 custom_state_propagation=(
                     compiled_block.type in CUSTOM_STATE_PROPAGATION_BLOCKS
                 ),
+                step_size=resolved_step_size,
             )
             blocks.append(block_info)
 
@@ -278,9 +283,6 @@ class CodeGenerator:
             if compiled_block.type in SINK_BLOCKS:
                 sink_blocks.append(block_id)
 
-        # Get simulation config
-        sim_config = model.get("simulationConfig", {})
-
         output_signals = self._extract_output_signals(blocks, sink_blocks)
 
         return CompiledModelInfo(
@@ -289,7 +291,7 @@ class CodeGenerator:
             integrator_blocks=integrator_blocks,
             source_blocks=source_blocks,
             sink_blocks=sink_blocks,
-            step_size=config.step_size or sim_config.get("stepSize", 0.01),
+            step_size=resolved_step_size,
             stop_time=config.stop_time or sim_config.get("stopTime", 10.0),
             start_time=config.start_time or sim_config.get("startTime", 0.0),
             output_signals=output_signals,

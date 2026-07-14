@@ -2,6 +2,7 @@
 
 import math
 
+from ....filter_design import design_analog_filter
 from ....models import BlockInfo
 
 
@@ -139,7 +140,7 @@ impl {struct_name} {{
 def template_low_pass_filter(block: BlockInfo, struct_name: str) -> str:
     """Generate Rust code for first-order LowPassFilter block."""
     cutoff_freq = block.parameters.get("cutoffFrequency", 10.0)
-    sample_time = block.parameters.get("sampleTime", 0.01)
+    sample_time = block.step_size
 
     tau = 1.0 / (2.0 * math.pi * cutoff_freq)
     alpha = sample_time / (tau + sample_time)
@@ -168,6 +169,88 @@ impl {struct_name} {{
 
     pub fn update(&mut self, _t: f64) {{
         self.output = self.alpha * self.input + (1.0 - self.alpha) * self.output;
+    }}
+
+    pub fn get_output(&self, _port: usize) -> f64 {{
+        self.output
+    }}
+}}
+"""
+
+
+def template_analog_filter(block: BlockInfo, struct_name: str) -> str:
+    """Generate Rust code for an OSK-compatible cascaded analog filter."""
+    sections = design_analog_filter(block.parameters, block.step_size)
+    initializers = ",\n            ".join(
+        f"{struct_name}Biquad {{ b0: {section.b0!r}_f64, b1: {section.b1!r}_f64, "
+        f"b2: {section.b2!r}_f64, a1: {section.a1!r}_f64, "
+        f"a2: {section.a2!r}_f64, ..Default::default() }}"
+        for section in sections
+    )
+
+    return f"""
+/// One section of {block.name}'s cascaded analog filter.
+#[derive(Clone, Copy, Default)]
+pub struct {struct_name}Biquad {{
+    pub b0: f64,
+    pub b1: f64,
+    pub b2: f64,
+    pub a1: f64,
+    pub a2: f64,
+    pub x1: f64,
+    pub x2: f64,
+    pub y1: f64,
+    pub y2: f64,
+}}
+
+/// {block.name} - Cascaded Analog Filter
+#[derive(Clone)]
+pub struct {struct_name} {{
+    pub input: f64,
+    pub output: f64,
+    pub sections: [{struct_name}Biquad; {len(sections)}],
+}}
+
+impl Default for {struct_name} {{
+    fn default() -> Self {{
+        Self::new()
+    }}
+}}
+
+impl {struct_name} {{
+    pub fn new() -> Self {{
+        Self {{
+            input: 0.0,
+            output: 0.0,
+            sections: [
+            {initializers}
+            ],
+        }}
+    }}
+
+    pub fn init(&mut self) {{
+        self.output = 0.0;
+        for section in &mut self.sections {{
+            section.x1 = 0.0;
+            section.x2 = 0.0;
+            section.y1 = 0.0;
+            section.y2 = 0.0;
+        }}
+    }}
+
+    pub fn update(&mut self, _t: f64) {{
+        let mut value = self.input;
+        for section in &mut self.sections {{
+            let output = section.b0 * value + section.b1 * section.x1
+                + section.b2 * section.x2 - section.a1 * section.y1
+                - section.a2 * section.y2;
+            section.x2 = section.x1;
+            section.x1 = value;
+            section.y2 = section.y1;
+            section.y1 = output;
+            value = output;
+        }}
+        self.output = value;
     }}
 
     pub fn get_output(&self, _port: usize) -> f64 {{
@@ -425,6 +508,7 @@ SIGNAL_PROCESSING_TEMPLATES = {
     "rate_limiter": template_rate_limiter,
     "moving_average": template_moving_average,
     "low_pass_filter": template_low_pass_filter,
+    "analog_filter": template_analog_filter,
     "high_pass_filter": template_high_pass_filter,
     "band_pass_filter": template_band_pass_filter,
     "backlash": template_backlash,

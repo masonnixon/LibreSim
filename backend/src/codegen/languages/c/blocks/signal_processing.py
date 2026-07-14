@@ -2,6 +2,7 @@
 
 import math
 
+from ....filter_design import design_analog_filter
 from ....models import BlockInfo
 
 
@@ -110,7 +111,7 @@ double {struct_name}_get_output({struct_name}* b, int port) {{
 def template_low_pass_filter(block: BlockInfo, struct_name: str) -> str:
     """Generate C code for first-order LowPassFilter block."""
     cutoff_freq = block.parameters.get("cutoffFrequency", 10.0)
-    sample_time = block.parameters.get("sampleTime", 0.01)
+    sample_time = block.step_size
 
     # Pre-calculate alpha
     tau = 1.0 / (2.0 * math.pi * cutoff_freq)
@@ -134,6 +135,59 @@ void {struct_name}_update({struct_name}* b, double t) {{
     (void)t;
     // y[n] = alpha * x[n] + (1-alpha) * y[n-1]
     b->output = b->alpha * b->input + (1.0 - b->alpha) * b->output;
+}}
+
+double {struct_name}_get_output({struct_name}* b, int port) {{
+    (void)port;
+    return b->output;
+}}
+"""
+
+
+def template_analog_filter(block: BlockInfo, struct_name: str) -> str:
+    """Generate C code for an OSK-compatible cascaded analog filter."""
+    sections = design_analog_filter(block.parameters, block.step_size)
+    initializers = "\n".join(
+        f"    b->sections[{index}] = ({struct_name}_Section)"
+        f"{{{section.b0!r}, {section.b1!r}, {section.b2!r}, "
+        f"{section.a1!r}, {section.a2!r}, 0.0, 0.0, 0.0, 0.0}};"
+        for index, section in enumerate(sections)
+    )
+
+    return f"""
+// {block.name} - Cascaded Analog Filter
+typedef struct {{
+    double b0, b1, b2, a1, a2;
+    double x1, x2, y1, y2;
+}} {struct_name}_Section;
+
+typedef struct {{
+    double input;
+    double output;
+    {struct_name}_Section sections[{len(sections)}];
+}} {struct_name};
+
+void {struct_name}_init({struct_name}* b) {{
+    b->input = 0.0;
+    b->output = 0.0;
+{initializers}
+}}
+
+void {struct_name}_update({struct_name}* b, double t) {{
+    (void)t;
+    double value = b->input;
+    for (int i = 0; i < {len(sections)}; i++) {{
+        {struct_name}_Section* section = &b->sections[i];
+        double output = section->b0 * value + section->b1 * section->x1
+                      + section->b2 * section->x2 - section->a1 * section->y1
+                      - section->a2 * section->y2;
+        section->x2 = section->x1;
+        section->x1 = value;
+        section->y2 = section->y1;
+        section->y1 = output;
+        value = output;
+    }}
+    b->output = value;
 }}
 
 double {struct_name}_get_output({struct_name}* b, int port) {{
@@ -357,6 +411,7 @@ SIGNAL_PROCESSING_TEMPLATES = {
     "rate_limiter": template_rate_limiter,
     "moving_average": template_moving_average,
     "low_pass_filter": template_low_pass_filter,
+    "analog_filter": template_analog_filter,
     "high_pass_filter": template_high_pass_filter,
     "band_pass_filter": template_band_pass_filter,
     "backlash": template_backlash,

@@ -161,6 +161,7 @@ class ModelCompiler:
         "extended_kalman_filter",
         "moving_average",
         "low_pass_filter",
+        "analog_filter",
         "high_pass_filter",
         "band_pass_filter",
         "rate_limiter",

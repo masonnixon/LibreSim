@@ -1,5 +1,6 @@
 """Python templates for signal processing blocks."""
 
+from ....filter_design import design_analog_filter
 from ....models import BlockInfo
 
 
@@ -92,7 +93,7 @@ class {class_name}:
 def low_pass_filter_template(block: BlockInfo, class_name: str) -> str:
     """Generate first-order LowPassFilter block code."""
     cutoff_freq = block.parameters.get("cutoffFrequency", 10.0)
-    sample_time = block.parameters.get("sampleTime", 0.01)
+    sample_time = block.step_size
 
     return f'''
 class {class_name}:
@@ -113,6 +114,45 @@ class {class_name}:
     def update(self, t: float):
         # y[n] = alpha * x[n] + (1-alpha) * y[n-1]
         self.output = self.alpha * self.input + (1.0 - self.alpha) * self.output
+
+    def get_output(self, port: int = 0) -> float:
+        return self.output
+'''
+
+
+def analog_filter_template(block: BlockInfo, class_name: str) -> str:
+    """Generate an OSK-compatible cascaded analog filter."""
+    sections = design_analog_filter(block.parameters, block.step_size)
+    section_values = [
+        [section.b0, section.b1, section.b2, section.a1, section.a2, 0.0, 0.0, 0.0, 0.0]
+        for section in sections
+    ]
+
+    return f'''
+class {class_name}:
+    """Cascaded analog filter: {block.name}"""
+
+    def __init__(self):
+        self.input = 0.0
+        self.output = 0.0
+        self.sections = {section_values!r}
+
+    def init(self):
+        self.output = 0.0
+        for section in self.sections:
+            section[5:] = [0.0, 0.0, 0.0, 0.0]
+
+    def update(self, t: float):
+        value = self.input
+        for section in self.sections:
+            b0, b1, b2, a1, a2, x1, x2, y1, y2 = section
+            output = b0 * value + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2
+            section[6] = x1
+            section[5] = value
+            section[8] = y1
+            section[7] = output
+            value = output
+        self.output = value
 
     def get_output(self, port: int = 0) -> float:
         return self.output
@@ -307,6 +347,7 @@ SIGNAL_PROCESSING_TEMPLATES = {
     "rate_limiter": rate_limiter_template,
     "moving_average": moving_average_template,
     "low_pass_filter": low_pass_filter_template,
+    "analog_filter": analog_filter_template,
     "high_pass_filter": high_pass_filter_template,
     "band_pass_filter": band_pass_filter_template,
     "backlash": backlash_template,

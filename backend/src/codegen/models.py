@@ -137,6 +137,8 @@ class BlockInfo:
     ready_only: bool = False
     # True when the generated template owns and propagates one or more RK states.
     custom_state_propagation: bool = False
+    # Nominal simulation step used by internally-discrete block templates.
+    step_size: float = 0.01
 
 
 @dataclass
