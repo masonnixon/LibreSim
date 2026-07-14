@@ -7,9 +7,13 @@ from ....models import BlockInfo
 
 def template_rate_limiter(block: BlockInfo, struct_name: str) -> str:
     """Generate C code for RateLimiter block."""
-    rising_slew = block.parameters.get("risingSlewRate", 1.0)
-    falling_slew = block.parameters.get("fallingSlewRate", -1.0)
-    sample_time = block.parameters.get("sampleTime", 0.01)
+    rising_slew = abs(
+        block.parameters.get("risingLimit", block.parameters.get("risingSlewRate", 1.0))
+    )
+    falling_limit = block.parameters.get(
+        "fallingLimit", block.parameters.get("fallingSlewRate", -1.0)
+    )
+    falling_slew = -abs(falling_limit) if falling_limit < 0 else -rising_slew
 
     return f"""
 // {block.name} - Rate Limiter
@@ -18,9 +22,7 @@ typedef struct {{
     double output;
     double rising_slew;
     double falling_slew;
-    double sample_time;
     double prev_output;
-    int first_step;
 }} {struct_name};
 
 void {struct_name}_init({struct_name}* b) {{
@@ -28,28 +30,21 @@ void {struct_name}_init({struct_name}* b) {{
     b->output = 0.0;
     b->rising_slew = {rising_slew};
     b->falling_slew = {falling_slew};
-    b->sample_time = {sample_time};
     b->prev_output = 0.0;
-    b->first_step = 1;
 }}
 
-void {struct_name}_update({struct_name}* b, double t) {{
+void {struct_name}_update({struct_name}* b, double t, double dt) {{
     (void)t;
-    if (b->first_step) {{
-        b->output = b->input;
-        b->first_step = 0;
-    }} else {{
-        double delta = b->input - b->prev_output;
-        double max_rise = b->rising_slew * b->sample_time;
-        double max_fall = b->falling_slew * b->sample_time;
+    double delta = b->input - b->prev_output;
+    double max_rise = b->rising_slew * dt;
+    double max_fall = b->falling_slew * dt;
 
-        if (delta > max_rise) {{
-            b->output = b->prev_output + max_rise;
-        }} else if (delta < max_fall) {{
-            b->output = b->prev_output + max_fall;
-        }} else {{
-            b->output = b->input;
-        }}
+    if (delta > max_rise) {{
+        b->output = b->prev_output + max_rise;
+    }} else if (delta < max_fall) {{
+        b->output = b->prev_output + max_fall;
+    }} else {{
+        b->output = b->input;
     }}
     b->prev_output = b->output;
 }}

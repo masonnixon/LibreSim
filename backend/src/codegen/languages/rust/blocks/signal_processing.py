@@ -7,9 +7,13 @@ from ....models import BlockInfo
 
 def template_rate_limiter(block: BlockInfo, struct_name: str) -> str:
     """Generate Rust code for RateLimiter block."""
-    rising_slew = block.parameters.get("risingSlewRate", 1.0)
-    falling_slew = block.parameters.get("fallingSlewRate", -1.0)
-    sample_time = block.parameters.get("sampleTime", 0.01)
+    rising_slew = abs(
+        block.parameters.get("risingLimit", block.parameters.get("risingSlewRate", 1.0))
+    )
+    falling_limit = block.parameters.get(
+        "fallingLimit", block.parameters.get("fallingSlewRate", -1.0)
+    )
+    falling_slew = -abs(falling_limit) if falling_limit < 0 else -rising_slew
 
     return f"""
 /// {block.name} - Rate Limiter
@@ -19,9 +23,7 @@ pub struct {struct_name} {{
     pub output: f64,
     pub rising_slew: f64,
     pub falling_slew: f64,
-    pub sample_time: f64,
     pub prev_output: f64,
-    pub first_step: bool,
 }}
 
 impl Default for {struct_name} {{
@@ -37,34 +39,26 @@ impl {struct_name} {{
             output: 0.0,
             rising_slew: {rising_slew}_f64,
             falling_slew: {falling_slew}_f64,
-            sample_time: {sample_time}_f64,
             prev_output: 0.0,
-            first_step: true,
         }}
     }}
 
     pub fn init(&mut self) {{
         self.output = 0.0;
         self.prev_output = 0.0;
-        self.first_step = true;
     }}
 
-    pub fn update(&mut self, _t: f64) {{
-        if self.first_step {{
-            self.output = self.input;
-            self.first_step = false;
-        }} else {{
-            let delta = self.input - self.prev_output;
-            let max_rise = self.rising_slew * self.sample_time;
-            let max_fall = self.falling_slew * self.sample_time;
+    pub fn update(&mut self, _t: f64, dt: f64) {{
+        let delta = self.input - self.prev_output;
+        let max_rise = self.rising_slew * dt;
+        let max_fall = self.falling_slew * dt;
 
-            if delta > max_rise {{
-                self.output = self.prev_output + max_rise;
-            }} else if delta < max_fall {{
-                self.output = self.prev_output + max_fall;
-            }} else {{
-                self.output = self.input;
-            }}
+        if delta > max_rise {{
+            self.output = self.prev_output + max_rise;
+        }} else if delta < max_fall {{
+            self.output = self.prev_output + max_fall;
+        }} else {{
+            self.output = self.input;
         }}
         self.prev_output = self.output;
     }}

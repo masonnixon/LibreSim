@@ -66,6 +66,23 @@ STATE_HOLDING_BLOCKS = {
     "iir_filter",
 }
 
+# Blocks whose OSK update is gated by State.ready. Generated models run these
+# once at the major-step boundary and hold their values through integration stages.
+READY_ONLY_BLOCKS = {
+    "unit_delay",
+    "zero_order_hold",
+    "discrete_integrator",
+    "discrete_derivative",
+    "discrete_transfer_function",
+    "discrete_state_space",
+    "discrete_pid_controller",
+    "kalman_filter",
+    "extended_kalman_filter",
+    "white_noise",
+    "uniform_noise",
+    "band_limited_white_noise",
+}
+
 # Source blocks (no inputs, generate signals)
 SOURCE_BLOCKS = {
     "constant",
@@ -234,6 +251,7 @@ class CodeGenerator:
                 execution_order=i,
                 input_dimensions=input_dimensions,
                 output_dimensions=output_dimensions,
+                ready_only=compiled_block.type in READY_ONLY_BLOCKS,
             )
             blocks.append(block_info)
 

@@ -7,9 +7,13 @@ from ....models import BlockInfo
 
 def template_rate_limiter(block: BlockInfo, class_name: str) -> str:
     """Generate C++ code for RateLimiter block."""
-    rising_slew = block.parameters.get("risingSlewRate", 1.0)
-    falling_slew = block.parameters.get("fallingSlewRate", -1.0)
-    sample_time = block.parameters.get("sampleTime", 0.01)
+    rising_slew = abs(
+        block.parameters.get("risingLimit", block.parameters.get("risingSlewRate", 1.0))
+    )
+    falling_limit = block.parameters.get(
+        "fallingLimit", block.parameters.get("fallingSlewRate", -1.0)
+    )
+    falling_slew = -abs(falling_limit) if falling_limit < 0 else -rising_slew
 
     return f"""
 // {block.name} - Rate Limiter
@@ -19,33 +23,25 @@ public:
     double output = 0.0;
     double rising_slew = {rising_slew};
     double falling_slew = {falling_slew};
-    double sample_time = {sample_time};
     double prev_output = 0.0;
-    bool first_step = true;
 
     void init() {{
         output = 0.0;
         prev_output = 0.0;
-        first_step = true;
     }}
 
-    void update(double t) {{
+    void update(double t, double dt) {{
         (void)t;
-        if (first_step) {{
-            output = input;
-            first_step = false;
-        }} else {{
-            double delta = input - prev_output;
-            double max_rise = rising_slew * sample_time;
-            double max_fall = falling_slew * sample_time;
+        double delta = input - prev_output;
+        double max_rise = rising_slew * dt;
+        double max_fall = falling_slew * dt;
 
-            if (delta > max_rise) {{
-                output = prev_output + max_rise;
-            }} else if (delta < max_fall) {{
-                output = prev_output + max_fall;
-            }} else {{
-                output = input;
-            }}
+        if (delta > max_rise) {{
+            output = prev_output + max_rise;
+        }} else if (delta < max_fall) {{
+            output = prev_output + max_fall;
+        }} else {{
+            output = input;
         }}
         prev_output = output;
     }}

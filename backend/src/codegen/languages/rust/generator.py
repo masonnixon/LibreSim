@@ -174,16 +174,14 @@ fn main() {{
     let stage_offsets = get_stage_offsets(method);
 
     while t <= t_end {{
-        // Integration passes
-        // OSK records outputs after update() but BEFORE propagation for kpass=0
-        for kpass in 0..num_passes {{
-            model.step(t + stage_offsets[kpass] * dt, dt, kpass);
-
-            // Record outputs after kpass=0 update, before propagation (matches OSK)
-            if kpass == 0 {{
-                time_data.push(t);
+        // Major-step update: commit sampled state and establish recorded outputs.
+        model.step(t, dt, 0, true);
+        time_data.push(t);
 {record_code}
-            }}
+
+        // Integration passes
+        for kpass in 0..num_passes {{
+            model.step(t + stage_offsets[kpass] * dt, dt, kpass, false);
 
             model.propagate_integrators(dt, kpass, method);
         }}
@@ -224,7 +222,12 @@ fn main() {{
                 if block_id in block_wiring:
                     for wire_line in block_wiring[block_id]:
                         update_calls.append(wire_line)
-                update_calls.append(f"        self.{var_name}.update(t);")
+                if block_match.ready_only:
+                    update_calls.append(f"        if ready {{ self.{var_name}.update(t); }}")
+                elif block_match.type == "rate_limiter":
+                    update_calls.append(f"        self.{var_name}.update(t, dt);")
+                else:
+                    update_calls.append(f"        self.{var_name}.update(t);")
 
         # Build connection wiring (for wire_connections method - kept for compatibility)
         connection_code = self._generate_connection_code(model_info)
@@ -284,7 +287,7 @@ impl Model {{
     }}
 
     /// Execute one simulation step
-    pub fn step(&mut self, t: f64, _dt: f64, _kpass: usize) {{
+    pub fn step(&mut self, t: f64, dt: f64, _kpass: usize, ready: bool) {{
         self.time = t;
 
         // Update all blocks in execution order (with inline wiring)

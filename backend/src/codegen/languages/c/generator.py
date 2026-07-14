@@ -161,17 +161,17 @@ int main(void) {{
     const double* stage_offsets = get_stage_offsets("{config.integration_method.value}");
 
     while (t <= t_end) {{
-        // Integration passes
-        // OSK records outputs after update() but BEFORE propagation for kpass=0
-        for (int kpass = 0; kpass < num_passes; kpass++) {{
-            model_step(&model, t + stage_offsets[kpass] * dt, dt, kpass);
-
-            // Record outputs after kpass=0 update, before propagation (matches OSK)
-            if (kpass == 0 && sample_idx < n_samples) {{
-                time_data[sample_idx] = t;
+        // Major-step update: commit sampled state and establish recorded outputs.
+        model_step(&model, t, dt, 0, 1);
+        if (sample_idx < n_samples) {{
+            time_data[sample_idx] = t;
 {record_code}
-                sample_idx++;
-            }}
+            sample_idx++;
+        }}
+
+        // Integration passes
+        for (int kpass = 0; kpass < num_passes; kpass++) {{
+            model_step(&model, t + stage_offsets[kpass] * dt, dt, kpass, 0);
 
             model_propagate_integrators(&model, dt, kpass, "{config.integration_method.value}");
         }}
@@ -284,7 +284,7 @@ void model_init(Model* model);
  * @param dt Time step
  * @param kpass Integration pass number (0 to num_passes-1)
  */
-void model_step(Model* model, double t, double dt, int kpass);
+void model_step(Model* model, double t, double dt, int kpass, int ready);
 
 /**
  * Wire block connections (update inputs from outputs).
@@ -335,7 +335,14 @@ void model_propagate_integrators(Model* model, double dt, int kpass, const char*
                 if block_id in block_wiring:
                     for wire_line in block_wiring[block_id]:
                         update_calls.append(wire_line)
-                update_calls.append(f"    {struct_name}_update(&model->{var_name}, t);")
+                if block_match.ready_only:
+                    update_calls.append(
+                        f"    if (ready) {{ {struct_name}_update(&model->{var_name}, t); }}"
+                    )
+                elif block_match.type == "rate_limiter":
+                    update_calls.append(f"    {struct_name}_update(&model->{var_name}, t, dt);")
+                else:
+                    update_calls.append(f"    {struct_name}_update(&model->{var_name}, t);")
 
         # Build connection wiring (for wire_connections method - kept for compatibility)
         connection_code = self._generate_connection_code(model_info)
@@ -370,7 +377,7 @@ void model_wire_connections(Model* model) {{
 {connection_code}
 }}
 
-void model_step(Model* model, double t, double dt, int kpass) {{
+void model_step(Model* model, double t, double dt, int kpass, int ready) {{
     (void)dt;
     (void)kpass;
     model->time = t;

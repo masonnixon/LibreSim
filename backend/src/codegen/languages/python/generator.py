@@ -316,7 +316,12 @@ class {class_name}:
                 if block_id in block_wiring:
                     for wire_line in block_wiring[block_id]:
                         update_calls.append(wire_line)
-                update_calls.append(f"        self.{var_name}.update(t)")
+                if block_match.ready_only:
+                    update_calls.append(f"        if ready:\n            self.{var_name}.update(t)")
+                elif block_match.type == "rate_limiter":
+                    update_calls.append(f"        self.{var_name}.update(t, dt)")
+                else:
+                    update_calls.append(f"        self.{var_name}.update(t)")
 
         # Build integrator list for state propagation
         integrator_list: list[str] = []
@@ -384,13 +389,14 @@ class Model:
         """Wire block connections (called once before simulation)."""
 {connection_code}
 
-    def step(self, t: float, dt: float, kpass: int):
+    def step(self, t: float, dt: float, kpass: int, ready: bool):
         """Execute one simulation step.
 
         Args:
             t: Current simulation time
             dt: Time step
             kpass: Integration pass number (0 to num_passes-1)
+            ready: Whether this is the major-step update used for recording
         """
         # Update all blocks in execution order
         # Each block wires its inputs from upstream outputs, then updates
@@ -433,14 +439,14 @@ def run_simulation(
     # This captures the state at the current time before integration advances it
     t = t_start
     while t <= t_end:
+        # Major-step update: commit sampled state and establish recorded outputs.
+        model.step(t, dt, 0, True)
+        results['time'].append(t)
+{output_recording["record"]}
+
         # Integration passes
         for kpass in range(num_passes):
-            model.step(t + stage_offsets[kpass] * dt, dt, kpass)
-
-            # Record outputs after kpass=0 update, before propagation (matches OSK)
-            if kpass == 0:
-                results['time'].append(t)
-{output_recording["record"]}
+            model.step(t + stage_offsets[kpass] * dt, dt, kpass, False)
 
             propagate(model._integrators, dt, kpass){multi_state_propagation}
 
@@ -599,13 +605,13 @@ def run_simulation(
             port = signal.flat_index if signal.dimensions[0] > 1 else signal.source_output_port
             init_lines.append(f"    results['{signal.canonical_key}'] = []")
             record_lines.append(
-                f"                results['{signal.canonical_key}'].append("
+                f"        results['{signal.canonical_key}'].append("
                 f"model.{var_name}.get_output({port}))"
             )
 
         return {
             "init": "\n".join(init_lines) if init_lines else "    pass",
-            "record": "\n".join(record_lines) if record_lines else "                pass",
+            "record": "\n".join(record_lines) if record_lines else "        pass",
         }
 
     def _generate_requirements(self) -> str:

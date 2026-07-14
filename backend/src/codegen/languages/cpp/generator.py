@@ -161,17 +161,17 @@ int main() {{
     const double* stage_offsets = get_stage_offsets("{config.integration_method.value}");
 
     while (t <= t_end) {{
-        // Integration passes
-        // OSK records outputs after update() but BEFORE propagation for kpass=0
-        for (int kpass = 0; kpass < num_passes; kpass++) {{
-            model.step(t + stage_offsets[kpass] * dt, dt, kpass);
-
-            // Record outputs after kpass=0 update, before propagation (matches OSK)
-            if (kpass == 0 && sample_idx < n_samples) {{
-                time_data[sample_idx] = t;
+        // Major-step update: commit sampled state and establish recorded outputs.
+        model.step(t, dt, 0, true);
+        if (sample_idx < n_samples) {{
+            time_data[sample_idx] = t;
 {record_code}
-                sample_idx++;
-            }}
+            sample_idx++;
+        }}
+
+        // Integration passes
+        for (int kpass = 0; kpass < num_passes; kpass++) {{
+            model.step(t + stage_offsets[kpass] * dt, dt, kpass, false);
 
             model.propagate_integrators(dt, kpass, "{config.integration_method.value}");
         }}
@@ -269,7 +269,7 @@ public:
      * @param dt Time step
      * @param kpass Integration pass number (0 to num_passes-1)
      */
-    void step(double t, double dt, int kpass);
+    void step(double t, double dt, int kpass, bool ready);
 
     /**
      * Wire block connections (update inputs from outputs).
@@ -319,7 +319,12 @@ public:
                 if block_id in block_wiring:
                     for wire_line in block_wiring[block_id]:
                         update_calls.append(wire_line)
-                update_calls.append(f"    {var_name}.update(t);")
+                if block_match.ready_only:
+                    update_calls.append(f"    if (ready) {{ {var_name}.update(t); }}")
+                elif block_match.type == "rate_limiter":
+                    update_calls.append(f"    {var_name}.update(t, dt);")
+                else:
+                    update_calls.append(f"    {var_name}.update(t);")
 
         # Build connection wiring (for wire_connections method - kept for compatibility)
         connection_code = self._generate_connection_code(model_info)
@@ -353,7 +358,7 @@ void Model::wire_connections() {{
 {connection_code}
 }}
 
-void Model::step(double t, double dt, int kpass) {{
+void Model::step(double t, double dt, int kpass, bool ready) {{
     (void)dt;
     (void)kpass;
     time = t;

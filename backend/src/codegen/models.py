@@ -132,6 +132,8 @@ class BlockInfo:
     # Resolved signal types
     input_signals: list[SignalInfo] = field(default_factory=list)
     output_signals: list[SignalInfo] = field(default_factory=list)
+    # True when OSK mutates this block only during its major/ready update phase.
+    ready_only: bool = False
 
 
 @dataclass

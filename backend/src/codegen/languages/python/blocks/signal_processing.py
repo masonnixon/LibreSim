@@ -5,9 +5,13 @@ from ....models import BlockInfo
 
 def rate_limiter_template(block: BlockInfo, class_name: str) -> str:
     """Generate RateLimiter block code."""
-    rising_slew = block.parameters.get("risingSlewRate", 1.0)
-    falling_slew = block.parameters.get("fallingSlewRate", -1.0)
-    sample_time = block.parameters.get("sampleTime", 0.01)
+    rising_slew = abs(
+        block.parameters.get("risingLimit", block.parameters.get("risingSlewRate", 1.0))
+    )
+    falling_limit = block.parameters.get(
+        "fallingLimit", block.parameters.get("fallingSlewRate", -1.0)
+    )
+    falling_slew = -abs(falling_limit) if falling_limit < 0 else -rising_slew
 
     return f'''
 class {class_name}:
@@ -16,32 +20,25 @@ class {class_name}:
     def __init__(self):
         self.rising_slew = {rising_slew}
         self.falling_slew = {falling_slew}
-        self.sample_time = {sample_time}
         self.input = 0.0
         self.output = 0.0
         self.prev_output = 0.0
-        self.first_step = True
 
     def init(self):
         self.prev_output = 0.0
         self.output = 0.0
-        self.first_step = True
 
-    def update(self, t: float):
-        if self.first_step:
-            self.output = self.input
-            self.first_step = False
+    def update(self, t: float, dt: float):
+        delta = self.input - self.prev_output
+        max_rise = self.rising_slew * dt
+        max_fall = self.falling_slew * dt
+
+        if delta > max_rise:
+            self.output = self.prev_output + max_rise
+        elif delta < max_fall:
+            self.output = self.prev_output + max_fall
         else:
-            delta = self.input - self.prev_output
-            max_rise = self.rising_slew * self.sample_time
-            max_fall = self.falling_slew * self.sample_time
-
-            if delta > max_rise:
-                self.output = self.prev_output + max_rise
-            elif delta < max_fall:
-                self.output = self.prev_output + max_fall
-            else:
-                self.output = self.input
+            self.output = self.input
 
         self.prev_output = self.output
 
