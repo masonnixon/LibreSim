@@ -1,6 +1,7 @@
 """Rust block templates for source blocks."""
 
 from ....models import BlockInfo
+from ....random_compat import python_mt19937_state
 
 
 def template_constant(block: BlockInfo, struct_name: str) -> str:
@@ -345,6 +346,8 @@ def template_white_noise(block: BlockInfo, struct_name: str) -> str:
     sample_time = block.parameters.get("sampleTime", block.parameters.get("sample_time", 0.0))
 
     seed_value = seed if seed is not None else 12345
+    mt_state, mt_index = python_mt19937_state(seed_value)
+    mt_state_values = ", ".join(f"{word}u32" for word in mt_state)
 
     return f"""
 /// {block.name} - White Noise source (matches OSK WhiteNoise exactly)
@@ -367,28 +370,18 @@ pub struct {struct_name} {{
 impl {struct_name} {{
     pub fn new() -> Self {{
         let variance = {variance}_f64;
-        let mut s = Self {{
+        Self {{
             output: 0.0,
             mean: {mean}_f64,
             variance,
             std_dev: variance.abs().sqrt(),
             sample_time: {sample_time}_f64,
             last_sample_time: f64::NEG_INFINITY,
-            mt: [0u32; 624],
-            mti: 625,
+            mt: [{mt_state_values}],
+            mti: {mt_index},
             spare: 0.0,
             has_spare: false,
-        }};
-        s.mt_init({seed_value});
-        s
-    }}
-
-    fn mt_init(&mut self, seed: u32) {{
-        self.mt[0] = seed;
-        for i in 1..624 {{
-            self.mt[i] = 1812433253u32.wrapping_mul(self.mt[i-1] ^ (self.mt[i-1] >> 30)).wrapping_add(i as u32);
         }}
-        self.mti = 624;
     }}
 
     fn mt_genrand(&mut self) -> u32 {{
@@ -501,6 +494,8 @@ def template_band_limited_white_noise(block: BlockInfo, struct_name: str) -> str
         sample_time = 1e-6
 
     seed_value = seed if seed is not None else 12345
+    mt_state, mt_index = python_mt19937_state(seed_value)
+    mt_state_values = ", ".join(f"{word}u32" for word in mt_state)
 
     return f"""
 /// {block.name} - Band-Limited White Noise source (matches OSK BandLimitedWhiteNoise exactly)
@@ -520,27 +515,17 @@ impl {struct_name} {{
     pub fn new() -> Self {{
         let noise_power = {noise_power}_f64;
         let sample_time = {sample_time}_f64.max(1e-6);
-        let mut s = Self {{
+        Self {{
             output: 0.0,
             noise_power,
             sample_time,
             std_dev: (noise_power / sample_time).sqrt(),
             last_sample_time: f64::NEG_INFINITY,
-            mt: [0u32; 624],
-            mti: 625,
+            mt: [{mt_state_values}],
+            mti: {mt_index},
             spare: 0.0,
             has_spare: false,
-        }};
-        s.mt_init({seed_value});
-        s
-    }}
-
-    fn mt_init(&mut self, seed: u32) {{
-        self.mt[0] = seed;
-        for i in 1..624 {{
-            self.mt[i] = 1812433253u32.wrapping_mul(self.mt[i-1] ^ (self.mt[i-1] >> 30)).wrapping_add(i as u32);
         }}
-        self.mti = 624;
     }}
 
     fn mt_genrand(&mut self) -> u32 {{

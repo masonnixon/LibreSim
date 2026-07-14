@@ -1,6 +1,22 @@
 """C block templates for source blocks."""
 
 from ....models import BlockInfo
+from ....random_compat import python_mt19937_state
+
+
+def _format_python_mt19937_state(seed: object) -> tuple[str, int]:
+    """Format CPython's initialized MT19937 state for a C array literal."""
+    words, index = python_mt19937_state(seed)
+    rows = [
+        ", ".join(f"{word}UL" for word in words[start : start + 8])
+        for start in range(0, len(words), 8)
+    ]
+    return ",\n    ".join(rows), index
+
+
+def _format_c_comment_value(value: object) -> str:
+    """Format a Python value for inclusion in a generated C comment."""
+    return repr(value).replace("*/", "* /").replace("\r", "\\r").replace("\n", "\\n")
 
 
 def template_constant(block: BlockInfo, struct_name: str) -> str:
@@ -275,6 +291,8 @@ def template_white_noise(block: BlockInfo, struct_name: str) -> str:
 
     # Use a deterministic seed if none provided
     seed_value = seed if seed is not None else 12345
+    mt_state, mt_index = _format_python_mt19937_state(seed_value)
+    seed_comment = _format_c_comment_value(seed_value)
 
     return f"""
 // {block.name} - White Noise source (matches OSK WhiteNoise exactly)
@@ -298,14 +316,12 @@ typedef struct {{
     double spare;
 }} {struct_name};
 
-// Mersenne Twister initialization (matches Python's random.Random)
-static void {struct_name}_mt_init({struct_name}* b, unsigned long seed) {{
-    b->mt[0] = seed & 0xffffffffUL;
-    for (b->mti = 1; b->mti < {struct_name.upper()}_MT_N; b->mti++) {{
-        b->mt[b->mti] = (1812433253UL * (b->mt[b->mti-1] ^ (b->mt[b->mti-1] >> 30)) + b->mti);
-        b->mt[b->mti] &= 0xffffffffUL;
-    }}
-}}
+// CPython expands seeds with init_by_array; copy its initialized state so
+// independent block instances retain independent PRNG streams.
+// Configured seed: {seed_comment}
+static const unsigned long {struct_name}_mt_initial_state[{struct_name.upper()}_MT_N] = {{
+    {mt_state}
+}};
 
 // Mersenne Twister generate (matches Python's random.Random)
 static unsigned long {struct_name}_mt_genrand({struct_name}* b) {{
@@ -367,7 +383,10 @@ void {struct_name}_init({struct_name}* b) {{
     b->_last_sample_time = -1e308;
     b->have_spare = 0;
     b->spare = 0.0;
-    {struct_name}_mt_init(b, {seed_value}UL);
+    for (int i = 0; i < {struct_name.upper()}_MT_N; i++) {{
+        b->mt[i] = {struct_name}_mt_initial_state[i];
+    }}
+    b->mti = {mt_index};
     // Generate initial noise sample (matches OSK init)
     b->output = {struct_name}_gauss(b, b->mean, b->std_dev);
     b->_last_sample_time = 0.0;
@@ -409,6 +428,8 @@ def template_band_limited_white_noise(block: BlockInfo, struct_name: str) -> str
         sample_time = 1e-6
 
     seed_value = seed if seed is not None else 12345
+    mt_state, mt_index = _format_python_mt19937_state(seed_value)
+    seed_comment = _format_c_comment_value(seed_value)
 
     return f"""
 // {block.name} - Band-Limited White Noise source (matches OSK BandLimitedWhiteNoise exactly)
@@ -430,13 +451,12 @@ typedef struct {{
     double spare;
 }} {struct_name};
 
-static void {struct_name}_mt_init({struct_name}* b, unsigned long seed) {{
-    b->mt[0] = seed & 0xffffffffUL;
-    for (b->mti = 1; b->mti < {struct_name.upper()}_MT_N; b->mti++) {{
-        b->mt[b->mti] = (1812433253UL * (b->mt[b->mti-1] ^ (b->mt[b->mti-1] >> 30)) + b->mti);
-        b->mt[b->mti] &= 0xffffffffUL;
-    }}
-}}
+// CPython expands seeds with init_by_array; copy its initialized state so
+// independent block instances retain independent PRNG streams.
+// Configured seed: {seed_comment}
+static const unsigned long {struct_name}_mt_initial_state[{struct_name.upper()}_MT_N] = {{
+    {mt_state}
+}};
 
 static unsigned long {struct_name}_mt_genrand({struct_name}* b) {{
     unsigned long y;
@@ -494,7 +514,10 @@ void {struct_name}_init({struct_name}* b) {{
     b->_last_sample_time = -1e308;
     b->have_spare = 0;
     b->spare = 0.0;
-    {struct_name}_mt_init(b, {seed_value}UL);
+    for (int i = 0; i < {struct_name.upper()}_MT_N; i++) {{
+        b->mt[i] = {struct_name}_mt_initial_state[i];
+    }}
+    b->mti = {mt_index};
     b->output = {struct_name}_gauss(b, 0.0, b->_std_dev);
     b->_last_sample_time = 0.0;
 }}
