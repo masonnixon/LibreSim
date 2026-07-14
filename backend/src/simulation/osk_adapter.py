@@ -844,6 +844,34 @@ PARAM_MAP: dict[str, dict[str, str]] = {
 }
 
 
+class _OutputPortView:
+    """Expose one source port with its declared scalar or vector semantics."""
+
+    def __init__(self, block: Block, source_port: int, dimensions: list[int]):
+        self._block = block
+        self._source_port = source_port
+        self._dimensions = dimensions
+
+    @property
+    def _is_vector(self) -> bool:
+        return len(self._dimensions) == 1 and self._dimensions[0] > 1
+
+    def getOutput(self, port: int = 0):
+        """Read the fixed scalar port or an element of its vector value."""
+        if self._is_vector:
+            return self._block.getOutput(port)
+        return self._block.getOutput(self._source_port)
+
+    def getOutputVector(self):
+        """Return vector data only when this specific port is vector-valued."""
+        if not self._is_vector or not hasattr(self._block, "getOutputVector"):
+            return None
+        return self._block.getOutputVector()
+
+    def __getattr__(self, name: str):
+        return getattr(self._block, name)
+
+
 class OSKAdapter:
     """Adapter for the Object-oriented Simulation Kernel.
 
@@ -1098,6 +1126,19 @@ class OSKAdapter:
                         source_port_index = int(source_port[3:]) - 1
 
                 if source_osk_block:
+                    source_dimensions = [1]
+                    if (
+                        source_compiled_block
+                        and source_port_index < len(source_compiled_block.output_dimensions)
+                    ):
+                        source_dimensions = source_compiled_block.output_dimensions[
+                            source_port_index
+                        ]
+                    source_view = _OutputPortView(
+                        source_osk_block,
+                        source_port_index,
+                        source_dimensions,
+                    )
                     # Use connectInput if available, otherwise we'll handle in step()
                     if hasattr(osk_block, "connectInput"):
                         # Pass source_port_index to all blocks that accept it
@@ -1106,18 +1147,18 @@ class OSKAdapter:
                         sig = inspect.signature(osk_block.connectInput)
                         if "source_port" in sig.parameters:
                             osk_block.connectInput(
-                                source_osk_block, target_port_index, source_port_index
+                                source_view, target_port_index, source_port_index
                             )
                         else:
-                            osk_block.connectInput(source_osk_block, target_port_index)
+                            osk_block.connectInput(source_view, target_port_index)
                     elif hasattr(osk_block, "input_block"):
-                        osk_block.input_block = source_osk_block
+                        osk_block.input_block = source_view
                         # Also store source port for single-input blocks
                         if hasattr(osk_block, "input_source_port"):
                             osk_block.input_source_port = source_port_index
                     elif hasattr(osk_block, "input_blocks") and osk_block.input_blocks is not None:
                         if target_port_index < len(osk_block.input_blocks):
-                            osk_block.input_blocks[target_port_index] = source_osk_block
+                            osk_block.input_blocks[target_port_index] = source_view
                             # Also store source port for multi-input blocks
                             if (
                                 hasattr(osk_block, "input_source_ports")
