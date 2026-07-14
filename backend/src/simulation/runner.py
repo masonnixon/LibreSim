@@ -10,7 +10,7 @@ from ..models.simulation import (
     SimulationConfig,
     SimulationStatus,
 )
-from .compiler import ModelCompiler
+from .compiler import CompiledModel, ModelCompiler
 from .osk_adapter import OSKAdapter
 
 
@@ -34,13 +34,24 @@ class SimulationRunner:
 
         self._results: dict[str, list[tuple[float, float]]] = {}
         self._result_decimation: dict[str, int] = {}
+        # Result history is append-only between decimation events.  A generation
+        # checkpoint is materialized only when decimation rewrites that history,
+        # allowing step-mode snapshots to remain compact and exact.  For K signals,
+        # history limit H, and result limit M, normal forward execution retains
+        # O(K * (H + M)); repeated rollback branches have a conservative
+        # O(K * H * M) bound.  The O(M) copy occurs only at decimation or branching.
+        self._result_generations: dict[str, int] = {}
+        self._result_checkpoints: dict[
+            str, dict[int, tuple[tuple[float, float], ...]]
+        ] = {}
+        self._next_result_generation = 0
         self._start_time: float = 0
         self._execution_time: float = 0
         self._total_steps: int = 0
 
         # Step mode state
         self._step_mode = False
-        self._compiled = None  # Compiled model cache
+        self._compiled: CompiledModel | None = None  # Compiled model cache
         self._state_history: list[dict[str, Any]] = []  # For step backward
         self._max_history_size = 1000  # Limit history to prevent memory issues
 
@@ -193,7 +204,14 @@ class SimulationRunner:
             "time": self._current_time,
             "progress": self._progress,
             "total_steps": self._total_steps,
-            "result_lengths": {key: len(values) for key, values in self._results.items()},
+            "result_refs": {
+                key: {
+                    "generation": self._result_generations[key],
+                    "length": len(values),
+                    "decimation": self._result_decimation[key],
+                }
+                for key, values in self._results.items()
+            },
             "adapter_state": adapter_state,
         }
 
@@ -205,20 +223,75 @@ class SimulationRunner:
         # Trim history if too large
         if len(self._state_history) > self._max_history_size:
             self._state_history = self._state_history[-self._max_history_size :]
+        self._prune_result_checkpoints()
+
+    def _new_result_generation(self) -> int:
+        """Return a runner-local, monotonically increasing result generation."""
+        generation = self._next_result_generation
+        self._next_result_generation += 1
+        return generation
+
+    def _prune_result_checkpoints(self) -> None:
+        """Drop immutable result generations no longer referenced by step history."""
+        referenced: dict[str, set[int]] = {}
+        for state in self._state_history:
+            for key, ref in state.get("result_refs", {}).items():
+                referenced.setdefault(key, set()).add(ref["generation"])
+
+        for key in list(self._result_checkpoints):
+            keep = referenced.get(key, set())
+            checkpoints = self._result_checkpoints[key]
+            self._result_checkpoints[key] = {
+                generation: values
+                for generation, values in checkpoints.items()
+                if generation in keep and generation != self._result_generations.get(key)
+            }
+            if not self._result_checkpoints[key]:
+                del self._result_checkpoints[key]
+
+    def _clear_result_history(self) -> None:
+        """Clear result data and all bookkeeping that describes it."""
+        self._results = {}
+        self._result_decimation = {}
+        self._result_generations = {}
+        self._result_checkpoints = {}
+        self._next_result_generation = 0
 
     def _restore_state(self, state: dict[str, Any]):
         """Restore simulation to a previous state."""
         self._current_time = state["time"]
         self._progress = state["progress"]
         self._total_steps = state["total_steps"]
-        lengths = state["result_lengths"]
-        self._results = {
-            key: values[: lengths[key]] for key, values in self._results.items() if key in lengths
-        }
+        refs = state["result_refs"]
+
+        active_results = self._results
+        active_generations = self._result_generations
+
+        restored_results: dict[str, list[tuple[float, float]]] = {}
+        restored_decimation: dict[str, int] = {}
+        restored_generations: dict[str, int] = {}
+        for key, ref in refs.items():
+            generation = ref["generation"]
+            source: list[tuple[float, float]] | tuple[tuple[float, float], ...]
+            if active_generations.get(key) == generation:
+                source = active_results[key]
+            else:
+                source = self._result_checkpoints[key][generation]
+
+            restored_results[key] = list(source[: ref["length"]])
+            restored_decimation[key] = ref["decimation"]
+            # All later states have already been popped, so the restored prefix
+            # can safely become the active append-only branch of this generation.
+            restored_generations[key] = generation
+
+        self._results = restored_results
+        self._result_decimation = restored_decimation
+        self._result_generations = restored_generations
 
         # Restore adapter state if available
         if state.get("adapter_state") and hasattr(self._adapter, "set_state"):
             self._adapter.set_state(state["adapter_state"])
+        self._prune_result_checkpoints()
 
     def step_forward(self, num_steps: int = 1) -> dict[str, Any]:
         """Execute one or more simulation steps."""
@@ -243,9 +316,6 @@ class SimulationRunner:
                 self._status = SimulationStatus.COMPLETED
                 break
 
-            # Save state before step (for undo)
-            self._save_state()
-
             # Execute one step
             outputs = self._adapter.step(self._current_time, dt)
             self._record_outputs(self._current_time, outputs)
@@ -259,6 +329,10 @@ class SimulationRunner:
             )
             self._total_steps += 1
             steps_executed += 1
+
+            # History entries represent committed states, including the current
+            # result and adapter data, exactly once.
+            self._save_state()
 
         self._execution_time = time.time() - self._start_time
 
@@ -318,7 +392,7 @@ class SimulationRunner:
             self._current_time = self.config.start_time
             self._progress = 0.0
             self._total_steps = 0
-            self._results = {}
+            self._clear_result_history()
             self._state_history = []
             self._status = SimulationStatus.PAUSED
             self._adapter.initialize(self._compiled, self.config)
@@ -337,7 +411,7 @@ class SimulationRunner:
         self._is_paused = False
         self._error_message = None
 
-        self._results = {}
+        self._clear_result_history()
         self._execution_time = 0
         self._total_steps = 0
 
@@ -358,6 +432,7 @@ class SimulationRunner:
         try:
             self._step_mode = False
             self._state_history = []  # Clear history since we're now running continuously
+            self._prune_result_checkpoints()
             self._status = SimulationStatus.RUNNING
             self._is_paused = False
 
@@ -486,13 +561,20 @@ class SimulationRunner:
             if key not in self._results:
                 self._results[key] = []
                 self._result_decimation[key] = 1
+                self._result_generations[key] = self._new_result_generation()
             self._results[key].append((t, value))
             if len(self._results[key]) > self.config.max_result_points:
+                generation = self._result_generations[key]
+                self._result_checkpoints.setdefault(key, {})[generation] = tuple(
+                    self._results[key]
+                )
                 latest = self._results[key][-1]
                 self._results[key] = self._results[key][::2]
                 if self._results[key][-1] != latest:
                     self._results[key].append(latest)
                 self._result_decimation[key] *= 2
+                self._result_generations[key] = self._new_result_generation()
+                self._prune_result_checkpoints()
 
     def get_results(self) -> dict[str, Any]:
         """Get simulation results."""

@@ -1665,7 +1665,7 @@ class OSKAdapter:
         Returns:
             Dictionary containing block states for step backward functionality
         """
-        state = {
+        state: dict[str, Any] = {
             "global_state": {
                 "t": State.t,
                 "t1": State.t1,
@@ -1676,7 +1676,7 @@ class OSKAdapter:
         }
 
         for block_id, osk_block in self._osk_blocks.items():
-            block_state = {}
+            block_state: dict[str, Any] = {}
 
             # Save integrator state (most important for stepping)
             if hasattr(osk_block, "x") and osk_block.x is not None:
@@ -1707,11 +1707,7 @@ class OSKAdapter:
                 block_state["_prev_input"] = osk_block._prev_input
 
             # Save Scope3D internal data arrays for step backward
-            if (
-                hasattr(osk_block, "x_values")
-                and hasattr(osk_block, "y_values")
-                and hasattr(osk_block, "z_values")
-            ):
+            if isinstance(osk_block, Scope3D):
                 block_state["scope3d_lengths"] = {
                     "times": len(osk_block.times),
                     "x": len(osk_block.x_values),
@@ -1720,11 +1716,7 @@ class OSKAdapter:
                 }
 
             # Save regular Scope internal data arrays for step backward
-            if (
-                hasattr(osk_block, "values")
-                and hasattr(osk_block, "input_blocks")
-                and not hasattr(osk_block, "x_values")
-            ):
+            if isinstance(osk_block, Scope):
                 block_state["scope_lengths"] = {
                     "times": len(osk_block.times),
                     "values": [len(values) for values in osk_block.values],
@@ -1794,7 +1786,7 @@ class OSKAdapter:
                 osk_block._prev_input = block_state["_prev_input"]
 
             # Restore Scope3D internal data arrays
-            if "scope3d_lengths" in block_state and hasattr(osk_block, "x_values"):
+            if "scope3d_lengths" in block_state and isinstance(osk_block, Scope3D):
                 lengths = block_state["scope3d_lengths"]
                 del osk_block.times[lengths["times"] :]
                 del osk_block.x_values[lengths["x"] :]
@@ -1802,11 +1794,7 @@ class OSKAdapter:
                 del osk_block.z_values[lengths["z"] :]
 
             # Restore regular Scope internal data arrays
-            if (
-                "scope_lengths" in block_state
-                and hasattr(osk_block, "values")
-                and not hasattr(osk_block, "x_values")
-            ):
+            if "scope_lengths" in block_state and isinstance(osk_block, Scope):
                 lengths = block_state["scope_lengths"]
                 del osk_block.times[lengths["times"] :]
                 for values, length in zip(osk_block.values, lengths["values"], strict=False):

@@ -2149,6 +2149,47 @@ class TestSimulationRunnerStepMode:
             simulationConfig=SimulationConfig(stopTime=1.0, stepSize=0.1),
         )
 
+    def _create_rollback_model(self):
+        """Create a step-mode model exposing both Scope result paths."""
+        model = self._create_integrator_model()
+        scope_3d = Block(
+            id="scope-3d",
+            type="scope_3d",
+            name="Scope3D",
+            position=Position(x=300, y=200),
+            parameters={"xLabel": "X", "yLabel": "Y", "zLabel": "Z"},
+            inputPorts=[
+                Port(id=f"scope-3d-in-{index}", name=name, dataType="double", dimensions=[1])
+                for index, name in enumerate(("x", "y", "z"))
+            ],
+            outputPorts=[],
+        )
+        model.blocks.append(scope_3d)
+        model.connections.extend(
+            Connection(
+                id=f"conn-scope-3d-{index}",
+                sourceBlockId="int-1",
+                sourcePortId="int-1-out-0",
+                targetBlockId="scope-3d",
+                targetPortId=f"scope-3d-in-{index}",
+            )
+            for index in range(3)
+        )
+        return model
+
+    @staticmethod
+    def _observable_step_state(runner):
+        """Return deterministic public results and adapter/sink state."""
+        results = runner.get_results()
+        results["statistics"].pop("executionTime")
+        blocks = runner._adapter._osk_blocks
+        return {
+            "results": results,
+            "adapter": runner._adapter.get_state(),
+            "scope": blocks["scope-1"].getData(),
+            "scope3d": blocks["scope-3d"].getData(),
+        }
+
     def test_initialize_step_mode(self):
         """Test initializing step mode."""
         from src.models.simulation import SimulationStatus
@@ -2233,15 +2274,95 @@ class TestSimulationRunnerStepMode:
         result = runner.step_backward(1)
         assert result["success"] is True
         assert result["stepsExecuted"] == 1
-        # After stepping back 1, we're at the state from before the 3rd step (0.2)
-        # But the history saves state BEFORE each step, so stepping back pops
-        # the current state and restores previous. After 3 forward steps:
-        # history = [t=0.0(init), t=0.0(before step 1), t=0.1(before step 2), t=0.2(before step 3)]
-        # Stepping back 1 pops last and restores t=0.2... but current_time was 0.3
-        # Actually the implementation saves state BEFORE stepping, so after step_forward(3):
-        # current_time=0.3, history=[0.0, 0.0, 0.1, 0.2]
-        # step_backward pops and restores 0.2, but then pops again so we get 0.1
-        assert runner.current_time == pytest.approx(0.1)
+        # History contains committed states, so one undo restores exactly one step.
+        assert runner.current_time == pytest.approx(0.2)
+
+    def test_step_rollback_is_exact_across_result_decimation(self):
+        """Rollback restores public results and both Scope storage paths exactly."""
+        from src.simulation.runner import SimulationRunner
+
+        config = SimulationConfig(stopTime=1.0, stepSize=0.1, maxResultPoints=4)
+        runner = SimulationRunner(self._create_rollback_model(), config)
+        assert runner.initialize_step_mode() is True
+
+        runner.step_forward(5)
+        trace = next(iter(runner._results.values()))
+        assert len(trace) <= 4
+        assert trace[0][0] == pytest.approx(0.0)
+        assert trace[-1][0] == pytest.approx(0.4)
+        assert next(iter(runner._result_decimation.values())) > 1
+
+        rollback = runner.step_backward(3)
+        assert rollback["stepsExecuted"] == 3
+        assert rollback["currentTime"] == pytest.approx(0.2)
+        rolled_back_state = self._observable_step_state(runner)
+
+        stopped_at_two = SimulationRunner(self._create_rollback_model(), config)
+        assert stopped_at_two.initialize_step_mode() is True
+        stopped_at_two.step_forward(2)
+        assert rolled_back_state == self._observable_step_state(stopped_at_two)
+        assert next(iter(runner._result_decimation.values())) == 1
+
+        runner.step_forward(3)
+        replayed_state = self._observable_step_state(runner)
+        stopped_at_five = SimulationRunner(self._create_rollback_model(), config)
+        assert stopped_at_five.initialize_step_mode() is True
+        stopped_at_five.step_forward(5)
+        assert replayed_state == self._observable_step_state(stopped_at_five)
+
+        replayed_trace = next(iter(runner._results.values()))
+        assert len(replayed_trace) <= 4
+        assert replayed_trace[0][0] == pytest.approx(0.0)
+        assert replayed_trace[-1][0] == pytest.approx(0.4)
+
+    def test_result_generation_checkpoints_are_bounded_and_pruned(self):
+        """Only generations referenced by bounded undo history remain materialized."""
+        from src.simulation.runner import SimulationRunner
+
+        history_limit = 6
+        config = SimulationConfig(stopTime=10.0, stepSize=0.1, maxResultPoints=4)
+        runner = SimulationRunner(self._create_integrator_model(), config)
+        runner._max_history_size = history_limit
+        assert runner.initialize_step_mode() is True
+
+        runner.step_forward(30)
+
+        assert len(runner._state_history) == history_limit
+        referenced = {
+            (key, ref["generation"])
+            for state in runner._state_history
+            for key, ref in state["result_refs"].items()
+        }
+        stored = {
+            (key, generation)
+            for key, generations in runner._result_checkpoints.items()
+            for generation in generations
+        }
+        assert stored <= referenced
+
+        checkpoint_points = sum(
+            len(values)
+            for generations in runner._result_checkpoints.values()
+            for values in generations.values()
+        )
+        signal_count = max(1, len(runner._results))
+        assert checkpoint_points <= signal_count * history_limit * (
+            config.max_result_points + 1
+        )
+
+        runner.step_backward(history_limit - 1)
+        runner.step_forward(history_limit - 1)
+        referenced_after_branch = {
+            (key, ref["generation"])
+            for state in runner._state_history
+            for key, ref in state["result_refs"].items()
+        }
+        stored_after_branch = {
+            (key, generation)
+            for key, generations in runner._result_checkpoints.items()
+            for generation in generations
+        }
+        assert stored_after_branch <= referenced_after_branch
 
     def test_step_backward_multiple(self):
         """Test stepping backward multiple steps."""
@@ -2406,6 +2527,27 @@ class TestSimulationRunnerStepMode:
         assert runner._step_mode is False
         assert runner.status == SimulationStatus.COMPLETED
         assert runner.current_time >= 0.5
+
+    @pytest.mark.asyncio
+    async def test_continue_from_step_mode_reschedules_completed_runner(self):
+        """Direct reuse reopens lifecycle tracking after an earlier run finished."""
+        from unittest.mock import patch
+
+        from src.simulation.runner import SimulationRunner
+
+        runner = SimulationRunner(
+            self._create_integrator_model(),
+            SimulationConfig(stopTime=0.0, stepSize=0.1),
+        )
+        assert runner.initialize_step_mode() is True
+        runner._run_started = True
+        runner._run_finished.set()
+
+        with patch.object(runner, "mark_scheduled", wraps=runner.mark_scheduled) as mark:
+            await runner.continue_from_step_mode()
+
+        mark.assert_called_once_with(reset_stop=True)
+        assert runner._run_finished.is_set()
 
     @pytest.mark.asyncio
     async def test_continue_from_step_mode_not_initialized(self):
