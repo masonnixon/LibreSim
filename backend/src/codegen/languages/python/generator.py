@@ -621,10 +621,10 @@ def run_simulation(
                     for i in range(num_inputs):
                         # Use source block name if we found it, otherwise use index
                         if i in port_info:
-                            base_name, source_port = port_info[i]
+                            base_name, recorded_source_port = port_info[i]
                             # If source has multiple outputs, include source port in name
-                            if source_port is not None and source_port > 0:
-                                port_name = f"{base_name}_{source_port}"
+                            if recorded_source_port is not None and recorded_source_port > 0:
+                                port_name = f"{base_name}_{recorded_source_port}"
                             else:
                                 port_name = base_name
                         else:

@@ -1,12 +1,12 @@
 """Block-related Pydantic models."""
 
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class BlockCategory(str, Enum):
+class BlockCategory(StrEnum):
     """Block category types."""
 
     SOURCES = "sources"
@@ -18,7 +18,7 @@ class BlockCategory(str, Enum):
     SUBSYSTEMS = "subsystems"
 
 
-class DataType(str, Enum):
+class DataType(StrEnum):
     """Signal data types."""
 
     DOUBLE = "double"
@@ -39,7 +39,7 @@ class Port(BaseModel):
     dimensions: list[int] = Field(default=[1])
 
 
-class ParameterType(str, Enum):
+class ParameterType(StrEnum):
     """Parameter types."""
 
     NUMBER = "number"

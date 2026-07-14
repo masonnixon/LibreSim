@@ -1,11 +1,11 @@
 """Simulation-related Pydantic models."""
 
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class SolverType(str, Enum):
+class SolverType(StrEnum):
     """Available ODE solvers."""
 
     EULER = "euler"
@@ -29,7 +29,7 @@ class SimulationConfig(BaseModel):
     max_result_points: int = Field(default=100_000, alias="maxResultPoints", ge=2)
 
 
-class SimulationStatus(str, Enum):
+class SimulationStatus(StrEnum):
     """Simulation execution status."""
 
     IDLE = "idle"

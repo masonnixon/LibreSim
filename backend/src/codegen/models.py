@@ -2,12 +2,12 @@
 
 import zipfile
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from io import BytesIO
 from typing import Any
 
 
-class Language(str, Enum):
+class Language(StrEnum):
     """Supported target languages."""
 
     PYTHON = "python"
@@ -16,7 +16,7 @@ class Language(str, Enum):
     RUST = "rust"
 
 
-class IntegrationMethod(str, Enum):
+class IntegrationMethod(StrEnum):
     """Numerical integration methods."""
 
     EULER = "euler"
