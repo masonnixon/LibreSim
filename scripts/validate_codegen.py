@@ -23,9 +23,15 @@ from typing import Any
 REPO_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(REPO_ROOT / "backend"))
 
-from src.simulation.runner import SimulationRunner
+from src.codegen.validation import (
+    FailureCategory,
+    OutputValidationError,
+    compare_final_values,
+    read_results_csv,
+)
 from src.models.model import Model
 from src.models.simulation import SimulationConfig
+from src.simulation.runner import SimulationRunner
 
 EXAMPLES_DIR = REPO_ROOT / "examples"
 CODEGEN_DIR = REPO_ROOT / "codegen_verification"
@@ -33,7 +39,6 @@ BUILDS_DIR = CODEGEN_DIR / "builds"
 OUTPUT_DIR = REPO_ROOT / "docs"
 
 LANGUAGES = ["python", "cpp", "c", "rust"]
-MIN_PASS_RATE = 0.231
 
 # Examples with stochastic blocks that should still be validated since codegen now
 # uses the same Mersenne Twister RNG as Python's random.Random for reproducibility.
@@ -64,6 +69,10 @@ class ValidationResult:
     codegen_final_values: dict[str, float] = field(default_factory=dict)
     matches: bool = False
     max_error: float = 0.0
+    failure_category: FailureCategory | None = None
+    missing_outputs: tuple[str, ...] = ()
+    unexpected_outputs: tuple[str, ...] = ()
+    mismatched_outputs: tuple[str, ...] = ()
     notes: str = ""
 
 
@@ -173,6 +182,7 @@ def build_and_run_codegen(zip_path: Path, language: str, build_dir: Path) -> dic
         "run_success": False,
         "run_error": "",
         "final_values": {},
+        "failure_category": None,
     }
 
     # Clean and recreate build directory
@@ -272,29 +282,20 @@ def build_and_run_codegen(zip_path: Path, language: str, build_dir: Path) -> dic
 
     if not results_csv.exists():
         result["run_error"] = "No results.csv found"
+        result["failure_category"] = FailureCategory.MISSING_OR_EMPTY_OUTPUT_SET
         return result
 
-    result["run_success"] = True
-
-    # Parse CSV and get final values
     try:
-        with open(results_csv) as f:
-            lines = f.readlines()
-            if len(lines) < 2:
-                result["run_error"] = "Results CSV is empty"
-                return result
-
-            headers = lines[0].strip().split(",")
-            last_line = lines[-1].strip().split(",")
-
-            for i, header in enumerate(headers):
-                if header.lower() != "time" and i < len(last_line):
-                    try:
-                        result["final_values"][header] = float(last_line[i])
-                    except ValueError:
-                        pass
+        parsed_output = read_results_csv(results_csv)
+        result["final_values"] = parsed_output.final_values
+        result["run_success"] = True
+    except OutputValidationError as exc:
+        result["run_error"] = str(exc)
+        result["failure_category"] = exc.category
+        return result
     except Exception as e:
         result["run_error"] = f"CSV parse error: {e}"
+        result["failure_category"] = FailureCategory.MALFORMED_OUTPUT
         return result
 
     return result
@@ -355,49 +356,42 @@ def validate_example(example_name: str) -> list[ValidationResult]:
         result.run_success = codegen_result["run_success"]
         result.run_error = codegen_result["run_error"]
         result.codegen_final_values = codegen_result["final_values"]
+        result.failure_category = codegen_result["failure_category"]
 
         # Compare results
         if result.run_success and result.headless_success:
-            max_error = 0.0
-            all_match = bool(headless_final) and bool(result.codegen_final_values)
-
             # Get tolerance for this example (default 3%)
             tolerance = EXAMPLE_TOLERANCES.get(example_name, 0.03)
-
-            headless_items = list(headless_final.items())
-            codegen_items = list(result.codegen_final_values.items())
-            if len(headless_items) != len(codegen_items):
-                all_match = False
-                result.notes = (
-                    f"Output count differs: headless={len(headless_items)}, "
-                    f"codegen={len(codegen_items)}"
-                )
-
-            for (_, headless_val), (_, codegen_val) in zip(
-                headless_items, codegen_items, strict=False
-            ):
-                abs_diff = abs(headless_val - codegen_val)
-
-                # For near-zero values, use absolute error threshold
-                # Both values must be small for this to apply
-                if abs(headless_val) < 1e-6 and abs(codegen_val) < 1e-6:
-                    # Both values are essentially zero, consider it a match
-                    rel_error = 0.0 if abs_diff < 1e-6 else abs_diff
-                elif abs(headless_val) > 1e-10:
-                    rel_error = abs_diff / abs(headless_val)
-                else:
-                    rel_error = abs_diff
-
-                max_error = max(max_error, rel_error)
-                if rel_error > tolerance:
-                    all_match = False
-
-            result.matches = all_match
-            result.max_error = max_error
+            comparison = compare_final_values(
+                headless_final,
+                result.codegen_final_values,
+                tolerance=tolerance,
+            )
+            result.matches = comparison.matches
+            result.max_error = comparison.max_error
+            result.failure_category = comparison.failure_category
+            result.missing_outputs = comparison.missing_outputs
+            result.unexpected_outputs = comparison.unexpected_outputs
+            result.mismatched_outputs = comparison.mismatched_outputs
 
         results.append(result)
 
     return results
+
+
+def result_status(result: ValidationResult) -> str:
+    """Return the most specific human-readable status for a validation result."""
+    if result.matches:
+        return "PASS"
+    if not result.headless_success:
+        return "SIM FAIL"
+    if not result.build_success:
+        return "BUILD FAIL"
+    if result.failure_category is not None:
+        return result.failure_category.value.replace("_", " ").upper()
+    if not result.run_success:
+        return "RUN FAIL"
+    return f"DIFF ({result.max_error:.2%})"
 
 
 def generate_report(all_results: list[ValidationResult]) -> str:
@@ -427,16 +421,8 @@ def generate_report(all_results: list[ValidationResult]) -> str:
             result = examples[example_name].get(lang)
             if result is None:
                 row.append("-")
-            elif result.matches:
-                row.append("PASS")
-            elif not result.build_success:
-                row.append("BUILD FAIL")
-            elif not result.run_success:
-                row.append("RUN FAIL")
-            elif not result.headless_success:
-                row.append("SIM FAIL")
             else:
-                row.append(f"DIFF ({result.max_error:.2%})")
+                row.append(result_status(result))
         lines.append("| " + " | ".join(row) + " |")
 
     lines.append("")
@@ -444,17 +430,23 @@ def generate_report(all_results: list[ValidationResult]) -> str:
     # Count statistics
     total = len(all_results)
     passed = sum(1 for r in all_results if r.matches)
-    build_fail = sum(1 for r in all_results if not r.build_success)
-    run_fail = sum(1 for r in all_results if r.build_success and not r.run_success)
-    diff_fail = sum(1 for r in all_results if r.run_success and not r.matches)
+    simulation_fail = sum(1 for r in all_results if not r.headless_success)
+    build_fail = sum(1 for r in all_results if r.headless_success and not r.build_success)
+    run_fail = sum(
+        1
+        for r in all_results
+        if r.headless_success and r.build_success and not r.run_success
+    )
+    comparison_fail = sum(1 for r in all_results if r.run_success and not r.matches)
 
     lines.append("## Statistics")
     lines.append("")
     lines.append(f"- Total tests: {total}")
     lines.append(f"- Passed: {passed} ({100*passed/total:.1f}%)")
+    lines.append(f"- Simulation failures: {simulation_fail}")
     lines.append(f"- Build failures: {build_fail}")
     lines.append(f"- Run failures: {run_fail}")
-    lines.append(f"- Value mismatches: {diff_fail}")
+    lines.append(f"- Output validation failures: {comparison_fail}")
     lines.append("")
 
     # Detailed failures
@@ -478,6 +470,14 @@ def generate_report(all_results: list[ValidationResult]) -> str:
                 lines.append(f"- Max relative error: {result.max_error:.4%}")
                 lines.append(f"- Headless final values: {result.headless_final_values}")
                 lines.append(f"- Codegen final values: {result.codegen_final_values}")
+            if result.failure_category is not None:
+                lines.append(f"- Failure category: `{result.failure_category.value}`")
+            if result.missing_outputs:
+                lines.append(f"- Missing outputs: {list(result.missing_outputs)}")
+            if result.unexpected_outputs:
+                lines.append(f"- Unexpected outputs: {list(result.unexpected_outputs)}")
+            if result.mismatched_outputs:
+                lines.append(f"- Mismatched outputs: {list(result.mismatched_outputs)}")
             lines.append("")
 
     return "\n".join(lines)
@@ -506,11 +506,7 @@ def main():
 
         # Print quick status
         for result in results:
-            status = "PASS" if result.matches else "FAIL"
-            if not result.build_success:
-                status = "BUILD"
-            elif not result.run_success:
-                status = "RUN"
+            status = result_status(result)
             print(f"  {result.language}: {status}", end="")
             if result.max_error > 0:
                 print(f" (err={result.max_error:.2%})", end="")
@@ -529,8 +525,7 @@ def main():
     total = len(all_results)
     print(f"\nTotal: {passed}/{total} passed ({100*passed/total:.1f}%)")
 
-    pass_rate = passed / total if total else 0.0
-    return 0 if pass_rate >= MIN_PASS_RATE else 1
+    return 0 if total > 0 and passed == total else 1
 
 
 if __name__ == "__main__":

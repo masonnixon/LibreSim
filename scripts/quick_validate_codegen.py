@@ -14,8 +14,6 @@ For each, it compares the final output values from generated code vs headless si
 
 import asyncio
 import json
-import os
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -26,9 +24,10 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(REPO_ROOT / "backend"))
 
-from src.simulation.runner import SimulationRunner
+from src.codegen.validation import compare_final_values, read_results_csv
 from src.models.model import Model
 from src.models.simulation import SimulationConfig
+from src.simulation.runner import SimulationRunner
 
 EXAMPLES_DIR = REPO_ROOT / "examples"
 CODEGEN_DIR = REPO_ROOT / "codegen_verification"
@@ -129,20 +128,7 @@ def run_python_codegen(zip_path: Path) -> dict:
         if not results_csv.exists():
             results_csv = project_dir / "results.csv"
 
-        final_values = {}
-        with open(results_csv) as f:
-            lines = f.readlines()
-            headers = lines[0].strip().split(",")
-            last_line = lines[-1].strip().split(",")
-
-            for i, header in enumerate(headers):
-                if header.lower() != "time" and i < len(last_line):
-                    try:
-                        final_values[header] = float(last_line[i])
-                    except ValueError:
-                        pass
-
-        return final_values
+        return read_results_csv(results_csv).final_values
 
 
 def run_docker_codegen(zip_path: Path, language: str) -> dict:
@@ -217,43 +203,13 @@ def run_docker_codegen(zip_path: Path, language: str) -> dict:
         if not results_csv.exists():
             raise RuntimeError(f"No results.csv found. stdout: {result.stdout[:300]}")
 
-        final_values = {}
-        with open(results_csv) as f:
-            lines = f.readlines()
-            headers = lines[0].strip().split(",")
-            last_line = lines[-1].strip().split(",")
-
-            for i, header in enumerate(headers):
-                if header.lower() != "time" and i < len(last_line):
-                    try:
-                        final_values[header] = float(last_line[i])
-                    except ValueError:
-                        pass
-
-        return final_values
+        return read_results_csv(results_csv).final_values
 
 
 def compare_values(headless: dict, codegen: dict, tolerance: float = 0.01) -> tuple[bool, float]:
     """Compare two sets of final values. Returns (match, max_error)."""
-    headless_lower = {k.lower(): v for k, v in headless.items()}
-    codegen_lower = {k.lower(): v for k, v in codegen.items()}
-
-    max_error = 0.0
-    all_match = True
-
-    for key, headless_val in headless_lower.items():
-        if key in codegen_lower:
-            codegen_val = codegen_lower[key]
-            if abs(headless_val) > 1e-10:
-                rel_error = abs(headless_val - codegen_val) / abs(headless_val)
-            else:
-                rel_error = abs(headless_val - codegen_val)
-
-            max_error = max(max_error, rel_error)
-            if rel_error > tolerance:
-                all_match = False
-
-    return all_match, max_error
+    comparison = compare_final_values(headless, codegen, tolerance=tolerance)
+    return comparison.matches, comparison.max_error
 
 
 def main():
@@ -327,7 +283,7 @@ def main():
     failures = [r for r in results if not r[2]]
     if failures:
         print("\nFailures:")
-        for example, lang, passed, error, max_error in failures:
+        for example, lang, _passed, error, _max_error in failures:
             print(f"  - {example} ({lang}): {error}")
 
     return 0 if passed == total else 1
