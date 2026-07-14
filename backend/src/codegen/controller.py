@@ -15,9 +15,16 @@ from .models import IntegrationMethod, Language
 def sanitize_project_name(name: str) -> str:
     """Sanitize a name for use as a project/file name."""
     # Replace spaces with underscores, remove special chars
-    sanitized = re.sub(r"[^\w\s-]", "", name)
+    sanitized = re.sub(r"[^\w\s-]", "", name, flags=re.ASCII)
     sanitized = re.sub(r"[\s-]+", "_", sanitized).strip("_")
     return sanitized if sanitized else "simulation"
+
+
+def download_content_disposition(filename: str) -> str:
+    """Build an attachment header containing only a safe ASCII filename."""
+    safe_filename = re.sub(r"[^A-Za-z0-9._-]+", "_", filename)
+    safe_filename = safe_filename.strip("._-") or "simulation"
+    return f'attachment; filename="{safe_filename}"'
 
 
 router = APIRouter(prefix="/codegen", tags=["Code Generation"])
@@ -104,7 +111,9 @@ async def generate_code(request: CodeGenRequest):
         return StreamingResponse(
             zip_buffer,
             media_type="application/zip",
-            headers={"Content-Disposition": f'attachment; filename="{project.name}.zip"'},
+            headers={
+                "Content-Disposition": download_content_disposition(f"{project.name}.zip")
+            },
         )
 
     except CodeGenerationError as e:
@@ -247,7 +256,7 @@ async def compile_code(request: CompileRequest):
         return Response(
             content=executable_bytes,
             media_type=content_type,
-            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+            headers={"Content-Disposition": download_content_disposition(filename)},
         )
 
     except CompilationError as e:
