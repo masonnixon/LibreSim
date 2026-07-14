@@ -370,15 +370,15 @@ no active plan falsely claims completion.
 
 | Task | Status | Commit(s) | Verification / notes |
 |---|---|---|---|
-| FAC-0 | in progress | | 2026-07-10: backend 1,915 passed/1 skipped after fixing Docker example lookup; numerical subset 33 passed; frontend 659 passed; Ruff 7 UP042 errors; mypy 27 errors/4 files; initial ESLint 7 errors and TypeScript 10 errors. Codegen validator blocked because the Docker daemon disappeared; existing report remained byte-identical. |
-| FAC-1 | pending | | API concurrency and scheduled-run race. |
-| FAC-2 | pending | | Rollback equivalence across decimation. |
-| FAC-3 | pending | | Nested boundary rewiring and numerical result. |
-| FAC-4 | pending | | API error propagation. |
-| FAC-5 | pending | | Endpoint hardening coverage. |
+| FAC-0 | in progress | | 2026-07-10: backend 1,915 passed/1 skipped after fixing Docker example lookup; numerical subset 33 passed; frontend 659 passed; Ruff 7 UP042 errors; mypy 27 errors/4 files; initial ESLint 7 errors and TypeScript 10 errors. Codegen validator blocked because the Docker daemon disappeared; existing report remained byte-identical. 2026-07-13 working-tree unit-test rerun: backend 1,945 passed/1 skipped and frontend 659 passed in Docker. Static-analysis and codegen gates were not part of this rerun. |
+| FAC-1 | complete | `a2cfd1c` | Deterministic API replacement tests cover scheduled-run races, `/start` versus `/step/init`, 409 preservation, and live `/step/continue` tracking. Included in the 2026-07-13 full Docker pass; strengthened focused suite passed 128 tests on 2026-07-14. |
+| FAC-2 | complete | `b5e4bfa` | Committed-state/generation-aware rollback restores exact decimated results plus Scope and Scope3D state with bounded checkpoint retention. Included in the 2026-07-13 full Docker pass; strengthened focused suite passed 128 tests on 2026-07-14. |
+| FAC-3 | complete | `5ed9bdf` | Nested subsystem boundary rewriting now preserves port identity, rejects malformed boundary indexes, and executes the two-level numerical regression. Pydantic rejects recursive object graphs. Strengthened focused suite passed on 2026-07-14. |
+| FAC-4 | complete | `3f07404` | API-level unknown-block and constructor-failure regressions assert actionable terminal errors and no partial results. Included in the 2026-07-13 full Docker pass. |
+| FAC-5 | complete | `24741bf` | Shared safe download headers and HTTP/WebSocket hardening regressions cover generation, compilation, manifest omission, traversal, and rejected origins. Included in the 2026-07-13 full Docker pass. |
 | FAC-6 | complete | `9f1ebed` | ESLint and TypeScript pass; Vitest 659/659 passes in Docker. |
-| FAC-7 | pending | | Backend Ruff, mypy, and tests. |
-| FAC-8 | pending | | Generated-code semantic parity. |
+| FAC-7 | complete | `5079dd5`, `b5e4bfa` | Seven StrEnums converted with compatibility coverage and touched runner/adapter typing corrected. Canonical Docker verification passed on 2026-07-13: backend pytest 1,945 passed/1 skipped, Ruff reported `All checks passed!`, and mypy reported no issues in 117 source files. |
+| FAC-8 | in progress | `5c3899c`, `2aa06ba` | Strict CSV/key-set validation and a shared, stable output schema now reject empty, malformed, duplicate, missing, unexpected, nonfinite, and shape-mismatched output instead of accepting positional or empty comparisons. All 156 archives regenerated; focused validation tests passed 27/27, the existing codegen suite passed 392/392, Ruff/mypy passed, and the 2026-07-14 full four-language baseline completed with no build failures and 52/156 semantic passes. Remaining families are 16 approved-empty-analysis decisions, headless vector/shape failures, and shared numerical mismatches. |
 | FAC-9 | blocked on maintainer decision | | Implement LS-10 or explicitly defer it. |
 | FAC-10 | pending | | Full matrix, ledger repair, and archival. |
 
