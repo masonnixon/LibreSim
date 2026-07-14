@@ -427,10 +427,12 @@ class Attenuator(Block):
 class AMModulator(Block):
     """Amplitude Modulator.
 
-    Output = Ac * (1 + m * message) * cos(wc * t)
+    With an external carrier, output = carrier * (1 + m * message).
+    Without one, output = Ac * (1 + m * message) * cos(wc * t).
 
     Inputs:
         - Port 0: Message signal
+        - Port 1: Optional external carrier signal
     Parameters:
         - carrier_freq: Carrier frequency (Hz)
         - carrier_amplitude: Carrier amplitude
@@ -448,30 +450,46 @@ class AMModulator(Block):
         self.carrier_amplitude = carrier_amplitude
         self.modulation_index = modulation_index
         self.message = 0.0
+        self.carrier = 0.0
         self.output = 0.0
         self.input_block = None
+        self.input_blocks = [None, None]
+        self._external_carrier_set = False
 
     def init(self):
         self.message = 0.0
+        self.carrier = 0.0
         self.output = 0.0
+        self._external_carrier_set = False
 
     def setInput(self, value, port=0):
-        self.message = float(value)
+        if port == 0:
+            self.message = float(value)
+        elif port == 1:
+            self.carrier = float(value)
+            self._external_carrier_set = True
 
     def connectInput(self, block, port=0, source_port=0):
-        self.input_block = block
+        if port < len(self.input_blocks):
+            self.input_blocks[port] = block
+        if port == 0:
+            self.input_block = block
 
     def update(self):
-        if self.input_block is not None:
-            self.message = self.input_block.getOutput()
+        if self.input_blocks[0] is not None:
+            self.message = self.input_blocks[0].getOutput()
 
         from ..state import State
 
-        t = State.t
-
-        carrier = math.cos(2 * math.pi * self.carrier_freq * t)
         envelope = 1 + self.modulation_index * self.message
-        self.output = self.carrier_amplitude * envelope * carrier
+        if self.input_blocks[1] is not None:
+            self.carrier = self.input_blocks[1].getOutput()
+            self.output = envelope * self.carrier
+        elif self._external_carrier_set:
+            self.output = envelope * self.carrier
+        else:
+            carrier = math.cos(2 * math.pi * self.carrier_freq * State.t)
+            self.output = self.carrier_amplitude * envelope * carrier
 
     def getOutput(self, port=0):
         return self.output

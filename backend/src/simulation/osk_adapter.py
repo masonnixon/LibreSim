@@ -1065,7 +1065,11 @@ class OSKAdapter:
                 #   "sum1-in1", "sum1-in2" (named suffix like in1/in2, 1-indexed)
                 #   "scope_3d-x", "scope_3d-y", "scope_3d-z" (named ports for 3D scope)
                 target_port_index = 0
-                if target_port_id:
+                target_port_matched = False
+                if target_port_id and target_port_id in block.input_port_ids:
+                    target_port_index = block.input_port_ids.index(target_port_id)
+                    target_port_matched = True
+                if target_port_id and not target_port_matched:
                     # Parse port index from ID
                     parts = target_port_id.rsplit("-", 1)
                     if len(parts) == 2:
@@ -1110,7 +1114,15 @@ class OSKAdapter:
                 #   "block-out-0" (block-out-# format, 0-indexed)
                 #   "out1", "out2" (simple format, 1-indexed)
                 source_port_index = 0
-                if source_port:
+                source_port_matched = False
+                if (
+                    source_port
+                    and source_compiled_block
+                    and source_port in source_compiled_block.output_port_ids
+                ):
+                    source_port_index = source_compiled_block.output_port_ids.index(source_port)
+                    source_port_matched = True
+                if source_port and not source_port_matched:
                     # Parse the port suffix from the source_port ID
                     parts = source_port.rsplit("-", 1)
                     if len(parts) == 2:

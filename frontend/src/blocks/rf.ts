@@ -207,10 +207,12 @@ export const rfBlocks: BlockDefinition[] = [
     description: 'Cascaded RF budget analysis element',
     inputs: [
       { name: 'powerDbm', dataType: 'double', dimensions: [1] },
+      { name: 'gainDb', dataType: 'double', dimensions: [1] },
       { name: 'nfDb', dataType: 'double', dimensions: [1] },
     ],
     outputs: [
       { name: 'powerOutDbm', dataType: 'double', dimensions: [1] },
+      { name: 'gainOutDb', dataType: 'double', dimensions: [1] },
       { name: 'nfOutDb', dataType: 'double', dimensions: [1] },
     ],
     parameters: [

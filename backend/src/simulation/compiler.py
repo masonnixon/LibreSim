@@ -18,6 +18,8 @@ class CompiledBlock:
     input_connections: list[str] = field(default_factory=list)  # ["block_id:port_id", ...]
     output_connections: list[str] = field(default_factory=list)
     execution_order: int = 0
+    input_port_ids: list[str] = field(default_factory=list)
+    output_port_ids: list[str] = field(default_factory=list)
     output_dimensions: list[list[int]] = field(default_factory=list)
 
 
@@ -100,6 +102,8 @@ class ModelCompiler:
                     input_connections=input_connections.get(block.id, []),
                     output_connections=output_connections.get(block.id, []),
                     execution_order=order,
+                    input_port_ids=[port.id for port in block.input_ports],
+                    output_port_ids=[port.id for port in block.output_ports],
                     output_dimensions=[port.dimensions for port in block.output_ports],
                 )
                 compiled_blocks.append(compiled)

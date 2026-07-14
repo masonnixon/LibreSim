@@ -105,8 +105,9 @@
         "y": 200
       },
       "parameters": {
-        "power": 1.0,
-        "sampleTime": 0.1
+        "variance": 1.0,
+        "sampleTime": 0.1,
+        "seed": 12345
       },
       "inputPorts": [],
       "outputPorts": [

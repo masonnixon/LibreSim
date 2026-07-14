@@ -56,6 +56,29 @@
       ]
     },
     {
+      "id": "init_gain",
+      "type": "constant",
+      "name": "Initial Gain (0 dB)",
+      "position": {
+        "x": 50,
+        "y": 250
+      },
+      "parameters": {
+        "value": 0.0
+      },
+      "inputPorts": [],
+      "outputPorts": [
+        {
+          "id": "init_gain-out",
+          "name": "out",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        }
+      ]
+    },
+    {
       "id": "lna",
       "type": "rf_budget_element",
       "name": "LNA",
@@ -77,6 +100,14 @@
           ]
         },
         {
+          "id": "lna-gain",
+          "name": "gainDb",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
           "id": "lna-nf",
           "name": "nfDb",
           "dataType": "double",
@@ -89,6 +120,14 @@
         {
           "id": "lna-pout",
           "name": "powerOutDbm",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "lna-gainout",
+          "name": "gainOutDb",
           "dataType": "double",
           "dimensions": [
             1
@@ -126,6 +165,14 @@
           ]
         },
         {
+          "id": "filter-gain",
+          "name": "gainDb",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
           "id": "filter-nf",
           "name": "nfDb",
           "dataType": "double",
@@ -138,6 +185,14 @@
         {
           "id": "filter-pout",
           "name": "powerOutDbm",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "filter-gainout",
+          "name": "gainOutDb",
           "dataType": "double",
           "dimensions": [
             1
@@ -175,6 +230,14 @@
           ]
         },
         {
+          "id": "mixer_stage-gain",
+          "name": "gainDb",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
           "id": "mixer_stage-nf",
           "name": "nfDb",
           "dataType": "double",
@@ -187,6 +250,14 @@
         {
           "id": "mixer_stage-pout",
           "name": "powerOutDbm",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "mixer_stage-gainout",
+          "name": "gainOutDb",
           "dataType": "double",
           "dimensions": [
             1
@@ -224,6 +295,14 @@
           ]
         },
         {
+          "id": "if_amp-gain",
+          "name": "gainDb",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
           "id": "if_amp-nf",
           "name": "nfDb",
           "dataType": "double",
@@ -236,6 +315,14 @@
         {
           "id": "if_amp-pout",
           "name": "powerOutDbm",
+          "dataType": "double",
+          "dimensions": [
+            1
+          ]
+        },
+        {
+          "id": "if_amp-gainout",
+          "name": "gainOutDb",
           "dataType": "double",
           "dimensions": [
             1
@@ -308,62 +395,90 @@
     },
     {
       "id": "c2",
+      "sourceBlockId": "init_gain",
+      "sourcePortId": "init_gain-out",
+      "targetBlockId": "lna",
+      "targetPortId": "lna-gain"
+    },
+    {
+      "id": "c3",
       "sourceBlockId": "init_nf",
       "sourcePortId": "init_nf-out",
       "targetBlockId": "lna",
       "targetPortId": "lna-nf"
     },
     {
-      "id": "c3",
+      "id": "c4",
       "sourceBlockId": "lna",
       "sourcePortId": "lna-pout",
       "targetBlockId": "filter",
       "targetPortId": "filter-power"
     },
     {
-      "id": "c4",
+      "id": "c5",
+      "sourceBlockId": "lna",
+      "sourcePortId": "lna-gainout",
+      "targetBlockId": "filter",
+      "targetPortId": "filter-gain"
+    },
+    {
+      "id": "c6",
       "sourceBlockId": "lna",
       "sourcePortId": "lna-nfout",
       "targetBlockId": "filter",
       "targetPortId": "filter-nf"
     },
     {
-      "id": "c5",
+      "id": "c7",
       "sourceBlockId": "filter",
       "sourcePortId": "filter-pout",
       "targetBlockId": "mixer_stage",
       "targetPortId": "mixer_stage-power"
     },
     {
-      "id": "c6",
+      "id": "c8",
+      "sourceBlockId": "filter",
+      "sourcePortId": "filter-gainout",
+      "targetBlockId": "mixer_stage",
+      "targetPortId": "mixer_stage-gain"
+    },
+    {
+      "id": "c9",
       "sourceBlockId": "filter",
       "sourcePortId": "filter-nfout",
       "targetBlockId": "mixer_stage",
       "targetPortId": "mixer_stage-nf"
     },
     {
-      "id": "c7",
+      "id": "c10",
       "sourceBlockId": "mixer_stage",
       "sourcePortId": "mixer_stage-pout",
       "targetBlockId": "if_amp",
       "targetPortId": "if_amp-power"
     },
     {
-      "id": "c8",
+      "id": "c11",
+      "sourceBlockId": "mixer_stage",
+      "sourcePortId": "mixer_stage-gainout",
+      "targetBlockId": "if_amp",
+      "targetPortId": "if_amp-gain"
+    },
+    {
+      "id": "c12",
       "sourceBlockId": "mixer_stage",
       "sourcePortId": "mixer_stage-nfout",
       "targetBlockId": "if_amp",
       "targetPortId": "if_amp-nf"
     },
     {
-      "id": "c9",
+      "id": "c13",
       "sourceBlockId": "if_amp",
       "sourcePortId": "if_amp-pout",
       "targetBlockId": "scope_power",
       "targetPortId": "scope_power-in1"
     },
     {
-      "id": "c10",
+      "id": "c14",
       "sourceBlockId": "if_amp",
       "sourcePortId": "if_amp-nfout",
       "targetBlockId": "scope_nf",

@@ -39,8 +39,8 @@ This report compares the outputs of generated code against the headless simulati
 | 37_pole_placement_control | PASS | PASS | PASS | PASS |
 | 40_dsp_fft_spectrum | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH |
 | 41_dsp_fir_lowpass | PASS | PASS | PASS | PASS |
-| 42_rf_receiver_chain | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH |
-| 43_rf_am_modulation | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH |
+| 42_rf_receiver_chain | PASS | PASS | PASS | PASS |
+| 43_rf_am_modulation | PASS | PASS | PASS | PASS |
 | 44_nav_coordinate_transform | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH |
 | 45_sensor_fusion_ahrs | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH |
 | 46_sensor_fusion_tracking | PASS | PASS | PASS | PASS |
@@ -49,11 +49,11 @@ This report compares the outputs of generated code against the headless simulati
 ## Statistics
 
 - Total tests: 156
-- Passed: 117 (75.0%)
+- Passed: 125 (80.1%)
 - Simulation failures: 0
 - Build failures: 0
 - Run failures: 16
-- Output validation failures: 23
+- Output validation failures: 15
 
 ## Detailed Failures
 
@@ -168,70 +168,6 @@ This report compares the outputs of generated code against the headless simulati
 - Codegen final values: {'sink=scope_time|in=0|source=sum_signals|out=0|element=scalar': -0.141008, 'sink=scope_freq|in=0|source=fft|out=0|element=scalar': -0.141008}
 - Failure category: `numerical_mismatch`
 - Mismatched outputs: ['sink=scope_freq|in=0|source=fft|out=0|element=scalar']
-
-### 42_rf_receiver_chain (python)
-
-- Max relative error: 396.2963%
-- Headless final values: {'sink=scope_power|in=0|source=if_amp|out=0|element=scalar': 27.0, 'sink=scope_nf|in=0|source=if_amp|out=1|element=scalar': 27.0}
-- Codegen final values: {'sink=scope_power|in=0|source=if_amp|out=0|element=scalar': -80.0, 'sink=scope_nf|in=0|source=if_amp|out=1|element=scalar': -80.0}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_nf|in=0|source=if_amp|out=1|element=scalar', 'sink=scope_power|in=0|source=if_amp|out=0|element=scalar']
-
-### 42_rf_receiver_chain (cpp)
-
-- Max relative error: 396.2963%
-- Headless final values: {'sink=scope_power|in=0|source=if_amp|out=0|element=scalar': 27.0, 'sink=scope_nf|in=0|source=if_amp|out=1|element=scalar': 27.0}
-- Codegen final values: {'sink=scope_power|in=0|source=if_amp|out=0|element=scalar': -80.0, 'sink=scope_nf|in=0|source=if_amp|out=1|element=scalar': -80.0}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_nf|in=0|source=if_amp|out=1|element=scalar', 'sink=scope_power|in=0|source=if_amp|out=0|element=scalar']
-
-### 42_rf_receiver_chain (c)
-
-- Max relative error: 396.2963%
-- Headless final values: {'sink=scope_power|in=0|source=if_amp|out=0|element=scalar': 27.0, 'sink=scope_nf|in=0|source=if_amp|out=1|element=scalar': 27.0}
-- Codegen final values: {'sink=scope_power|in=0|source=if_amp|out=0|element=scalar': -80.0, 'sink=scope_nf|in=0|source=if_amp|out=1|element=scalar': -80.0}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_nf|in=0|source=if_amp|out=1|element=scalar', 'sink=scope_power|in=0|source=if_amp|out=0|element=scalar']
-
-### 42_rf_receiver_chain (rust)
-
-- Max relative error: 396.2963%
-- Headless final values: {'sink=scope_power|in=0|source=if_amp|out=0|element=scalar': 27.0, 'sink=scope_nf|in=0|source=if_amp|out=1|element=scalar': 27.0}
-- Codegen final values: {'sink=scope_power|in=0|source=if_amp|out=0|element=scalar': -80.0, 'sink=scope_nf|in=0|source=if_amp|out=1|element=scalar': -80.0}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_nf|in=0|source=if_amp|out=1|element=scalar', 'sink=scope_power|in=0|source=if_amp|out=0|element=scalar']
-
-### 43_rf_am_modulation (python)
-
-- Max relative error: 100.5587%
-- Headless final values: {'sink=scope_signals|in=0|source=message|out=0|element=scalar': -0.0050265151724279335, 'sink=scope_signals|in=1|source=carrier|out=0|element=scalar': -0.12533323356379913, 'sink=scope_am|in=0|source=am_mod|out=0|element=scalar': 0.8997334131489604}
-- Codegen final values: {'sink=scope_signals|in=0|source=message|out=0|element=scalar': -0.0050265151724279335, 'sink=scope_signals|in=1|source=carrier|out=0|element=scalar': -0.12533323356379913, 'sink=scope_am|in=0|source=am_mod|out=0|element=scalar': -0.0050265151724279335}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_am|in=0|source=am_mod|out=0|element=scalar']
-
-### 43_rf_am_modulation (cpp)
-
-- Max relative error: 100.5587%
-- Headless final values: {'sink=scope_signals|in=0|source=message|out=0|element=scalar': -0.0050265151724279335, 'sink=scope_signals|in=1|source=carrier|out=0|element=scalar': -0.12533323356379913, 'sink=scope_am|in=0|source=am_mod|out=0|element=scalar': 0.8997334131489604}
-- Codegen final values: {'sink=scope_signals|in=0|source=message|out=0|element=scalar': -0.00502652, 'sink=scope_signals|in=1|source=carrier|out=0|element=scalar': -0.125333, 'sink=scope_am|in=0|source=am_mod|out=0|element=scalar': -0.00502652}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_am|in=0|source=am_mod|out=0|element=scalar']
-
-### 43_rf_am_modulation (c)
-
-- Max relative error: 100.5587%
-- Headless final values: {'sink=scope_signals|in=0|source=message|out=0|element=scalar': -0.0050265151724279335, 'sink=scope_signals|in=1|source=carrier|out=0|element=scalar': -0.12533323356379913, 'sink=scope_am|in=0|source=am_mod|out=0|element=scalar': 0.8997334131489604}
-- Codegen final values: {'sink=scope_signals|in=0|source=message|out=0|element=scalar': -0.00502652, 'sink=scope_signals|in=1|source=carrier|out=0|element=scalar': -0.125333, 'sink=scope_am|in=0|source=am_mod|out=0|element=scalar': -0.00502652}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_am|in=0|source=am_mod|out=0|element=scalar']
-
-### 43_rf_am_modulation (rust)
-
-- Max relative error: 100.5587%
-- Headless final values: {'sink=scope_signals|in=0|source=message|out=0|element=scalar': -0.0050265151724279335, 'sink=scope_signals|in=1|source=carrier|out=0|element=scalar': -0.12533323356379913, 'sink=scope_am|in=0|source=am_mod|out=0|element=scalar': 0.8997334131489604}
-- Codegen final values: {'sink=scope_signals|in=0|source=message|out=0|element=scalar': -0.005027, 'sink=scope_signals|in=1|source=carrier|out=0|element=scalar': -0.125333, 'sink=scope_am|in=0|source=am_mod|out=0|element=scalar': -0.005027}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_am|in=0|source=am_mod|out=0|element=scalar']
 
 ### 44_nav_coordinate_transform (python)
 

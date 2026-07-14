@@ -12,6 +12,8 @@ from .estimation import ESTIMATION_TEMPLATES
 from .logic import LOGIC_TEMPLATES
 from .math_ops import MATH_TEMPLATES
 from .nonlinear import NONLINEAR_TEMPLATES
+from .rf import RF_TEMPLATES
+from .sensor_fusion import SENSOR_FUSION_TEMPLATES
 from .signal_processing import SIGNAL_PROCESSING_TEMPLATES
 from .sinks import SINK_TEMPLATES
 
@@ -32,6 +34,8 @@ BLOCK_TEMPLATES: dict[str, Callable[[BlockInfo, str], str]] = {
     **AEROSPACE_TEMPLATES,
     **DSP_TEMPLATES,
     **ESTIMATION_TEMPLATES,
+    **RF_TEMPLATES,
+    **SENSOR_FUSION_TEMPLATES,
 }
 
 
