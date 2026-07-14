@@ -276,113 +276,138 @@ class ModelCompiler:
         Returns:
             Tuple of (flattened_blocks, flattened_connections)
         """
-        flattened_blocks: list[Block] = []
-        flattened_connections: list[Connection] = list(connections)
+        def port_index(port_id: str) -> int | None:
+            try:
+                return int(port_id.rsplit("-", 1)[-1])
+            except (ValueError, IndexError):
+                return None
 
-        # Track subsystem input/output mappings for connection rewiring
-        # subsystem_id -> port_index -> internal_block_id
-        subsystem_inport_map: dict[str, dict[int, str]] = {}
-        subsystem_outport_map: dict[str, dict[int, str]] = {}
+        def prefixed_port_id(port_id: str, block_id: str, prefixed_id: str) -> str:
+            if prefixed_id == block_id:
+                return port_id
+            if port_id.startswith(f"{block_id}-"):
+                return f"{prefixed_id}{port_id[len(block_id):]}"
+            return f"{prefixed_id}__{port_id}"
 
-        for block in blocks:
-            if block.type != "subsystem" or not block.children:
-                # Not a subsystem or no children, keep as-is
-                flattened_blocks.append(block)
-                continue
+        def flatten_level(
+            level_blocks: list[Block],
+            level_connections: list[Connection],
+            prefix: str = "",
+            name_prefix: str = "",
+        ) -> tuple[list[Block], list[Connection]]:
+            flattened_blocks: list[Block] = []
+            flattened_connections: list[Connection] = []
+            subsystem_inport_map: dict[str, dict[int, str]] = {}
+            subsystem_outport_map: dict[str, dict[int, str]] = {}
+            flattened_subsystems: set[str] = set()
 
-            # This is a subsystem with children - flatten it
-            subsystem_id = block.id
-            subsystem_inport_map[subsystem_id] = {}
-            subsystem_outport_map[subsystem_id] = {}
-
-            child_blocks, child_connections = self._flatten_subsystems(
-                block.children, block.child_connections or []
-            )
-
-            # Add child blocks with prefixed IDs
-            for child in child_blocks:
-                # Create a new block with prefixed ID
-                prefixed_id = f"{subsystem_id}__{child.id}"
-                child_copy = Block(
-                    id=prefixed_id,
-                    type=child.type,
-                    name=f"{block.name}/{child.name}",
-                    position=child.position,
-                    parameters=child.parameters,
-                    input_ports=child.input_ports,
-                    output_ports=child.output_ports,
-                )
-                flattened_blocks.append(child_copy)
-
-                # Track inport/outport mappings
-                if child.type == "inport":
-                    port_num = child.parameters.get("portNumber", 1)
-                    if isinstance(port_num, (int, float)):
-                        subsystem_inport_map[subsystem_id][int(port_num) - 1] = prefixed_id
-                elif child.type == "outport":
-                    port_num = child.parameters.get("portNumber", 1)
-                    if isinstance(port_num, (int, float)):
-                        subsystem_outport_map[subsystem_id][int(port_num) - 1] = prefixed_id
-
-            # Add child connections with prefixed IDs
-            if child_connections:
-                for conn in child_connections:
-                    prefixed_conn = Connection(
-                        id=f"{subsystem_id}__{conn.id}",
-                        source_block_id=f"{subsystem_id}__{conn.source_block_id}",
-                        source_port_id=conn.source_port_id,
-                        target_block_id=f"{subsystem_id}__{conn.target_block_id}",
-                        target_port_id=conn.target_port_id,
+            for block in level_blocks:
+                if block.type != "subsystem" or not block.children:
+                    prefixed_id = f"{prefix}{block.id}"
+                    flattened_blocks.append(
+                        Block(
+                            id=prefixed_id,
+                            type=block.type,
+                            name=f"{name_prefix}/{block.name}" if name_prefix else block.name,
+                            position=block.position,
+                            parameters=block.parameters,
+                            input_ports=[
+                                port.model_copy(
+                                    update={
+                                        "id": prefixed_port_id(port.id, block.id, prefixed_id)
+                                    }
+                                )
+                                for port in block.input_ports
+                            ],
+                            output_ports=[
+                                port.model_copy(
+                                    update={
+                                        "id": prefixed_port_id(port.id, block.id, prefixed_id)
+                                    }
+                                )
+                                for port in block.output_ports
+                            ],
+                            children=block.children,
+                            child_connections=block.child_connections,
+                            is_expanded=block.is_expanded,
+                        )
                     )
-                    flattened_connections.append(prefixed_conn)
+                    continue
 
-        # Now rewire connections that went to/from subsystems
-        rewired_connections: list[Connection] = []
-        for conn in flattened_connections:
-            source_id = conn.source_block_id
-            target_id = conn.target_block_id
-            new_source_id = source_id
-            new_target_id = target_id
-            new_source_port = conn.source_port_id
-            new_target_port = conn.target_port_id
+                flattened_subsystems.add(block.id)
+                child_prefix = f"{prefix}{block.id}__"
+                subsystem_inport_map[block.id] = {}
+                subsystem_outport_map[block.id] = {}
 
-            # Check if source is a subsystem - rewire to outport
-            if source_id in subsystem_outport_map:
-                # Parse port index from port ID (e.g., "block-out-0" -> 0)
-                try:
-                    port_idx = int(conn.source_port_id.split("-")[-1])
-                    if port_idx in subsystem_outport_map[source_id]:
-                        outport_id = subsystem_outport_map[source_id][port_idx]
-                        new_source_id = outport_id
-                        # Outport has a single input, so we connect from its output
-                        new_source_port = f"{outport_id}-out-0"
-                except (ValueError, IndexError):
-                    pass
+                # A subsystem boundary is defined only by its direct children.
+                # Descendant inports/outports belong to nested subsystem boundaries.
+                for child in block.children:
+                    port_num = child.parameters.get("portNumber", 1)
+                    if not isinstance(port_num, (int, float)):
+                        continue
+                    if child.type == "inport":
+                        subsystem_inport_map[block.id][int(port_num) - 1] = (
+                            f"{child_prefix}{child.id}"
+                        )
+                    elif child.type == "outport":
+                        subsystem_outport_map[block.id][int(port_num) - 1] = (
+                            f"{child_prefix}{child.id}"
+                        )
 
-            # Check if target is a subsystem - rewire to inport
-            if target_id in subsystem_inport_map:
-                try:
-                    port_idx = int(conn.target_port_id.split("-")[-1])
-                    if port_idx in subsystem_inport_map[target_id]:
-                        inport_id = subsystem_inport_map[target_id][port_idx]
-                        new_target_id = inport_id
-                        # Inport takes input on port 0
-                        new_target_port = f"{inport_id}-in-0"
-                except (ValueError, IndexError):
-                    pass
-
-            # Skip connections that still reference subsystem blocks (they're removed)
-            if new_source_id in subsystem_inport_map or new_target_id in subsystem_outport_map:
-                continue
-
-            rewired_connections.append(
-                Connection(
-                    id=conn.id,
-                    source_block_id=new_source_id,
-                    source_port_id=new_source_port,
-                    target_block_id=new_target_id,
-                    target_port_id=new_target_port,
+                child_name_prefix = (
+                    f"{name_prefix}/{block.name}" if name_prefix else block.name
                 )
-            )
+                child_blocks, child_connections = flatten_level(
+                    block.children,
+                    block.child_connections or [],
+                    child_prefix,
+                    child_name_prefix,
+                )
+                flattened_blocks.extend(child_blocks)
+                flattened_connections.extend(child_connections)
 
-        return flattened_blocks, rewired_connections
+            for conn in level_connections:
+                source_id = conn.source_block_id
+                target_id = conn.target_block_id
+                source_idx = port_index(conn.source_port_id)
+                target_idx = port_index(conn.target_port_id)
+
+                if source_id in flattened_subsystems:
+                    if source_idx is None:
+                        continue
+                    new_source_id = subsystem_outport_map[source_id].get(source_idx)
+                    if new_source_id is None:
+                        continue
+                    new_source_port = f"{new_source_id}-out-0"
+                else:
+                    new_source_id = f"{prefix}{source_id}"
+                    new_source_port = prefixed_port_id(
+                        conn.source_port_id, source_id, new_source_id
+                    )
+
+                if target_id in flattened_subsystems:
+                    if target_idx is None:
+                        continue
+                    new_target_id = subsystem_inport_map[target_id].get(target_idx)
+                    if new_target_id is None:
+                        continue
+                    new_target_port = f"{new_target_id}-in-0"
+                else:
+                    new_target_id = f"{prefix}{target_id}"
+                    new_target_port = prefixed_port_id(
+                        conn.target_port_id, target_id, new_target_id
+                    )
+
+                flattened_connections.append(
+                    Connection(
+                        id=f"{prefix}{conn.id}",
+                        source_block_id=new_source_id,
+                        source_port_id=new_source_port,
+                        target_block_id=new_target_id,
+                        target_port_id=new_target_port,
+                    )
+                )
+
+            return flattened_blocks, flattened_connections
+
+        return flatten_level(blocks, connections)
