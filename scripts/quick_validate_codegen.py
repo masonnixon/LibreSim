@@ -24,7 +24,12 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(REPO_ROOT / "backend"))
 
-from src.codegen.validation import compare_final_values, read_results_csv
+from src.codegen.generator import CodeGenerationConfig, CodeGenerator
+from src.codegen.validation import (
+    canonicalize_headless_results,
+    compare_final_values,
+    read_results_csv,
+)
 from src.models.model import Model
 from src.models.simulation import SimulationConfig
 from src.simulation.runner import SimulationRunner
@@ -63,34 +68,11 @@ async def run_headless_async(example_name: str) -> dict:
     # Get results after simulation completes
     results = runner.get_results()
 
-    final_values = {}
-    # Results structure:
-    # {
-    #   "signals": [
-    #     { "blockId": "...", "name": "...", "times": [...], "values": [...] },
-    #     ...
-    #   ],
-    #   "analyses": [...],
-    #   "statistics": { ... }
-    # }
-    signals = results.get("signals", [])
-    for signal in signals:
-        name = signal.get("name", signal.get("blockId", "unknown"))
-        values = signal.get("values", [])
-        if values:
-            # Handle multi-trace (values is list of lists) or single trace
-            if isinstance(values[0], list):
-                # Multi-trace: get final value of each trace
-                input_names = signal.get("inputNames", [])
-                for i, trace in enumerate(values):
-                    if trace:
-                        trace_name = input_names[i] if i < len(input_names) else f"trace_{i}"
-                        final_values[trace_name] = trace[-1]
-            else:
-                # Single trace
-                final_values[name] = values[-1]
-
-    return final_values
+    model_info = CodeGenerator().compile_model_info(
+        model_data,
+        CodeGenerationConfig(step_size=step_size, stop_time=stop_time, start_time=start_time),
+    )
+    return canonicalize_headless_results(results, model_info.output_signals).final_values
 
 
 def run_headless(example_name: str) -> dict:

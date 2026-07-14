@@ -100,6 +100,20 @@ class SignalInfo:
     dtype: str = "double"
 
 
+@dataclass(frozen=True)
+class OutputSignalInfo:
+    """Canonical metadata for one scalar column in generated output."""
+
+    canonical_key: str
+    sink_block_id: str
+    sink_input_port: int
+    source_block_id: str
+    source_output_port: int
+    dimensions: tuple[int, ...]
+    element_index: tuple[int, ...]
+    flat_index: int
+
+
 @dataclass
 class BlockInfo:
     """Compiled information about a block for code generation."""
@@ -132,3 +146,4 @@ class CompiledModelInfo:
     step_size: float
     stop_time: float
     start_time: float = 0.0
+    output_signals: list[OutputSignalInfo] = field(default_factory=list)

@@ -23,9 +23,11 @@ from typing import Any
 REPO_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(REPO_ROOT / "backend"))
 
+from src.codegen.generator import CodeGenerationConfig, CodeGenerator
 from src.codegen.validation import (
     FailureCategory,
     OutputValidationError,
+    canonicalize_headless_results,
     compare_final_values,
     read_results_csv,
 )
@@ -109,34 +111,14 @@ async def run_headless_simulation_async(
         raise RuntimeError(runner.error_message or "Simulation failed")
 
     results = runner.get_results()
-
-    # Get final values for each output signal and collect all time series data
-    final_values = {}
-    all_series: dict[str, list[float]] = {}
-    times: list[float] = []
-
-    if results.get("signals"):
-        for signal in results["signals"]:
-            name = signal.get("name", "")
-            values = signal.get("values", [])
-            signal_times = signal.get("times", [])
-
-            # Use times from first signal with data
-            if signal_times and not times:
-                times = signal_times
-
-            if values:
-                # Handle both single-trace and multi-trace cases
-                if isinstance(values[0], list):
-                    # Multi-trace: get last value from each trace
-                    for i, input_name in enumerate(signal.get("inputNames", [])):
-                        if values[i]:
-                            final_values[input_name] = values[i][-1]
-                            all_series[input_name] = values[i]
-                else:
-                    # Single-trace: get last value
-                    final_values[name] = values[-1]
-                    all_series[name] = values
+    model_info = CodeGenerator().compile_model_info(
+        model_data,
+        CodeGenerationConfig(step_size=step_size, stop_time=stop_time),
+    )
+    parsed_output = canonicalize_headless_results(results, model_info.output_signals)
+    final_values = parsed_output.final_values
+    all_series = parsed_output.series
+    times = parsed_output.times
 
     # Save results to CSV if output directory specified
     if output_dir is not None:
@@ -149,7 +131,7 @@ async def run_headless_simulation_async(
             headers = ["time"] + list(all_series.keys())
             writer.writerow(headers)
             # Data rows
-            num_points = len(times) if times else (len(next(iter(all_series.values()))) if all_series else 0)
+            num_points = len(times)
             for i in range(num_points):
                 row = [times[i] if times else i * step_size]
                 for key in all_series:
@@ -462,7 +444,9 @@ def generate_report(all_results: list[ValidationResult]) -> str:
             lines.append("")
             if not result.headless_success:
                 lines.append("- Headless simulation failed")
-            if not result.build_success:
+                if result.notes:
+                    lines.append(f"- Error: {result.notes}")
+            elif not result.build_success:
                 lines.append(f"- Build failed: {result.build_error[:200]}")
             elif not result.run_success:
                 lines.append(f"- Run failed: {result.run_error[:200]}")

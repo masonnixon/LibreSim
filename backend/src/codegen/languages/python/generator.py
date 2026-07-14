@@ -588,76 +588,20 @@ def run_simulation(
         return wiring
 
     def _generate_output_recording(self, model_info: CompiledModelInfo) -> dict:
-        """Generate output recording code."""
-        init_lines = []
-        record_lines = []
-        # Track used names to ensure uniqueness (Python uses dict keys)
-        used_names: set[str] = set()
+        """Generate output recording code from the shared canonical output schema."""
+        init_lines: list[str] = []
+        record_lines: list[str] = []
+        blocks = {block.id: block for block in model_info.blocks}
 
-        for block_id in model_info.sink_blocks:
-            block = next((b for b in model_info.blocks if b.id == block_id), None)
-            if block:
-                var_name = self.get_block_var_name(block)
-                signal_name = self.sanitize_identifier(block.name or block.id)
-
-                # For multi-input scopes, record each input separately
-                # Use the source block name if available
-                num_inputs = block.parameters.get("numInputs", 1)
-                if block.type == "scope" and num_inputs > 1:
-                    # Build a map of port index -> (source name, source port)
-                    port_info: dict[int, tuple[str, int | None]] = {}
-                    for conn in block.input_connections:
-                        source_id, source_port, target_port = self.parse_connection(conn)
-                        source_block = next(
-                            (b for b in model_info.blocks if b.id == source_id), None
-                        )
-                        if source_block:
-                            source_name = self.sanitize_identifier(
-                                source_block.name or source_block.id
-                            )
-                            port_idx = target_port if target_port is not None else 0
-                            port_info[port_idx] = (source_name, source_port)
-
-                    for i in range(num_inputs):
-                        # Use source block name if we found it, otherwise use index
-                        if i in port_info:
-                            base_name, recorded_source_port = port_info[i]
-                            # If source has multiple outputs, include source port in name
-                            if recorded_source_port is not None and recorded_source_port > 0:
-                                port_name = f"{base_name}_{recorded_source_port}"
-                            else:
-                                port_name = base_name
-                        else:
-                            port_name = f"{signal_name}_{i}"
-
-                        # Ensure unique names by appending index if needed
-                        original_name = port_name
-                        suffix = 0
-                        while port_name in used_names:
-                            suffix += 1
-                            port_name = f"{original_name}_{suffix}"
-                        used_names.add(port_name)
-
-                        init_lines.append(f"    results['{port_name}'] = []")
-                        record_lines.append(
-                            f"                results['{port_name}'].append("
-                            f"model.{var_name}.get_output({i}))"
-                        )
-                else:
-                    # Ensure unique names for single-input sinks too
-                    port_name = signal_name
-                    original_name = port_name
-                    suffix = 0
-                    while port_name in used_names:
-                        suffix += 1
-                        port_name = f"{original_name}_{suffix}"
-                    used_names.add(port_name)
-
-                    init_lines.append(f"    results['{port_name}'] = []")
-                    record_lines.append(
-                        f"                results['{port_name}'].append("
-                        f"model.{var_name}.get_output())"
-                    )
+        for signal in model_info.output_signals:
+            source = blocks[signal.source_block_id]
+            var_name = self.get_block_var_name(source)
+            port = signal.flat_index if signal.dimensions[0] > 1 else signal.source_output_port
+            init_lines.append(f"    results['{signal.canonical_key}'] = []")
+            record_lines.append(
+                f"                results['{signal.canonical_key}'].append("
+                f"model.{var_name}.get_output({port}))"
+            )
 
         return {
             "init": "\n".join(init_lines) if init_lines else "    pass",

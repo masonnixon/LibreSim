@@ -63,48 +63,19 @@ class RustCodeGenerator(LanguageGenerator):
         return IntegrationCodeGenerator.generate_rust()
 
     def _generate_output_recording(self, model_info: CompiledModelInfo) -> dict:
-        """Generate output recording code for all sink blocks."""
-        output_names = []  # List of column names
-        record_code_lines = []  # Code to record each output
+        """Generate output recording code from the shared canonical output schema."""
+        output_names: list[str] = []
+        record_code_lines: list[str] = []
+        blocks = {block.id: block for block in model_info.blocks}
 
-        for block_id in model_info.sink_blocks:
-            block = next((b for b in model_info.blocks if b.id == block_id), None)
-            if block:
-                var_name = f"block_{self.sanitize_identifier(block.id)}"
-                signal_name = self.sanitize_identifier(block.name or block.id)
-
-                # For multi-input scopes, record each input separately
-                num_inputs = block.parameters.get("numInputs", 1)
-                if block.type == "scope" and num_inputs > 1:
-                    # Build a map of port index -> source name
-                    port_names = {}
-                    for conn in block.input_connections:
-                        source_id, source_port, target_port = self.parse_connection(conn)
-                        source_block = next(
-                            (b for b in model_info.blocks if b.id == source_id), None
-                        )
-                        if source_block:
-                            source_name = self.sanitize_identifier(
-                                source_block.name or source_block.id
-                            )
-                            port_idx = target_port if target_port is not None else 0
-                            port_names[port_idx] = source_name
-
-                    for i in range(num_inputs):
-                        # Use source block name if available, otherwise use index
-                        if i in port_names:
-                            port_name = port_names[i]
-                        else:
-                            port_name = f"{signal_name}_{i}"
-                        output_names.append(port_name)
-                        record_code_lines.append(
-                            f"                output_data.push(model.{var_name}.get_output({i}));"
-                        )
-                else:
-                    output_names.append(signal_name)
-                    record_code_lines.append(
-                        f"                output_data.push(model.{var_name}.get_output(0));"
-                    )
+        for signal in model_info.output_signals:
+            source = blocks[signal.source_block_id]
+            var_name = f"block_{self.sanitize_identifier(source.id)}"
+            port = signal.flat_index if signal.dimensions[0] > 1 else signal.source_output_port
+            output_names.append(signal.canonical_key)
+            record_code_lines.append(
+                f"                output_data.push(model.{var_name}.get_output({port}));"
+            )
 
         return {
             "names": output_names,

@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import csv
 import math
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-from typing import TextIO
+from typing import Any, TextIO
+
+from .models import OutputSignalInfo
 
 
 class FailureCategory(StrEnum):
@@ -20,6 +22,7 @@ class FailureCategory(StrEnum):
     MISSING_OUTPUTS = "missing_outputs"
     UNEXPECTED_OUTPUTS = "unexpected_outputs"
     OUTPUT_KEY_MISMATCH = "output_key_mismatch"
+    OUTPUT_SHAPE_MISMATCH = "output_shape_mismatch"
     NUMERICAL_MISMATCH = "numerical_mismatch"
 
 
@@ -131,6 +134,114 @@ def read_results_csv(path: Path) -> ParsedOutput:
     """Read and strictly parse a generated results CSV file."""
     with path.open(newline="") as stream:
         return parse_results_csv(stream)
+
+
+def canonicalize_headless_results(
+    results: Mapping[str, Any],
+    output_signals: Sequence[OutputSignalInfo],
+) -> ParsedOutput:
+    """Map runner signal payloads onto the same stable keys used by generated code."""
+    signals_by_sink: dict[str, list[OutputSignalInfo]] = {}
+    for output in output_signals:
+        signals_by_sink.setdefault(output.sink_block_id, []).append(output)
+
+    canonical_series: dict[str, tuple[float, ...]] = {}
+    canonical_times: tuple[float, ...] = ()
+    seen_sinks: set[str] = set()
+    raw_signals = results.get("signals", [])
+    if not isinstance(raw_signals, Sequence):
+        raise OutputValidationError(
+            FailureCategory.MALFORMED_OUTPUT,
+            "Headless results 'signals' must be a sequence",
+        )
+
+    for raw_signal in raw_signals:
+        if not isinstance(raw_signal, Mapping):
+            raise OutputValidationError(
+                FailureCategory.MALFORMED_OUTPUT,
+                "Headless signal entry must be a mapping",
+            )
+        sink_id = raw_signal.get("blockId")
+        if not isinstance(sink_id, str) or sink_id not in signals_by_sink:
+            continue
+        if sink_id in seen_sinks:
+            raise OutputValidationError(
+                FailureCategory.MALFORMED_OUTPUT,
+                f"Headless results contain duplicate sink '{sink_id}'",
+            )
+        seen_sinks.add(sink_id)
+
+        raw_times = raw_signal.get("times", [])
+        if not isinstance(raw_times, Sequence):
+            raise OutputValidationError(
+                FailureCategory.MALFORMED_OUTPUT,
+                f"Headless sink '{sink_id}' has malformed times",
+            )
+        try:
+            times = tuple(float(value) for value in raw_times)
+        except (TypeError, ValueError) as exc:
+            raise OutputValidationError(
+                FailureCategory.MALFORMED_OUTPUT,
+                f"Headless sink '{sink_id}' has non-numeric times",
+            ) from exc
+
+        if raw_signal.get("is3D"):
+            raw_traces = [raw_signal.get(axis, []) for axis in ("x", "y", "z")]
+        else:
+            values = raw_signal.get("values", [])
+            if isinstance(values, Sequence) and values and isinstance(values[0], Sequence):
+                raw_traces = list(values)
+            else:
+                raw_traces = [values]
+
+        schema = signals_by_sink[sink_id]
+        if len(raw_traces) != len(schema):
+            raise OutputValidationError(
+                FailureCategory.OUTPUT_SHAPE_MISMATCH,
+                f"Headless sink '{sink_id}' produced {len(raw_traces)} traces; "
+                f"expected {len(schema)}",
+            )
+
+        if canonical_times and times != canonical_times:
+            raise OutputValidationError(
+                FailureCategory.OUTPUT_SHAPE_MISMATCH,
+                f"Headless sink '{sink_id}' uses a different time grid",
+            )
+        if times:
+            canonical_times = times
+
+        for output, raw_trace in zip(schema, raw_traces, strict=True):
+            if not isinstance(raw_trace, Sequence):
+                raise OutputValidationError(
+                    FailureCategory.MALFORMED_OUTPUT,
+                    f"Headless output '{output.canonical_key}' is not a sequence",
+                )
+            try:
+                trace = tuple(float(value) for value in raw_trace)
+            except (TypeError, ValueError) as exc:
+                raise OutputValidationError(
+                    FailureCategory.MALFORMED_OUTPUT,
+                    f"Headless output '{output.canonical_key}' contains non-numeric data",
+                ) from exc
+            if len(trace) != len(times):
+                raise OutputValidationError(
+                    FailureCategory.OUTPUT_SHAPE_MISMATCH,
+                    f"Headless output '{output.canonical_key}' has {len(trace)} samples; "
+                    f"expected {len(times)}",
+                )
+            if not trace:
+                raise OutputValidationError(
+                    FailureCategory.MISSING_OR_EMPTY_OUTPUT_SET,
+                    f"Headless output '{output.canonical_key}' is empty",
+                )
+            if not all(math.isfinite(value) for value in (*times, *trace)):
+                raise OutputValidationError(
+                    FailureCategory.NONFINITE_OUTPUT,
+                    f"Headless output '{output.canonical_key}' contains non-finite data",
+                )
+            canonical_series[output.canonical_key] = trace
+
+    return ParsedOutput(times=canonical_times, series=canonical_series)
 
 
 def compare_final_values(

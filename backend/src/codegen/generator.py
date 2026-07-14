@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from typing import Any
+from urllib.parse import quote
 
 from src.models.model import Model
 from src.simulation.compiler import ModelCompiler
@@ -12,6 +13,7 @@ from .models import (
     GeneratedProject,
     IntegrationMethod,
     Language,
+    OutputSignalInfo,
 )
 
 # Block types that require numerical integration (have state/derivative interface)
@@ -86,11 +88,15 @@ SOURCE_BLOCKS = {
 # Sink blocks (consume signals, produce outputs)
 SINK_BLOCKS = {
     "scope",
+    "scope_3d",
     "to_workspace",
     "display",
     "terminator",
     "xy_graph",
 }
+
+# Sink types whose inputs are observable in backend simulation results.
+OBSERVABLE_SINK_BLOCKS = {"scope", "scope_3d", "display", "to_workspace"}
 
 
 @dataclass
@@ -143,7 +149,23 @@ class CodeGenerator:
         Returns:
             GeneratedProject containing all generated files
         """
-        # Step 1: Convert dict to Model object if needed and compile
+        # Step 1: Compile and extract the shared model contract.
+        model_info = self.compile_model_info(model, config)
+
+        # Step 2: Get language-specific generator
+        generator = self._generators.get(config.language)
+        if generator is None:
+            raise CodeGenerationError(f"Unsupported language: {config.language}")
+
+        # Step 3: Generate the project
+        return generator.generate(model_info, config)
+
+    def compile_model_info(
+        self,
+        model: dict[str, Any],
+        config: CodeGenerationConfig,
+    ) -> CompiledModelInfo:
+        """Compile a model into the language-independent code generation contract."""
         if isinstance(model, dict):
             model_obj = Model.model_validate(model)
         else:
@@ -151,17 +173,7 @@ class CodeGenerator:
         compiled = self._compiler.compile(model_obj)
         if not compiled.success:
             raise CodeGenerationError(f"Model compilation failed: {compiled.message}")
-
-        # Step 2: Extract information for code generation
-        model_info = self._extract_model_info(compiled, model, config)
-
-        # Step 3: Get language-specific generator
-        generator = self._generators.get(config.language)
-        if generator is None:
-            raise CodeGenerationError(f"Unsupported language: {config.language}")
-
-        # Step 4: Generate the project
-        return generator.generate(model_info, config)
+        return self._extract_model_info(compiled, model, config)
 
     def _extract_model_info(
         self,
@@ -237,6 +249,8 @@ class CodeGenerator:
         # Get simulation config
         sim_config = model.get("simulationConfig", {})
 
+        output_signals = self._extract_output_signals(blocks, sink_blocks)
+
         return CompiledModelInfo(
             blocks=blocks,
             execution_order=compiled.execution_order,
@@ -246,7 +260,90 @@ class CodeGenerator:
             step_size=config.step_size or sim_config.get("stepSize", 0.01),
             stop_time=config.stop_time or sim_config.get("stopTime", 10.0),
             start_time=config.start_time or sim_config.get("startTime", 0.0),
+            output_signals=output_signals,
         )
+
+    def _extract_output_signals(
+        self,
+        blocks: list[BlockInfo],
+        sink_blocks: list[str],
+    ) -> list[OutputSignalInfo]:
+        """Build deterministic scalar output columns from connected observable sinks."""
+        block_by_id = {block.id: block for block in blocks}
+        outputs: list[OutputSignalInfo] = []
+        seen_keys: set[str] = set()
+
+        for sink_id in sink_blocks:
+            sink = block_by_id.get(sink_id)
+            if sink is None or sink.type not in OBSERVABLE_SINK_BLOCKS:
+                continue
+
+            connections: list[tuple[int, str, int]] = []
+            for connection in sink.input_connections:
+                source_and_port, separator, target_port_text = connection.partition("@")
+                source_id, port_separator, source_port_text = source_and_port.rpartition(":")
+                if not separator or not port_separator:
+                    raise CodeGenerationError(
+                        f"Malformed output connection for sink '{sink_id}': {connection}"
+                    )
+                try:
+                    source_port = int(source_port_text)
+                    target_port = int(target_port_text)
+                except ValueError as exc:
+                    raise CodeGenerationError(
+                        f"Non-numeric output connection for sink '{sink_id}': {connection}"
+                    ) from exc
+                connections.append((target_port, source_id, source_port))
+
+            for target_port, source_id, source_port in sorted(connections):
+                source = block_by_id.get(source_id)
+                if source is None:
+                    raise CodeGenerationError(
+                        f"Output sink '{sink_id}' references missing source '{source_id}'"
+                    )
+
+                dimensions = (1,)
+                if source_port < len(source.output_dimensions):
+                    dimensions = tuple(source.output_dimensions[source_port])
+                elif target_port < len(sink.input_dimensions):
+                    dimensions = tuple(sink.input_dimensions[target_port])
+
+                if len(dimensions) != 1 or dimensions[0] < 1:
+                    raise CodeGenerationError(
+                        f"Unsupported output shape {dimensions!r} from '{source_id}:{source_port}'; "
+                        "only non-empty rank-1 signals are supported"
+                    )
+                if dimensions[0] > 1 and len(source.output_dimensions) > 1:
+                    raise CodeGenerationError(
+                        f"Unsupported vector-valued multi-output source '{source_id}:{source_port}'"
+                    )
+
+                element_count = dimensions[0]
+                for flat_index in range(element_count):
+                    element = "scalar" if element_count == 1 else str(flat_index)
+                    canonical_key = (
+                        f"sink={quote(sink_id, safe='')}|in={target_port}|"
+                        f"source={quote(source_id, safe='')}|out={source_port}|element={element}"
+                    )
+                    if canonical_key in seen_keys:
+                        raise CodeGenerationError(
+                            f"Duplicate canonical output key '{canonical_key}'"
+                        )
+                    seen_keys.add(canonical_key)
+                    outputs.append(
+                        OutputSignalInfo(
+                            canonical_key=canonical_key,
+                            sink_block_id=sink_id,
+                            sink_input_port=target_port,
+                            source_block_id=source_id,
+                            source_output_port=source_port,
+                            dimensions=dimensions,
+                            element_index=(flat_index,),
+                            flat_index=flat_index,
+                        )
+                    )
+
+        return outputs
 
     def _resolve_port_ids_in_connection(
         self,

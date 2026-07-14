@@ -9,8 +9,8 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(REPO_ROOT / "backend"))
 
-from src.codegen.generator import CodeGenerator, CodeGenerationConfig
-from src.codegen.models import Language, IntegrationMethod
+from src.codegen.generator import CodeGenerationConfig, CodeGenerator
+from src.codegen.models import IntegrationMethod, Language
 
 EXAMPLES_DIR = REPO_ROOT / "examples"
 OUTPUT_DIR = REPO_ROOT / "codegen_verification"
@@ -84,7 +84,7 @@ def regenerate_all():
                 results["failed"].append((f"{name}_{lang.value}", str(e)[:100]))
 
     print(f"\n\n{'='*60}")
-    print(f"SUMMARY")
+    print("SUMMARY")
     print(f"{'='*60}")
     print(f"Success: {len(results['success'])}")
     print(f"Failed: {len(results['failed'])}")
