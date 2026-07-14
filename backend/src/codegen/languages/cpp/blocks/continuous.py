@@ -35,7 +35,7 @@ public:
 
     double get_output(int port) const {{
         (void)port;
-        return output;
+        return state;
     }}
 
     // Integration interface functions

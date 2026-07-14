@@ -55,7 +55,7 @@ impl {struct_name} {{
     }}
 
     pub fn get_output(&self, _port: usize) -> f64 {{
-        self.output
+        self.state
     }}
 
     // Integration interface functions

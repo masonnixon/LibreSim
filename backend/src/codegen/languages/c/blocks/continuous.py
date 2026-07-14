@@ -40,7 +40,7 @@ void {struct_name}_update({struct_name}* b, double t) {{
 
 double {struct_name}_get_output({struct_name}* b, int port) {{
     (void)port;
-    return b->output;
+    return b->state;
 }}
 
 // Integration interface functions
