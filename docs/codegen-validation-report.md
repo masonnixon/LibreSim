@@ -41,19 +41,19 @@ This report compares the outputs of generated code against the headless simulati
 | 41_dsp_fir_lowpass | PASS | PASS | PASS | PASS |
 | 42_rf_receiver_chain | PASS | PASS | PASS | PASS |
 | 43_rf_am_modulation | PASS | PASS | PASS | PASS |
-| 44_nav_coordinate_transform | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH |
+| 44_nav_coordinate_transform | PASS | PASS | PASS | PASS |
 | 45_sensor_fusion_ahrs | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH |
 | 46_sensor_fusion_tracking | PASS | PASS | PASS | PASS |
-| 50_lorenz_attractor_3d | PASS | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH |
+| 50_lorenz_attractor_3d | PASS | PASS | PASS | PASS |
 
 ## Statistics
 
 - Total tests: 156
-- Passed: 125 (80.1%)
+- Passed: 132 (84.6%)
 - Simulation failures: 0
 - Build failures: 0
 - Run failures: 16
-- Output validation failures: 15
+- Output validation failures: 8
 
 ## Detailed Failures
 
@@ -169,38 +169,6 @@ This report compares the outputs of generated code against the headless simulati
 - Failure category: `numerical_mismatch`
 - Mismatched outputs: ['sink=scope_freq|in=0|source=fft|out=0|element=scalar']
 
-### 44_nav_coordinate_transform (python)
-
-- Max relative error: 100.0014%
-- Headless final values: {'sink=scope_dist|in=0|source=great_circle|out=0|element=scalar': 8890.369422102835, 'sink=scope_ecef|in=0|source=lla_to_ecef|out=0|element=0': -2695453.899675493, 'sink=scope_ecef|in=0|source=lla_to_ecef|out=0|element=1': -4330427.782716427, 'sink=scope_ecef|in=0|source=lla_to_ecef|out=0|element=2': 3817994.9753713165, 'sink=scope_ned|in=0|source=ecef_to_ned|out=0|element=0': 3817994.9753713165, 'sink=scope_ned|in=0|source=ecef_to_ned|out=0|element=1': -4330427.782716427, 'sink=scope_ned|in=0|source=ecef_to_ned|out=0|element=2': 9073590.899675492}
-- Codegen final values: {'sink=scope_dist|in=0|source=great_circle|out=0|element=scalar': 37.0, 'sink=scope_ecef|in=0|source=lla_to_ecef|out=0|element=0': 37.0, 'sink=scope_ecef|in=0|source=lla_to_ecef|out=0|element=1': -121.9, 'sink=scope_ecef|in=0|source=lla_to_ecef|out=0|element=2': 1000.0, 'sink=scope_ned|in=0|source=ecef_to_ned|out=0|element=0': 37.0, 'sink=scope_ned|in=0|source=ecef_to_ned|out=0|element=1': -121.9, 'sink=scope_ned|in=0|source=ecef_to_ned|out=0|element=2': 1000.0}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_dist|in=0|source=great_circle|out=0|element=scalar', 'sink=scope_ecef|in=0|source=lla_to_ecef|out=0|element=0', 'sink=scope_ecef|in=0|source=lla_to_ecef|out=0|element=1', 'sink=scope_ecef|in=0|source=lla_to_ecef|out=0|element=2', 'sink=scope_ned|in=0|source=ecef_to_ned|out=0|element=0', 'sink=scope_ned|in=0|source=ecef_to_ned|out=0|element=1', 'sink=scope_ned|in=0|source=ecef_to_ned|out=0|element=2']
-
-### 44_nav_coordinate_transform (cpp)
-
-- Max relative error: 121107.5617%
-- Headless final values: {'sink=scope_dist|in=0|source=great_circle|out=0|element=scalar': 8890.369422102835, 'sink=scope_ecef|in=0|source=lla_to_ecef|out=0|element=0': -2695453.899675493, 'sink=scope_ecef|in=0|source=lla_to_ecef|out=0|element=1': -4330427.782716427, 'sink=scope_ecef|in=0|source=lla_to_ecef|out=0|element=2': 3817994.9753713165, 'sink=scope_ned|in=0|source=ecef_to_ned|out=0|element=0': 3817994.9753713165, 'sink=scope_ned|in=0|source=ecef_to_ned|out=0|element=1': -4330427.782716427, 'sink=scope_ned|in=0|source=ecef_to_ned|out=0|element=2': 9073590.899675492}
-- Codegen final values: {'sink=scope_dist|in=0|source=great_circle|out=0|element=scalar': 10775800.0, 'sink=scope_ecef|in=0|source=lla_to_ecef|out=0|element=0': 4865040.0, 'sink=scope_ecef|in=0|source=lla_to_ecef|out=0|element=1': 488132.0, 'sink=scope_ecef|in=0|source=lla_to_ecef|out=0|element=2': -4083400.0, 'sink=scope_ned|in=0|source=ecef_to_ned|out=0|element=0': -1439950.0, 'sink=scope_ned|in=0|source=ecef_to_ned|out=0|element=1': 3867110.0, 'sink=scope_ned|in=0|source=ecef_to_ned|out=0|element=2': 11217400.0}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_dist|in=0|source=great_circle|out=0|element=scalar', 'sink=scope_ecef|in=0|source=lla_to_ecef|out=0|element=0', 'sink=scope_ecef|in=0|source=lla_to_ecef|out=0|element=1', 'sink=scope_ecef|in=0|source=lla_to_ecef|out=0|element=2', 'sink=scope_ned|in=0|source=ecef_to_ned|out=0|element=0', 'sink=scope_ned|in=0|source=ecef_to_ned|out=0|element=1', 'sink=scope_ned|in=0|source=ecef_to_ned|out=0|element=2']
-
-### 44_nav_coordinate_transform (c)
-
-- Max relative error: 121107.5617%
-- Headless final values: {'sink=scope_dist|in=0|source=great_circle|out=0|element=scalar': 8890.369422102835, 'sink=scope_ecef|in=0|source=lla_to_ecef|out=0|element=0': -2695453.899675493, 'sink=scope_ecef|in=0|source=lla_to_ecef|out=0|element=1': -4330427.782716427, 'sink=scope_ecef|in=0|source=lla_to_ecef|out=0|element=2': 3817994.9753713165, 'sink=scope_ned|in=0|source=ecef_to_ned|out=0|element=0': 3817994.9753713165, 'sink=scope_ned|in=0|source=ecef_to_ned|out=0|element=1': -4330427.782716427, 'sink=scope_ned|in=0|source=ecef_to_ned|out=0|element=2': 9073590.899675492}
-- Codegen final values: {'sink=scope_dist|in=0|source=great_circle|out=0|element=scalar': 10775800.0, 'sink=scope_ecef|in=0|source=lla_to_ecef|out=0|element=0': 4865040.0, 'sink=scope_ecef|in=0|source=lla_to_ecef|out=0|element=1': 488132.0, 'sink=scope_ecef|in=0|source=lla_to_ecef|out=0|element=2': -4083400.0, 'sink=scope_ned|in=0|source=ecef_to_ned|out=0|element=0': -1439950.0, 'sink=scope_ned|in=0|source=ecef_to_ned|out=0|element=1': 3867110.0, 'sink=scope_ned|in=0|source=ecef_to_ned|out=0|element=2': 11217400.0}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_dist|in=0|source=great_circle|out=0|element=scalar', 'sink=scope_ecef|in=0|source=lla_to_ecef|out=0|element=0', 'sink=scope_ecef|in=0|source=lla_to_ecef|out=0|element=1', 'sink=scope_ecef|in=0|source=lla_to_ecef|out=0|element=2', 'sink=scope_ned|in=0|source=ecef_to_ned|out=0|element=0', 'sink=scope_ned|in=0|source=ecef_to_ned|out=0|element=1', 'sink=scope_ned|in=0|source=ecef_to_ned|out=0|element=2']
-
-### 44_nav_coordinate_transform (rust)
-
-- Max relative error: 121107.5030%
-- Headless final values: {'sink=scope_dist|in=0|source=great_circle|out=0|element=scalar': 8890.369422102835, 'sink=scope_ecef|in=0|source=lla_to_ecef|out=0|element=0': -2695453.899675493, 'sink=scope_ecef|in=0|source=lla_to_ecef|out=0|element=1': -4330427.782716427, 'sink=scope_ecef|in=0|source=lla_to_ecef|out=0|element=2': 3817994.9753713165, 'sink=scope_ned|in=0|source=ecef_to_ned|out=0|element=0': 3817994.9753713165, 'sink=scope_ned|in=0|source=ecef_to_ned|out=0|element=1': -4330427.782716427, 'sink=scope_ned|in=0|source=ecef_to_ned|out=0|element=2': 9073590.899675492}
-- Codegen final values: {'sink=scope_dist|in=0|source=great_circle|out=0|element=scalar': 10775794.784777, 'sink=scope_ecef|in=0|source=lla_to_ecef|out=0|element=0': 4865035.615244, 'sink=scope_ecef|in=0|source=lla_to_ecef|out=0|element=1': 488131.75314, 'sink=scope_ecef|in=0|source=lla_to_ecef|out=0|element=2': -4083403.826902, 'sink=scope_ned|in=0|source=ecef_to_ned|out=0|element=0': -1439952.763757, 'sink=scope_ned|in=0|source=ecef_to_ned|out=0|element=1': 3867113.771768, 'sink=scope_ned|in=0|source=ecef_to_ned|out=0|element=2': 11217399.562353}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_dist|in=0|source=great_circle|out=0|element=scalar', 'sink=scope_ecef|in=0|source=lla_to_ecef|out=0|element=0', 'sink=scope_ecef|in=0|source=lla_to_ecef|out=0|element=1', 'sink=scope_ecef|in=0|source=lla_to_ecef|out=0|element=2', 'sink=scope_ned|in=0|source=ecef_to_ned|out=0|element=0', 'sink=scope_ned|in=0|source=ecef_to_ned|out=0|element=1', 'sink=scope_ned|in=0|source=ecef_to_ned|out=0|element=2']
-
 ### 45_sensor_fusion_ahrs (python)
 
 - Max relative error: 100.0000%
@@ -232,27 +200,3 @@ This report compares the outputs of generated code against the headless simulati
 - Codegen final values: {'sink=scope_quat|in=0|source=madgwick|out=0|element=0': 0.9502, 'sink=scope_quat|in=0|source=madgwick|out=0|element=1': 0.010249, 'sink=scope_quat|in=0|source=madgwick|out=0|element=2': -0.009641, 'sink=scope_quat|in=0|source=madgwick|out=0|element=3': -0.311323, 'sink=scope_comp|in=0|source=rad2deg_comp|out=0|element=scalar': 67.987109, 'sink=scope_madgwick|in=0|source=rad2deg_madg|out=0|element=scalar': 1.460164}
 - Failure category: `numerical_mismatch`
 - Mismatched outputs: ['sink=scope_comp|in=0|source=rad2deg_comp|out=0|element=scalar', 'sink=scope_madgwick|in=0|source=rad2deg_madg|out=0|element=scalar', 'sink=scope_quat|in=0|source=madgwick|out=0|element=0', 'sink=scope_quat|in=0|source=madgwick|out=0|element=3']
-
-### 50_lorenz_attractor_3d (cpp)
-
-- Max relative error: 123.6703%
-- Headless final values: {'sink=scope_time|in=0|source=x_integrator|out=0|element=scalar': 7.536954627091343, 'sink=scope_time|in=1|source=y_integrator|out=0|element=scalar': 12.752755445113529, 'sink=scope_time|in=2|source=z_integrator|out=0|element=scalar': 15.478052380633539, 'sink=scope_3d|in=0|source=x_integrator|out=0|element=scalar': 7.536954627091343, 'sink=scope_3d|in=1|source=y_integrator|out=0|element=scalar': 12.752755445113529, 'sink=scope_3d|in=2|source=z_integrator|out=0|element=scalar': 15.478052380633539}
-- Codegen final values: {'sink=scope_3d|in=0|source=x_integrator|out=0|element=scalar': 13.0873, 'sink=scope_3d|in=1|source=y_integrator|out=0|element=scalar': 11.5923, 'sink=scope_3d|in=2|source=z_integrator|out=0|element=scalar': 34.6198, 'sink=scope_time|in=0|source=x_integrator|out=0|element=scalar': 13.0873, 'sink=scope_time|in=1|source=y_integrator|out=0|element=scalar': 11.5923, 'sink=scope_time|in=2|source=z_integrator|out=0|element=scalar': 34.6198}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_3d|in=0|source=x_integrator|out=0|element=scalar', 'sink=scope_3d|in=1|source=y_integrator|out=0|element=scalar', 'sink=scope_3d|in=2|source=z_integrator|out=0|element=scalar', 'sink=scope_time|in=0|source=x_integrator|out=0|element=scalar', 'sink=scope_time|in=1|source=y_integrator|out=0|element=scalar', 'sink=scope_time|in=2|source=z_integrator|out=0|element=scalar']
-
-### 50_lorenz_attractor_3d (c)
-
-- Max relative error: 123.6703%
-- Headless final values: {'sink=scope_time|in=0|source=x_integrator|out=0|element=scalar': 7.536954627091343, 'sink=scope_time|in=1|source=y_integrator|out=0|element=scalar': 12.752755445113529, 'sink=scope_time|in=2|source=z_integrator|out=0|element=scalar': 15.478052380633539, 'sink=scope_3d|in=0|source=x_integrator|out=0|element=scalar': 7.536954627091343, 'sink=scope_3d|in=1|source=y_integrator|out=0|element=scalar': 12.752755445113529, 'sink=scope_3d|in=2|source=z_integrator|out=0|element=scalar': 15.478052380633539}
-- Codegen final values: {'sink=scope_3d|in=0|source=x_integrator|out=0|element=scalar': 13.0873, 'sink=scope_3d|in=1|source=y_integrator|out=0|element=scalar': 11.5923, 'sink=scope_3d|in=2|source=z_integrator|out=0|element=scalar': 34.6198, 'sink=scope_time|in=0|source=x_integrator|out=0|element=scalar': 13.0873, 'sink=scope_time|in=1|source=y_integrator|out=0|element=scalar': 11.5923, 'sink=scope_time|in=2|source=z_integrator|out=0|element=scalar': 34.6198}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_3d|in=0|source=x_integrator|out=0|element=scalar', 'sink=scope_3d|in=1|source=y_integrator|out=0|element=scalar', 'sink=scope_3d|in=2|source=z_integrator|out=0|element=scalar', 'sink=scope_time|in=0|source=x_integrator|out=0|element=scalar', 'sink=scope_time|in=1|source=y_integrator|out=0|element=scalar', 'sink=scope_time|in=2|source=z_integrator|out=0|element=scalar']
-
-### 50_lorenz_attractor_3d (rust)
-
-- Max relative error: 123.6702%
-- Headless final values: {'sink=scope_time|in=0|source=x_integrator|out=0|element=scalar': 7.536954627091343, 'sink=scope_time|in=1|source=y_integrator|out=0|element=scalar': 12.752755445113529, 'sink=scope_time|in=2|source=z_integrator|out=0|element=scalar': 15.478052380633539, 'sink=scope_3d|in=0|source=x_integrator|out=0|element=scalar': 7.536954627091343, 'sink=scope_3d|in=1|source=y_integrator|out=0|element=scalar': 12.752755445113529, 'sink=scope_3d|in=2|source=z_integrator|out=0|element=scalar': 15.478052380633539}
-- Codegen final values: {'sink=scope_3d|in=0|source=x_integrator|out=0|element=scalar': 13.087342, 'sink=scope_3d|in=1|source=y_integrator|out=0|element=scalar': 11.592294, 'sink=scope_3d|in=2|source=z_integrator|out=0|element=scalar': 34.619785, 'sink=scope_time|in=0|source=x_integrator|out=0|element=scalar': 13.087342, 'sink=scope_time|in=1|source=y_integrator|out=0|element=scalar': 11.592294, 'sink=scope_time|in=2|source=z_integrator|out=0|element=scalar': 34.619785}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_3d|in=0|source=x_integrator|out=0|element=scalar', 'sink=scope_3d|in=1|source=y_integrator|out=0|element=scalar', 'sink=scope_3d|in=2|source=z_integrator|out=0|element=scalar', 'sink=scope_time|in=0|source=x_integrator|out=0|element=scalar', 'sink=scope_time|in=1|source=y_integrator|out=0|element=scalar', 'sink=scope_time|in=2|source=z_integrator|out=0|element=scalar']
