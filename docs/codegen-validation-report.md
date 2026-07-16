@@ -16,10 +16,10 @@ This report compares the outputs of generated code against the headless simulati
 | 06_kalman_filter_estimation | PASS | PASS | PASS | PASS |
 | 06b_kalman_position_velocity | PASS | PASS | PASS | PASS |
 | 07_thermostat_relay_control | PASS | PASS | PASS | PASS |
-| 07a_bode_plot_analysis | MISSING OR EMPTY OUTPUT SET | MISSING OR EMPTY OUTPUT SET | MISSING OR EMPTY OUTPUT SET | MISSING OR EMPTY OUTPUT SET |
-| 07b_nyquist_plot_analysis | MISSING OR EMPTY OUTPUT SET | MISSING OR EMPTY OUTPUT SET | MISSING OR EMPTY OUTPUT SET | MISSING OR EMPTY OUTPUT SET |
-| 07c_pole_zero_map | MISSING OR EMPTY OUTPUT SET | MISSING OR EMPTY OUTPUT SET | MISSING OR EMPTY OUTPUT SET | MISSING OR EMPTY OUTPUT SET |
-| 07d_step_response_info | MISSING OR EMPTY OUTPUT SET | MISSING OR EMPTY OUTPUT SET | MISSING OR EMPTY OUTPUT SET | MISSING OR EMPTY OUTPUT SET |
+| 07a_bode_plot_analysis | PASS | PASS | PASS | PASS |
+| 07b_nyquist_plot_analysis | PASS | PASS | PASS | PASS |
+| 07c_pole_zero_map | PASS | PASS | PASS | PASS |
+| 07d_step_response_info | PASS | PASS | PASS | PASS |
 | 08_lookup_table_nonlinear | PASS | PASS | PASS | PASS |
 | 09_second_order_damping | PASS | PASS | PASS | PASS |
 | 10_rate_limiting_quantization | PASS | PASS | PASS | PASS |
@@ -49,90 +49,12 @@ This report compares the outputs of generated code against the headless simulati
 ## Statistics
 
 - Total tests: 156
-- Passed: 140 (89.7%)
+- Passed: 156 (100.0%)
 - Simulation failures: 0
 - Build failures: 0
-- Run failures: 16
+- Run failures: 0
 - Output validation failures: 0
 
 ## Detailed Failures
 
-### 07a_bode_plot_analysis (python)
-
-- Run failed: Results CSV contains no output columns
-- Failure category: `missing_or_empty_output_set`
-
-### 07a_bode_plot_analysis (cpp)
-
-- Run failed: Results CSV contains no output columns
-- Failure category: `missing_or_empty_output_set`
-
-### 07a_bode_plot_analysis (c)
-
-- Run failed: Results CSV contains no output columns
-- Failure category: `missing_or_empty_output_set`
-
-### 07a_bode_plot_analysis (rust)
-
-- Run failed: Results CSV contains no output columns
-- Failure category: `missing_or_empty_output_set`
-
-### 07b_nyquist_plot_analysis (python)
-
-- Run failed: Results CSV contains no output columns
-- Failure category: `missing_or_empty_output_set`
-
-### 07b_nyquist_plot_analysis (cpp)
-
-- Run failed: Results CSV contains no output columns
-- Failure category: `missing_or_empty_output_set`
-
-### 07b_nyquist_plot_analysis (c)
-
-- Run failed: Results CSV contains no output columns
-- Failure category: `missing_or_empty_output_set`
-
-### 07b_nyquist_plot_analysis (rust)
-
-- Run failed: Results CSV contains no output columns
-- Failure category: `missing_or_empty_output_set`
-
-### 07c_pole_zero_map (python)
-
-- Run failed: Results CSV contains no output columns
-- Failure category: `missing_or_empty_output_set`
-
-### 07c_pole_zero_map (cpp)
-
-- Run failed: Results CSV contains no output columns
-- Failure category: `missing_or_empty_output_set`
-
-### 07c_pole_zero_map (c)
-
-- Run failed: Results CSV contains no output columns
-- Failure category: `missing_or_empty_output_set`
-
-### 07c_pole_zero_map (rust)
-
-- Run failed: Results CSV contains no output columns
-- Failure category: `missing_or_empty_output_set`
-
-### 07d_step_response_info (python)
-
-- Run failed: Results CSV contains no output columns
-- Failure category: `missing_or_empty_output_set`
-
-### 07d_step_response_info (cpp)
-
-- Run failed: Results CSV contains no output columns
-- Failure category: `missing_or_empty_output_set`
-
-### 07d_step_response_info (c)
-
-- Run failed: Results CSV contains no output columns
-- Failure category: `missing_or_empty_output_set`
-
-### 07d_step_response_info (rust)
-
-- Run failed: Results CSV contains no output columns
-- Failure category: `missing_or_empty_output_set`
+No failures!
