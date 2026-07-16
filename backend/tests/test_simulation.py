@@ -389,6 +389,25 @@ class TestOSKAdapter:
         # This is intentional to avoid passing invalid kwargs to OSK constructors
         assert result == {}
 
+    def test_map_parameters_navigation_split_reference(self):
+        params = {"referenceLat": 37.0, "referenceLon": -122.0, "referenceAlt": 10.0}
+
+        result = self.adapter._map_parameters("ecef_to_ned", params)
+
+        assert result == {"reference_lla": [37.0, -122.0, 10.0]}
+
+    def test_map_parameters_navigation_legacy_reference_takes_precedence(self):
+        params = {
+            "referenceLla": [1.0, 2.0, 3.0],
+            "referenceLat": 37.0,
+            "referenceLon": -122.0,
+            "referenceAlt": 10.0,
+        }
+
+        result = self.adapter._map_parameters("ned_to_ecef", params)
+
+        assert result == {"reference_lla": [1.0, 2.0, 3.0]}
+
     def test_block_type_map_coverage(self):
         """Test that BLOCK_TYPE_MAP covers major block types."""
         # Sources

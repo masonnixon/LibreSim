@@ -164,8 +164,10 @@ private:
 def template_ramp(block: BlockInfo, class_name: str) -> str:
     """Generate C++ code for Ramp block."""
     slope = block.parameters.get("slope", 1.0)
-    start_time = block.parameters.get("start_time", 0.0)
-    initial_output = block.parameters.get("initial_output", 0.0)
+    start_time = block.parameters.get("startTime", block.parameters.get("start_time", 0.0))
+    initial_output = block.parameters.get(
+        "initialOutput", block.parameters.get("initial_output", 0.0)
+    )
     return f"""
 // {block.name} - Ramp source
 class {class_name} {{

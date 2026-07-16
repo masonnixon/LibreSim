@@ -988,6 +988,15 @@ class OSKAdapter:
                 osk_params[osk_name] = value
             # Skip unknown parameters - they likely aren't supported by the OSK block
 
+        if block_type in {"ecef_to_ned", "ned_to_ecef"} and "reference_lla" not in osk_params:
+            split_reference_names = ("referenceLat", "referenceLon", "referenceAlt")
+            if any(name in params for name in split_reference_names):
+                osk_params["reference_lla"] = [
+                    params.get("referenceLat", 0.0),
+                    params.get("referenceLon", 0.0),
+                    params.get("referenceAlt", 0.0),
+                ]
+
         # Special handling for Product block operations
         # The frontend may pass a numeric string like "2" instead of "**"
         # Convert numeric values to the proper operation string

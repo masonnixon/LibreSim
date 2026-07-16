@@ -775,7 +775,11 @@ impl {struct_name} {{
     }}
 
     pub fn update(&mut self, _t: f64) {{
-        let (lat, lon, alt) = (self.input[0], self.input[1], self.input[2]);
+        let (lat, lon, alt) = (
+            self.input[0].to_radians(),
+            self.input[1].to_radians(),
+            self.input[2],
+        );
         let (sin_lat, cos_lat) = (lat.sin(), lat.cos());
         let (sin_lon, cos_lon) = (lon.sin(), lon.cos());
 
@@ -888,7 +892,7 @@ pub struct {struct_name} {{
 }}
 
 impl {struct_name} {{
-    const R: f64 = 6371000.0;  // Earth mean radius (m)
+    const R: f64 = 6378137.0;  // WGS84 semi-major axis (m)
 
     pub fn new() -> Self {{
         Self {{
@@ -905,8 +909,8 @@ impl {struct_name} {{
     }}
 
     pub fn update(&mut self, _t: f64) {{
-        let (lat1, lon1) = (self.input[0], self.input[1]);
-        let (lat2, lon2) = (self.input1[0], self.input1[1]);
+        let (lat1, lon1) = (self.input[0].to_radians(), self.input[1].to_radians());
+        let (lat2, lon2) = (self.input1[0].to_radians(), self.input1[1].to_radians());
 
         let dlat = lat2 - lat1;
         let dlon = lon2 - lon1;

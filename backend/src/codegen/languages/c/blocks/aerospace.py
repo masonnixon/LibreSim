@@ -649,7 +649,9 @@ void {struct_name}_init({struct_name}* b) {{
 
 void {struct_name}_update({struct_name}* b, double t) {{
     (void)t;
-    double lat = b->input[0], lon = b->input[1], alt = b->input[2];
+    double lat = b->input[0] * M_PI / 180.0;
+    double lon = b->input[1] * M_PI / 180.0;
+    double alt = b->input[2];
     double sin_lat = sin(lat), cos_lat = cos(lat);
     double sin_lon = sin(lon), cos_lon = cos(lon);
 
@@ -744,7 +746,7 @@ def great_circle_distance_template(block: BlockInfo, struct_name: str) -> str:
 // {block.name} - Great Circle Distance (Haversine)
 #include <math.h>
 
-#define {struct_name.upper()}_R 6371000.0
+#define {struct_name.upper()}_R 6378137.0
 
 typedef struct {{
     double input[2];   // [lat1, lon1] - point 1 (port 0)
@@ -762,8 +764,10 @@ void {struct_name}_init({struct_name}* b) {{
 
 void {struct_name}_update({struct_name}* b, double t) {{
     (void)t;
-    double lat1 = b->input[0], lon1 = b->input[1];
-    double lat2 = b->input1[0], lon2 = b->input1[1];
+    double lat1 = b->input[0] * M_PI / 180.0;
+    double lon1 = b->input[1] * M_PI / 180.0;
+    double lat2 = b->input1[0] * M_PI / 180.0;
+    double lon2 = b->input1[1] * M_PI / 180.0;
 
     double dlat = lat2 - lat1;
     double dlon = lon2 - lon1;

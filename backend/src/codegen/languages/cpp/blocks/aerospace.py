@@ -639,7 +639,9 @@ public:
 
     void update(double t) {{
         (void)t;
-        double lat = input[0], lon = input[1], alt = input[2];
+        double lat = input[0] * M_PI / 180.0;
+        double lon = input[1] * M_PI / 180.0;
+        double alt = input[2];
         double sin_lat = std::sin(lat), cos_lat = std::cos(lat);
         double sin_lon = std::sin(lon), cos_lon = std::cos(lon);
 
@@ -745,7 +747,7 @@ public:
     std::array<double, 2> input1 = {{0.0, 0.0}};  // [lat2, lon2] - point 2 (port 1)
     double output = 0.0;  // Distance (m)
 
-    static constexpr double R = 6371000.0;  // Earth mean radius (m)
+    static constexpr double R = 6378137.0;  // WGS84 semi-major axis (m)
 
     void init() {{
         input = {{0.0, 0.0}};
@@ -755,8 +757,10 @@ public:
 
     void update(double t) {{
         (void)t;
-        double lat1 = input[0], lon1 = input[1];
-        double lat2 = input1[0], lon2 = input1[1];
+        double lat1 = input[0] * M_PI / 180.0;
+        double lon1 = input[1] * M_PI / 180.0;
+        double lat2 = input1[0] * M_PI / 180.0;
+        double lon2 = input1[1] * M_PI / 180.0;
 
         double dlat = lat2 - lat1;
         double dlon = lon2 - lon1;

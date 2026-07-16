@@ -607,6 +607,137 @@ class {class_name}:
 '''
 
 
+def lla_to_ecef_template(block: BlockInfo, class_name: str) -> str:
+    """Generate an LLA-to-ECEF conversion block."""
+    return f'''
+import math
+
+class {class_name}:
+    """LLA to ECEF conversion block: {block.name}"""
+
+    A = 6378137.0
+    F = 1.0 / 298.257223563
+    E2 = 2.0 * F - F * F
+
+    def __init__(self):
+        self.input = [0.0, 0.0, 0.0]
+        self.output = [0.0, 0.0, 0.0]
+
+    def init(self):
+        self.output = [0.0, 0.0, 0.0]
+
+    def update(self, t: float):
+        lat = math.radians(self.input[0])
+        lon = math.radians(self.input[1])
+        alt = self.input[2]
+        sin_lat = math.sin(lat)
+        radius = self.A / math.sqrt(1.0 - self.E2 * sin_lat * sin_lat)
+        self.output = [
+            (radius + alt) * math.cos(lat) * math.cos(lon),
+            (radius + alt) * math.cos(lat) * math.sin(lon),
+            (radius * (1.0 - self.E2) + alt) * sin_lat,
+        ]
+
+    def get_output(self, port: int = 0) -> float:
+        return self.output[port] if 0 <= port < 3 else 0.0
+
+    def get_output_vector(self) -> list:
+        return list(self.output)
+'''
+
+
+def ecef_to_ned_template(block: BlockInfo, class_name: str) -> str:
+    """Generate an ECEF-to-NED conversion block."""
+    reference = block.parameters.get("referenceLla")
+    if not isinstance(reference, list) or len(reference) < 3:
+        reference = [
+            block.parameters.get("referenceLat", 0.0),
+            block.parameters.get("referenceLon", 0.0),
+            block.parameters.get("referenceAlt", 0.0),
+        ]
+    ref_lat, ref_lon, ref_alt = reference[:3]
+    return f'''
+import math
+
+class {class_name}:
+    """ECEF to NED conversion block: {block.name}"""
+
+    A = 6378137.0
+    F = 1.0 / 298.257223563
+    E2 = 2.0 * F - F * F
+
+    def __init__(self):
+        self.input = [0.0, 0.0, 0.0]
+        self.output = [0.0, 0.0, 0.0]
+        self.reference_lla = [{ref_lat!r}, {ref_lon!r}, {ref_alt!r}]
+
+    def init(self):
+        self.output = [0.0, 0.0, 0.0]
+
+    def update(self, t: float):
+        lat = math.radians(self.reference_lla[0])
+        lon = math.radians(self.reference_lla[1])
+        alt = self.reference_lla[2]
+        sin_lat, cos_lat = math.sin(lat), math.cos(lat)
+        sin_lon, cos_lon = math.sin(lon), math.cos(lon)
+        radius = self.A / math.sqrt(1.0 - self.E2 * sin_lat * sin_lat)
+        reference_ecef = [
+            (radius + alt) * cos_lat * cos_lon,
+            (radius + alt) * cos_lat * sin_lon,
+            (radius * (1.0 - self.E2) + alt) * sin_lat,
+        ]
+        dx = self.input[0] - reference_ecef[0]
+        dy = self.input[1] - reference_ecef[1]
+        dz = self.input[2] - reference_ecef[2]
+        self.output = [
+            -sin_lat * cos_lon * dx - sin_lat * sin_lon * dy + cos_lat * dz,
+            -sin_lon * dx + cos_lon * dy,
+            -cos_lat * cos_lon * dx - cos_lat * sin_lon * dy - sin_lat * dz,
+        ]
+
+    def get_output(self, port: int = 0) -> float:
+        return self.output[port] if 0 <= port < 3 else 0.0
+
+    def get_output_vector(self) -> list:
+        return list(self.output)
+'''
+
+
+def great_circle_distance_template(block: BlockInfo, class_name: str) -> str:
+    """Generate a degree-input great-circle-distance block."""
+    return f'''
+import math
+
+class {class_name}:
+    """Great-circle distance block: {block.name}"""
+
+    R = 6378137.0
+
+    def __init__(self):
+        self.input = [0.0, 0.0]
+        self.input1 = [0.0, 0.0]
+        self.output = 0.0
+
+    def init(self):
+        self.output = 0.0
+
+    def update(self, t: float):
+        lat1, lon1 = map(math.radians, self.input)
+        lat2, lon2 = map(math.radians, self.input1)
+        dlat = lat2 - lat1
+        dlon = lon2 - lon1
+        haversine = (
+            math.sin(dlat / 2.0) ** 2
+            + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2.0) ** 2
+        )
+        central_angle = 2.0 * math.atan2(math.sqrt(haversine), math.sqrt(1.0 - haversine))
+        self.output = self.R * central_angle
+
+    def get_output(self, port: int = 0) -> float:
+        return self.output
+'''
+
+
 # Template registry for aerospace blocks
 AEROSPACE_TEMPLATES = {
     "quaternion_normalize": quaternion_normalize_template,
@@ -621,4 +752,7 @@ AEROSPACE_TEMPLATES = {
     "flat_earth_gravity": flat_earth_gravity_template,
     "wgs84_gravity": wgs84_gravity_template,
     "six_dof_euler": six_dof_euler_template,
+    "lla_to_ecef": lla_to_ecef_template,
+    "ecef_to_ned": ecef_to_ned_template,
+    "great_circle_distance": great_circle_distance_template,
 }
