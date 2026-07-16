@@ -42,18 +42,18 @@ This report compares the outputs of generated code against the headless simulati
 | 42_rf_receiver_chain | PASS | PASS | PASS | PASS |
 | 43_rf_am_modulation | PASS | PASS | PASS | PASS |
 | 44_nav_coordinate_transform | PASS | PASS | PASS | PASS |
-| 45_sensor_fusion_ahrs | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH |
+| 45_sensor_fusion_ahrs | PASS | PASS | PASS | PASS |
 | 46_sensor_fusion_tracking | PASS | PASS | PASS | PASS |
 | 50_lorenz_attractor_3d | PASS | PASS | PASS | PASS |
 
 ## Statistics
 
 - Total tests: 156
-- Passed: 136 (87.2%)
+- Passed: 140 (89.7%)
 - Simulation failures: 0
 - Build failures: 0
 - Run failures: 16
-- Output validation failures: 4
+- Output validation failures: 0
 
 ## Detailed Failures
 
@@ -136,35 +136,3 @@ This report compares the outputs of generated code against the headless simulati
 
 - Run failed: Results CSV contains no output columns
 - Failure category: `missing_or_empty_output_set`
-
-### 45_sensor_fusion_ahrs (python)
-
-- Max relative error: 100.0000%
-- Headless final values: {'sink=scope_quat|in=0|source=madgwick|out=0|element=0': 1.0, 'sink=scope_quat|in=0|source=madgwick|out=0|element=1': 0.0, 'sink=scope_quat|in=0|source=madgwick|out=0|element=2': 0.0, 'sink=scope_quat|in=0|source=madgwick|out=0|element=3': 0.0, 'sink=scope_comp|in=0|source=rad2deg_comp|out=0|element=scalar': 0.0, 'sink=scope_madgwick|in=0|source=rad2deg_madg|out=0|element=scalar': 0.0}
-- Codegen final values: {'sink=scope_quat|in=0|source=madgwick|out=0|element=0': 0.0, 'sink=scope_quat|in=0|source=madgwick|out=0|element=1': 0.0, 'sink=scope_quat|in=0|source=madgwick|out=0|element=2': 0.0, 'sink=scope_quat|in=0|source=madgwick|out=0|element=3': 0.0, 'sink=scope_comp|in=0|source=rad2deg_comp|out=0|element=scalar': 0.0, 'sink=scope_madgwick|in=0|source=rad2deg_madg|out=0|element=scalar': 0.0}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_quat|in=0|source=madgwick|out=0|element=0']
-
-### 45_sensor_fusion_ahrs (cpp)
-
-- Max relative error: 6789.6700%
-- Headless final values: {'sink=scope_quat|in=0|source=madgwick|out=0|element=0': 1.0, 'sink=scope_quat|in=0|source=madgwick|out=0|element=1': 0.0, 'sink=scope_quat|in=0|source=madgwick|out=0|element=2': 0.0, 'sink=scope_quat|in=0|source=madgwick|out=0|element=3': 0.0, 'sink=scope_comp|in=0|source=rad2deg_comp|out=0|element=scalar': 0.0, 'sink=scope_madgwick|in=0|source=rad2deg_madg|out=0|element=scalar': 0.0}
-- Codegen final values: {'sink=scope_quat|in=0|source=madgwick|out=0|element=0': 0.948972, 'sink=scope_quat|in=0|source=madgwick|out=0|element=1': 0.0146123, 'sink=scope_quat|in=0|source=madgwick|out=0|element=2': -0.0069083, 'sink=scope_quat|in=0|source=madgwick|out=0|element=3': -0.314947, 'sink=scope_comp|in=0|source=rad2deg_comp|out=0|element=scalar': 67.8967, 'sink=scope_madgwick|in=0|source=rad2deg_madg|out=0|element=scalar': 1.83866}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_comp|in=0|source=rad2deg_comp|out=0|element=scalar', 'sink=scope_madgwick|in=0|source=rad2deg_madg|out=0|element=scalar', 'sink=scope_quat|in=0|source=madgwick|out=0|element=0', 'sink=scope_quat|in=0|source=madgwick|out=0|element=3']
-
-### 45_sensor_fusion_ahrs (c)
-
-- Max relative error: 6810.3300%
-- Headless final values: {'sink=scope_quat|in=0|source=madgwick|out=0|element=0': 1.0, 'sink=scope_quat|in=0|source=madgwick|out=0|element=1': 0.0, 'sink=scope_quat|in=0|source=madgwick|out=0|element=2': 0.0, 'sink=scope_quat|in=0|source=madgwick|out=0|element=3': 0.0, 'sink=scope_comp|in=0|source=rad2deg_comp|out=0|element=scalar': 0.0, 'sink=scope_madgwick|in=0|source=rad2deg_madg|out=0|element=scalar': 0.0}
-- Codegen final values: {'sink=scope_quat|in=0|source=madgwick|out=0|element=0': 0.950285, 'sink=scope_quat|in=0|source=madgwick|out=0|element=1': 0.00747159, 'sink=scope_quat|in=0|source=madgwick|out=0|element=2': -0.00969553, 'sink=scope_quat|in=0|source=madgwick|out=0|element=3': -0.311139, 'sink=scope_comp|in=0|source=rad2deg_comp|out=0|element=scalar': 68.1033, 'sink=scope_madgwick|in=0|source=rad2deg_madg|out=0|element=scalar': 1.15949}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_comp|in=0|source=rad2deg_comp|out=0|element=scalar', 'sink=scope_madgwick|in=0|source=rad2deg_madg|out=0|element=scalar', 'sink=scope_quat|in=0|source=madgwick|out=0|element=0', 'sink=scope_quat|in=0|source=madgwick|out=0|element=3']
-
-### 45_sensor_fusion_ahrs (rust)
-
-- Max relative error: 6798.7109%
-- Headless final values: {'sink=scope_quat|in=0|source=madgwick|out=0|element=0': 1.0, 'sink=scope_quat|in=0|source=madgwick|out=0|element=1': 0.0, 'sink=scope_quat|in=0|source=madgwick|out=0|element=2': 0.0, 'sink=scope_quat|in=0|source=madgwick|out=0|element=3': 0.0, 'sink=scope_comp|in=0|source=rad2deg_comp|out=0|element=scalar': 0.0, 'sink=scope_madgwick|in=0|source=rad2deg_madg|out=0|element=scalar': 0.0}
-- Codegen final values: {'sink=scope_quat|in=0|source=madgwick|out=0|element=0': 0.9502, 'sink=scope_quat|in=0|source=madgwick|out=0|element=1': 0.010249, 'sink=scope_quat|in=0|source=madgwick|out=0|element=2': -0.009641, 'sink=scope_quat|in=0|source=madgwick|out=0|element=3': -0.311323, 'sink=scope_comp|in=0|source=rad2deg_comp|out=0|element=scalar': 67.987109, 'sink=scope_madgwick|in=0|source=rad2deg_madg|out=0|element=scalar': 1.460164}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_comp|in=0|source=rad2deg_comp|out=0|element=scalar', 'sink=scope_madgwick|in=0|source=rad2deg_madg|out=0|element=scalar', 'sink=scope_quat|in=0|source=madgwick|out=0|element=0', 'sink=scope_quat|in=0|source=madgwick|out=0|element=3']
