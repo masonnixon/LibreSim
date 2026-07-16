@@ -318,7 +318,11 @@ class {class_name}:
                         update_calls.append(wire_line)
                 if block_match.ready_only:
                     update_calls.append(f"        if ready:\n            self.{var_name}.update(t)")
-                elif block_match.type == "rate_limiter":
+                elif block_match.type in {
+                    "rate_limiter",
+                    "madgwick_filter",
+                    "complementary_filter",
+                }:
                     update_calls.append(f"        self.{var_name}.update(t, dt)")
                 else:
                     update_calls.append(f"        self.{var_name}.update(t)")
@@ -520,9 +524,12 @@ def run_simulation(
                         # Vector-to-vector: use get_output_vector()
                         # For port 0 use 'input', for port 1+ use 'input1', 'input2', etc.
                         input_field = "input" if port_idx == 0 else f"input{port_idx}"
+                        vector_suffix = (
+                            "" if source_block.type != "demux" or source_port == 0 else str(source_port)
+                        )
                         lines.append(
                             f"        self.{var_name}.{input_field} = "
-                            f"self.{source_var}.get_output_vector()"
+                            f"self.{source_var}.get_output_vector{vector_suffix}()"
                         )
                     elif target_port is not None and target_port > 0:
                         lines.append(
@@ -570,9 +577,12 @@ def run_simulation(
                         # Vector-to-vector: use get_output_vector()
                         # For port 0 use 'input', for port 1+ use 'input1', 'input2', etc.
                         input_field = "input" if port_idx == 0 else f"input{port_idx}"
+                        vector_suffix = (
+                            "" if source_block.type != "demux" or source_port == 0 else str(source_port)
+                        )
                         block_lines.append(
                             f"        self.{var_name}.{input_field} = "
-                            f"self.{source_var}.get_output_vector()"
+                            f"self.{source_var}.get_output_vector{vector_suffix}()"
                         )
                     elif target_port is not None and target_port > 0:
                         block_lines.append(

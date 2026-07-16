@@ -412,32 +412,50 @@ class {class_name}:
 def demux_template(block: BlockInfo, class_name: str) -> str:
     """Generate Demux block code."""
     num_outputs = block.parameters.get("numOutputs", 2)
+    output_widths = block.parameters.get("outputWidths", [1] * num_outputs)
+    total_width = sum(output_widths)
+    output_initializers = ", ".join(f"[0.0] * {width}" for width in output_widths)
+    slices = []
+    offset = 0
+    for port, width in enumerate(output_widths):
+        slices.append(
+            f"            self.outputs[{port}] = list(self.input[{offset}:{offset + width}])"
+        )
+        offset += width
+    slice_code = "\n".join(slices)
+    vector_getters = []
+    for port in range(num_outputs):
+        suffix = "" if port == 0 else str(port)
+        vector_getters.append(
+            f'''    def get_output_vector{suffix}(self) -> list:
+        return list(self.outputs[{port}])'''
+        )
+    getter_code = "\n\n".join(vector_getters)
     return f'''
 class {class_name}:
     """Demux block: {block.name}"""
 
     def __init__(self):
         self.num_outputs = {num_outputs}
-        self.input = [0.0] * {num_outputs}  # Vector input
-        self.outputs = [0.0] * {num_outputs}
+        self.input = [0.0] * {total_width}
+        self.outputs = [{output_initializers}]
 
     def init(self):
-        self.outputs = [0.0] * self.num_outputs
+        self.input = [0.0] * {total_width}
+        self.outputs = [{output_initializers}]
 
     def update(self, t: float):
         if isinstance(self.input, (list, tuple)):
-            for i in range(min(len(self.input), self.num_outputs)):
-                self.outputs[i] = self.input[i]
+{slice_code}
         else:
-            self.outputs[0] = self.input
+            self.outputs[0][0] = self.input
 
     def get_output(self, port: int = 0) -> float:
         if port < len(self.outputs):
-            return self.outputs[port]
+            return self.outputs[port][0]
         return 0.0
 
-    def get_output_vector(self) -> list:
-        return list(self.outputs)
+{getter_code}
 '''
 
 

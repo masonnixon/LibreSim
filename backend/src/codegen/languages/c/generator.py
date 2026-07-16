@@ -339,7 +339,11 @@ void model_propagate_integrators(Model* model, double dt, int kpass, const char*
                     update_calls.append(
                         f"    if (ready) {{ {struct_name}_update(&model->{var_name}, t); }}"
                     )
-                elif block_match.type == "rate_limiter":
+                elif block_match.type in {
+                    "rate_limiter",
+                    "madgwick_filter",
+                    "complementary_filter",
+                }:
                     update_calls.append(f"    {struct_name}_update(&model->{var_name}, t, dt);")
                 else:
                     update_calls.append(f"    {struct_name}_update(&model->{var_name}, t);")

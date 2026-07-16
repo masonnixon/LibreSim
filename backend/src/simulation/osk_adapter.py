@@ -525,7 +525,7 @@ PARAM_MAP: dict[str, dict[str, str]] = {
     "trigonometry": {"function": "function"},
     "switch": {"threshold": "threshold", "criteria": "criteria"},
     "mux": {"numInputs": "num_inputs"},
-    "demux": {"numOutputs": "num_outputs"},
+    "demux": {"numOutputs": "num_outputs", "outputWidths": "output_widths"},
     "reshape": {"outputDimensions": "output_dimensions"},
     "minmax": {"function": "function", "numInputs": "num_inputs"},
     "rounding": {"function": "mode"},
@@ -864,7 +864,11 @@ class _OutputPortView:
 
     def getOutputVector(self):
         """Return vector data only when this specific port is vector-valued."""
-        if not self._is_vector or not hasattr(self._block, "getOutputVector"):
+        if not self._is_vector:
+            return None
+        if hasattr(self._block, "getOutputPortVector"):
+            return self._block.getOutputPortVector(self._source_port)
+        if not hasattr(self._block, "getOutputVector"):
             return None
         return self._block.getOutputVector()
 

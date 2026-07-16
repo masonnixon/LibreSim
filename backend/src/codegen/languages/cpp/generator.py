@@ -321,7 +321,11 @@ public:
                         update_calls.append(wire_line)
                 if block_match.ready_only:
                     update_calls.append(f"    if (ready) {{ {var_name}.update(t); }}")
-                elif block_match.type == "rate_limiter":
+                elif block_match.type in {
+                    "rate_limiter",
+                    "madgwick_filter",
+                    "complementary_filter",
+                }:
                     update_calls.append(f"    {var_name}.update(t, dt);")
                 else:
                     update_calls.append(f"    {var_name}.update(t);")

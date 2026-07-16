@@ -907,18 +907,28 @@ class Demux(Block):
     separate scalar outputs. It's the inverse of the Mux block.
     """
 
-    def __init__(self, num_outputs=2):
+    def __init__(self, num_outputs=2, output_widths=None):
         super().__init__()
         # Ensure num_outputs is an integer (may come as float from JSON)
         self.num_outputs = int(num_outputs)
+        self.output_widths = (
+            [int(width) for width in output_widths]
+            if output_widths is not None
+            else [1] * self.num_outputs
+        )
+        if len(self.output_widths) != self.num_outputs or any(
+            width < 1 for width in self.output_widths
+        ):
+            raise ValueError("output_widths must contain one positive width per output")
+        self.total_width = sum(self.output_widths)
         self.input = 0.0
-        self.input_vector = [0.0] * self.num_outputs
+        self.input_vector = [0.0] * self.total_width
         self.input_block = None
         self.input_source_port = 0
         self.outputs = [0.0] * self.num_outputs
 
     def init(self):
-        self.input_vector = [0.0] * self.num_outputs
+        self.input_vector = [0.0] * self.total_width
         self.outputs = [0.0] * self.num_outputs
 
     def setInput(self, value, port=0):
@@ -967,12 +977,11 @@ class Demux(Block):
                 if len(self.input_vector) > 0:
                     self.input_vector[0] = self.input
 
-        # Copy to outputs
-        for i in range(self.num_outputs):
-            if i < len(self.input_vector):
-                self.outputs[i] = self.input_vector[i]
-            else:
-                self.outputs[i] = 0.0
+        # Preserve scalar output-port behavior by exposing the first value in each segment.
+        offset = 0
+        for port, width in enumerate(self.output_widths):
+            self.outputs[port] = self.input_vector[offset]
+            offset += width
 
     def getOutput(self, port=0):
         """Get output at specified port."""
@@ -981,12 +990,19 @@ class Demux(Block):
         return 0.0
 
     def getOutputVector(self):
-        """Get all outputs as a vector.
+        """Get all outputs as one flattened vector for legacy callers.
 
         This allows downstream blocks that expect vector input to read
         from the Demux outputs as if it were a single vector signal.
         """
-        return self.outputs.copy()
+        return self.input_vector.copy()
+
+    def getOutputPortVector(self, port=0):
+        """Return the vector segment belonging to one declared output port."""
+        if port < 0 or port >= self.num_outputs:
+            return None
+        offset = sum(self.output_widths[:port])
+        return self.input_vector[offset : offset + self.output_widths[port]]
 
 
 class Bias(Block):
