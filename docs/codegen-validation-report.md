@@ -37,7 +37,7 @@ This report compares the outputs of generated code against the headless simulati
 | 35_pi_pd_controllers | PASS | PASS | PASS | PASS |
 | 36_model_reference_control | PASS | PASS | PASS | PASS |
 | 37_pole_placement_control | PASS | PASS | PASS | PASS |
-| 40_dsp_fft_spectrum | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH | NUMERICAL MISMATCH |
+| 40_dsp_fft_spectrum | PASS | PASS | PASS | PASS |
 | 41_dsp_fir_lowpass | PASS | PASS | PASS | PASS |
 | 42_rf_receiver_chain | PASS | PASS | PASS | PASS |
 | 43_rf_am_modulation | PASS | PASS | PASS | PASS |
@@ -49,11 +49,11 @@ This report compares the outputs of generated code against the headless simulati
 ## Statistics
 
 - Total tests: 156
-- Passed: 132 (84.6%)
+- Passed: 136 (87.2%)
 - Simulation failures: 0
 - Build failures: 0
 - Run failures: 16
-- Output validation failures: 8
+- Output validation failures: 4
 
 ## Detailed Failures
 
@@ -136,38 +136,6 @@ This report compares the outputs of generated code against the headless simulati
 
 - Run failed: Results CSV contains no output columns
 - Failure category: `missing_or_empty_output_set`
-
-### 40_dsp_fft_spectrum (python)
-
-- Max relative error: 14.1008%
-- Headless final values: {'sink=scope_time|in=0|source=sum_signals|out=0|element=scalar': -0.14100775204932509, 'sink=scope_freq|in=0|source=fft|out=0|element=scalar': 0.0}
-- Codegen final values: {'sink=scope_time|in=0|source=sum_signals|out=0|element=scalar': -0.14100775204932509, 'sink=scope_freq|in=0|source=fft|out=0|element=scalar': -0.14100775204932509}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_freq|in=0|source=fft|out=0|element=scalar']
-
-### 40_dsp_fft_spectrum (cpp)
-
-- Max relative error: 14.1008%
-- Headless final values: {'sink=scope_time|in=0|source=sum_signals|out=0|element=scalar': -0.14100775204932509, 'sink=scope_freq|in=0|source=fft|out=0|element=scalar': 0.0}
-- Codegen final values: {'sink=scope_time|in=0|source=sum_signals|out=0|element=scalar': -0.141008, 'sink=scope_freq|in=0|source=fft|out=0|element=scalar': -0.141008}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_freq|in=0|source=fft|out=0|element=scalar']
-
-### 40_dsp_fft_spectrum (c)
-
-- Max relative error: 14.1008%
-- Headless final values: {'sink=scope_time|in=0|source=sum_signals|out=0|element=scalar': -0.14100775204932509, 'sink=scope_freq|in=0|source=fft|out=0|element=scalar': 0.0}
-- Codegen final values: {'sink=scope_time|in=0|source=sum_signals|out=0|element=scalar': -0.141008, 'sink=scope_freq|in=0|source=fft|out=0|element=scalar': -0.141008}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_freq|in=0|source=fft|out=0|element=scalar']
-
-### 40_dsp_fft_spectrum (rust)
-
-- Max relative error: 14.1008%
-- Headless final values: {'sink=scope_time|in=0|source=sum_signals|out=0|element=scalar': -0.14100775204932509, 'sink=scope_freq|in=0|source=fft|out=0|element=scalar': 0.0}
-- Codegen final values: {'sink=scope_time|in=0|source=sum_signals|out=0|element=scalar': -0.141008, 'sink=scope_freq|in=0|source=fft|out=0|element=scalar': -0.141008}
-- Failure category: `numerical_mismatch`
-- Mismatched outputs: ['sink=scope_freq|in=0|source=fft|out=0|element=scalar']
 
 ### 45_sensor_fusion_ahrs (python)
 
