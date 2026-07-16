@@ -241,6 +241,54 @@ def canonicalize_headless_results(
                 )
             canonical_series[output.canonical_key] = trace
 
+    raw_analyses = results.get("analyses", {})
+    if not isinstance(raw_analyses, Mapping):
+        raise OutputValidationError(
+            FailureCategory.MALFORMED_OUTPUT,
+            "Headless results 'analyses' must be a mapping",
+        )
+
+    for sink_id, schema in signals_by_sink.items():
+        if sink_id in seen_sinks or not all(
+            output.canonical_key.startswith("analysis=") for output in schema
+        ):
+            continue
+        if len(schema) != 1:
+            raise OutputValidationError(
+                FailureCategory.OUTPUT_SHAPE_MISMATCH,
+                f"Headless analysis '{sink_id}' must expose exactly one scalar output",
+            )
+        raw_analysis = raw_analyses.get(sink_id)
+        if not isinstance(raw_analysis, Mapping) or "output" not in raw_analysis:
+            raise OutputValidationError(
+                FailureCategory.MISSING_OR_EMPTY_OUTPUT_SET,
+                f"Headless analysis '{sink_id}' has no declared scalar output",
+            )
+        try:
+            value = float(raw_analysis["output"])
+        except (TypeError, ValueError) as exc:
+            raise OutputValidationError(
+                FailureCategory.MALFORMED_OUTPUT,
+                f"Headless analysis '{sink_id}' has a non-numeric scalar output",
+            ) from exc
+        if not math.isfinite(value):
+            raise OutputValidationError(
+                FailureCategory.NONFINITE_OUTPUT,
+                f"Headless analysis '{sink_id}' has a non-finite scalar output",
+            )
+
+        if not canonical_times:
+            statistics = results.get("statistics", {})
+            final_time = statistics.get("finalTime", 0.0) if isinstance(statistics, Mapping) else 0.0
+            try:
+                canonical_times = (float(final_time),)
+            except (TypeError, ValueError) as exc:
+                raise OutputValidationError(
+                    FailureCategory.MALFORMED_OUTPUT,
+                    "Headless results have a non-numeric final time",
+                ) from exc
+        canonical_series[schema[0].canonical_key] = tuple(value for _ in canonical_times)
+
     return ParsedOutput(times=canonical_times, series=canonical_series)
 
 

@@ -1682,6 +1682,7 @@ class OSKAdapter:
             compiled_block = self._block_map.get(block_id)
             if osk_block and hasattr(osk_block, "getData"):
                 data = osk_block.getData()
+                data["output"] = float(osk_block.getOutput())
                 # Add block name for display
                 if compiled_block:
                     data["name"] = compiled_block.name

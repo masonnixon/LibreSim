@@ -139,6 +139,8 @@ class BlockInfo:
     custom_state_propagation: bool = False
     # Nominal simulation step used by internally-discrete block templates.
     step_size: float = 0.01
+    # Scalar declared output precomputed for terminal control-analysis blocks.
+    analysis_output: float | None = None
 
 
 @dataclass

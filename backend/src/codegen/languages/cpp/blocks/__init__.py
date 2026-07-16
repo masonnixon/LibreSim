@@ -5,6 +5,7 @@ from collections.abc import Callable
 from ....models import BlockInfo
 from .aerospace import AEROSPACE_TEMPLATES
 from .continuous import CONTINUOUS_TEMPLATES
+from .control_analysis import CONTROL_ANALYSIS_TEMPLATES
 from .control_design import CONTROL_DESIGN_TEMPLATES
 from .discrete import DISCRETE_TEMPLATES
 from .dsp import DSP_TEMPLATES
@@ -30,6 +31,7 @@ BLOCK_TEMPLATES: dict[str, Callable[[BlockInfo, str], str]] = {
     **LOGIC_TEMPLATES,
     **SIGNAL_PROCESSING_TEMPLATES,
     **NONLINEAR_TEMPLATES,
+    **CONTROL_ANALYSIS_TEMPLATES,
     **CONTROL_DESIGN_TEMPLATES,
     **AEROSPACE_TEMPLATES,
     **DSP_TEMPLATES,

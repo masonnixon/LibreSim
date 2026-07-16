@@ -7,6 +7,7 @@ from urllib.parse import quote
 from src.models.model import Model
 from src.simulation.compiler import ModelCompiler
 
+from .analysis import ANALYSIS_BLOCK_TYPES, compute_analysis_output
 from .models import (
     BlockInfo,
     CompiledModelInfo,
@@ -122,10 +123,15 @@ SINK_BLOCKS = {
     "display",
     "terminator",
     "xy_graph",
-}
+} | ANALYSIS_BLOCK_TYPES
 
 # Sink types whose inputs are observable in backend simulation results.
-OBSERVABLE_SINK_BLOCKS = {"scope", "scope_3d", "display", "to_workspace"}
+OBSERVABLE_SINK_BLOCKS = {
+    "scope",
+    "scope_3d",
+    "display",
+    "to_workspace",
+} | ANALYSIS_BLOCK_TYPES
 
 
 @dataclass
@@ -283,6 +289,16 @@ class CodeGenerator:
             if compiled_block.type in SINK_BLOCKS:
                 sink_blocks.append(block_id)
 
+        blocks_by_id = {block.id: block for block in blocks}
+        for block in blocks:
+            if block.type in ANALYSIS_BLOCK_TYPES:
+                try:
+                    block.analysis_output = compute_analysis_output(block, blocks_by_id)
+                except (TypeError, ValueError) as exc:
+                    raise CodeGenerationError(
+                        f"Failed to precompute analysis block '{block.id}': {exc}"
+                    ) from exc
+
         output_signals = self._extract_output_signals(blocks, sink_blocks)
 
         return CompiledModelInfo(
@@ -310,6 +326,32 @@ class CodeGenerator:
         for sink_id in sink_blocks:
             sink = block_by_id.get(sink_id)
             if sink is None or sink.type not in OBSERVABLE_SINK_BLOCKS:
+                continue
+
+            if sink.type in ANALYSIS_BLOCK_TYPES:
+                dimensions = (
+                    tuple(sink.output_dimensions[0]) if sink.output_dimensions else (1,)
+                )
+                if dimensions != (1,):
+                    raise CodeGenerationError(
+                        f"Analysis block '{sink_id}' must declare one scalar output"
+                    )
+                canonical_key = (
+                    f"analysis={quote(sink_id, safe='')}|out=0|element=scalar"
+                )
+                outputs.append(
+                    OutputSignalInfo(
+                        canonical_key=canonical_key,
+                        sink_block_id=sink_id,
+                        sink_input_port=0,
+                        source_block_id=sink_id,
+                        source_output_port=0,
+                        dimensions=dimensions,
+                        element_index=(0,),
+                        flat_index=0,
+                    )
+                )
+                seen_keys.add(canonical_key)
                 continue
 
             connections: list[tuple[int, str, int]] = []

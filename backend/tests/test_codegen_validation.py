@@ -4,12 +4,27 @@ from io import StringIO
 
 import pytest
 
+from src.codegen.models import OutputSignalInfo
 from src.codegen.validation import (
     FailureCategory,
     OutputValidationError,
+    canonicalize_headless_results,
     compare_final_values,
     parse_results_csv,
 )
+
+ANALYSIS_SCHEMA = [
+    OutputSignalInfo(
+        canonical_key="analysis=analysis-1|out=0|element=scalar",
+        sink_block_id="analysis-1",
+        sink_input_port=0,
+        source_block_id="analysis-1",
+        source_output_port=0,
+        dimensions=(1,),
+        element_index=(0,),
+        flat_index=0,
+    )
+]
 
 
 def test_parse_results_csv_preserves_named_series():
@@ -50,6 +65,39 @@ def test_compare_final_values_is_order_independent_but_key_strict():
 
     assert result.matches
     assert result.failure_category is None
+
+
+def test_canonicalize_headless_analysis_uses_declared_scalar_output():
+    parsed = canonicalize_headless_results(
+        {
+            "signals": [],
+            "analyses": {"analysis-1": {"output": 2.5, "richData": [1, 2, 3]}},
+            "statistics": {"finalTime": 4.0},
+        },
+        ANALYSIS_SCHEMA,
+    )
+
+    assert parsed.times == (4.0,)
+    assert parsed.final_values == {"analysis=analysis-1|out=0|element=scalar": 2.5}
+
+
+@pytest.mark.parametrize(
+    ("analyses", "category"),
+    [
+        ({}, FailureCategory.MISSING_OR_EMPTY_OUTPUT_SET),
+        ({"analysis-1": {}}, FailureCategory.MISSING_OR_EMPTY_OUTPUT_SET),
+        ({"analysis-1": {"output": "nope"}}, FailureCategory.MALFORMED_OUTPUT),
+        ({"analysis-1": {"output": float("nan")}}, FailureCategory.NONFINITE_OUTPUT),
+    ],
+)
+def test_canonicalize_headless_analysis_rejects_invalid_outputs(analyses, category):
+    with pytest.raises(OutputValidationError) as exc_info:
+        canonicalize_headless_results(
+            {"signals": [], "analyses": analyses, "statistics": {"finalTime": 1.0}},
+            ANALYSIS_SCHEMA,
+        )
+
+    assert exc_info.value.category == category
 
 
 @pytest.mark.parametrize(
