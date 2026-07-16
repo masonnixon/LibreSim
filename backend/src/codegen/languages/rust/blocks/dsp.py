@@ -1,6 +1,106 @@
 """Rust templates for DSP (Digital Signal Processing) blocks."""
 
+from ....dsp_utils import window_coefficients
 from ....models import BlockInfo
+
+
+def template_fft(block: BlockInfo, struct_name: str) -> str:
+    """Generate a real-input DFT with OSK-compatible interleaved output."""
+    n_points = block.parameters.get("nPoints", block.parameters.get("n_points", 64))
+    return f"""
+/// {block.name} - Real-input DFT
+#[derive(Clone)]
+pub struct {struct_name} {{
+    pub input: [f64; {n_points}],
+    pub output: [f64; {2 * n_points}],
+}}
+
+impl {struct_name} {{
+    pub fn new() -> Self {{
+        Self {{ input: [0.0; {n_points}], output: [0.0; {2 * n_points}] }}
+    }}
+
+    pub fn init(&mut self) {{
+        self.input = [0.0; {n_points}];
+        self.output = [0.0; {2 * n_points}];
+    }}
+
+    pub fn update(&mut self, _t: f64) {{
+        for k in 0..{n_points} {{
+            let mut real_sum = 0.0;
+            let mut imag_sum = 0.0;
+            for n in 0..{n_points} {{
+                let angle = -std::f64::consts::TAU * (k * n) as f64 / {n_points}_f64;
+                real_sum += self.input[n] * angle.cos();
+                imag_sum += self.input[n] * angle.sin();
+            }}
+            self.output[2 * k] = real_sum;
+            self.output[2 * k + 1] = imag_sum;
+        }}
+    }}
+
+    pub fn get_output(&self, port: usize) -> f64 {{
+        if port < {2 * n_points} {{ self.output[port] }} else {{ 0.0 }}
+    }}
+
+    pub fn get_output_vector(&self) -> &[f64; {2 * n_points}] {{
+        &self.output
+    }}
+}}
+
+impl Default for {struct_name} {{
+    fn default() -> Self {{ Self::new() }}
+}}
+"""
+
+
+def template_window_function(block: BlockInfo, struct_name: str) -> str:
+    """Generate a frame window with coefficients identical to the OSK."""
+    window_type = block.parameters.get("windowType", block.parameters.get("window_type", "hamming"))
+    length = block.parameters.get("length", 64)
+    beta = block.parameters.get("beta", 5.0)
+    coefficients = window_coefficients(str(window_type), int(length), float(beta))
+    values = ", ".join(f"{value}_f64" for value in coefficients)
+    return f"""
+/// {block.name} - {window_type} window
+#[derive(Clone)]
+pub struct {struct_name} {{
+    pub window: [f64; {length}],
+    pub input: [f64; {length}],
+    pub output: [f64; {length}],
+}}
+
+impl {struct_name} {{
+    pub fn new() -> Self {{
+        Self {{
+            window: [{values}],
+            input: [0.0; {length}],
+            output: [0.0; {length}],
+        }}
+    }}
+
+    pub fn init(&mut self) {{
+        self.input = [0.0; {length}];
+        self.output = [0.0; {length}];
+    }}
+
+    pub fn update(&mut self, _t: f64) {{
+        for i in 0..{length} {{ self.output[i] = self.input[i] * self.window[i]; }}
+    }}
+
+    pub fn get_output(&self, port: usize) -> f64 {{
+        if port < {length} {{ self.output[port] }} else {{ 0.0 }}
+    }}
+
+    pub fn get_output_vector(&self) -> &[f64; {length}] {{
+        &self.output
+    }}
+}}
+
+impl Default for {struct_name} {{
+    fn default() -> Self {{ Self::new() }}
+}}
+"""
 
 
 def template_fir_filter(block: BlockInfo, struct_name: str) -> str:
@@ -597,6 +697,8 @@ impl Default for {struct_name} {{
 
 
 DSP_TEMPLATES = {
+    "fft": template_fft,
+    "window_function": template_window_function,
     "fir_filter": template_fir_filter,
     "iir_filter": template_iir_filter,
     "mean": template_mean,

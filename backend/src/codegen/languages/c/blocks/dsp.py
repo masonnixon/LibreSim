@@ -1,6 +1,86 @@
 """C templates for DSP (Digital Signal Processing) blocks."""
 
+from ....dsp_utils import window_coefficients
 from ....models import BlockInfo
+
+
+def template_fft(block: BlockInfo, struct_name: str) -> str:
+    """Generate a real-input DFT with OSK-compatible interleaved output."""
+    n_points = block.parameters.get("nPoints", block.parameters.get("n_points", 64))
+    return f"""
+// {block.name} - Real-input DFT
+typedef struct {{
+    double input[{n_points}];
+    double output[{2 * n_points}];
+}} {struct_name};
+
+void {struct_name}_init({struct_name}* b) {{
+    for (int i = 0; i < {n_points}; i++) b->input[i] = 0.0;
+    for (int i = 0; i < {2 * n_points}; i++) b->output[i] = 0.0;
+}}
+
+void {struct_name}_update({struct_name}* b, double t) {{
+    (void)t;
+    for (int k = 0; k < {n_points}; k++) {{
+        double real_sum = 0.0;
+        double imag_sum = 0.0;
+        for (int n = 0; n < {n_points}; n++) {{
+            double angle = -6.283185307179586476925286766559 * k * n / {n_points};
+            real_sum += b->input[n] * cos(angle);
+            imag_sum += b->input[n] * sin(angle);
+        }}
+        b->output[2 * k] = real_sum;
+        b->output[2 * k + 1] = imag_sum;
+    }}
+}}
+
+double {struct_name}_get_output({struct_name}* b, int port) {{
+    return (port >= 0 && port < {2 * n_points}) ? b->output[port] : 0.0;
+}}
+
+static inline double* {struct_name}_get_output_vector({struct_name}* b) {{
+    return b->output;
+}}
+"""
+
+
+def template_window_function(block: BlockInfo, struct_name: str) -> str:
+    """Generate a frame window with coefficients identical to the OSK."""
+    window_type = block.parameters.get("windowType", block.parameters.get("window_type", "hamming"))
+    length = block.parameters.get("length", 64)
+    beta = block.parameters.get("beta", 5.0)
+    coefficients = window_coefficients(str(window_type), int(length), float(beta))
+    values = ", ".join(repr(value) for value in coefficients)
+    return f"""
+// {block.name} - {window_type} window
+typedef struct {{
+    double window[{length}];
+    double input[{length}];
+    double output[{length}];
+}} {struct_name};
+
+void {struct_name}_init({struct_name}* b) {{
+    const double coefficients[{length}] = {{{values}}};
+    for (int i = 0; i < {length}; i++) {{
+        b->window[i] = coefficients[i];
+        b->input[i] = 0.0;
+        b->output[i] = 0.0;
+    }}
+}}
+
+void {struct_name}_update({struct_name}* b, double t) {{
+    (void)t;
+    for (int i = 0; i < {length}; i++) b->output[i] = b->input[i] * b->window[i];
+}}
+
+double {struct_name}_get_output({struct_name}* b, int port) {{
+    return (port >= 0 && port < {length}) ? b->output[port] : 0.0;
+}}
+
+static inline double* {struct_name}_get_output_vector({struct_name}* b) {{
+    return b->output;
+}}
+"""
 
 
 def template_fir_filter(block: BlockInfo, struct_name: str) -> str:
@@ -471,6 +551,8 @@ double {struct_name}_get_output({struct_name}* b, int port) {{
 
 
 DSP_TEMPLATES = {
+    "fft": template_fft,
+    "window_function": template_window_function,
     "fir_filter": template_fir_filter,
     "iir_filter": template_iir_filter,
     "mean": template_mean,

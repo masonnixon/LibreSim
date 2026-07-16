@@ -1,6 +1,73 @@
 """Python templates for DSP (Digital Signal Processing) blocks."""
 
+from ....dsp_utils import window_coefficients
 from ....models import BlockInfo
+
+
+def fft_template(block: BlockInfo, class_name: str) -> str:
+    """Generate a real-input DFT with OSK-compatible interleaved output."""
+    n_points = block.parameters.get("nPoints", block.parameters.get("n_points", 64))
+    return f'''
+class {class_name}:
+    """Real-input DFT block: {block.name}"""
+
+    def __init__(self):
+        self.input = [0.0] * {n_points}
+        self.output = [0.0] * {2 * n_points}
+
+    def init(self):
+        self.input = [0.0] * {n_points}
+        self.output = [0.0] * {2 * n_points}
+
+    def update(self, t: float):
+        result = []
+        for k in range({n_points}):
+            real_sum = 0.0
+            imag_sum = 0.0
+            for n in range({n_points}):
+                angle = -2.0 * math.pi * k * n / {n_points}
+                real_sum += self.input[n] * math.cos(angle)
+                imag_sum += self.input[n] * math.sin(angle)
+            result.append(real_sum)
+            result.append(imag_sum)
+        self.output = result
+
+    def get_output(self, port: int = 0) -> float:
+        return self.output[port] if 0 <= port < len(self.output) else 0.0
+
+    def get_output_vector(self) -> list:
+        return list(self.output)
+'''
+
+
+def window_function_template(block: BlockInfo, class_name: str) -> str:
+    """Generate a frame window with coefficients identical to the OSK."""
+    window_type = block.parameters.get("windowType", block.parameters.get("window_type", "hamming"))
+    length = block.parameters.get("length", 64)
+    beta = block.parameters.get("beta", 5.0)
+    coefficients = window_coefficients(str(window_type), int(length), float(beta))
+    return f'''
+class {class_name}:
+    """{window_type} window block: {block.name}"""
+
+    def __init__(self):
+        self.window = {coefficients!r}
+        self.input = [0.0] * {length}
+        self.output = [0.0] * {length}
+
+    def init(self):
+        self.input = [0.0] * {length}
+        self.output = [0.0] * {length}
+
+    def update(self, t: float):
+        self.output = [value * weight for value, weight in zip(self.input, self.window)]
+
+    def get_output(self, port: int = 0) -> float:
+        return self.output[port] if 0 <= port < len(self.output) else 0.0
+
+    def get_output_vector(self) -> list:
+        return list(self.output)
+'''
 
 
 def fir_filter_template(block: BlockInfo, class_name: str) -> str:
@@ -367,6 +434,8 @@ class {class_name}:
 
 # Template registry for DSP blocks
 DSP_TEMPLATES = {
+    "fft": fft_template,
+    "window_function": window_function_template,
     "fir_filter": fir_filter_template,
     "iir_filter": iir_filter_template,
     "mean": mean_template,

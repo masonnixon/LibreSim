@@ -1,6 +1,88 @@
 """C++ templates for DSP (Digital Signal Processing) blocks."""
 
+from ....dsp_utils import window_coefficients
 from ....models import BlockInfo
+
+
+def template_fft(block: BlockInfo, class_name: str) -> str:
+    """Generate a real-input DFT with OSK-compatible interleaved output."""
+    n_points = block.parameters.get("nPoints", block.parameters.get("n_points", 64))
+    return f"""
+// {block.name} - Real-input DFT
+class {class_name} {{
+public:
+    std::array<double, {n_points}> input = {{}};
+
+    void init() {{
+        input.fill(0.0);
+        output_.fill(0.0);
+    }}
+
+    void update(double t) {{
+        (void)t;
+        for (int k = 0; k < {n_points}; k++) {{
+            double real_sum = 0.0;
+            double imag_sum = 0.0;
+            for (int n = 0; n < {n_points}; n++) {{
+                double angle = -6.283185307179586476925286766559 * k * n / {n_points};
+                real_sum += input[n] * std::cos(angle);
+                imag_sum += input[n] * std::sin(angle);
+            }}
+            output_[2 * k] = real_sum;
+            output_[2 * k + 1] = imag_sum;
+        }}
+    }}
+
+    double get_output(int port = 0) const {{
+        return (port >= 0 && port < {2 * n_points}) ? output_[port] : 0.0;
+    }}
+
+    const std::array<double, {2 * n_points}>& getOutputVector() const {{
+        return output_;
+    }}
+
+private:
+    std::array<double, {2 * n_points}> output_ = {{}};
+}};
+"""
+
+
+def template_window_function(block: BlockInfo, class_name: str) -> str:
+    """Generate a frame window with coefficients identical to the OSK."""
+    window_type = block.parameters.get("windowType", block.parameters.get("window_type", "hamming"))
+    length = block.parameters.get("length", 64)
+    beta = block.parameters.get("beta", 5.0)
+    coefficients = window_coefficients(str(window_type), int(length), float(beta))
+    values = ", ".join(repr(value) for value in coefficients)
+    return f"""
+// {block.name} - {window_type} window
+class {class_name} {{
+public:
+    std::array<double, {length}> window = {{{{{values}}}}};
+    std::array<double, {length}> input = {{}};
+
+    void init() {{
+        input.fill(0.0);
+        output_.fill(0.0);
+    }}
+
+    void update(double t) {{
+        (void)t;
+        for (int i = 0; i < {length}; i++) output_[i] = input[i] * window[i];
+    }}
+
+    double get_output(int port = 0) const {{
+        return (port >= 0 && port < {length}) ? output_[port] : 0.0;
+    }}
+
+    const std::array<double, {length}>& getOutputVector() const {{
+        return output_;
+    }}
+
+private:
+    std::array<double, {length}> output_ = {{}};
+}};
+"""
 
 
 def template_fir_filter(block: BlockInfo, class_name: str) -> str:
@@ -451,6 +533,8 @@ public:
 
 
 DSP_TEMPLATES = {
+    "fft": template_fft,
+    "window_function": template_window_function,
     "fir_filter": template_fir_filter,
     "iir_filter": template_iir_filter,
     "mean": template_mean,
