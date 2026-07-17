@@ -1,6 +1,7 @@
 """Simulation runner - executes compiled models."""
 
 import asyncio
+import math
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -15,6 +16,13 @@ from ..models.simulation import (
 from ..osk.context import SimContext
 from .compiler import CompiledModel, ModelCompiler
 from .osk_adapter import OSKAdapter
+from .snapshot import (
+    SNAPSHOT_SCHEMA_VERSION,
+    PreparedAdapterRestore,
+    ResultSeriesSnapshot,
+    RunnerSnapshot,
+    SnapshotValidationError,
+)
 
 
 class SimulationOperationConflict(RuntimeError):
@@ -29,6 +37,17 @@ class SimulationOperationToken:
     background: bool = False
     finished: asyncio.Event = field(default_factory=asyncio.Event)
     adopted: bool = False
+
+
+@dataclass
+class _PreparedRunnerRestore:
+    """Validated runner and adapter values awaiting atomic assignment."""
+
+    snapshot: RunnerSnapshot
+    adapter: PreparedAdapterRestore
+    results: dict[str, list[tuple[float, float]]]
+    decimation: dict[str, int]
+    generations: dict[str, int]
 
 
 class SimulationRunner:
@@ -77,7 +96,7 @@ class SimulationRunner:
         # Step mode state
         self._step_mode = False
         self._compiled: CompiledModel | None = None  # Compiled model cache
-        self._state_history: list[dict[str, Any]] = []  # For step backward
+        self._state_history: list[RunnerSnapshot] = []  # For step backward
         self._max_history_size = 1000  # Limit history to prevent memory issues
 
         # Compile the model
@@ -426,26 +445,223 @@ class SimulationRunner:
             traceback.print_exc()
             return False
 
+    def capture_snapshot(self) -> RunnerSnapshot:
+        """Capture a detached immutable checkpoint while owning the runner."""
+        token = self._reserve_operation("snapshot-capture")
+        try:
+            return self._capture_snapshot_owned(token, compact=False)
+        finally:
+            self._release_operation(token)
+
+    def _capture_snapshot_owned(
+        self,
+        token: SimulationOperationToken,
+        *,
+        compact: bool,
+    ) -> RunnerSnapshot:
+        self._claim_operation(token.kind, token)
+        adapter = self._adapter.capture_snapshot(compact=compact)
+        if not math.isclose(
+            self._current_time,
+            adapter.context.t,
+            rel_tol=0.0,
+            abs_tol=1e-12,
+        ):
+            raise SnapshotValidationError("Runner and adapter times are inconsistent")
+        results = tuple(
+            ResultSeriesSnapshot(
+                key=key,
+                generation=self._result_generations[key],
+                length=len(values),
+                decimation=self._result_decimation[key],
+                values=() if compact else tuple(values),
+            )
+            for key, values in self._results.items()
+        )
+        return RunnerSnapshot(
+            schema_version=SNAPSHOT_SCHEMA_VERSION,
+            compact=compact,
+            adapter=adapter,
+            current_time=self._current_time,
+            progress=self._progress,
+            total_steps=self._total_steps,
+            execution_time=self._execution_time,
+            status=self._status.value,
+            step_mode=self._step_mode,
+            next_result_generation=self._next_result_generation,
+            results=results,
+        )
+
+    def restore_snapshot(self, snapshot: RunnerSnapshot) -> None:
+        """Atomically restore a detached checkpoint into paused step mode."""
+        token = self._reserve_operation("snapshot-restore")
+        try:
+            self._restore_snapshot_owned(snapshot, token)
+        finally:
+            self._release_operation(token)
+
+    def _restore_snapshot_owned(
+        self,
+        snapshot: RunnerSnapshot,
+        token: SimulationOperationToken,
+    ) -> None:
+        self._claim_operation("snapshot-restore", token)
+        if snapshot.compact:
+            raise SnapshotValidationError("Public restore requires a detached snapshot")
+        target = self._prepare_snapshot_restore(snapshot)
+        before = self._capture_snapshot_owned(token, compact=False)
+        rollback = self._prepare_snapshot_restore(before)
+        history_before = list(self._state_history)
+        checkpoints_before = {
+            key: dict(generations)
+            for key, generations in self._result_checkpoints.items()
+        }
+        try:
+            self._commit_snapshot_restore(target)
+            self._state_history = []
+            self._save_state(token)
+        except Exception:
+            self._commit_snapshot_restore(rollback)
+            self._state_history = history_before
+            self._result_checkpoints = checkpoints_before
+            self._prune_result_checkpoints()
+            raise
+
+    def _prepare_snapshot_restore(self, snapshot: RunnerSnapshot) -> _PreparedRunnerRestore:
+        if not isinstance(snapshot, RunnerSnapshot):
+            raise SnapshotValidationError("Unsupported runner snapshot object")
+        if snapshot.schema_version != SNAPSHOT_SCHEMA_VERSION:
+            raise SnapshotValidationError(
+                f"Unsupported snapshot schema version {snapshot.schema_version}"
+            )
+        if snapshot.compact != snapshot.adapter.compact:
+            raise SnapshotValidationError("Runner and adapter snapshot modes disagree")
+        snapshot.adapter.context.validate_boundary()
+        if not math.isclose(
+            snapshot.current_time,
+            snapshot.adapter.context.t,
+            rel_tol=0.0,
+            abs_tol=1e-12,
+        ):
+            raise SnapshotValidationError("Runner and adapter snapshot times disagree")
+        expected_time = self.config.start_time + snapshot.total_steps * self.config.step_size
+        duration = self.config.stop_time - self.config.start_time
+        expected_progress = (
+            (snapshot.current_time - self.config.start_time) / duration
+            if duration > 0
+            else math.nan
+        )
+        if (
+            snapshot.total_steps < 0
+            or not math.isfinite(snapshot.current_time)
+            or not math.isfinite(snapshot.progress)
+            or not math.isfinite(snapshot.execution_time)
+            or snapshot.execution_time < 0
+            or snapshot.status not in {status.value for status in SimulationStatus}
+            or not isinstance(snapshot.step_mode, bool)
+            or not math.isclose(
+                snapshot.current_time,
+                expected_time,
+                rel_tol=1e-9,
+                abs_tol=1e-9,
+            )
+            or not math.isclose(
+                snapshot.progress,
+                expected_progress,
+                rel_tol=1e-9,
+                abs_tol=1e-9,
+            )
+        ):
+            raise SnapshotValidationError("Runner snapshot boundary metadata is inconsistent")
+        if snapshot.next_result_generation < 0:
+            raise SnapshotValidationError("Invalid next result generation")
+
+        restored_results: dict[str, list[tuple[float, float]]] = {}
+        restored_decimation: dict[str, int] = {}
+        restored_generations: dict[str, int] = {}
+        for ref in snapshot.results:
+            if ref.key in restored_results:
+                raise SnapshotValidationError(f"Duplicate result key '{ref.key}'")
+            if ref.generation < 0 or ref.length < 0 or ref.decimation < 1:
+                raise SnapshotValidationError(f"Invalid result metadata for '{ref.key}'")
+            if snapshot.compact:
+                source: list[tuple[float, float]] | tuple[tuple[float, float], ...]
+                if self._result_generations.get(ref.key) == ref.generation:
+                    source = self._results.get(ref.key, [])
+                else:
+                    try:
+                        source = self._result_checkpoints[ref.key][ref.generation]
+                    except KeyError as exc:
+                        raise SnapshotValidationError(
+                            f"Missing result generation for '{ref.key}'"
+                        ) from exc
+                if ref.length > len(source):
+                    raise SnapshotValidationError(
+                        f"Result length exceeds generation for '{ref.key}'"
+                    )
+                values = list(source[: ref.length])
+            else:
+                if ref.length != len(ref.values):
+                    raise SnapshotValidationError(
+                        f"Detached result length does not match for '{ref.key}'"
+                    )
+                values = list(ref.values)
+            restored_results[ref.key] = values
+            restored_decimation[ref.key] = ref.decimation
+            restored_generations[ref.key] = ref.generation
+
+        if restored_generations and snapshot.next_result_generation <= max(
+            restored_generations.values()
+        ):
+            raise SnapshotValidationError("Next result generation is not monotonic")
+        adapter = self._adapter.prepare_snapshot_restore(snapshot.adapter)
+        return _PreparedRunnerRestore(
+            snapshot=snapshot,
+            adapter=adapter,
+            results=restored_results,
+            decimation=restored_decimation,
+            generations=restored_generations,
+        )
+
+    def _commit_snapshot_restore(self, prepared: _PreparedRunnerRestore) -> None:
+        adapter_before = self._adapter.capture_snapshot(compact=False)
+        adapter_rollback = self._adapter.prepare_snapshot_restore(adapter_before)
+        try:
+            self._adapter.commit_snapshot_restore(prepared.adapter)
+        except Exception:
+            self._adapter.commit_snapshot_restore(adapter_rollback)
+            raise
+
+        snapshot = prepared.snapshot
+        self._current_time = snapshot.current_time
+        self._progress = snapshot.progress
+        self._total_steps = snapshot.total_steps
+        self._execution_time = snapshot.execution_time
+        self._start_time = time.time() - snapshot.execution_time
+        self._results = prepared.results
+        self._result_decimation = prepared.decimation
+        self._result_generations = prepared.generations
+        self._next_result_generation = snapshot.next_result_generation
+        if not snapshot.compact:
+            self._result_checkpoints = {}
+        self._step_mode = True
+        self._status = SimulationStatus.PAUSED
+        self._should_stop = False
+        self._is_paused = False
+        self._error_message = None
+        self._transition_requested = False
+        self._pending_handoff = None
+        self._pause_waiter = None
+        self._pause_acknowledged.clear()
+        self._resume_gate.set()
+        self._run_started = False
+        self._run_finished.set()
+        self._prune_result_checkpoints()
+
     def _save_state(self, token: SimulationOperationToken):
         """Save current simulation state for step backward."""
         self._claim_operation(token.kind, token)
-        # Get adapter state (integrator states, etc.)
-        adapter_state = self._adapter.get_state() if hasattr(self._adapter, "get_state") else {}
-
-        state = {
-            "time": self._current_time,
-            "progress": self._progress,
-            "total_steps": self._total_steps,
-            "result_refs": {
-                key: {
-                    "generation": self._result_generations[key],
-                    "length": len(values),
-                    "decimation": self._result_decimation[key],
-                }
-                for key, values in self._results.items()
-            },
-            "adapter_state": adapter_state,
-        }
+        state = self._capture_snapshot_owned(token, compact=True)
 
         print(
             f"[_save_state] Saving state at time={self._current_time}, history_size will be {len(self._state_history) + 1}"
@@ -467,8 +683,8 @@ class SimulationRunner:
         """Drop immutable result generations no longer referenced by step history."""
         referenced: dict[str, set[int]] = {}
         for state in self._state_history:
-            for key, ref in state.get("result_refs", {}).items():
-                referenced.setdefault(key, set()).add(ref["generation"])
+            for ref in state.results:
+                referenced.setdefault(ref.key, set()).add(ref.generation)
 
         for key in list(self._result_checkpoints):
             keep = referenced.get(key, set())
@@ -491,44 +707,13 @@ class SimulationRunner:
 
     def _restore_state(
         self,
-        state: dict[str, Any],
+        state: RunnerSnapshot,
         token: SimulationOperationToken,
-    ):
+    ) -> None:
         """Restore simulation to a previous state."""
         self._claim_operation(token.kind, token)
-        self._current_time = state["time"]
-        self._progress = state["progress"]
-        self._total_steps = state["total_steps"]
-        refs = state["result_refs"]
-
-        active_results = self._results
-        active_generations = self._result_generations
-
-        restored_results: dict[str, list[tuple[float, float]]] = {}
-        restored_decimation: dict[str, int] = {}
-        restored_generations: dict[str, int] = {}
-        for key, ref in refs.items():
-            generation = ref["generation"]
-            source: list[tuple[float, float]] | tuple[tuple[float, float], ...]
-            if active_generations.get(key) == generation:
-                source = active_results[key]
-            else:
-                source = self._result_checkpoints[key][generation]
-
-            restored_results[key] = list(source[: ref["length"]])
-            restored_decimation[key] = ref["decimation"]
-            # All later states have already been popped, so the restored prefix
-            # can safely become the active append-only branch of this generation.
-            restored_generations[key] = generation
-
-        self._results = restored_results
-        self._result_decimation = restored_decimation
-        self._result_generations = restored_generations
-
-        # Restore adapter state if available
-        if state.get("adapter_state") and hasattr(self._adapter, "set_state"):
-            self._adapter.set_state(state["adapter_state"])
-        self._prune_result_checkpoints()
+        prepared = self._prepare_snapshot_restore(state)
+        self._commit_snapshot_restore(prepared)
 
     def step_forward(self, num_steps: int = 1) -> dict[str, Any]:
         """Execute one or more simulation steps."""
@@ -632,11 +817,13 @@ class SimulationRunner:
             if len(self._state_history) <= 1:
                 break
 
-            # Remove current state and restore previous
+            # Validate and restore before discarding the current checkpoint so a
+            # failed restore cannot destroy undo history.
+            target = self._state_history[-2]
+            self._restore_state(target, token)
             self._state_history.pop()
-            if self._state_history:
-                self._restore_state(self._state_history[-1], token)
-                steps_executed += 1
+            self._prune_result_checkpoints()
+            steps_executed += 1
 
         # Reset status to paused (not completed) when stepping back
         self._status = SimulationStatus.PAUSED

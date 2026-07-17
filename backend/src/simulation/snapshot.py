@@ -139,6 +139,34 @@ class AdapterSnapshot:
     blocks: tuple[BlockSnapshot, ...]
 
 
+@dataclass(frozen=True)
+class ResultSeriesSnapshot:
+    """Immutable full series or compact generation reference for one result key."""
+
+    key: str
+    generation: int
+    length: int
+    decimation: int
+    values: tuple[tuple[float, float], ...] = ()
+
+
+@dataclass(frozen=True)
+class RunnerSnapshot:
+    """Versioned runner-plus-adapter checkpoint at one committed boundary."""
+
+    schema_version: int
+    compact: bool
+    adapter: AdapterSnapshot
+    current_time: float
+    progress: float
+    total_steps: int
+    execution_time: float
+    status: str
+    step_mode: bool
+    next_result_generation: int
+    results: tuple[ResultSeriesSnapshot, ...]
+
+
 @dataclass
 class PreparedBlockRestore:
     """Decoded block values that can be committed without further validation."""

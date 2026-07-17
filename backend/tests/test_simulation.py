@@ -2349,9 +2349,9 @@ class TestSimulationRunnerStepMode:
 
         assert len(runner._state_history) == history_limit
         referenced = {
-            (key, ref["generation"])
+            (ref.key, ref.generation)
             for state in runner._state_history
-            for key, ref in state["result_refs"].items()
+            for ref in state.results
         }
         stored = {
             (key, generation)
@@ -2373,9 +2373,9 @@ class TestSimulationRunnerStepMode:
         runner.step_backward(history_limit - 1)
         runner.step_forward(history_limit - 1)
         referenced_after_branch = {
-            (key, ref["generation"])
+            (ref.key, ref.generation)
             for state in runner._state_history
-            for key, ref in state["result_refs"].items()
+            for ref in state.results
         }
         stored_after_branch = {
             (key, generation)
@@ -2466,6 +2466,10 @@ class TestSimulationRunnerStepMode:
         runner.initialize_step_mode()
         runner._step_mode = False  # Reset step mode flag
         runner._current_time = 0.3
+        runner._total_steps = 3
+        runner._progress = 0.3
+        runner.context.t = 0.3
+        runner.context.t1 = 0.3
         runner._compiled = runner._compiled  # Keep compiled
 
         # Enter step mode

@@ -87,6 +87,87 @@ def _driven_integrator_model() -> Model:
     )
 
 
+def _snapshot_state_zoo_model() -> Model:
+    """Return a graph exercising RNG, continuous, discrete, delay, and sink state."""
+    block_types = [
+        ("ramp", "ramp", {"slope": 0.75, "startTime": 0.0, "initialOutput": 0.2}, 0, 1),
+        ("integrator", "integrator", {"initialCondition": 0.1}, 1, 1),
+        (
+            "noise",
+            "white_noise",
+            {"mean": 0.0, "variance": 0.25, "seed": 1234, "sampleTime": 0.0},
+            0,
+            1,
+        ),
+        ("filter", "low_pass_filter", {"cutoffFrequency": 1.3}, 1, 1),
+        ("unit-delay", "unit_delay", {"initialCondition": -0.2, "sampleTime": 0.15}, 1, 1),
+        (
+            "transport-delay",
+            "transport_delay",
+            {"delayTime": 0.25, "initialOutput": -0.3},
+            1,
+            1,
+        ),
+        ("scope", "scope", {"numInputs": 2}, 2, 0),
+        (
+            "scope-3d",
+            "scope_3d",
+            {"xLabel": "X", "yLabel": "Y", "zLabel": "Z"},
+            3,
+            0,
+        ),
+    ]
+    blocks = []
+    for index, (block_id, block_type, parameters, inputs, outputs) in enumerate(block_types):
+        blocks.append(
+            {
+                "id": block_id,
+                "type": block_type,
+                "name": block_id,
+                "position": {"x": index * 100, "y": 0},
+                "parameters": parameters,
+                "inputPorts": [
+                    {"id": f"{block_id}-in-{port}", "name": f"in{port}"}
+                    for port in range(inputs)
+                ],
+                "outputPorts": [
+                    {"id": f"{block_id}-out-{port}", "name": f"out{port}"}
+                    for port in range(outputs)
+                ],
+            }
+        )
+
+    edges = [
+        ("ramp", 0, "integrator", 0),
+        ("noise", 0, "filter", 0),
+        ("filter", 0, "unit-delay", 0),
+        ("unit-delay", 0, "transport-delay", 0),
+        ("integrator", 0, "scope", 0),
+        ("transport-delay", 0, "scope", 1),
+        ("integrator", 0, "scope-3d", 0),
+        ("filter", 0, "scope-3d", 1),
+        ("transport-delay", 0, "scope-3d", 2),
+    ]
+    connections = [
+        {
+            "id": f"edge-{index}",
+            "sourceBlockId": source,
+            "sourcePortId": f"{source}-out-{source_port}",
+            "targetBlockId": target,
+            "targetPortId": f"{target}-in-{target_port}",
+        }
+        for index, (source, source_port, target, target_port) in enumerate(edges)
+    ]
+    return Model.model_validate(
+        {
+            "id": "fac9-snapshot-state-zoo",
+            "metadata": {"name": "FAC-9 snapshot state zoo"},
+            "blocks": blocks,
+            "connections": connections,
+        }
+    )
+
+
 def _config(solver: SolverType, step_size: float) -> SimulationConfig:
     return SimulationConfig(solver=solver, step_size=step_size, stop_time=1.0)
 
@@ -248,6 +329,120 @@ def test_adapter_snapshot_validation_and_commit_failure_are_non_mutating(monkeyp
 
     assert calls == 2
     assert adapter.capture_snapshot() == before
+
+
+def _checkpoint_observable(snapshot):
+    return (
+        snapshot.adapter,
+        snapshot.current_time,
+        snapshot.progress,
+        snapshot.total_steps,
+        snapshot.next_result_generation,
+        snapshot.results,
+    )
+
+
+def test_runner_checkpoint_replay_covers_state_zoo_and_preserves_peer():
+    config = SimulationConfig(
+        solver=SolverType.RK4,
+        step_size=0.1,
+        stop_time=2.0,
+        max_result_points=5,
+    )
+    runner = SimulationRunner(_snapshot_state_zoo_model(), config)
+    peer = SimulationRunner(_driven_integrator_model(), config)
+    assert runner.initialize_step_mode() is True
+    assert peer.initialize_step_mode() is True
+    assert runner.step_forward(7)["success"] is True
+    assert peer.step_forward(3)["success"] is True
+    checkpoint = runner.capture_snapshot()
+    peer_before = peer.capture_snapshot()
+
+    assert runner.step_forward(5)["success"] is True
+    expected = runner.capture_snapshot()
+    runner.restore_snapshot(checkpoint)
+
+    assert runner.status == SimulationStatus.PAUSED
+    assert runner._step_mode is True
+    assert runner._active_operation is None
+    assert runner._pending_handoff is None
+    assert len(runner._state_history) == 1
+    assert runner._state_history[0].compact
+    assert all(not result.values for result in runner._state_history[0].results)
+    assert runner.step_forward(5)["success"] is True
+    replayed = runner.capture_snapshot()
+
+    assert _checkpoint_observable(replayed) == _checkpoint_observable(expected)
+    assert peer.capture_snapshot() == peer_before
+
+
+def test_runner_checkpoint_validation_ownership_and_failed_commit_are_atomic(monkeypatch):
+    config = SimulationConfig(solver=SolverType.RK4, step_size=0.1, stop_time=2.0)
+    runner = SimulationRunner(_snapshot_state_zoo_model(), config)
+    assert runner.initialize_step_mode() is True
+    runner.step_forward(3)
+    target = runner.capture_snapshot()
+    runner.step_forward(2)
+    before = runner.capture_snapshot()
+    history_before = tuple(runner._state_history)
+    checkpoints_before = {
+        key: dict(generations) for key, generations in runner._result_checkpoints.items()
+    }
+
+    invalid_snapshots = [
+        replace(target, schema_version=target.schema_version + 1),
+        replace(target, current_time=target.current_time + 0.1),
+        replace(target, progress=target.progress + 0.1),
+        replace(target, adapter=replace(target.adapter, blocks=target.adapter.blocks[:-1])),
+    ]
+    for invalid in invalid_snapshots:
+        with pytest.raises(SnapshotValidationError):
+            runner.restore_snapshot(invalid)
+        assert runner.capture_snapshot() == before
+        assert tuple(runner._state_history) == history_before
+
+    runner.context.kpass = 1
+    runner.context.ready = 0
+    with pytest.raises(SnapshotValidationError, match="committed simulation boundary"):
+        runner.capture_snapshot()
+    assert runner._active_operation is None
+    runner.context.kpass = 0
+    runner.context.ready = 1
+
+    reservation = runner.mark_scheduled()
+    with pytest.raises(SimulationOperationConflict):
+        runner.capture_snapshot()
+    with pytest.raises(SimulationOperationConflict):
+        runner.restore_snapshot(target)
+    assert runner._release_operation(reservation) is True
+
+    other = SimulationRunner(_driven_integrator_model(), config)
+    assert other.initialize_step_mode() is True
+    other_before = other.capture_snapshot()
+    with pytest.raises(SnapshotValidationError, match="model fingerprint"):
+        other.restore_snapshot(target)
+    assert other.capture_snapshot() == other_before
+
+    codec = BLOCK_SNAPSHOT_CODECS["integrator"]
+    original_apply = codec.apply
+    calls = 0
+
+    def fail_once(prepared):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise RuntimeError("injected runner codec failure")
+        original_apply(prepared)
+
+    monkeypatch.setattr(codec, "apply", fail_once)
+    with pytest.raises(RuntimeError, match="injected runner codec failure"):
+        runner.restore_snapshot(target)
+
+    assert calls >= 2
+    assert runner.capture_snapshot() == before
+    assert tuple(runner._state_history) == history_before
+    assert runner._result_checkpoints == checkpoints_before
+    assert runner._active_operation is None
 
 
 def _run_adapter_isolated(solver: SolverType, step_size: float, steps: int) -> float:
@@ -774,7 +969,7 @@ def test_nonzero_start_time_is_shared_by_adapter_runner_and_reset_snapshots():
     assert runner.initialize_step_mode() is True
     assert runner.context.t == pytest.approx(2.5)
     assert runner.context.t1 == pytest.approx(2.5)
-    assert runner._state_history[-1]["adapter_state"].context.t == pytest.approx(2.5)
+    assert runner._state_history[-1].adapter.context.t == pytest.approx(2.5)
 
     assert runner.step_forward()["success"] is True
     assert runner._results
@@ -800,7 +995,7 @@ def test_nonzero_start_time_is_shared_by_adapter_runner_and_reset_snapshots():
     assert runner._is_paused is False
     assert runner.context.t == pytest.approx(2.5)
     assert runner.context.t1 == pytest.approx(2.5)
-    assert runner._state_history[-1]["adapter_state"].context.t == pytest.approx(2.5)
+    assert runner._state_history[-1].adapter.context.t == pytest.approx(2.5)
 
     runner.step_forward()
     runner.reset()
@@ -1026,7 +1221,7 @@ async def test_pause_acknowledges_committed_boundary_before_step_mode_handoff():
     assert runner.current_time == pytest.approx(boundary_time)
     assert runner._total_steps == boundary_steps
     assert len(runner._state_history) == 1
-    assert runner._state_history[0]["time"] == pytest.approx(boundary_time)
+    assert runner._state_history[0].current_time == pytest.approx(boundary_time)
     assert _stable_runner_results(runner) == boundary_results
 
 
