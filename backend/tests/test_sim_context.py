@@ -6,6 +6,7 @@ import math
 from collections import Counter
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
 from pathlib import Path
 from threading import Barrier
 
@@ -19,12 +20,13 @@ from src.osk.blocks.discrete import UnitDelay
 from src.osk.blocks.signal_processing import LowPassFilter, RateLimiter
 from src.osk.blocks.sources import Clock, SineWave
 from src.simulation.compiler import CompiledBlock, CompiledModel, ModelCompiler
-from src.simulation.osk_adapter import OSKAdapter
+from src.simulation.osk_adapter import BLOCK_SNAPSHOT_CODECS, BLOCK_TYPE_MAP, OSKAdapter
 from src.simulation.runner import (
     SimulationOperationConflict,
     SimulationOperationToken,
     SimulationRunner,
 )
+from src.simulation.snapshot import SnapshotValidationError
 
 
 def _driven_integrator_model() -> Model:
@@ -152,6 +154,100 @@ def _builtin_reference(
 ) -> list[float]:
     block, context = _initialized_builtin(factory, step_size)
     return [_advance_builtin(block, context, index) for index in range(steps)]
+
+
+def test_every_registered_builtin_has_an_explicit_versioned_snapshot_codec():
+    assert set(BLOCK_SNAPSHOT_CODECS) == set(BLOCK_TYPE_MAP)
+    assert len(BLOCK_TYPE_MAP) == 181
+    assert all(codec.version >= 1 for codec in BLOCK_SNAPSHOT_CODECS.values())
+
+
+def test_adapter_snapshot_is_detached_immutable_and_round_trips_complete_state():
+    adapter = OSKAdapter()
+    adapter.initialize(
+        ModelCompiler().compile(_driven_integrator_model()),
+        _config(SolverType.RK4, 0.05),
+    )
+    for index in range(4):
+        adapter.step(index * 0.05, 0.05)
+
+    integrator = adapter._osk_blocks["integrator"].vState[0]
+    integrator.x0 = 3.25
+    integrator.xd0 = 1.0
+    integrator.xd1 = 2.0
+    integrator.xd2 = 3.0
+    integrator.xd3 = 4.0
+    integrator.xd4 = 5.0
+    adapter.context.tickfirst = 0
+    adapter.context.ticklast = 1
+    adapter.context.stop = 7
+    adapter.context.stop0 = 6
+    snapshot = adapter.capture_snapshot()
+
+    with pytest.raises(AttributeError):
+        snapshot.context.t = 99.0  # type: ignore[misc]
+    original_payload = snapshot.blocks[1].attributes
+    adapter.step(0.2, 0.05)
+    assert snapshot.blocks[1].attributes == original_payload
+
+    adapter.restore_snapshot(snapshot)
+    assert adapter.capture_snapshot() == snapshot
+    restored = adapter._osk_blocks["integrator"].vState[0]
+    assert (restored.x0, restored.xd0, restored.xd1, restored.xd2, restored.xd3, restored.xd4) == (
+        3.25,
+        1.0,
+        2.0,
+        3.0,
+        4.0,
+        5.0,
+    )
+
+
+def test_adapter_snapshot_validation_and_commit_failure_are_non_mutating(monkeypatch):
+    adapter = OSKAdapter()
+    adapter.initialize(
+        ModelCompiler().compile(_driven_integrator_model()),
+        _config(SolverType.RK4, 0.05),
+    )
+    for index in range(3):
+        adapter.step(index * 0.05, 0.05)
+    target = adapter.capture_snapshot()
+    adapter.step(0.15, 0.05)
+    before = adapter.capture_snapshot()
+
+    invalid_snapshots = [
+        replace(target, schema_version=target.schema_version + 1),
+        replace(target, model_fingerprint="wrong-model"),
+        replace(target, config_fingerprint="wrong-config"),
+        replace(target, blocks=target.blocks[:-1]),
+        replace(
+            target,
+            blocks=(replace(target.blocks[0], block_type="clock"), *target.blocks[1:]),
+        ),
+        replace(target, context=replace(target.context, ready=0)),
+    ]
+    for invalid in invalid_snapshots:
+        with pytest.raises(SnapshotValidationError):
+            adapter.restore_snapshot(invalid)
+        assert adapter.capture_snapshot() == before
+
+    codec = BLOCK_SNAPSHOT_CODECS["integrator"]
+    original_apply = codec.apply
+    calls = 0
+
+    def fail_once(prepared):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise RuntimeError("injected codec failure")
+        original_apply(prepared)
+
+    monkeypatch.setattr(codec, "apply", fail_once)
+    with pytest.raises(RuntimeError, match="injected codec failure"):
+        adapter.restore_snapshot(target)
+
+    assert calls == 2
+    assert adapter.capture_snapshot() == before
 
 
 def _run_adapter_isolated(solver: SolverType, step_size: float, steps: int) -> float:
@@ -678,9 +774,7 @@ def test_nonzero_start_time_is_shared_by_adapter_runner_and_reset_snapshots():
     assert runner.initialize_step_mode() is True
     assert runner.context.t == pytest.approx(2.5)
     assert runner.context.t1 == pytest.approx(2.5)
-    assert runner._state_history[-1]["adapter_state"]["global_state"]["t"] == pytest.approx(
-        2.5
-    )
+    assert runner._state_history[-1]["adapter_state"].context.t == pytest.approx(2.5)
 
     assert runner.step_forward()["success"] is True
     assert runner._results
@@ -706,9 +800,7 @@ def test_nonzero_start_time_is_shared_by_adapter_runner_and_reset_snapshots():
     assert runner._is_paused is False
     assert runner.context.t == pytest.approx(2.5)
     assert runner.context.t1 == pytest.approx(2.5)
-    assert runner._state_history[-1]["adapter_state"]["global_state"]["t"] == pytest.approx(
-        2.5
-    )
+    assert runner._state_history[-1]["adapter_state"].context.t == pytest.approx(2.5)
 
     runner.step_forward()
     runner.reset()

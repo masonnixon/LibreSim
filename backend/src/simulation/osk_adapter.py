@@ -229,6 +229,16 @@ from ..osk.blocks.sources import (
 )
 from ..osk.context import EPS
 from .compiler import CompiledBlock, CompiledModel
+from .snapshot import (
+    SNAPSHOT_SCHEMA_VERSION,
+    AdapterSnapshot,
+    ContextSnapshot,
+    PreparedAdapterRestore,
+    ReflectiveBlockCodec,
+    SnapshotValidationError,
+    compiled_model_fingerprint,
+    simulation_config_fingerprint,
+)
 
 # Mapping from LibreSim block types to OSK block classes
 BLOCK_TYPE_MAP: dict[str, type[Block]] = {
@@ -432,6 +442,198 @@ BLOCK_TYPE_MAP: dict[str, type[Block]] = {
     "ins_gps_fusion": INSGPSFusion,
     "alpha_beta_filter": AlphaBetaFilter,
     "alpha_beta_gamma_filter": AlphaBetaGammaFilter,
+}
+
+# Snapshot support is an explicit choice for every executable built-in. Keeping this
+# list separate from BLOCK_TYPE_MAP makes a newly registered block fail the coverage
+# gate until its persistence contract is reviewed.
+SNAPSHOT_BLOCK_TYPES = frozenset(
+    {
+        "constant",
+        "step",
+        "ramp",
+        "sine_wave",
+        "pulse_generator",
+        "clock",
+        "white_noise",
+        "uniform_noise",
+        "repeating_sequence",
+        "chirp_signal",
+        "band_limited_white_noise",
+        "ground",
+        "from_workspace",
+        "signal_generator",
+        "scope",
+        "scope_3d",
+        "display",
+        "to_workspace",
+        "terminator",
+        "integrator",
+        "derivative",
+        "transfer_function",
+        "state_space",
+        "pid_controller",
+        "transport_delay",
+        "second_order",
+        "limited_integrator",
+        "zero_pole",
+        "unit_delay",
+        "zero_order_hold",
+        "discrete_integrator",
+        "discrete_derivative",
+        "discrete_transfer_function",
+        "memory",
+        "discrete_state_space",
+        "first_order_hold",
+        "discrete_pid_controller",
+        "sum",
+        "gain",
+        "product",
+        "abs",
+        "sign",
+        "bias",
+        "saturation",
+        "dead_zone",
+        "math_function",
+        "trigonometry",
+        "switch",
+        "mux",
+        "demux",
+        "reshape",
+        "divide",
+        "mod",
+        "atan2",
+        "rounding",
+        "minmax",
+        "dot_product",
+        "cross_product",
+        "hypot",
+        "unary_minus",
+        "slider_gain",
+        "weighted_sum",
+        "polynomial",
+        "magnitude_angle",
+        "complex_to_magnitude_angle",
+        "sqrt",
+        "reciprocal",
+        "square",
+        "power",
+        "exp",
+        "log",
+        "log10",
+        "compare_to_zero",
+        "compare_to_constant",
+        "relational_operator",
+        "logical_operator",
+        "bit_operator",
+        "inport",
+        "outport",
+        "subsystem",
+        "rate_limiter",
+        "moving_average",
+        "low_pass_filter",
+        "high_pass_filter",
+        "band_pass_filter",
+        "analog_filter",
+        "notch_filter",
+        "backlash",
+        "lookup_table_1d",
+        "lookup_table_2d",
+        "quantizer",
+        "relay",
+        "coulomb_friction",
+        "variable_transport_delay",
+        "wrap_to_range",
+        "hit_crossing",
+        "hysteresis",
+        "stiction",
+        "slew_rate_limiter",
+        "luenberger_observer",
+        "kalman_filter",
+        "extended_kalman_filter",
+        "bode_plot",
+        "nyquist_plot",
+        "pole_zero_map",
+        "step_info",
+        "data_type_conversion",
+        "real_imag_to_complex",
+        "complex_to_real_imag",
+        "matrix_multiply",
+        "matrix_transpose",
+        "matrix_inverse",
+        "selector",
+        "assignment",
+        "concatenate",
+        "matrix_sum",
+        "vector_norm",
+        "lqr_controller",
+        "pole_placement",
+        "lead_lag_compensator",
+        "pi_controller",
+        "pd_controller",
+        "anti_windup_pid",
+        "model_reference",
+        "quaternion_normalize",
+        "quaternion_multiply",
+        "quaternion_conjugate",
+        "quaternion_to_euler",
+        "euler_to_quaternion",
+        "quaternion_rotate_vector",
+        "dcm_to_quaternion",
+        "quaternion_to_dcm",
+        "isa_atmosphere",
+        "six_dof_euler",
+        "flat_earth_gravity",
+        "wgs84_gravity",
+        "fft",
+        "ifft",
+        "fir_filter",
+        "iir_filter",
+        "convolution",
+        "downsampler",
+        "upsampler",
+        "interpolator",
+        "window_function",
+        "mean",
+        "variance",
+        "rms",
+        "peak_detector",
+        "zero_crossing_detector",
+        "rf_amplifier",
+        "rf_mixer",
+        "rf_filter",
+        "s_parameter_network",
+        "rf_budget_element",
+        "attenuator",
+        "am_modulator",
+        "fm_modulator",
+        "phase_noise",
+        "dbm_to_watts",
+        "watts_to_dbm",
+        "coordinate_transformation",
+        "lla_to_ecef",
+        "ecef_to_lla",
+        "ecef_to_ned",
+        "ned_to_ecef",
+        "waypoint_follower",
+        "great_circle_distance",
+        "flat_earth_position",
+        "imu_sensor",
+        "accelerometer",
+        "gyroscope",
+        "magnetometer",
+        "gps_sensor",
+        "altimeter",
+        "complementary_filter",
+        "madgwick_filter",
+        "mahony_filter",
+        "ins_gps_fusion",
+        "alpha_beta_filter",
+        "alpha_beta_gamma_filter",
+    }
+)
+BLOCK_SNAPSHOT_CODECS = {
+    block_type: ReflectiveBlockCodec(block_type) for block_type in SNAPSHOT_BLOCK_TYPES
 }
 
 # Parameter name mapping from LibreSim to OSK constructor arguments
@@ -1729,153 +1931,119 @@ class OSKAdapter:
                     )
         return signals
 
-    def get_state(self) -> dict[str, Any]:
-        """Capture adapter state while this adapter's context is active."""
+    def capture_snapshot(self, *, compact: bool = False) -> AdapterSnapshot:
+        """Capture a detached, immutable adapter snapshot at a committed boundary."""
+        with activate_context(self.context):
+            return self._capture_snapshot(compact=compact)
+
+    def _capture_snapshot(self, *, compact: bool) -> AdapterSnapshot:
+        if self._compiled_model is None or self._config is None:
+            raise SnapshotValidationError("Cannot snapshot an uninitialized adapter")
+        context = ContextSnapshot.capture(self.context)
+        context.validate_boundary()
+        blocks = tuple(
+            BLOCK_SNAPSHOT_CODECS[self._block_map[block_id].type].capture(
+                block_id,
+                block,
+                compact=compact,
+            )
+            for block_id, block in self._osk_blocks.items()
+        )
+        return AdapterSnapshot(
+            schema_version=SNAPSHOT_SCHEMA_VERSION,
+            model_fingerprint=compiled_model_fingerprint(self._compiled_model),
+            config_fingerprint=simulation_config_fingerprint(self._config),
+            compact=compact,
+            context=context,
+            blocks=blocks,
+        )
+
+    def prepare_snapshot_restore(self, snapshot: AdapterSnapshot) -> PreparedAdapterRestore:
+        """Decode and validate an adapter snapshot without changing live state."""
+        with activate_context(self.context):
+            return self._prepare_snapshot_restore(snapshot)
+
+    def _prepare_snapshot_restore(self, snapshot: AdapterSnapshot) -> PreparedAdapterRestore:
+        if not isinstance(snapshot, AdapterSnapshot):
+            raise SnapshotValidationError("Unsupported adapter snapshot object")
+        if snapshot.schema_version != SNAPSHOT_SCHEMA_VERSION:
+            raise SnapshotValidationError(
+                f"Unsupported snapshot schema version {snapshot.schema_version}"
+            )
+        if self._compiled_model is None or self._config is None:
+            raise SnapshotValidationError("Cannot restore an uninitialized adapter")
+        if snapshot.model_fingerprint != compiled_model_fingerprint(self._compiled_model):
+            raise SnapshotValidationError("Snapshot model fingerprint does not match")
+        if snapshot.config_fingerprint != simulation_config_fingerprint(self._config):
+            raise SnapshotValidationError("Snapshot configuration fingerprint does not match")
+        snapshot.context.validate_boundary()
+
+        expected = {
+            block_id: self._block_map[block_id].type for block_id in self._osk_blocks
+        }
+        provided: dict[str, Any] = {}
+        for block_snapshot in snapshot.blocks:
+            if block_snapshot.block_id in provided:
+                raise SnapshotValidationError(
+                    f"Duplicate block snapshot '{block_snapshot.block_id}'"
+                )
+            provided[block_snapshot.block_id] = block_snapshot
+        if set(provided) != set(expected):
+            raise SnapshotValidationError("Snapshot block set does not match the model")
+
+        prepared = []
+        for block_id in self._osk_blocks:
+            block_snapshot = provided[block_id]
+            block_type = expected[block_id]
+            if block_snapshot.block_type != block_type:
+                raise SnapshotValidationError(
+                    f"Snapshot block type does not match for '{block_id}'"
+                )
+            codec = BLOCK_SNAPSHOT_CODECS.get(block_type)
+            if codec is None:
+                raise SnapshotValidationError(f"No snapshot codec for '{block_type}'")
+            prepared.append(codec.prepare(block_snapshot, self._osk_blocks[block_id]))
+        return PreparedAdapterRestore(context=snapshot.context, blocks=tuple(prepared))
+
+    def commit_snapshot_restore(self, prepared: PreparedAdapterRestore) -> None:
+        """Apply previously validated adapter values through assignment-only codecs."""
+        with activate_context(self.context):
+            self._commit_snapshot_restore(prepared)
+
+    def _commit_snapshot_restore(self, prepared: PreparedAdapterRestore) -> None:
+        prepared.context.apply(self.context)
+        for block_id, block_restore in zip(
+            self._osk_blocks,
+            prepared.blocks,
+            strict=True,
+        ):
+            block_type = self._block_map[block_id].type
+            BLOCK_SNAPSHOT_CODECS[block_type].apply(block_restore)
+
+    def restore_snapshot(self, snapshot: AdapterSnapshot) -> None:
+        """Atomically restore an adapter snapshot or preserve the complete preimage."""
+        with activate_context(self.context):
+            target = self._prepare_snapshot_restore(snapshot)
+            before = self._capture_snapshot(compact=False)
+            rollback = self._prepare_snapshot_restore(before)
+            try:
+                self._commit_snapshot_restore(target)
+            except Exception:
+                self._commit_snapshot_restore(rollback)
+                raise
+
+    def get_state(self) -> AdapterSnapshot:
+        """Capture the compact adapter state used by bounded step history."""
         with activate_context(self.context):
             return self._get_state()
 
-    def _get_state(self) -> dict[str, Any]:
-        """Get the current state of all blocks for state saving/restoration.
+    def _get_state(self) -> AdapterSnapshot:
+        return self._capture_snapshot(compact=True)
 
-        Returns:
-            Dictionary containing block states for step backward functionality
-        """
-        state: dict[str, Any] = {
-            "global_state": {
-                "t": self.context.t,
-                "t1": self.context.t1,
-                "kpass": self.context.kpass,
-                "ready": self.context.ready,
-            },
-            "block_states": {},
-        }
-
-        for block_id, osk_block in self._osk_blocks.items():
-            block_state: dict[str, Any] = {}
-
-            # Save integrator state (most important for stepping)
-            if hasattr(osk_block, "x") and osk_block.x is not None:
-                block_state["x"] = (
-                    list(osk_block.x) if hasattr(osk_block.x, "__iter__") else osk_block.x
-                )
-            if hasattr(osk_block, "x0") and osk_block.x0 is not None:
-                block_state["x0"] = (
-                    list(osk_block.x0) if hasattr(osk_block.x0, "__iter__") else osk_block.x0
-                )
-
-            # Save output state for blocks that cache it
-            if hasattr(osk_block, "_output"):
-                block_state["_output"] = osk_block._output
-            if hasattr(osk_block, "_y"):
-                block_state["_y"] = osk_block._y
-
-            # Save any internal buffer states (for filters, delays, etc.)
-            if hasattr(osk_block, "_buffer"):
-                block_state["_buffer"] = (
-                    list(osk_block._buffer)
-                    if hasattr(osk_block._buffer, "__iter__")
-                    else osk_block._buffer
-                )
-            if hasattr(osk_block, "_prev_value"):
-                block_state["_prev_value"] = osk_block._prev_value
-            if hasattr(osk_block, "_prev_input"):
-                block_state["_prev_input"] = osk_block._prev_input
-
-            # Save Scope3D internal data arrays for step backward
-            if isinstance(osk_block, Scope3D):
-                block_state["scope3d_lengths"] = {
-                    "times": len(osk_block.times),
-                    "x": len(osk_block.x_values),
-                    "y": len(osk_block.y_values),
-                    "z": len(osk_block.z_values),
-                }
-
-            # Save regular Scope internal data arrays for step backward
-            if isinstance(osk_block, Scope):
-                block_state["scope_lengths"] = {
-                    "times": len(osk_block.times),
-                    "values": [len(values) for values in osk_block.values],
-                }
-
-            if block_state:
-                state["block_states"][block_id] = block_state
-
-        return state
-
-    def set_state(self, state: dict[str, Any]):
-        """Restore adapter state while this adapter's context is active."""
+    def set_state(self, state: AdapterSnapshot) -> None:
+        """Restore compact adapter state while this adapter's context is active."""
         with activate_context(self.context):
             self._set_state(state)
 
-    def _set_state(self, state: dict[str, Any]):
-        """Restore block states from a saved state.
-
-        Args:
-            state: Previously saved state from get_state()
-        """
-        if not state:
-            return
-
-        # Restore global OSK state
-        if "global_state" in state:
-            gs = state["global_state"]
-            self.context.t = gs.get("t", self.context.t)
-            self.context.t1 = gs.get("t1", self.context.t1)
-            self.context.kpass = gs.get("kpass", self.context.kpass)
-            self.context.ready = gs.get("ready", self.context.ready)
-
-        # Restore block states
-        block_states = state.get("block_states", {})
-        for block_id, block_state in block_states.items():
-            osk_block = self._osk_blocks.get(block_id)
-            if not osk_block:
-                continue
-
-            # Restore integrator state
-            if "x" in block_state and hasattr(osk_block, "x"):
-                if hasattr(osk_block.x, "__iter__"):
-                    for i, val in enumerate(block_state["x"]):
-                        if i < len(osk_block.x):
-                            osk_block.x[i] = val
-                else:
-                    osk_block.x = block_state["x"]
-
-            if "x0" in block_state and hasattr(osk_block, "x0"):
-                if hasattr(osk_block.x0, "__iter__"):
-                    for i, val in enumerate(block_state["x0"]):
-                        if i < len(osk_block.x0):
-                            osk_block.x0[i] = val
-                else:
-                    osk_block.x0 = block_state["x0"]
-
-            # Restore output state
-            if "_output" in block_state and hasattr(osk_block, "_output"):
-                osk_block._output = block_state["_output"]
-            if "_y" in block_state and hasattr(osk_block, "_y"):
-                osk_block._y = block_state["_y"]
-
-            # Restore internal buffer states
-            if "_buffer" in block_state and hasattr(osk_block, "_buffer"):
-                if hasattr(osk_block._buffer, "__iter__"):
-                    osk_block._buffer = list(block_state["_buffer"])
-                else:
-                    osk_block._buffer = block_state["_buffer"]
-            if "_prev_value" in block_state and hasattr(osk_block, "_prev_value"):
-                osk_block._prev_value = block_state["_prev_value"]
-            if "_prev_input" in block_state and hasattr(osk_block, "_prev_input"):
-                osk_block._prev_input = block_state["_prev_input"]
-
-            # Restore Scope3D internal data arrays
-            if "scope3d_lengths" in block_state and isinstance(osk_block, Scope3D):
-                lengths = block_state["scope3d_lengths"]
-                del osk_block.times[lengths["times"] :]
-                del osk_block.x_values[lengths["x"] :]
-                del osk_block.y_values[lengths["y"] :]
-                del osk_block.z_values[lengths["z"] :]
-
-            # Restore regular Scope internal data arrays
-            if "scope_lengths" in block_state and isinstance(osk_block, Scope):
-                lengths = block_state["scope_lengths"]
-                del osk_block.times[lengths["times"] :]
-                for values, length in zip(osk_block.values, lengths["values"], strict=False):
-                    del values[length:]
+    def _set_state(self, state: AdapterSnapshot) -> None:
+        self.restore_snapshot(state)
