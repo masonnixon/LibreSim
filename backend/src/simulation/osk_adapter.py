@@ -227,6 +227,7 @@ from ..osk.blocks.sources import (
     UniformNoise,
     WhiteNoise,
 )
+from ..osk.context import EPS
 from .compiler import CompiledBlock, CompiledModel
 
 # Mapping from LibreSim block types to OSK block classes
@@ -909,7 +910,11 @@ class OSKAdapter:
         self._scope_input_names = {}
 
         solver_method = self._get_solver_method(config.solver)
-        self.context.reset(dtp=config.step_size, method=solver_method)
+        self.context.reset(
+            start_time=config.start_time,
+            dtp=config.step_size,
+            method=solver_method,
+        )
 
         # Create OSK block instances
         for block in compiled_model.blocks:
@@ -1277,11 +1282,12 @@ class OSKAdapter:
 
         recorded_outputs: dict[str, float] = {}
 
-        # At t=0, we need to record initial conditions BEFORE any propagation
+        # At the configured start boundary, record initial conditions before propagation.
         # This matches how OSK's Sim.run() works - first report happens before first propagation
-        is_first_step = t < dt / 2.0  # Use dt/2 as tolerance for floating point
+        start_time = self._config.start_time if self._config is not None else 0.0
+        is_first_step = abs(t - start_time) <= EPS
 
-        # For the first step (t=0), we need to:
+        # For the first step at the configured start boundary, we need to:
         # 1. Update all blocks once to establish initial values (read external ICs, etc.)
         # 2. Record initial condition outputs BEFORE any propagation
         # 3. Then run the full integration cycle
@@ -1290,7 +1296,7 @@ class OSKAdapter:
             self.context.kpass = 0
             self.context.ready = 1  # Ready to record
 
-            # At t=0, we need a special initialization order:
+            # At the configured start boundary, use a special initialization order:
             # 1. First, update all source blocks (constants) to output their values
             # 2. Then, have integrators read their external ICs (but NOT their derivatives yet)
             # 3. Finally, update all other blocks that depend on integrator outputs
@@ -1551,6 +1557,7 @@ class OSKAdapter:
             dts=[self._config.step_size],
             tmax=self._config.stop_time,
             vStage=[stage],
+            start_time=self._config.start_time,
             context=self.context,
             owner=self,
         )
@@ -1657,6 +1664,11 @@ class OSKAdapter:
         return self._osk_blocks.copy()
 
     def get_analysis_data(self) -> dict[str, Any]:
+        """Collect analysis outputs while this adapter's context is active."""
+        with activate_context(self.context):
+            return self._get_analysis_data()
+
+    def _get_analysis_data(self) -> dict[str, Any]:
         """Get analysis data from all control analysis blocks.
 
         Returns:
@@ -1676,6 +1688,11 @@ class OSKAdapter:
         return analyses
 
     def get_scope_data(self) -> list[dict[str, Any]]:
+        """Collect scope outputs while this adapter's context is active."""
+        with activate_context(self.context):
+            return self._get_scope_data()
+
+    def _get_scope_data(self) -> list[dict[str, Any]]:
         """Get data from special scope blocks that accumulate data internally.
 
         This is used for blocks like Scope3D that store their own data rather than
@@ -1713,6 +1730,11 @@ class OSKAdapter:
         return signals
 
     def get_state(self) -> dict[str, Any]:
+        """Capture adapter state while this adapter's context is active."""
+        with activate_context(self.context):
+            return self._get_state()
+
+    def _get_state(self) -> dict[str, Any]:
         """Get the current state of all blocks for state saving/restoration.
 
         Returns:
@@ -1781,6 +1803,11 @@ class OSKAdapter:
         return state
 
     def set_state(self, state: dict[str, Any]):
+        """Restore adapter state while this adapter's context is active."""
+        with activate_context(self.context):
+            self._set_state(state)
+
+    def _set_state(self, state: dict[str, Any]):
         """Restore block states from a saved state.
 
         Args:

@@ -72,6 +72,7 @@ class Sim(metaclass=_SimFacade):
         tmax: float,
         vStage: list[list[Any]],
         *,
+        start_time: float = 0.0,
         context: SimContext | None = None,
         owner: object | None = None,
     ):
@@ -99,6 +100,7 @@ class Sim(metaclass=_SimFacade):
         self._owner = owner_token
         self.dts = dts
         self.dt = 0.0
+        self.start_time = start_time
         self.tmax = tmax
         self.vStage = vStage
         self.clock = None
@@ -152,7 +154,7 @@ class Sim(metaclass=_SimFacade):
     def _run(self) -> dict[str, Any]:
         results: dict[str, Any] = {"times": [], "outputs": {}}
 
-        self.context.legacy_set()
+        self.context.legacy_set(self.start_time)
         self.stop = 0
         self.stop0 = 0
 

@@ -59,10 +59,16 @@ class SimContext:
         """Return the number of integration stages for the effective method."""
         return len(STAGE_TIME_OFFSETS[self.effective_method])
 
-    def reset(self, *, dtp: float = 0.01, method: str = "RK4") -> None:
+    def reset(
+        self,
+        *,
+        start_time: float = 0.0,
+        dtp: float = 0.01,
+        method: str = "RK4",
+    ) -> None:
         """Reset execution state in place without releasing graph ownership."""
-        self.t = 0.0
-        self.t1 = 0.0
+        self.t = start_time
+        self.t1 = start_time
         self.dt = dtp
         self.dtp = dtp
         self.method = method
@@ -73,10 +79,10 @@ class SimContext:
         self.stop = 0
         self.stop0 = 0
 
-    def legacy_set(self) -> None:
+    def legacy_set(self, start_time: float = 0.0) -> None:
         """Implement the historical ``State.set`` clock reset."""
-        self.t = 0.0
-        self.t1 = 0.0
+        self.t = start_time
+        self.t1 = start_time
         self.kpass = 0
         self.ready = 1
 

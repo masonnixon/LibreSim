@@ -11,7 +11,7 @@ from threading import Barrier
 import pytest
 
 from src.models.model import Model
-from src.models.simulation import SimulationConfig, SolverType
+from src.models.simulation import SimulationConfig, SimulationStatus, SolverType
 from src.osk import Block, Sim, SimContext, State, activate_context, get_active_context
 from src.simulation.compiler import CompiledBlock, CompiledModel, ModelCompiler
 from src.simulation.osk_adapter import OSKAdapter
@@ -84,6 +84,21 @@ def _adapter_value(adapter: OSKAdapter) -> float:
     return float(adapter._osk_blocks["integrator"].getOutput())
 
 
+def _adapter_snapshot(
+    adapter: OSKAdapter,
+) -> tuple[float, float, float, float, str, int, int]:
+    context = adapter.context
+    return (
+        context.t,
+        context.t1,
+        context.dt,
+        context.dtp,
+        context.method,
+        context.kpass,
+        context.ready,
+    )
+
+
 def _run_adapter_isolated(solver: SolverType, step_size: float, steps: int) -> float:
     adapter = OSKAdapter()
     adapter.initialize(
@@ -99,6 +114,12 @@ def _run_runner_isolated(solver: SolverType, step_size: float, steps: int) -> fl
     assert runner.initialize_step_mode() is True
     assert runner.step_forward(steps)["success"] is True
     return _adapter_value(runner._adapter)
+
+
+def _stable_runner_results(runner: SimulationRunner) -> dict:
+    results = runner.get_results()
+    results["statistics"].pop("executionTime")
+    return results
 
 
 def _advance_decay(context: SimContext, state: State, start: float) -> None:
@@ -403,6 +424,52 @@ def test_adapters_with_different_solvers_can_step_alternately_without_crosstalk(
     assert _adapter_value(rk4) == pytest.approx(rk4_reference)
 
 
+@pytest.mark.parametrize("chunk_size", [1, 2], ids=["ABAB", "AABB"])
+def test_adapter_schedules_preserve_complete_peer_state_and_output_traces(chunk_size: int):
+    cases = {
+        "euler": (SolverType.EULER, 0.1, 8),
+        "rk4": (SolverType.RK4, 0.01, 80),
+    }
+
+    def initialized(solver: SolverType, step_size: float) -> OSKAdapter:
+        adapter = OSKAdapter()
+        adapter.initialize(
+            ModelCompiler().compile(_driven_integrator_model()),
+            _config(solver, step_size),
+        )
+        return adapter
+
+    references: dict[str, list[float]] = {}
+    for name, (solver, step_size, steps) in cases.items():
+        adapter = initialized(solver, step_size)
+        references[name] = [
+            next(iter(adapter.step(index * step_size, step_size).values()))
+            for index in range(steps)
+        ]
+
+    adapters = {
+        name: initialized(solver, step_size)
+        for name, (solver, step_size, _) in cases.items()
+    }
+    traces = {name: [] for name in cases}
+    indices = {name: 0 for name in cases}
+    while any(indices[name] < cases[name][2] for name in cases):
+        for name, peer in (("euler", "rk4"), ("rk4", "euler")):
+            _, step_size, steps = cases[name]
+            for _ in range(chunk_size):
+                index = indices[name]
+                if index >= steps:
+                    break
+                peer_before = _adapter_snapshot(adapters[peer])
+                outputs = adapters[name].step(index * step_size, step_size)
+                traces[name].append(next(iter(outputs.values())))
+                indices[name] += 1
+                assert _adapter_snapshot(adapters[peer]) == peer_before
+
+    assert traces["euler"] == pytest.approx(references["euler"])
+    assert traces["rk4"] == pytest.approx(references["rk4"])
+
+
 def test_stateful_run_simulation_uses_the_adapter_context():
     adapter = OSKAdapter()
     adapter.initialize(
@@ -414,6 +481,145 @@ def test_stateful_run_simulation_uses_the_adapter_context():
 
     assert adapter.context.t == pytest.approx(1.0)
     assert _adapter_value(adapter) == pytest.approx(1.0 - math.cos(1.0), abs=1e-6)
+
+
+def test_nonzero_start_time_is_shared_by_adapter_runner_and_reset_snapshots():
+    config = SimulationConfig(
+        solver=SolverType.RK4,
+        start_time=2.5,
+        stop_time=2.8,
+        step_size=0.1,
+    )
+    runner = SimulationRunner(_driven_integrator_model(), config)
+    context_id = id(runner.context)
+
+    assert runner.context is runner._adapter.context
+    assert runner.current_time == pytest.approx(2.5)
+    assert runner.initialize_step_mode() is True
+    assert runner.context.t == pytest.approx(2.5)
+    assert runner.context.t1 == pytest.approx(2.5)
+    assert runner._state_history[-1]["adapter_state"]["global_state"]["t"] == pytest.approx(
+        2.5
+    )
+
+    assert runner.step_forward()["success"] is True
+    assert runner._results
+    assert runner.initialize_step_mode() is True
+    assert runner.current_time == pytest.approx(2.5)
+    assert runner.progress == 0.0
+    assert runner._total_steps == 0
+    assert runner._results == {}
+    assert len(runner._state_history) == 1
+    assert runner.context.t == pytest.approx(2.5)
+
+    assert runner.step_forward()["success"] is True
+    runner._execution_time = 42.0
+    runner._error_message = "stale error"
+    runner._should_stop = True
+    runner._is_paused = True
+    runner.reset_step_mode()
+    assert id(runner.context) == context_id
+    assert runner.current_time == pytest.approx(2.5)
+    assert runner._execution_time == 0.0
+    assert runner._error_message is None
+    assert runner._should_stop is False
+    assert runner._is_paused is False
+    assert runner.context.t == pytest.approx(2.5)
+    assert runner.context.t1 == pytest.approx(2.5)
+    assert runner._state_history[-1]["adapter_state"]["global_state"]["t"] == pytest.approx(
+        2.5
+    )
+
+    runner.step_forward()
+    runner.reset()
+    assert id(runner.context) == context_id
+    assert runner.current_time == pytest.approx(2.5)
+    assert runner.context.t == pytest.approx(2.5)
+    assert runner.context.t1 == pytest.approx(2.5)
+
+
+def test_native_adapter_run_honors_nonzero_start_time():
+    adapter = OSKAdapter()
+    adapter.initialize(
+        ModelCompiler().compile(_driven_integrator_model()),
+        SimulationConfig(
+            solver=SolverType.RK4,
+            start_time=0.5,
+            stop_time=0.7,
+            step_size=0.1,
+        ),
+    )
+
+    results = adapter.run_simulation()
+
+    assert adapter.context.t == pytest.approx(0.7)
+    assert results["statistics"]["finalTime"] == pytest.approx(0.7)
+    # Native Sim retains its historical final-report call at the terminal time.
+    assert results["signals"][0]["times"] == pytest.approx([0.5, 0.6, 0.7, 0.7])
+
+
+def test_adapter_reporting_and_state_boundaries_activate_and_restore_context(monkeypatch):
+    adapter = OSKAdapter()
+    outer = SimContext()
+    observed: dict[str, SimContext] = {}
+
+    def probe(name: str, result):
+        def call(*args):
+            observed[name] = get_active_context()
+            return result
+
+        return call
+
+    monkeypatch.setattr(adapter, "_get_analysis_data", probe("analysis", {}))
+    monkeypatch.setattr(adapter, "_get_scope_data", probe("scope", []))
+    monkeypatch.setattr(adapter, "_get_state", probe("get_state", {}))
+    monkeypatch.setattr(adapter, "_set_state", probe("set_state", None))
+
+    with activate_context(outer):
+        assert adapter.get_analysis_data() == {}
+        assert adapter.get_scope_data() == []
+        assert adapter.get_state() == {}
+        adapter.set_state({})
+        assert get_active_context() is outer
+
+    assert observed == {
+        "analysis": adapter.context,
+        "scope": adapter.context,
+        "get_state": adapter.context,
+        "set_state": adapter.context,
+    }
+
+    def fail() -> dict:
+        assert get_active_context() is adapter.context
+        raise RuntimeError("reporting failed")
+
+    monkeypatch.setattr(adapter, "_get_analysis_data", fail)
+    with activate_context(outer):
+        with pytest.raises(RuntimeError, match="reporting failed"):
+            adapter.get_analysis_data()
+        assert get_active_context() is outer
+
+
+@pytest.mark.asyncio
+async def test_continuous_runner_honors_nonzero_start_time():
+    runner = SimulationRunner(
+        _driven_integrator_model(),
+        SimulationConfig(
+            solver=SolverType.RK4,
+            start_time=0.5,
+            stop_time=0.7,
+            step_size=0.1,
+        ),
+    )
+
+    await runner.run()
+
+    results = runner.get_results()
+    assert runner.status == SimulationStatus.COMPLETED
+    assert runner.current_time == pytest.approx(0.7)
+    assert runner.context.t == pytest.approx(0.7)
+    assert results["statistics"]["finalTime"] == pytest.approx(0.7)
+    assert results["signals"][0]["times"] == pytest.approx([0.5, 0.6])
 
 
 def test_runners_with_different_solvers_can_step_alternately_without_crosstalk():
@@ -437,6 +643,62 @@ def test_runners_with_different_solvers_can_step_alternately_without_crosstalk()
 
     assert _adapter_value(euler._adapter) == pytest.approx(euler_reference)
     assert _adapter_value(rk4._adapter) == pytest.approx(rk4_reference)
+
+
+@pytest.mark.asyncio
+async def test_runners_overlap_past_cooperative_yield_and_match_isolated_results():
+    class GatedRunner(SimulationRunner):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.reached_yield = asyncio.Event()
+            self.release_yield = asyncio.Event()
+
+        async def _cooperate_after_step(self) -> None:
+            self.reached_yield.set()
+            await self.release_yield.wait()
+            await super()._cooperate_after_step()
+
+    euler_config = SimulationConfig(
+        solver=SolverType.EULER,
+        step_size=0.1,
+        stop_time=11.95,
+    )
+    rk4_config = SimulationConfig(
+        solver=SolverType.RK4,
+        step_size=0.01,
+        stop_time=1.195,
+    )
+    euler = GatedRunner(_driven_integrator_model(), euler_config)
+    rk4 = GatedRunner(_driven_integrator_model(), rk4_config)
+
+    euler_task = asyncio.create_task(euler.run())
+    rk4_task = asyncio.create_task(rk4.run())
+    await euler.reached_yield.wait()
+    await rk4.reached_yield.wait()
+
+    assert euler.has_live_run
+    assert rk4.has_live_run
+    assert euler.status == SimulationStatus.RUNNING
+    assert rk4.status == SimulationStatus.RUNNING
+    assert euler._total_steps == 100
+    assert rk4._total_steps == 100
+    assert euler.context is not rk4.context
+    assert euler.context.method == "Euler"
+    assert rk4.context.method == "RK4"
+
+    euler.release_yield.set()
+    rk4.release_yield.set()
+    await asyncio.gather(euler_task, rk4_task)
+
+    isolated_euler = SimulationRunner(_driven_integrator_model(), euler_config)
+    isolated_rk4 = SimulationRunner(_driven_integrator_model(), rk4_config)
+    await isolated_euler.run()
+    await isolated_rk4.run()
+
+    assert _stable_runner_results(euler) == _stable_runner_results(isolated_euler)
+    assert _stable_runner_results(rk4) == _stable_runner_results(isolated_rk4)
+    assert euler.context.dtp == pytest.approx(0.1)
+    assert rk4.context.dtp == pytest.approx(0.01)
 
 
 def test_native_sim_rebinds_registered_states_from_the_provisional_context():

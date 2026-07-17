@@ -10,6 +10,7 @@ from ..models.simulation import (
     SimulationConfig,
     SimulationStatus,
 )
+from ..osk.context import SimContext
 from .compiler import CompiledModel, ModelCompiler
 from .osk_adapter import OSKAdapter
 
@@ -24,7 +25,7 @@ class SimulationRunner:
 
         self._status = SimulationStatus.IDLE
         self._progress = 0.0
-        self._current_time = 0.0
+        self._current_time = config.start_time
         self._should_stop = False
         self._is_paused = False
         self._error_message: str | None = None
@@ -57,7 +58,8 @@ class SimulationRunner:
 
         # Compile the model
         self._compiler = ModelCompiler()
-        self._adapter = OSKAdapter()
+        self.context = SimContext()
+        self._adapter = OSKAdapter(self.context)
 
     @property
     def status(self) -> SimulationStatus:
@@ -174,12 +176,21 @@ class SimulationRunner:
                         self._error_message = "; ".join(self._compiled.errors)
                     return False
 
-                # Initialize OSK adapter with compiled model
-                self._adapter.initialize(self._compiled, self.config)
+            # A fresh step-mode lifecycle always starts from the configured
+            # boundary, even when compilation is reused from an earlier run.
+            self._current_time = self.config.start_time
+            self._progress = 0.0
+            self._total_steps = 0
+            self._execution_time = 0.0
+            self._error_message = None
+            self._should_stop = False
+            self._is_paused = False
+            self._clear_result_history()
+            self._state_history = []
+            self._adapter.initialize(self._compiled, self.config)
 
             self._step_mode = True
             self._status = SimulationStatus.PAUSED
-            self._current_time = self.config.start_time
             self._start_time = time.time()
 
             # Save initial state
@@ -392,6 +403,11 @@ class SimulationRunner:
             self._current_time = self.config.start_time
             self._progress = 0.0
             self._total_steps = 0
+            self._execution_time = 0.0
+            self._start_time = time.time()
+            self._error_message = None
+            self._should_stop = False
+            self._is_paused = False
             self._clear_result_history()
             self._state_history = []
             self._status = SimulationStatus.PAUSED
@@ -406,7 +422,7 @@ class SimulationRunner:
         """
         self._status = SimulationStatus.IDLE
         self._progress = 0.0
-        self._current_time = 0.0
+        self._current_time = self.config.start_time
         self._should_stop = False
         self._is_paused = False
         self._error_message = None
@@ -463,7 +479,7 @@ class SimulationRunner:
 
                 # Yield to allow other tasks (and prevent blocking)
                 if self._total_steps % 100 == 0:
-                    await asyncio.sleep(0)
+                    await self._cooperate_after_step()
 
             # Finalize
             self._execution_time = time.time() - self._start_time
@@ -502,6 +518,7 @@ class SimulationRunner:
             # Initialize simulation
             self._status = SimulationStatus.RUNNING
             self._start_time = time.time()
+            self._current_time = self.config.start_time
 
             # Initialize OSK adapter with compiled model
             self._adapter.initialize(self._compiled, self.config)
@@ -533,7 +550,7 @@ class SimulationRunner:
 
                 # Yield to allow other tasks (and prevent blocking)
                 if self._total_steps % 100 == 0:
-                    await asyncio.sleep(0)
+                    await self._cooperate_after_step()
 
             # Finalize
             self._execution_time = time.time() - self._start_time
@@ -554,6 +571,10 @@ class SimulationRunner:
             traceback.print_exc()
         finally:
             self._run_finished.set()
+
+    async def _cooperate_after_step(self) -> None:
+        """Yield after a committed batch; tests may gate this boundary."""
+        await asyncio.sleep(0)
 
     def _record_outputs(self, t: float, outputs: dict[str, float]):
         """Record simulation outputs."""
