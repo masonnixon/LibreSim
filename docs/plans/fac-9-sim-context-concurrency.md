@@ -1,6 +1,7 @@
 # LibreSim — FAC-9 SimContext and Concurrent Simulations
 
-> **Status:** implementation in progress; Phases 0 and 1 completed in `f3051b9`
+> **Status:** implementation in progress; Phases 0-2 completed in `f3051b9` and
+> `9d4531a`
 > **Drafted:** 2026-07-16
 > **Closes:** FAC-9 / LS-10
 > **Parent plan:** `docs/plans/fable-audit-completion.md`
@@ -327,8 +328,15 @@ are required before advancing.
 **Progress (2026-07-16):** Phase 0 deterministically reproduced solver/clock cross-talk
 for alternating adapters and step-mode runners. Phase 1 completed in `f3051b9` with an
 instance-owned context kernel, active-context compatibility facade, adapter ownership,
-clock-transition validation, and task/exception/cancellation restoration coverage. The
-Docker gate passed 2,121 tests with 1 skip; Ruff and mypy passed across 136 source files.
+clock-transition validation, and task/exception/cancellation restoration coverage.
+Phase 2 completed in `9d4531a`: blocks and registered integrators now bind atomically to
+one graph/context owner, native `Sim` fields and clock execution are instance-scoped,
+and the temporary `Sim.*` facade follows the active or paired sequential-legacy
+instance. Two native simulations with different solvers execute concurrently in real
+threads without clock, field, write, sampling, or termination cross-talk. The Phase 2
+Docker gate passed 2,130 tests with 1 skip; Ruff and mypy passed across 136 source files,
+and the overlapped thread regression passed 20 consecutive repetitions. Phase 3 is
+next.
 
 ### Phase 0 — Characterize cross-talk and freeze compatibility
 
@@ -368,6 +376,12 @@ only the active context.
   so execution is proven to overlap.
 
 **Gate:** existing native OSK tests plus thread-isolation regressions pass repeatedly.
+
+**Completed:** `9d4531a` (2026-07-16). Focused native/context verification passed 52
+tests; the full backend passed 2,130 tests with 1 skip; Ruff and mypy were clean; and
+the barrier-backed thread-isolation regression passed 20 consecutive runs. Coordinator
+review found and the commit corrected a legacy `Sim.*`/`State.*` fallback pairing issue
+before the final gate.
 
 ### Phase 3 — Give adapters and runners explicit ownership
 
