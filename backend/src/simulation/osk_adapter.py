@@ -10,7 +10,7 @@ from typing import Any
 from ..models.simulation import SimulationConfig, SolverType
 
 # Import OSK components
-from ..osk import Block, Sim, State
+from ..osk import Block, Sim, SimContext, activate_context
 from ..osk.blocks import (
     Abs,
     AnalogFilter,
@@ -215,13 +215,6 @@ from ..osk.blocks.sensor_fusion import (
     Magnetometer,
     MahonyFilter,
 )
-
-STAGE_TIME_OFFSETS = {
-    "Euler": (0.0,),
-    "RK2": (0.0, 0.5),
-    "RK4": (0.0, 0.5, 0.5, 1.0),
-    "Merson": (0.0, 1.0 / 3.0, 1.0 / 3.0, 0.5, 1.0),
-}
 from ..osk.blocks.sinks import Display, Terminator
 from ..osk.blocks.sources import (
     BandLimitedWhiteNoise,
@@ -883,7 +876,9 @@ class OSKAdapter:
     manages simulation execution using OSK's Sim class.
     """
 
-    def __init__(self):
+    def __init__(self, context: SimContext | None = None):
+        self.context = context or SimContext()
+        self.context.claim_owner(self)
         self._compiled_model: CompiledModel | None = None
         self._config: SimulationConfig | None = None
         self._osk_blocks: dict[str, Block] = {}
@@ -894,6 +889,11 @@ class OSKAdapter:
         self._scope_input_names: dict[str, list[str]] = {}
 
     def initialize(self, compiled_model: CompiledModel, config: SimulationConfig):
+        """Initialize this adapter while its context is active."""
+        with activate_context(self.context):
+            self._initialize(compiled_model, config)
+
+    def _initialize(self, compiled_model: CompiledModel, config: SimulationConfig):
         """Initialize the simulation with a compiled model.
 
         Args:
@@ -908,17 +908,8 @@ class OSKAdapter:
         self._analysis_blocks = []
         self._scope_input_names = {}
 
-        # Reset global State for fresh simulation
-        State.t = 0.0
-        State.t1 = 0.0
-        State.kpass = 0
-        State.ready = 1
-        State.tickfirst = 1
-        State.ticklast = 0
-
-        # Set the integration method
         solver_method = self._get_solver_method(config.solver)
-        State.method = solver_method
+        self.context.reset(dtp=config.step_size, method=solver_method)
 
         # Create OSK block instances
         for block in compiled_model.blocks:
@@ -931,8 +922,6 @@ class OSKAdapter:
         # Initialize all blocks (must be done after connections are set up)
         # This is important for blocks like BodePlot, NyquistPlot, PoleZeroMap, StepInfo
         # that compute their outputs during init()
-        State.dt = config.step_size
-        State.dtp = config.step_size
         for osk_block in self._osk_blocks.values():
             osk_block.init()
 
@@ -950,9 +939,7 @@ class OSKAdapter:
         block_class = BLOCK_TYPE_MAP.get(block_type)
 
         if not block_class:
-            raise ValueError(
-                f"Unknown block type '{block_type}' for block '{compiled_block.id}'"
-            )
+            raise ValueError(f"Unknown block type '{block_type}' for block '{compiled_block.id}'")
 
         # Map parameters
         osk_params = self._map_parameters(block_type, compiled_block.parameters)
@@ -1152,9 +1139,8 @@ class OSKAdapter:
 
                 if source_osk_block:
                     source_dimensions = [1]
-                    if (
-                        source_compiled_block
-                        and source_port_index < len(source_compiled_block.output_dimensions)
+                    if source_compiled_block and source_port_index < len(
+                        source_compiled_block.output_dimensions
                     ):
                         source_dimensions = source_compiled_block.output_dimensions[
                             source_port_index
@@ -1262,6 +1248,11 @@ class OSKAdapter:
         return recorded_outputs
 
     def step(self, t: float, dt: float) -> dict[str, float]:
+        """Execute one simulation step while this adapter's context is active."""
+        with activate_context(self.context):
+            return self._step(t, dt)
+
+    def _step(self, t: float, dt: float) -> dict[str, float]:
         """Execute one simulation step.
 
         This method manually steps through the simulation, updating
@@ -1280,17 +1271,8 @@ class OSKAdapter:
         if not self._compiled_model:
             return {}
 
-        # Set OSK timing
-        State.t = t
-        State.t1 = t
-        State.dt = dt
-        State.dtp = dt
-        State.kpass = 0
-        State.ready = 1
-
-        # Number of passes for each integration method
-        passes = {"Euler": 1, "RK2": 2, "RK4": 4, "Merson": 5}
-        num_passes = passes.get(State.method, 1)
+        self.context.begin_step(t, dt)
+        num_passes = self.context.pass_count
 
         recorded_outputs: dict[str, float] = {}
 
@@ -1304,8 +1286,8 @@ class OSKAdapter:
         # 3. Then run the full integration cycle
         if is_first_step:
             # Initial update pass to read external ICs and establish initial state
-            State.kpass = 0
-            State.ready = 1  # Ready to record
+            self.context.kpass = 0
+            self.context.ready = 1  # Ready to record
 
             # At t=0, we need a special initialization order:
             # 1. First, update all source blocks (constants) to output their values
@@ -1391,9 +1373,7 @@ class OSKAdapter:
             # 4. Propagate all states
 
             for kpass in range(num_passes):
-                State.kpass = kpass
-                State.t = t + STAGE_TIME_OFFSETS[State.method][kpass] * dt
-                State.ready = 0  # Don't record during integration passes
+                self.context.enter_stage(kpass)
 
                 # First pass: Update all non-integrator blocks
                 # They will read integrator outputs (which reflect current state)
@@ -1449,8 +1429,8 @@ class OSKAdapter:
             # the integrator state x[0] is modified to intermediate values that don't
             # represent the actual system state at any real time point.
 
-            State.kpass = 0
-            State.ready = 1  # Ready to record
+            self.context.kpass = 0
+            self.context.ready = 1  # Ready to record
 
             # First, update all non-integrator blocks to read current integrator outputs
             for block_id in self._compiled_model.execution_order:
@@ -1491,9 +1471,7 @@ class OSKAdapter:
 
             # Now run the integration passes to advance state
             for kpass in range(num_passes):
-                State.kpass = kpass
-                State.t = t + STAGE_TIME_OFFSETS[State.method][kpass] * dt
-                State.ready = 0  # Don't record during integration
+                self.context.enter_stage(kpass)
 
                 # Update non-integrator blocks (compute derivative inputs for integrators)
                 for block_id in self._compiled_model.execution_order:
@@ -1539,15 +1517,16 @@ class OSKAdapter:
                 for osk_block in self._osk_blocks.values():
                     osk_block.propagateStates()
 
-        # Leave global timing at the completed step boundary.
-        State.t = t + dt
-        State.t1 = State.t
-        State.kpass = 0
-        State.ready = 1
+        self.context.complete_step()
 
         return recorded_outputs
 
     def run_simulation(self) -> dict[str, Any]:
+        """Run a complete simulation while this adapter's context is active."""
+        with activate_context(self.context):
+            return self._run_simulation()
+
+    def _run_simulation(self) -> dict[str, Any]:
         """Run a complete simulation using OSK's Sim class.
 
         This is an alternative to using step() repeatedly,
@@ -1734,10 +1713,10 @@ class OSKAdapter:
         """
         state: dict[str, Any] = {
             "global_state": {
-                "t": State.t,
-                "t1": State.t1,
-                "kpass": State.kpass,
-                "ready": State.ready,
+                "t": self.context.t,
+                "t1": self.context.t1,
+                "kpass": self.context.kpass,
+                "ready": self.context.ready,
             },
             "block_states": {},
         }
@@ -1806,10 +1785,10 @@ class OSKAdapter:
         # Restore global OSK state
         if "global_state" in state:
             gs = state["global_state"]
-            State.t = gs.get("t", State.t)
-            State.t1 = gs.get("t1", State.t1)
-            State.kpass = gs.get("kpass", State.kpass)
-            State.ready = gs.get("ready", State.ready)
+            self.context.t = gs.get("t", self.context.t)
+            self.context.t1 = gs.get("t1", self.context.t1)
+            self.context.kpass = gs.get("kpass", self.context.kpass)
+            self.context.ready = gs.get("ready", self.context.ready)
 
         # Restore block states
         block_states = state.get("block_states", {})

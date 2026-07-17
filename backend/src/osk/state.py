@@ -1,184 +1,154 @@
-"""State class - Numerical integrator with multiple integration methods.
+"""Numerical integrator with instance-scoped simulation timing."""
 
-Based on H.R. Sells' OSK implementation (updated 4-22-2020).
-Supports Euler, RK2, RK4, and Merson's integration methods.
-"""
+from typing import Any
+
+from .context import (
+    EPS,
+    EVENT,
+    STAGE_TIME_OFFSETS,
+    SimContext,
+    get_active_context,
+)
+
+_CONTEXT_FIELDS = frozenset(
+    {
+        "t",
+        "t1",
+        "dt",
+        "dtp",
+        "ready",
+        "kpass",
+        "method",
+        "tickfirst",
+        "ticklast",
+    }
+)
 
 
-STAGE_TIME_OFFSETS = {
-    "Euler": (0.0,),
-    "RK2": (0.0, 0.5),
-    "RK4": (0.0, 0.5, 0.5, 1.0),
-    "Merson": (0.0, 1.0 / 3.0, 1.0 / 3.0, 0.5, 1.0),
-}
+class _StateFacade(type):
+    """Map legacy class attributes to the active simulation context."""
+
+    def __getattribute__(cls, name: str) -> Any:
+        if name in _CONTEXT_FIELDS:
+            return getattr(get_active_context(), name)
+        return super().__getattribute__(name)
+
+    def __setattr__(cls, name: str, value: Any) -> None:
+        if name in _CONTEXT_FIELDS:
+            setattr(get_active_context(), name, value)
+            return
+        super().__setattr__(name, value)
 
 
-class State:
-    """Numerical integrator for state variables.
+class State(metaclass=_StateFacade):
+    """A numerical state explicitly bound to one :class:`SimContext`."""
 
-    Each State object maintains a state vector x where:
-    - x[0] is the state value
-    - x[1] is the derivative (set by the user's update() method)
+    # Concrete placeholders keep class-introspection and pytest monkeypatch teardown
+    # compatible. The metaclass always serves runtime values from the active context.
+    t: float = 0.0
+    t1: float = 0.0
+    dt: float = 0.01
+    dtp: float = 0.01
+    ready: int = 1
+    kpass: int = 0
+    method: str = "RK4"
+    tickfirst: int = 1
+    ticklast: int = 0
 
-    The propagate() method advances x[0] using the chosen integration method.
-    """
+    EPS = EPS
+    EVENT = EVENT
 
-    # Class-level simulation timing variables
-    t = 0.0  # Current simulation time
-    t1 = 0.0  # Start time of the current integration step
-    dt = 0.01  # Current time step
-    dtp = 0.01  # Primary time step
-    ready = 1  # Flag indicating when outputs are ready
-    kpass = 0  # Current integration pass (0-4 depending on method)
-    method = "RK4"  # Integration method: 'Euler', 'RK2', 'RK4', 'Merson'
-    EPS = 1e-10  # Small epsilon for floating point comparisons
-    EVENT = -1  # Event time constant
-    tickfirst = 1  # First tick flag
-    ticklast = 0  # Last tick flag
-
-    def __init__(self, x=None):
-        """Initialize state with optional initial values.
-
-        Args:
-            x: Initial state vector [position, velocity] or defaults to [0, 0]
-        """
+    def __init__(self, x=None, *, context: SimContext | None = None):
         if x is None:
             x = [0.0, 0.0]
         self.x = list(x)
+        self.context = context or get_active_context()
 
-        # Storage for intermediate values during multi-pass integration
-        self.x0 = 0.0  # Initial position for this step
-        self.xd0 = 0.0  # Derivative at start
-        self.xd1 = 0.0  # Derivative at pass 1
-        self.xd2 = 0.0  # Derivative at pass 2
-        self.xd3 = 0.0  # Derivative at pass 3
-        self.xd4 = 0.0  # Derivative at pass 4 (Merson)
+        self.x0 = 0.0
+        self.xd0 = 0.0
+        self.xd1 = 0.0
+        self.xd2 = 0.0
+        self.xd3 = 0.0
+        self.xd4 = 0.0
 
-    def set(self):
-        """Initialize simulation timing."""
-        State.t = 0.0
-        State.t1 = 0.0
-        State.kpass = 0
-        State.ready = 1
+    def set(self) -> None:
+        """Initialize simulation timing on this state's bound context."""
+        self.context.legacy_set()
 
-    def reset(self, dtp):
-        """Reset time step parameters.
+    def reset(self, dtp: float) -> None:
+        """Reset time-step parameters on this state's bound context."""
+        self.context.reset_step(dtp)
 
-        Args:
-            dtp: Primary time step
-        """
-        State.dtp = dtp
-        State.dt = dtp
-        State.kpass = 0
-        State.ready = 1
-
-    def sample(self, t_event):
+    def sample(self, t_event: float) -> None:
         """Mark outputs ready when an event time has been reached."""
-        if State.t >= t_event - State.EPS:
-            State.ready = 1
+        self.context.sample(t_event)
 
-    def propagate(self):
-        """Advance the state using the selected integration method.
-
-        This implements multi-pass integration where each pass computes
-        intermediate derivatives and the final pass combines them to
-        update the state.
-        """
-        if State.method == "Euler":
+    def propagate(self) -> None:
+        """Advance the state using its context's selected integration method."""
+        method = self.context.effective_method
+        if method == "Euler":
             self._propagate_euler()
-        elif State.method == "RK2":
+        elif method == "RK2":
             self._propagate_rk2()
-        elif State.method == "RK4":
-            self._propagate_rk4()
-        elif State.method == "Merson":
+        elif method == "Merson":
             self._propagate_merson()
         else:
-            # Default to RK4
             self._propagate_rk4()
 
-    def _propagate_euler(self):
-        """Euler method (1st order) - single pass."""
-        if State.kpass == 0:
+    def _propagate_euler(self) -> None:
+        if self.context.kpass == 0:
             self.xd0 = self.x[1]
-            self.x[0] = self.x[0] + State.dt * self.xd0
+            self.x[0] = self.x[0] + self.context.dt * self.xd0
 
-    def _propagate_rk2(self):
-        """RK2 method (2nd order) - two passes."""
-        if State.kpass == 0:
-            # Pass 0: Store initial state, compute half-step
+    def _propagate_rk2(self) -> None:
+        if self.context.kpass == 0:
             self.x0 = self.x[0]
             self.xd0 = self.x[1]
-            self.x[0] = self.x0 + State.dt / 2.0 * self.xd0
-        elif State.kpass == 1:
-            # Pass 1: Full step using midpoint slope
+            self.x[0] = self.x0 + self.context.dt / 2.0 * self.xd0
+        elif self.context.kpass == 1:
             self.xd1 = self.x[1]
-            self.x[0] = self.x0 + State.dt * self.xd1
+            self.x[0] = self.x0 + self.context.dt * self.xd1
 
-    def _propagate_rk4(self):
-        """RK4 method (4th order) - four passes."""
-        if State.kpass == 0:
-            # Pass 0: Store initial, half-step with initial derivative
+    def _propagate_rk4(self) -> None:
+        if self.context.kpass == 0:
             self.x0 = self.x[0]
             self.xd0 = self.x[1]
-            self.x[0] = self.x0 + State.dt / 2.0 * self.xd0
-        elif State.kpass == 1:
-            # Pass 1: Half-step with k2 derivative
+            self.x[0] = self.x0 + self.context.dt / 2.0 * self.xd0
+        elif self.context.kpass == 1:
             self.xd1 = self.x[1]
-            self.x[0] = self.x0 + State.dt / 2.0 * self.xd1
-        elif State.kpass == 2:
-            # Pass 2: Full-step with k3 derivative
+            self.x[0] = self.x0 + self.context.dt / 2.0 * self.xd1
+        elif self.context.kpass == 2:
             self.xd2 = self.x[1]
-            self.x[0] = self.x0 + State.dt * self.xd2
-        elif State.kpass == 3:
-            # Pass 3: Combine all derivatives
+            self.x[0] = self.x0 + self.context.dt * self.xd2
+        elif self.context.kpass == 3:
             self.xd3 = self.x[1]
-            self.x[0] = self.x0 + State.dt / 6.0 * (
+            self.x[0] = self.x0 + self.context.dt / 6.0 * (
                 self.xd0 + 2.0 * self.xd1 + 2.0 * self.xd2 + self.xd3
             )
 
-    def _propagate_merson(self):
-        """Merson's method (4th order with error estimate) - five passes."""
-        if State.kpass == 0:
-            # k1
+    def _propagate_merson(self) -> None:
+        if self.context.kpass == 0:
             self.x0 = self.x[0]
-            self.xd0 = self.x[1]  # k1
-            self.x[0] = self.x0 + State.dt / 3.0 * self.xd0
-        elif State.kpass == 1:
-            # k2
-            self.xd1 = self.x[1]  # k2
-            self.x[0] = self.x0 + State.dt / 6.0 * (self.xd0 + self.xd1)
-        elif State.kpass == 2:
-            # k3
-            self.xd2 = self.x[1]  # k3
-            self.x[0] = self.x0 + State.dt / 8.0 * (self.xd0 + 3.0 * self.xd2)
-        elif State.kpass == 3:
-            # k4
-            self.xd3 = self.x[1]  # k4
-            self.x[0] = self.x0 + State.dt / 2.0 * (self.xd0 - 3.0 * self.xd2 + 4.0 * self.xd3)
-        elif State.kpass == 4:
-            # k5 - final combination
-            self.xd4 = self.x[1]  # k5
-            self.x[0] = self.x0 + State.dt / 6.0 * (self.xd0 + 4.0 * self.xd3 + self.xd4)
+            self.xd0 = self.x[1]
+            self.x[0] = self.x0 + self.context.dt / 3.0 * self.xd0
+        elif self.context.kpass == 1:
+            self.xd1 = self.x[1]
+            self.x[0] = self.x0 + self.context.dt / 6.0 * (self.xd0 + self.xd1)
+        elif self.context.kpass == 2:
+            self.xd2 = self.x[1]
+            self.x[0] = self.x0 + self.context.dt / 8.0 * (self.xd0 + 3.0 * self.xd2)
+        elif self.context.kpass == 3:
+            self.xd3 = self.x[1]
+            self.x[0] = self.x0 + self.context.dt / 2.0 * (
+                self.xd0 - 3.0 * self.xd2 + 4.0 * self.xd3
+            )
+        elif self.context.kpass == 4:
+            self.xd4 = self.x[1]
+            self.x[0] = self.x0 + self.context.dt / 6.0 * (self.xd0 + 4.0 * self.xd3 + self.xd4)
 
-    def updateclock(self):
-        """Update simulation clock based on integration method passes."""
-        # Number of passes for each method
-        passes = {"Euler": 1, "RK2": 2, "RK4": 4, "Merson": 5}
-        max_pass = passes.get(State.method, 4)
-        offsets = STAGE_TIME_OFFSETS.get(State.method, STAGE_TIME_OFFSETS["RK4"])
+    def updateclock(self) -> None:
+        """Advance the bound simulation clock by one integration stage."""
+        self.context.update_clock()
 
-        if State.kpass == 0:
-            State.t1 = State.t
 
-        State.kpass += 1
-        State.dt = State.dtp
-
-        if State.kpass >= max_pass:
-            # All passes complete, advance time
-            State.kpass = 0
-            State.t1 += State.dtp
-            State.t = State.t1
-            State.ready = 1
-        else:
-            State.ready = 0
-            State.t = State.t1 + offsets[State.kpass] * State.dtp
+__all__ = ["EPS", "EVENT", "STAGE_TIME_OFFSETS", "State"]

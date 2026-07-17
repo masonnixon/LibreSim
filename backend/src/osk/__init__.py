@@ -10,7 +10,15 @@ Core classes:
 """
 
 from .block import Block
+from .context import SimContext, activate_context, get_active_context
 from .sim import Sim
 from .state import State
 
-__all__ = ["State", "Block", "Sim"]
+__all__ = [
+    "State",
+    "Block",
+    "Sim",
+    "SimContext",
+    "activate_context",
+    "get_active_context",
+]
