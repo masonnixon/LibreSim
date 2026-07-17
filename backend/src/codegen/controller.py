@@ -116,6 +116,8 @@ async def generate_code(request: CodeGenRequest):
             },
         )
 
+    except HTTPException:
+        raise
     except CodeGenerationError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -259,6 +261,8 @@ async def compile_code(request: CompileRequest):
             headers={"Content-Disposition": download_content_disposition(filename)},
         )
 
+    except HTTPException:
+        raise
     except CompilationError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except CodeGenerationError as e:

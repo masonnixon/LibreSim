@@ -354,7 +354,7 @@ files verified mirrored, `docs/refs/testing.md` coverage tables updated to final
 | Task | Status | Commit(s) | Coverage after (B/F) | Notes |
 |---|---|---|---|---|
 | B1 | complete | this commit | B: 85.82% combined (89.10% lines / 74.47% branches) | 2,185 passed; external MDL fixture has a documented `skipif` |
-| B2 | not started | | | |
+| B2 | in progress (codegen controller slice) | this commit | B: 86.60% combined; controller 91.25% combined | 2,234 passed; invalid language/method now preserve HTTP 400 |
 | B3 | complete | this commit | B: 86.33% combined; `docker_compiler.py` 100% line/branch | 2,212 passed; fixed persistent-artifact and default-path regressions |
 | B4 | not started (FAC-9 prerequisite complete) | | | |
 | B5.1–B5.8 | not started | | | |
