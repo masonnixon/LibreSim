@@ -1,6 +1,6 @@
 # LibreSim — FAC-9 SimContext and Concurrent Simulations
 
-> **Status:** implementation in progress; Phases 0-5 completed through `959e8aa`
+> **Status:** implementation in progress; Phases 0-6 completed through `4df7b63`
 > **Drafted:** 2026-07-16
 > **Closes:** FAC-9 / LS-10
 > **Parent plan:** `docs/plans/fable-audit-completion.md`
@@ -336,7 +336,8 @@ threads without clock, field, write, sampling, or termination cross-talk. The Ph
 Docker gate passed 2,130 tests with 1 skip; Ruff and mypy passed across 136 source files,
 and the overlapped thread regression passed 20 consecutive repetitions. Phase 3
 completed in `a450f20` and `ec15bb1`. Phase 4 completed in `e33a9fd`. Phase 5
-completed in `3898ed5` and `959e8aa`; session-addressed API concurrency is next.
+completed in `3898ed5` and `959e8aa`. Phase 6 completed in `cc0fc70` and
+`4df7b63`; compatibility and closeout are next.
 
 ### Phase 0 — Characterize cross-talk and freeze compatibility
 
@@ -471,6 +472,20 @@ across 137 source files.
 
 **Gate:** two API sessions run simultaneously, pausing or stopping one does not affect
 the other, and all legacy replacement/race tests remain green.
+
+**Completed:** `cc0fc70` and `4df7b63` (2026-07-16). A bounded process-local registry
+now owns monotonic session records, exact background tasks/tokens, leased route
+resolution, tombstoned deletion, latest-retained promotion, safe terminal pruning, and
+an await-safe default replacement mutex. `/start` and `/step/init` retain replacement by
+default and opt into coexistence with `replaceCurrent: false`; every read/control/step
+route accepts optional `sessionId`, and explicit deletion is available under
+`DELETE /sessions/{sessionId}`. Deterministic tests cover retained live peers, targeted
+reads/control/step operations, unknown IDs, same-session conflicts, replacement versus
+coexistence, deletion tombstones/promotion, capacity admission/pruning races, failed
+step initialization, and cancellation before a scheduled task starts. The frontend
+client exposes matching optional parameters without changing existing callers. The full
+Docker gates passed 2,185 backend tests with 1 skip and 664 frontend tests; Ruff and
+mypy were clean across 138 source files, and ESLint/TypeScript were clean.
 
 ### Phase 7 — Compatibility and closeout
 
