@@ -1,6 +1,6 @@
 # LibreSim — FAC-9 SimContext and Concurrent Simulations
 
-> **Status:** implementation in progress; Phases 0-3 completed through `ec15bb1`
+> **Status:** implementation in progress; Phases 0-4 completed through `e33a9fd`
 > **Drafted:** 2026-07-16
 > **Closes:** FAC-9 / LS-10
 > **Parent plan:** `docs/plans/fable-audit-completion.md`
@@ -335,7 +335,7 @@ instance. Two native simulations with different solvers execute concurrently in 
 threads without clock, field, write, sampling, or termination cross-talk. The Phase 2
 Docker gate passed 2,130 tests with 1 skip; Ruff and mypy passed across 136 source files,
 and the overlapped thread regression passed 20 consecutive repetitions. Phase 3
-completed in `a450f20` and `ec15bb1`; Phase 4 is next.
+completed in `a450f20` and `ec15bb1`. Phase 4 completed in `e33a9fd`; Phase 5 is next.
 
 ### Phase 0 — Characterize cross-talk and freeze compatibility
 
@@ -424,6 +424,13 @@ constants. Do not change `update(ctx)` signatures across the library.
 
 **Gate:** no mutable `State.*` access remains in built-in production blocks, adapter,
 runner, or native `Sim`; timing-sensitive block tests pass under interleaving.
+
+**Completed:** `e33a9fd` (2026-07-16). All built-in mutable timing and readiness access
+now uses each block's owned context, while the shared epsilon is a module constant. The
+static AST inventory is zero, and deterministic ABAB/AABB regressions cover Sine, Clock,
+RateLimiter, LowPassFilter, UnitDelay, and TransportDelay with distinct step sizes and
+peer-context immutability checks. The full Docker gate passed 2,159 tests with 1 skip;
+Ruff and mypy were clean across 136 source files.
 
 ### Phase 5 — Version and complete snapshots
 
