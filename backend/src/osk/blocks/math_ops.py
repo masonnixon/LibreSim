@@ -4,7 +4,7 @@ import math
 from typing import Any
 
 from ..block import Block
-from ..state import State
+from ..context import EPS
 
 
 class Sum(Block):
@@ -261,10 +261,10 @@ class Product(Block):
                                 if op == "*":
                                     self._output_vector[j] *= val
                                 else:
-                                    if abs(val) > State.EPS:
+                                    if abs(val) > EPS:
                                         self._output_vector[j] /= val
                                     else:
-                                        self._output_vector[j] /= State.EPS
+                                        self._output_vector[j] /= EPS
                     else:
                         # Apply scalar to all elements
                         val = self.inputs[i]
@@ -272,10 +272,10 @@ class Product(Block):
                             if op == "*":
                                 self._output_vector[j] *= val
                             else:
-                                if abs(val) > State.EPS:
+                                if abs(val) > EPS:
                                     self._output_vector[j] /= val
                                 else:
-                                    self._output_vector[j] /= State.EPS
+                                    self._output_vector[j] /= EPS
             self.output = self._output_vector[0] if self._output_vector else 0.0
         else:
             # Scalar product
@@ -286,10 +286,10 @@ class Product(Block):
                     if op == "*":
                         self.output *= self.inputs[i]
                     else:
-                        if abs(self.inputs[i]) > State.EPS:
+                        if abs(self.inputs[i]) > EPS:
                             self.output /= self.inputs[i]
                         else:
-                            self.output /= State.EPS
+                            self.output /= EPS
 
     def getOutput(self, port=0):
         if self._is_vector and self._output_vector:
@@ -403,9 +403,9 @@ class Sign(Block):
         self._output_vector = None
 
     def _compute_sign(self, val):
-        if val > State.EPS:
+        if val > EPS:
             return 1.0
-        elif val < -State.EPS:
+        elif val < -EPS:
             return -1.0
         return 0.0
 
@@ -567,9 +567,9 @@ class MathFunction(Block):
         if self.function == "exp":
             return math.exp(val)
         elif self.function == "log":
-            return math.log(max(val, State.EPS))
+            return math.log(max(val, EPS))
         elif self.function == "log10":
-            return math.log10(max(val, State.EPS))
+            return math.log10(max(val, EPS))
         elif self.function == "sqrt":
             return math.sqrt(max(val, 0.0))
         elif self.function == "square":
@@ -577,9 +577,9 @@ class MathFunction(Block):
         elif self.function == "pow":
             return val**self.exponent
         elif self.function == "reciprocal":
-            if abs(val) > State.EPS:
+            if abs(val) > EPS:
                 return 1.0 / val
-            return 1.0 / State.EPS
+            return 1.0 / EPS
         return val
 
     def setInput(self, value, port=0):
@@ -841,7 +841,7 @@ class Switch(Block):
         elif self.criteria == "gt":
             use_first = control > self.threshold
         else:  # 'neq'
-            use_first = abs(control - self.threshold) > State.EPS
+            use_first = abs(control - self.threshold) > EPS
 
         self.output = self.inputs[0] if use_first else self.inputs[2]
 
@@ -1207,17 +1207,17 @@ class Divide(Block):
                     if self._input_vectors[1] and i < len(self._input_vectors[1])
                     else self.inputs[1]
                 )
-                if abs(b) > State.EPS:
+                if abs(b) > EPS:
                     self._output_vector[i] = a / b
                 else:
-                    self._output_vector[i] = a / State.EPS if b >= 0 else -a / State.EPS
+                    self._output_vector[i] = a / EPS if b >= 0 else -a / EPS
             self.output = self._output_vector[0]
         else:
             b = self.inputs[1]
-            if abs(b) > State.EPS:
+            if abs(b) > EPS:
                 self.output = self.inputs[0] / b
             else:
-                self.output = self.inputs[0] / State.EPS if b >= 0 else -self.inputs[0] / State.EPS
+                self.output = self.inputs[0] / EPS if b >= 0 else -self.inputs[0] / EPS
 
     def getOutput(self, port=0):
         if self._is_vector and self._output_vector and port < len(self._output_vector):
@@ -1297,14 +1297,14 @@ class Mod(Block):
                     if self._input_vectors[1] and i < len(self._input_vectors[1])
                     else self.inputs[1]
                 )
-                if abs(b) > State.EPS:
+                if abs(b) > EPS:
                     self._output_vector[i] = math.fmod(a, b)
                 else:
                     self._output_vector[i] = 0.0
             self.output = self._output_vector[0]
         else:
             b = self.inputs[1]
-            if abs(b) > State.EPS:
+            if abs(b) > EPS:
                 self.output = math.fmod(self.inputs[0], b)
             else:
                 self.output = 0.0

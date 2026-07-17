@@ -574,15 +574,13 @@ class TransportDelay(Block):
         self.input_source_port = source_port
 
     def update(self):
-        from ..state import State
-
         if self.input_block is not None:
             self.input = self.input_block.getOutput(self.input_source_port)
 
-        current_time = State.t
+        current_time = self.context.t
 
         # Buffer one sample per completed integration step.
-        if State.ready:
+        if self.context.ready:
             self.buffer.append(self.input)
             self.time_buffer.append(current_time)
 

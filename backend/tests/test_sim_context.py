@@ -4,6 +4,7 @@ import ast
 import asyncio
 import math
 from collections import Counter
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Barrier
@@ -13,6 +14,10 @@ import pytest
 from src.models.model import Model
 from src.models.simulation import SimulationConfig, SimulationStatus, SolverType
 from src.osk import Block, Sim, SimContext, State, activate_context, get_active_context
+from src.osk.blocks.continuous import TransportDelay
+from src.osk.blocks.discrete import UnitDelay
+from src.osk.blocks.signal_processing import LowPassFilter, RateLimiter
+from src.osk.blocks.sources import Clock, SineWave
 from src.simulation.compiler import CompiledBlock, CompiledModel, ModelCompiler
 from src.simulation.osk_adapter import OSKAdapter
 from src.simulation.runner import (
@@ -101,6 +106,52 @@ def _adapter_snapshot(
         context.kpass,
         context.ready,
     )
+
+
+def _context_snapshot(
+    context: SimContext,
+) -> tuple[float, float, float, float, str, int, int, int, int, int, int]:
+    return (
+        context.t,
+        context.t1,
+        context.dt,
+        context.dtp,
+        context.method,
+        context.kpass,
+        context.ready,
+        context.tickfirst,
+        context.ticklast,
+        context.stop,
+        context.stop0,
+    )
+
+
+def _initialized_builtin(
+    factory: Callable[[], Block], step_size: float
+) -> tuple[Block, SimContext]:
+    context = SimContext(dt=step_size, dtp=step_size)
+    block = factory()
+    block.bind_context(context, object())
+    block.init()
+    return block, context
+
+
+def _advance_builtin(block: Block, context: SimContext, index: int) -> float:
+    context.t = index * context.dtp
+    context.t1 = context.t
+    context.dt = context.dtp
+    context.ready = 1
+    if hasattr(block, "setInput"):
+        block.setInput(1.5 + math.sin(1.7 * context.t))
+    block.update()
+    return float(block.getOutput())
+
+
+def _builtin_reference(
+    factory: Callable[[], Block], step_size: float, steps: int
+) -> list[float]:
+    block, context = _initialized_builtin(factory, step_size)
+    return [_advance_builtin(block, context, index) for index in range(steps)]
 
 
 def _run_adapter_isolated(solver: SolverType, step_size: float, steps: int) -> float:
@@ -495,6 +546,62 @@ def test_adapters_with_different_solvers_can_step_alternately_without_crosstalk(
 
     assert _adapter_value(euler) == pytest.approx(euler_reference)
     assert _adapter_value(rk4) == pytest.approx(rk4_reference)
+
+
+@pytest.mark.parametrize(
+    "factory",
+    [
+        pytest.param(
+            lambda: SineWave(amplitude=2.0, frequency=0.75, phase=0.2, bias=-0.1),
+            id="sine-wave",
+        ),
+        pytest.param(Clock, id="clock"),
+        pytest.param(
+            lambda: RateLimiter(rising_rate=1.25, falling_rate=-0.8),
+            id="rate-limiter",
+        ),
+        pytest.param(lambda: LowPassFilter(cutoff_freq=1.4), id="low-pass-filter"),
+        pytest.param(
+            lambda: UnitDelay(initial_condition=-0.5, sample_time=0.15),
+            id="unit-delay",
+        ),
+        pytest.param(
+            lambda: TransportDelay(delay_time=0.18, initial_output=-0.5),
+            id="transport-delay",
+        ),
+    ],
+)
+@pytest.mark.parametrize("chunk_size", [1, 2], ids=["ABAB", "AABB"])
+def test_timing_sensitive_builtins_match_isolated_traces_when_interleaved(
+    factory: Callable[[], Block], chunk_size: int
+):
+    cases = {"first": (0.1, 9), "second": (0.06, 13)}
+    references = {
+        name: _builtin_reference(factory, step_size, steps)
+        for name, (step_size, steps) in cases.items()
+    }
+    instances = {
+        name: _initialized_builtin(factory, step_size)
+        for name, (step_size, _) in cases.items()
+    }
+    traces = {name: [] for name in cases}
+    indices = {name: 0 for name in cases}
+
+    while any(indices[name] < cases[name][1] for name in cases):
+        for name, peer in (("first", "second"), ("second", "first")):
+            block, context = instances[name]
+            _, steps = cases[name]
+            for _ in range(chunk_size):
+                index = indices[name]
+                if index >= steps:
+                    break
+                peer_before = _context_snapshot(instances[peer][1])
+                traces[name].append(_advance_builtin(block, context, index))
+                indices[name] += 1
+                assert _context_snapshot(instances[peer][1]) == peer_before
+
+    assert traces["first"] == pytest.approx(references["first"])
+    assert traces["second"] == pytest.approx(references["second"])
 
 
 @pytest.mark.parametrize("chunk_size", [1, 2], ids=["ABAB", "AABB"])
@@ -1081,7 +1188,7 @@ def test_native_sims_run_concurrently_without_context_or_facade_crosstalk():
 
 
 def test_mutable_state_facade_inventory_does_not_grow():
-    """Freeze the temporary built-in compatibility surface for later migration."""
+    """Prevent mutable compatibility-facade access from returning to production."""
     backend_root = Path(__file__).resolve().parents[1]
     mutable_fields = {
         "t",
@@ -1113,16 +1220,4 @@ def test_mutable_state_facade_inventory_does_not_grow():
             ):
                 actual[path.relative_to(backend_root).as_posix()] += 1
 
-    assert actual == Counter(
-        {
-            "src/osk/blocks/continuous.py": 2,
-            "src/osk/blocks/discrete.py": 26,
-            "src/osk/blocks/nonlinear.py": 3,
-            "src/osk/blocks/observers.py": 4,
-            "src/osk/blocks/rf.py": 4,
-            "src/osk/blocks/sensor_fusion.py": 5,
-            "src/osk/blocks/signal_processing.py": 21,
-            "src/osk/blocks/sinks.py": 7,
-            "src/osk/blocks/sources.py": 26,
-        }
-    )
+    assert actual == Counter()

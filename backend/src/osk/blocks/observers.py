@@ -7,7 +7,6 @@ Luenberger observers and Kalman filters.
 import numpy as np
 
 from ..block import Block
-from ..state import State
 
 
 class LuenbergerObserver(Block):
@@ -91,7 +90,7 @@ class LuenbergerObserver(Block):
 
     def propagateStates(self):
         """Integrate state estimates using Euler method."""
-        self.x_hat = self.x_hat + State.dt * self.x_hat_dot
+        self.x_hat = self.x_hat + self.context.dt * self.x_hat_dot
 
     def getOutput(self, port=0):
         """Get state estimate. Port 0 returns first state, etc."""
@@ -123,7 +122,7 @@ class KalmanFilter(Block):
     where w ~ N(0, Q) and v ~ N(0, R).
 
     Note: As a discrete-time filter, updates only occur on the final
-    integration pass (State.ready=1) to prevent multi-pass corruption
+    integration pass (self.context.ready=1) to prevent multi-pass corruption
     when using RK4 or other multi-step integrators.
     """
 
@@ -191,7 +190,7 @@ class KalmanFilter(Block):
 
         # Only update state on final integration pass to prevent multi-pass corruption
         # For RK4, update() is called 4 times per timestep - we only want to update once
-        if not State.ready:
+        if not self.context.ready:
             return
 
         u = np.array([self.inputs[0]]).reshape(-1, 1)
@@ -249,7 +248,7 @@ class ExtendedKalmanFilter(Block):
     or uses a simple integrator model internally.
 
     As a discrete-time filter, updates only occur on the final
-    integration pass (State.ready=1) to prevent multi-pass corruption.
+    integration pass (self.context.ready=1) to prevent multi-pass corruption.
     """
 
     def __init__(self, n_states=1, Q=None, R=None, initial_state=None):
@@ -304,7 +303,7 @@ class ExtendedKalmanFilter(Block):
                 self.inputs[i] = block.getOutput(source_port)
 
         # Only update state on final integration pass to prevent multi-pass corruption
-        if not State.ready:
+        if not self.context.ready:
             return
 
         u = self.inputs[0]
@@ -313,7 +312,7 @@ class ExtendedKalmanFilter(Block):
         # Simple integrator prediction: x_new = x + dt * u
         x_pred = self.x_hat.copy()
         if self.n >= 1:
-            x_pred[0] = self.x_hat[0] + State.dt * u
+            x_pred[0] = self.x_hat[0] + self.context.dt * u
 
         # Linearized state transition for integrator
         F = np.eye(self.n)

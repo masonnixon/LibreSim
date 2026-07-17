@@ -9,7 +9,6 @@ from collections import deque
 from typing import Any, Literal
 
 from ..block import Block
-from ..state import State
 
 # Filter design types
 FilterDesign = Literal["butterworth", "chebyshev1", "chebyshev2", "bessel"]
@@ -63,8 +62,8 @@ class RateLimiter(Block):
 
         # Calculate desired change
         desired_change = self.input - self.prev_output
-        max_rise = self.rising_rate * State.dt
-        max_fall = self.falling_rate * State.dt
+        max_rise = self.rising_rate * self.context.dt
+        max_fall = self.falling_rate * self.context.dt
 
         # Limit the rate of change
         if desired_change > max_rise:
@@ -138,9 +137,9 @@ class LowPassFilter(Block):
         self.output = 0.0
         # Calculate filter coefficient from cutoff frequency
         # alpha = dt / (RC + dt) where RC = 1 / (2*pi*fc)
-        if State.dt > 0 and self.cutoff_freq > 0:
+        if self.context.dt > 0 and self.cutoff_freq > 0:
             rc = 1.0 / (2.0 * math.pi * self.cutoff_freq)
-            self.alpha = State.dt / (rc + State.dt)
+            self.alpha = self.context.dt / (rc + self.context.dt)
         else:
             self.alpha = 1.0
 
@@ -156,9 +155,9 @@ class LowPassFilter(Block):
             self.input = self.input_block.getOutput(self.input_source_port)
 
         # Recalculate alpha in case dt changed
-        if State.dt > 0 and self.cutoff_freq > 0:
+        if self.context.dt > 0 and self.cutoff_freq > 0:
             rc = 1.0 / (2.0 * math.pi * self.cutoff_freq)
-            self.alpha = State.dt / (rc + State.dt)
+            self.alpha = self.context.dt / (rc + self.context.dt)
 
         # First-order IIR filter: y[n] = alpha * x[n] + (1-alpha) * y[n-1]
         self.output = self.alpha * self.input + (1.0 - self.alpha) * self.output
@@ -189,9 +188,9 @@ class HighPassFilter(Block):
         self.output = 0.0
         self.prev_input = 0.0
         self.prev_output = 0.0
-        if State.dt > 0 and self.cutoff_freq > 0:
+        if self.context.dt > 0 and self.cutoff_freq > 0:
             rc = 1.0 / (2.0 * math.pi * self.cutoff_freq)
-            self.alpha = rc / (rc + State.dt)
+            self.alpha = rc / (rc + self.context.dt)
         else:
             self.alpha = 1.0
 
@@ -206,9 +205,9 @@ class HighPassFilter(Block):
         if self.input_block is not None:
             self.input = self.input_block.getOutput(self.input_source_port)
 
-        if State.dt > 0 and self.cutoff_freq > 0:
+        if self.context.dt > 0 and self.cutoff_freq > 0:
             rc = 1.0 / (2.0 * math.pi * self.cutoff_freq)
-            self.alpha = rc / (rc + State.dt)
+            self.alpha = rc / (rc + self.context.dt)
 
         # High pass: y[n] = alpha * (y[n-1] + x[n] - x[n-1])
         self.output = self.alpha * (self.prev_output + self.input - self.prev_input)
@@ -258,9 +257,9 @@ class BandPassFilter(Block):
             self.input = self.input_block.getOutput(self.input_source_port)
 
         # High pass filter first
-        if State.dt > 0 and self.low_cutoff > 0:
+        if self.context.dt > 0 and self.low_cutoff > 0:
             rc_hp = 1.0 / (2.0 * math.pi * self.low_cutoff)
-            alpha_hp = rc_hp / (rc_hp + State.dt)
+            alpha_hp = rc_hp / (rc_hp + self.context.dt)
             hp_output = alpha_hp * (self.hp_prev_output + self.input - self.hp_prev_input)
         else:
             hp_output = self.input
@@ -269,9 +268,9 @@ class BandPassFilter(Block):
         self.hp_prev_output = hp_output
 
         # Then low pass filter
-        if State.dt > 0 and self.high_cutoff > 0:
+        if self.context.dt > 0 and self.high_cutoff > 0:
             rc_lp = 1.0 / (2.0 * math.pi * self.high_cutoff)
-            alpha_lp = State.dt / (rc_lp + State.dt)
+            alpha_lp = self.context.dt / (rc_lp + self.context.dt)
             self.lp_output = alpha_lp * hp_output + (1.0 - alpha_lp) * self.lp_output
         else:
             self.lp_output = hp_output
@@ -611,8 +610,8 @@ class AnalogFilter(Block):
             self.input = self.input_block.getOutput(self.input_source_port)
 
         # Design filter on first update (when dt is available)
-        if not self._initialized and State.dt > 0:
-            self._design_filter(State.dt)
+        if not self._initialized and self.context.dt > 0:
+            self._design_filter(self.context.dt)
 
         # Process through cascaded biquad sections
         x = self.input
@@ -722,8 +721,8 @@ class NotchFilter(Block):
         if self.input_block is not None:
             self.input = self.input_block.getOutput(self.input_source_port)
 
-        if not self._initialized and State.dt > 0:
-            self._design_notch(State.dt)
+        if not self._initialized and self.context.dt > 0:
+            self._design_notch(self.context.dt)
 
         # Biquad filter
         y = (

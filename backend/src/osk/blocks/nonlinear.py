@@ -7,7 +7,6 @@ including lookup tables, quantizers, and relay blocks.
 import bisect
 
 from ..block import Block
-from ..state import State
 
 
 class LookupTable1D(Block):
@@ -334,11 +333,11 @@ class VariableTransportDelay(Block):
         self.delay_time = max(0.0, min(self.inputs[1], self.max_delay))
 
         # Add one sample per completed integration step.
-        if State.ready:
-            self.buffer.append((State.t, signal))
+        if self.context.ready:
+            self.buffer.append((self.context.t, signal))
 
         # Find the delayed output
-        target_time = State.t - self.delay_time
+        target_time = self.context.t - self.delay_time
 
         # Remove old samples
         while len(self.buffer) > 1 and self.buffer[1][0] < target_time:

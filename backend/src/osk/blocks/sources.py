@@ -4,7 +4,7 @@ import math
 import random
 
 from ..block import Block
-from ..state import State
+from ..context import EPS
 
 
 class Constant(Block):
@@ -148,7 +148,7 @@ class Step(Block):
         self.output = self.initial_value
 
     def update(self):
-        if State.t >= self.step_time:
+        if self.context.t >= self.step_time:
             self.output = self.final_value
         else:
             self.output = self.initial_value
@@ -171,8 +171,8 @@ class Ramp(Block):
         self.output = self.initial_output
 
     def update(self):
-        if State.t >= self.start_time:
-            self.output = self.initial_output + self.slope * (State.t - self.start_time)
+        if self.context.t >= self.start_time:
+            self.output = self.initial_output + self.slope * (self.context.t - self.start_time)
         else:
             self.output = self.initial_output
 
@@ -196,7 +196,8 @@ class SineWave(Block):
 
     def update(self):
         self.output = (
-            self.amplitude * math.sin(2.0 * math.pi * self.frequency * State.t + self.phase)
+            self.amplitude
+            * math.sin(2.0 * math.pi * self.frequency * self.context.t + self.phase)
             + self.bias
         )
 
@@ -215,7 +216,7 @@ class Clock(Block):
         self.output = 0.0
 
     def update(self):
-        self.output = State.t
+        self.output = self.context.t
 
     def getOutput(self, port=0):
         return self.output
@@ -236,10 +237,10 @@ class PulseGenerator(Block):
         self.output = 0.0
 
     def update(self):
-        if State.t < self.phase_delay:
+        if self.context.t < self.phase_delay:
             self.output = 0.0
         else:
-            t_in_period = (State.t - self.phase_delay) % self.period
+            t_in_period = (self.context.t - self.phase_delay) % self.period
             if t_in_period < self.period * self.duty_cycle:
                 self.output = self.amplitude
             else:
@@ -293,7 +294,7 @@ class WhiteNoise(Block):
         self._last_sample_time = 0.0
 
     def update(self):
-        if not State.ready:
+        if not self.context.ready:
             return
 
         # If sample_time is 0, generate new noise every step
@@ -301,9 +302,9 @@ class WhiteNoise(Block):
         if self.sample_time <= 0:
             self.output = self._rng.gauss(self.mean, self.std_dev)
         else:
-            if State.t >= self._last_sample_time + self.sample_time:
+            if self.context.t >= self._last_sample_time + self.sample_time:
                 self.output = self._rng.gauss(self.mean, self.std_dev)
-                self._last_sample_time = State.t
+                self._last_sample_time = self.context.t
 
     def getOutput(self, port=0):
         return self.output
@@ -345,15 +346,15 @@ class UniformNoise(Block):
         self._last_sample_time = 0.0
 
     def update(self):
-        if not State.ready:
+        if not self.context.ready:
             return
 
         if self.sample_time <= 0:
             self.output = self._rng.uniform(self.minimum, self.maximum)
         else:
-            if State.t >= self._last_sample_time + self.sample_time:
+            if self.context.t >= self._last_sample_time + self.sample_time:
                 self.output = self._rng.uniform(self.minimum, self.maximum)
-                self._last_sample_time = State.t
+                self._last_sample_time = self.context.t
 
     def getOutput(self, port=0):
         return self.output
@@ -411,7 +412,7 @@ class RepeatingSequence(Block):
             return
 
         # Wrap time to period
-        t_in_period = State.t % self.period
+        t_in_period = self.context.t % self.period
         self.output = self._interpolate(t_in_period)
 
     def getOutput(self, port=0):
@@ -443,18 +444,23 @@ class ChirpSignal(Block):
 
     def update(self):
         # Instantaneous frequency at time t
-        if State.t <= self.target_time:
+        if self.context.t <= self.target_time:
             # During sweep: f(t) = f0 + (f1-f0)*t/T
-            self.initial_frequency + self.sweep_rate * State.t
+            self.initial_frequency + self.sweep_rate * self.context.t
         else:
             # After target time: constant frequency
             pass
 
         # Phase is integral of frequency: phi(t) = 2*pi * integral(f(t))
         # For linear chirp: phi(t) = 2*pi * (f0*t + sweep_rate*t^2/2)
-        if State.t <= self.target_time:
+        if self.context.t <= self.target_time:
             phase = (
-                2 * math.pi * (self.initial_frequency * State.t + self.sweep_rate * State.t**2 / 2)
+                2
+                * math.pi
+                * (
+                    self.initial_frequency * self.context.t
+                    + self.sweep_rate * self.context.t**2 / 2
+                )
             )
         else:
             # Continue from target point
@@ -467,7 +473,7 @@ class ChirpSignal(Block):
                 )
             )
             phase = phase_at_target + 2 * math.pi * self.target_frequency * (
-                State.t - self.target_time
+                self.context.t - self.target_time
             )
 
         self.output = math.cos(phase)
@@ -501,12 +507,12 @@ class BandLimitedWhiteNoise(Block):
         self._last_sample_time = 0.0
 
     def update(self):
-        if not State.ready:
+        if not self.context.ready:
             return
 
-        if State.t >= self._last_sample_time + self.sample_time - State.EPS:
+        if self.context.t >= self._last_sample_time + self.sample_time - EPS:
             self.output = self._rng.gauss(0.0, self._std_dev)
-            self._last_sample_time = State.t
+            self._last_sample_time = self.context.t
 
     def getOutput(self, port=0):
         return self.output
@@ -589,7 +595,7 @@ class FromWorkspace(Block):
         return self.value_data[-1]
 
     def update(self):
-        self.output = self._interpolate(State.t)
+        self.output = self._interpolate(self.context.t)
 
     def getOutput(self, port=0):
         return self.output
@@ -623,7 +629,7 @@ class SignalGenerator(Block):
             self.output = 0.0
 
     def update(self):
-        if self.wave_type == "random" and not State.ready:
+        if self.wave_type == "random" and not self.context.ready:
             return
 
         if self.freq_hz <= 0:
@@ -631,7 +637,7 @@ class SignalGenerator(Block):
             return
 
         period = 1.0 / self.freq_hz
-        t_in_period = (State.t % period) / period  # Normalized time [0, 1)
+        t_in_period = (self.context.t % period) / period  # Normalized time [0, 1)
 
         if self.wave_type == "sine":
             self.output = self.amplitude * math.sin(2 * math.pi * t_in_period)

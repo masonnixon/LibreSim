@@ -1,7 +1,6 @@
 """Sink blocks for OSK-based simulation."""
 
 from ..block import Block
-from ..state import State
 
 
 class Scope(Block):
@@ -104,8 +103,8 @@ class Scope(Block):
 
     def rpt(self):
         # Record data when ready - only for connected inputs
-        if State.ready:
-            self.times.append(State.t)
+        if self.context.ready:
+            self.times.append(self.context.t)
 
             # Calculate total number of traces needed (only connected inputs)
             total_traces = 0
@@ -191,8 +190,8 @@ class ToWorkspace(Block):
             self.input = self.input_block.getOutput(self.input_source_port)
 
     def rpt(self):
-        if State.ready:
-            self.times.append(State.t)
+        if self.context.ready:
+            self.times.append(self.context.t)
             self.values.append(self.input)
 
     def getData(self):
@@ -225,7 +224,7 @@ class Display(Block):
             self.input = self.input_block.getOutput(self.input_source_port)
 
     def rpt(self):
-        if State.ready:
+        if self.context.ready:
             self.current_value = self.input
 
     def getOutput(self, port=0):
@@ -308,8 +307,8 @@ class Scope3D(Block):
 
     def rpt(self):
         # Record data when ready
-        if State.ready:
-            self.times.append(State.t)
+        if self.context.ready:
+            self.times.append(self.context.t)
             self.x_values.append(self.inputs[0])
             self.y_values.append(self.inputs[1])
             self.z_values.append(self.inputs[2])

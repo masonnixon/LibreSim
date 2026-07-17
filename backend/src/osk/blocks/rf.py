@@ -479,7 +479,6 @@ class AMModulator(Block):
         if self.input_blocks[0] is not None:
             self.message = self.input_blocks[0].getOutput()
 
-        from ..state import State
 
         envelope = 1 + self.modulation_index * self.message
         if self.input_blocks[1] is not None:
@@ -488,7 +487,7 @@ class AMModulator(Block):
         elif self._external_carrier_set:
             self.output = envelope * self.carrier
         else:
-            carrier = math.cos(2 * math.pi * self.carrier_freq * State.t)
+            carrier = math.cos(2 * math.pi * self.carrier_freq * self.context.t)
             self.output = self.carrier_amplitude * envelope * carrier
 
     def getOutput(self, port=0):
@@ -538,10 +537,9 @@ class FMModulator(Block):
         if self.input_block is not None:
             self.message = self.input_block.getOutput()
 
-        from ..state import State
 
-        t = State.t
-        dt = State.dt
+        t = self.context.t
+        dt = self.context.dt
 
         # Integrate the message for phase modulation
         self.phase_integral += 2 * math.pi * self.freq_deviation * self.message * dt
@@ -588,9 +586,8 @@ class PhaseNoise(Block):
         else:
             signal = 0.0
 
-        from ..state import State
 
-        dt = State.dt
+        dt = self.context.dt
 
         # Generate phase noise
         # Convert phase noise from dBc/Hz to radians RMS

@@ -351,9 +351,8 @@ class GPSSensor(Block):
                     else:
                         self.true_velocity = vec[:3]
 
-        from ..state import State
 
-        t = State.t
+        t = self.context.t
 
         # Only update at GPS rate
         if t - self.last_update_time >= self.update_period:
@@ -477,9 +476,8 @@ class ComplementaryFilter(Block):
                     else:
                         self.gyro = vec[:3]
 
-        from ..state import State
 
-        dt = State.dt
+        dt = self.context.dt
 
         # Estimate angles from accelerometer
         ax, ay, az = self.accel
@@ -582,9 +580,8 @@ class MadgwickFilter(Block):
                     else:
                         self.mag = vec[:3]
 
-        from ..state import State
 
-        dt = State.dt
+        dt = self.context.dt
 
         q = self.q
         gx, gy, gz = self.gyro
@@ -731,9 +728,8 @@ class MahonyFilter(Block):
                     else:
                         self.gyro = vec[:3]
 
-        from ..state import State
 
-        dt = State.dt
+        dt = self.context.dt
 
         q0, q1, q2, q3 = self.q
         gx, gy, gz = self.gyro
@@ -879,9 +875,8 @@ class INSGPSFusion(Block):
                     elif i == 2 and len(vec) >= 3:
                         self.gps_velocity = vec[:3]
 
-        from ..state import State
 
-        dt = State.dt
+        dt = self.context.dt
 
         ax, ay, az, wx, wy, wz = self.imu_data
         roll, pitch, yaw = self.attitude
