@@ -1,15 +1,15 @@
 # LibreSim — FAC-9 SimContext and Concurrent Simulations
 
-> **Status:** implementation in progress; Phases 0-6 completed through `4df7b63`
+> **Status:** complete; Phases 0-7 completed through `6e7f690`
 > **Drafted:** 2026-07-16
 > **Closes:** FAC-9 / LS-10
 > **Parent plan:** `docs/plans/fable-audit-completion.md`
 
-## 1. Decision requested
+## 1. Approved decision
 
-Approve the instance-scoped simulation-state design and migration below.
+The maintainer approved the instance-scoped simulation-state design and migration below.
 
-The recommended API policy is:
+The approved API policy is:
 
 - independent simulations can run concurrently in one process;
 - `/start` and `/step/init` keep their existing stop-and-replace behavior by default;
@@ -25,10 +25,10 @@ or designing a distributed multi-worker session store, is not part of FAC-9.
 The maintainer approved this plan and the API policy above on 2026-07-16. Production
 implementation begins after the pre-FAC-9 verification checkpoint is recorded.
 
-## 2. Problem statement and evidence
+## 2. Historical problem statement and evidence
 
-LibreSim currently gives each `SimulationRunner` and `OSKAdapter` its own model and
-block graph, but not its own simulation clock:
+At the pre-FAC-9 baseline, LibreSim gave each `SimulationRunner` and `OSKAdapter` its
+own model and block graph, but not its own simulation clock:
 
 - `State.t`, `t1`, `dt`, `dtp`, `ready`, `kpass`, `method`, and tick flags are mutable
   class attributes shared by the process;
@@ -337,7 +337,8 @@ Docker gate passed 2,130 tests with 1 skip; Ruff and mypy passed across 136 sour
 and the overlapped thread regression passed 20 consecutive repetitions. Phase 3
 completed in `a450f20` and `ec15bb1`. Phase 4 completed in `e33a9fd`. Phase 5
 completed in `3898ed5` and `959e8aa`. Phase 6 completed in `cc0fc70` and
-`4df7b63`; compatibility and closeout are next.
+`4df7b63`. Phase 7 completed in `6e7f690`; the complete clean-checkout matrix passed at
+that commit.
 
 ### Phase 0 — Characterize cross-talk and freeze compatibility
 
@@ -496,7 +497,22 @@ mypy were clean across 138 source files, and ESLint/TypeScript were clean.
 
 **Gate:** all acceptance criteria in section 7 pass; FAC-9 can be marked complete.
 
+**Completed:** `6e7f690` (2026-07-16). The headless/API reference now documents
+explicit `SimContext` ownership, the temporary `State.*`/`Sim.*` compatibility facade,
+default replacement, opt-in coexistence, targeted session operations, bounded
+process-local retention, and sticky-routing requirements. A separate proposed plan
+records facade removal as a future maintainer-approved deprecation rather than a
+drive-by FAC-9 change. From a clean detached checkout of `6e7f690`, the full Docker
+matrix passed 2,185 backend tests with 1 skip, 664 frontend tests, the 33-test canonical
+numerical subset, Ruff, mypy across 138 source files, ESLint, and TypeScript. The full
+generated-code validator exited successfully at 156/156 with zero simulation, build,
+run, or output-validation failures, and rewrote a byte-identical canonical report.
+
 ## 7. Acceptance matrix
+
+**Final result (clean checkout `6e7f690`, 2026-07-16):** every criterion below passed.
+The verification counts and classifications are recorded in the Phase 7 completion
+entry above and in the final Fable audit status.
 
 FAC-9 is complete only when all of the following are demonstrated:
 

@@ -466,11 +466,13 @@ One commit per item:
 **Depends on:** LS-1, LS-2, LS-3, LS-4 all merged and green.
 
 The maintainer selected implementation in `e536fb4` and approved the dedicated design
-in `docs/plans/fac-9-sim-context-concurrency.md` on 2026-07-16. That plan supersedes this
-historical outline and governs implementation, compatibility, snapshots, API sessions,
-and verification. LS-3 serialization remains the default compatibility behavior during
-the migration, but instance-owned state—not process-wide locking—is the approved
-concurrency mechanism.
+in `docs/plans/fac-9-sim-context-concurrency.md` on 2026-07-16. That plan superseded this
+historical outline and completed instance-owned simulation state, atomic checkpoints,
+and concurrent session-addressed API execution through `6e7f690`. LS-3 serialization
+remains the default API compatibility behavior, but instance-owned state—not
+process-wide locking—is the concurrency mechanism. The temporary `State.*`/`Sim.*`
+compatibility facade remains only for external callers; its removal is recorded in the
+separately proposed `docs/plans/sim-state-compatibility-facade-deprecation.md` plan.
 
 ---
 
@@ -507,4 +509,4 @@ Agents: update this table in the same commit as the work.
 | LS-7 | complete | `230086b`, `3f07404` | Removed unity-gain fallbacks and verified actionable errors through the API. |
 | LS-8 | complete | `e75e26c`, `570d036`, `cd0f509` | Simplified sampling, stabilized result keys, removed mutable defaults. |
 | LS-9 | complete | `c28fee1`, `2172fa0`, `043a29a`, `24741bf` | Sanitized project names, restricted examples, enforced origins, and completed endpoint coverage. |
-| LS-10 | in progress; FAC-9 Phases 0-6 complete | `e536fb4`, `16c97ab`, `f3051b9`, `9d4531a`, `a450f20`, `ec15bb1`, `e33a9fd`, `3898ed5`, `959e8aa`, `cc0fc70`, `4df7b63` | Instance-owned context, block/native `Sim` ownership, runner lifecycle isolation, deterministic concurrent stepping, atomic per-runner operation/handoff ownership, built-in context migration, versioned atomic checkpoints, and bounded session-addressed API concurrency are complete. Compatibility and closeout are next. |
+| LS-10 | complete | `e536fb4`, `16c97ab`, `f3051b9`, `41d257e`, `9d4531a`, `68eee69`, `a450f20`, `ec15bb1`, `70dbd33`, `e33a9fd`, `66cadc0`, `3898ed5`, `959e8aa`, `5cde103`, `cc0fc70`, `4df7b63`, `e00ba89`, `6e7f690` | Instance-owned context, block/native `Sim` ownership, deterministic concurrent runner execution, atomic operation/handoff ownership, built-in context migration, versioned atomic checkpoints, and bounded session-addressed API concurrency are complete. The retained facade and process-local registry limits are documented, with facade removal deferred to a separately approved plan. Clean-checkout verification at `6e7f690` passed 2,185 backend tests with 1 skip, 664 frontend tests, the 33-test numerical subset, Ruff, mypy across 138 files, ESLint, TypeScript, and all 156 generated targets with zero classified failures. |
