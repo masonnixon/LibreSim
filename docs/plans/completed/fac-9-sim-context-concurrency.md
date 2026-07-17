@@ -3,7 +3,7 @@
 > **Status:** complete; Phases 0-7 completed through `6e7f690`
 > **Drafted:** 2026-07-16
 > **Closes:** FAC-9 / LS-10
-> **Parent plan:** `docs/plans/fable-audit-completion.md`
+> **Parent plan:** `docs/plans/completed/fable-audit-completion.md`
 
 ## 1. Approved decision
 

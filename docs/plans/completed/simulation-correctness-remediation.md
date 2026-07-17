@@ -466,7 +466,7 @@ One commit per item:
 **Depends on:** LS-1, LS-2, LS-3, LS-4 all merged and green.
 
 The maintainer selected implementation in `e536fb4` and approved the dedicated design
-in `docs/plans/fac-9-sim-context-concurrency.md` on 2026-07-16. That plan superseded this
+in `docs/plans/completed/fac-9-sim-context-concurrency.md` on 2026-07-16. That plan superseded this
 historical outline and completed instance-owned simulation state, atomic checkpoints,
 and concurrent session-addressed API execution through `6e7f690`. LS-3 serialization
 remains the default API compatibility behavior, but instance-owned state—not
