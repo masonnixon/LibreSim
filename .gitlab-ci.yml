@@ -95,4 +95,4 @@ frontend-tests:
     # Type checking
     - npx tsc --noEmit
     # Tests
-    - npm test -- --run
+    - npm run test:coverage

@@ -51,6 +51,8 @@ pnpm-debug.log*
 
 # Testing
 coverage/
+.coverage.json
+coverage.json
 .coverage
 htmlcov/
 .pytest_cache/

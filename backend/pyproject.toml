@@ -143,9 +143,10 @@ omit = ["*/tests/*", "*/__pycache__/*"]
 [tool.coverage.report]
 exclude_lines = [
     "pragma: no cover",
-    "def __repr__",
+    "if TYPE_CHECKING:",
     "raise NotImplementedError",
     "if __name__ == .__main__.:",
-    "if TYPE_CHECKING:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
 ]
-fail_under = 0  # Set to desired threshold (e.g., 80) once tests are established
+fail_under = 85

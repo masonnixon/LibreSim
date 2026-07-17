@@ -44,10 +44,12 @@ export default defineConfig({
       exclude: [
         'node_modules/',
         'src/test/',
+        '.eslintrc.cjs',
         '**/*.d.ts',
         'src/main.tsx',
         'src/vite-env.d.ts',
       ],
+      thresholds: { statements: 38, branches: 33, functions: 42, lines: 37 },
     },
   },
 })

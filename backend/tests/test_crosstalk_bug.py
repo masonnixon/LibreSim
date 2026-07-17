@@ -19,12 +19,16 @@ q2 = cos_x * sin_y * cos_z + sin_x * cos_y * sin_z
 """
 
 import math
+from pathlib import Path
 
 import pytest
 
 from src.osk.blocks.math_ops import Gain, Product, Sum, Trigonometry
 from src.osk.blocks.sources import Constant
 from src.osk.state import State
+
+
+CUBE_EULER_MDL = Path("/examples/cube_closed_loop_euler.mdl")
 
 
 class TestCrosstalkBug:
@@ -1041,22 +1045,19 @@ class TestOSKAdapterCrosstalk:
 class TestMDLImportCrosstalk:
     """Test cross-talk with an actual MDL file import."""
 
+    @pytest.mark.skipif(
+        not CUBE_EULER_MDL.exists(),
+        reason="requires the external cube_closed_loop_euler.mdl regression fixture",
+    )
     def test_cube_euler_mdl_import(self):
         """Test the actual cube_closed_loop_euler.mdl model."""
-        from pathlib import Path
-
         from src.models.simulation import SimulationConfig, SolverType
         from src.parsers.mdl_parser import MDLParser
         from src.simulation.compiler import ModelCompiler
         from src.simulation.osk_adapter import OSKAdapter
 
         # Load the MDL file
-        mdl_path = Path(
-            r"C:\Users\Mason\Documents\Repos\orbitlink_cubesat.git\simulation\closed_loop\cube_closed_loop_euler.mdl"
-        )
-
-        if not mdl_path.exists():
-            pytest.skip(f"MDL file not found: {mdl_path}")
+        mdl_path = CUBE_EULER_MDL
 
         content = mdl_path.read_text()
         parser = MDLParser()
