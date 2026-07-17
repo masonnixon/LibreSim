@@ -705,7 +705,8 @@ class TestSimulationRunner:
         runner.stop()
         assert runner._should_stop is True
 
-    def test_runner_pause_resume(self):
+    @pytest.mark.asyncio
+    async def test_runner_pause_resume(self):
         """Test pause and resume."""
         from src.models.simulation import SimulationStatus
         from src.simulation.runner import SimulationRunner
@@ -713,7 +714,7 @@ class TestSimulationRunner:
         model = self._create_simple_model()
         runner = SimulationRunner(model, SimulationConfig())
 
-        runner.pause()
+        await runner.pause()
         assert runner._is_paused is True
         assert runner.status == SimulationStatus.PAUSED
 
@@ -1855,11 +1856,11 @@ class TestSimulationRunnerExtended:
             self._create_simple_model(),
             SimulationConfig(stopTime=10.0, stepSize=0.001),
         )
-        runner.mark_scheduled()
-        task = asyncio.create_task(runner.run())
+        token = runner.mark_scheduled()
+        task = asyncio.create_task(runner.run(token))
         while runner.status == SimulationStatus.COMPILING:
             await asyncio.sleep(0)
-        runner.pause()
+        await runner.pause()
 
         assert await runner.stop_and_wait(timeout=1.0)
         await task
@@ -1877,7 +1878,7 @@ class TestSimulationRunnerExtended:
         runner = SimulationRunner(model, config)
 
         # Test pause sets status to PAUSED
-        runner.pause()
+        await runner.pause()
         assert runner.status == SimulationStatus.PAUSED
         assert runner._is_paused is True
 
@@ -2451,7 +2452,8 @@ class TestSimulationRunnerStepMode:
         assert runner.status == SimulationStatus.PAUSED
         assert len(runner._state_history) == 1  # New initial state
 
-    def test_enter_step_mode_from_paused(self):
+    @pytest.mark.asyncio
+    async def test_enter_step_mode_from_paused(self):
         """Test entering step mode from paused continuous simulation."""
         from src.models.simulation import SimulationStatus
         from src.simulation.runner import SimulationRunner
@@ -2467,7 +2469,7 @@ class TestSimulationRunnerStepMode:
         runner._compiled = runner._compiled  # Keep compiled
 
         # Enter step mode
-        result = runner.enter_step_mode()
+        result = await runner.enter_step_mode()
         assert result is True
         assert runner._step_mode is True
         assert runner.status == SimulationStatus.PAUSED
@@ -2550,8 +2552,6 @@ class TestSimulationRunnerStepMode:
     @pytest.mark.asyncio
     async def test_continue_from_step_mode_reschedules_completed_runner(self):
         """Direct reuse reopens lifecycle tracking after an earlier run finished."""
-        from unittest.mock import patch
-
         from src.simulation.runner import SimulationRunner
 
         runner = SimulationRunner(
@@ -2559,13 +2559,8 @@ class TestSimulationRunnerStepMode:
             SimulationConfig(stopTime=0.0, stepSize=0.1),
         )
         assert runner.initialize_step_mode() is True
-        runner._run_started = True
-        runner._run_finished.set()
+        await runner.continue_from_step_mode()
 
-        with patch.object(runner, "mark_scheduled", wraps=runner.mark_scheduled) as mark:
-            await runner.continue_from_step_mode()
-
-        mark.assert_called_once_with(reset_stop=True)
         assert runner._run_finished.is_set()
 
     @pytest.mark.asyncio
@@ -2597,8 +2592,8 @@ class TestSimulationRunnerStepMode:
         async def enter_step_after_delay():
             await asyncio.sleep(0.05)
             # Pause first, then enter step mode
-            runner.pause()
-            runner.enter_step_mode()
+            await runner.pause()
+            await runner.enter_step_mode()
 
         step_task = asyncio.create_task(enter_step_after_delay())
         await runner.run()

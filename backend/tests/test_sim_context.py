@@ -15,7 +15,11 @@ from src.models.simulation import SimulationConfig, SimulationStatus, SolverType
 from src.osk import Block, Sim, SimContext, State, activate_context, get_active_context
 from src.simulation.compiler import CompiledBlock, CompiledModel, ModelCompiler
 from src.simulation.osk_adapter import OSKAdapter
-from src.simulation.runner import SimulationRunner
+from src.simulation.runner import (
+    SimulationOperationConflict,
+    SimulationOperationToken,
+    SimulationRunner,
+)
 
 
 def _driven_integrator_model() -> Model:
@@ -120,6 +124,75 @@ def _stable_runner_results(runner: SimulationRunner) -> dict:
     results = runner.get_results()
     results["statistics"].pop("executionTime")
     return results
+
+
+def test_same_runner_operation_reservation_is_atomic_across_threads():
+    runner = SimulationRunner(_driven_integrator_model(), _config(SolverType.EULER, 0.01))
+    barrier = Barrier(2)
+
+    def reserve() -> SimulationOperationToken | SimulationOperationConflict:
+        barrier.wait()
+        try:
+            return runner.mark_scheduled()
+        except SimulationOperationConflict as exc:
+            return exc
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        claims = list(executor.map(lambda _: reserve(), range(2)))
+
+    tokens = [claim for claim in claims if isinstance(claim, SimulationOperationToken)]
+    conflicts = [claim for claim in claims if isinstance(claim, SimulationOperationConflict)]
+    assert len(tokens) == 1
+    assert len(conflicts) == 1
+    assert runner.has_live_run
+    assert runner._release_operation(tokens[0]) is True
+    assert not runner.has_live_run
+
+
+def test_exact_operation_release_prevents_stale_completion_aba():
+    runner = SimulationRunner(_driven_integrator_model(), _config(SolverType.EULER, 0.01))
+    runner._pause_acknowledged.set()
+    first = runner.mark_scheduled()
+    first_finished = first.finished
+    forged = SimulationOperationToken(kind="run", background=True)
+
+    assert not runner._pause_acknowledged.is_set()
+    assert runner._release_operation(forged) is False
+    assert runner.has_live_run
+    assert not first_finished.is_set()
+    assert runner._release_operation(first) is True
+    assert first_finished.is_set()
+
+    second = runner.mark_scheduled()
+    second_finished = second.finished
+    assert second_finished is not first_finished
+    assert not second_finished.is_set()
+    assert runner._release_operation(first) is False
+    assert runner.has_live_run
+    assert not second_finished.is_set()
+    assert runner._release_operation(second) is True
+    assert second_finished.is_set()
+    assert not runner.has_live_run
+
+
+@pytest.mark.asyncio
+async def test_scheduled_operation_token_can_only_be_adopted_once():
+    runner = SimulationRunner(_driven_integrator_model(), _config(SolverType.EULER, 0.01))
+    token = runner.mark_scheduled()
+
+    outcomes = await asyncio.gather(
+        runner.run(token),
+        runner.run(token),
+        return_exceptions=True,
+    )
+
+    assert sum(outcome is None for outcome in outcomes) == 1
+    conflicts = [
+        outcome for outcome in outcomes if isinstance(outcome, SimulationOperationConflict)
+    ]
+    assert len(conflicts) == 1
+    assert token.finished.is_set()
+    assert not runner.has_live_run
 
 
 def _advance_decay(context: SimContext, state: State, start: float) -> None:
@@ -699,6 +772,146 @@ async def test_runners_overlap_past_cooperative_yield_and_match_isolated_results
     assert _stable_runner_results(rk4) == _stable_runner_results(isolated_rk4)
     assert euler.context.dtp == pytest.approx(0.1)
     assert rk4.context.dtp == pytest.approx(0.01)
+
+
+@pytest.mark.asyncio
+async def test_pause_acknowledges_committed_boundary_before_step_mode_handoff():
+    class BoundaryGatedRunner(SimulationRunner):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.reached_boundary = asyncio.Event()
+            self.release_boundary = asyncio.Event()
+
+        async def _cooperate_after_step(self) -> None:
+            self.reached_boundary.set()
+            await self.release_boundary.wait()
+            await super()._cooperate_after_step()
+
+    runner = BoundaryGatedRunner(
+        _driven_integrator_model(),
+        SimulationConfig(
+            solver=SolverType.RK4,
+            step_size=0.01,
+            stop_time=2.0,
+        ),
+    )
+    run_task = asyncio.create_task(runner.run())
+    await runner.reached_boundary.wait()
+    assert runner._total_steps == 100
+    assert runner.current_time == pytest.approx(1.0)
+
+    pause_task = asyncio.create_task(runner.pause())
+    await asyncio.sleep(0)
+    assert not pause_task.done()
+    runner.release_boundary.set()
+    await pause_task
+
+    boundary_time = runner.current_time
+    boundary_steps = runner._total_steps
+    boundary_results = _stable_runner_results(runner)
+    assert boundary_time == pytest.approx(1.0)
+    assert runner.status == SimulationStatus.PAUSED
+    assert runner.has_live_run
+
+    await runner.pause()
+    assert runner.current_time == pytest.approx(boundary_time)
+    assert runner._pause_acknowledged.is_set()
+    assert await runner.enter_step_mode() is True
+    await run_task
+
+    assert not runner.has_live_run
+    assert runner._active_operation is None
+    assert runner._pending_handoff is None
+    assert runner._step_mode is True
+    assert runner.status == SimulationStatus.PAUSED
+    assert runner.current_time == pytest.approx(boundary_time)
+    assert runner._total_steps == boundary_steps
+    assert len(runner._state_history) == 1
+    assert runner._state_history[0]["time"] == pytest.approx(boundary_time)
+    assert _stable_runner_results(runner) == boundary_results
+
+
+@pytest.mark.asyncio
+async def test_cancelled_step_handoff_leaves_quiescent_paused_runner():
+    class CancelGatedRunner(SimulationRunner):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.reached_boundary = asyncio.Event()
+            self.release_boundary = asyncio.Event()
+            self.transition_seen = asyncio.Event()
+            self.release_transition = asyncio.Event()
+
+        async def _cooperate_after_step(self) -> None:
+            self.reached_boundary.set()
+            await self.release_boundary.wait()
+            await super()._cooperate_after_step()
+
+        async def _wait_while_paused(self) -> None:
+            await super()._wait_while_paused()
+            if self._transition_requested:
+                self.transition_seen.set()
+                await self.release_transition.wait()
+
+    runner = CancelGatedRunner(
+        _driven_integrator_model(),
+        SimulationConfig(solver=SolverType.RK4, step_size=0.01, stop_time=2.0),
+    )
+    run_task = asyncio.create_task(runner.run())
+    await runner.reached_boundary.wait()
+    pause_task = asyncio.create_task(runner.pause())
+    await asyncio.sleep(0)
+    runner.release_boundary.set()
+    await pause_task
+
+    enter_task = asyncio.create_task(runner.enter_step_mode())
+    await runner.transition_seen.wait()
+    enter_task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await enter_task
+    assert runner._pending_handoff is None
+
+    runner.release_transition.set()
+    await run_task
+
+    assert runner._active_operation is None
+    assert runner._pending_handoff is None
+    assert runner._transition_requested is False
+    assert runner._is_paused is True
+    assert runner.status == SimulationStatus.PAUSED
+    runner.reset()
+    assert runner.status == SimulationStatus.IDLE
+
+
+@pytest.mark.asyncio
+async def test_resume_before_pause_boundary_resolves_pause_waiter():
+    class BoundaryGatedRunner(SimulationRunner):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.reached_boundary = asyncio.Event()
+            self.release_boundary = asyncio.Event()
+
+        async def _cooperate_after_step(self) -> None:
+            self.reached_boundary.set()
+            await self.release_boundary.wait()
+            await super()._cooperate_after_step()
+
+    runner = BoundaryGatedRunner(
+        _driven_integrator_model(),
+        SimulationConfig(solver=SolverType.EULER, step_size=0.01, stop_time=1.2),
+    )
+    run_task = asyncio.create_task(runner.run())
+    await runner.reached_boundary.wait()
+
+    pause_task = asyncio.create_task(runner.pause())
+    await asyncio.sleep(0)
+    assert not pause_task.done()
+    runner.resume()
+    await asyncio.wait_for(pause_task, timeout=0.5)
+
+    runner.release_boundary.set()
+    await run_task
+    assert runner.status == SimulationStatus.COMPLETED
+    assert runner.current_time == pytest.approx(1.2)
 
 
 def test_native_sim_rebinds_registered_states_from_the_provisional_context():

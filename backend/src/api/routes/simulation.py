@@ -2,13 +2,17 @@
 
 import asyncio
 import traceback
-from typing import Any
+from typing import Any, NoReturn
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 
 from ...models.model import Model
 from ...models.simulation import SimulationConfig
-from ...simulation.runner import SimulationRunner
+from ...simulation.runner import (
+    SimulationOperationConflict,
+    SimulationOperationToken,
+    SimulationRunner,
+)
 
 router = APIRouter()
 
@@ -26,7 +30,11 @@ _runner: SimulationRunner | None = None
 _runner_lock = asyncio.Lock()
 
 
-async def _install_runner(runner: SimulationRunner, *, scheduled: bool) -> None:
+async def _install_runner(
+    runner: SimulationRunner,
+    *,
+    scheduled: bool,
+) -> SimulationOperationToken | None:
     """Stop any live run and atomically install its replacement."""
     global _runner
 
@@ -34,9 +42,14 @@ async def _install_runner(runner: SimulationRunner, *, scheduled: bool) -> None:
         if _runner is not None and _runner.has_live_run:
             if not await _runner.stop_and_wait():
                 raise HTTPException(status_code=409, detail="Previous simulation did not stop")
+        token = runner.mark_scheduled() if scheduled else None
         _runner = runner
-        if scheduled:
-            _runner.mark_scheduled()
+        return token
+
+
+def _raise_operation_conflict(exc: SimulationOperationConflict) -> NoReturn:
+    """Translate runner-local ownership conflicts into stable API responses."""
+    raise HTTPException(status_code=409, detail="Simulation is already running") from exc
 
 
 def get_runner() -> SimulationRunner | None:
@@ -83,11 +96,12 @@ async def start_simulation(
     try:
         # Create and start runner
         runner = SimulationRunner(model, config)
-        await _install_runner(runner, scheduled=True)
+        token = await _install_runner(runner, scheduled=True)
+        assert token is not None
         session_id = runner.session_id
 
         # Run simulation in background
-        background_tasks.add_task(runner.run)
+        background_tasks.add_task(runner.run, token)
 
         return {"sessionId": session_id}
     except HTTPException:
@@ -122,13 +136,17 @@ async def reset_simulation() -> dict[str, Any]:
     if _runner is None:
         raise HTTPException(status_code=400, detail="No simulation available")
 
-    _runner.reset()
+    runner = _runner
+    try:
+        runner.reset()
+    except SimulationOperationConflict as exc:
+        _raise_operation_conflict(exc)
     return {
         "success": True,
         "message": "Simulation reset",
-        "currentTime": _runner.current_time,
-        "progress": _runner.progress,
-        "status": _runner.status.value,
+        "currentTime": runner.current_time,
+        "progress": runner.progress,
+        "status": runner.status.value,
     }
 
 
@@ -140,7 +158,8 @@ async def pause_simulation() -> dict[str, str]:
     if _runner is None:
         raise HTTPException(status_code=400, detail="No simulation running")
 
-    _runner.pause()
+    runner = _runner
+    await runner.pause()
     return {"message": "Simulation paused"}
 
 
@@ -250,20 +269,23 @@ async def enter_step_mode() -> dict[str, Any]:
         raise HTTPException(status_code=400, detail="No simulation running. Use /step/init first.")
 
     try:
-        success = _runner.enter_step_mode()
+        runner = _runner
+        success = await runner.enter_step_mode()
 
         if not success:
             raise HTTPException(
-                status_code=500, detail=_runner.error_message or "Failed to enter step mode"
+                status_code=500, detail=runner.error_message or "Failed to enter step mode"
             )
 
         return {
             "success": True,
-            "currentTime": _runner.current_time,
-            "progress": _runner.progress,
-            "status": _runner.status.value,
+            "currentTime": runner.current_time,
+            "progress": runner.progress,
+            "status": runner.status.value,
             "historySize": 1,
         }
+    except SimulationOperationConflict as exc:
+        _raise_operation_conflict(exc)
     except HTTPException:
         raise
     except Exception as e:
@@ -286,8 +308,12 @@ async def step_forward(request: dict[str, Any] | None = None) -> dict[str, Any]:
     if request:
         num_steps = request.get("numSteps", 1)
 
-    result = _runner.step_forward(num_steps)
-    result["status"] = _runner.status.value
+    runner = _runner
+    try:
+        result = runner.step_forward(num_steps)
+    except SimulationOperationConflict as exc:
+        _raise_operation_conflict(exc)
+    result["status"] = runner.status.value
 
     return result
 
@@ -306,8 +332,12 @@ async def step_backward(request: dict[str, Any] | None = None) -> dict[str, Any]
     if request:
         num_steps = request.get("numSteps", 1)
 
-    result = _runner.step_backward(num_steps)
-    result["status"] = _runner.status.value
+    runner = _runner
+    try:
+        result = runner.step_backward(num_steps)
+    except SimulationOperationConflict as exc:
+        _raise_operation_conflict(exc)
+    result["status"] = runner.status.value
 
     return result
 
@@ -320,12 +350,16 @@ async def reset_step_mode() -> dict[str, Any]:
     if _runner is None:
         raise HTTPException(status_code=400, detail="No simulation initialized")
 
-    _runner.reset_step_mode()
+    runner = _runner
+    try:
+        runner.reset_step_mode()
+    except SimulationOperationConflict as exc:
+        _raise_operation_conflict(exc)
 
     return {
         "success": True,
-        "currentTime": _runner.current_time,
-        "status": _runner.status.value,
+        "currentTime": runner.current_time,
+        "status": runner.status.value,
     }
 
 
@@ -336,19 +370,18 @@ async def continue_from_step(background_tasks: BackgroundTasks) -> dict[str, Any
 
     if _runner is None:
         raise HTTPException(status_code=400, detail="No simulation initialized")
-    if _runner.has_live_run:
-        raise HTTPException(status_code=409, detail="Simulation is already running")
-    if not _runner.can_continue_from_step_mode:
-        raise HTTPException(status_code=400, detail="Simulation is not in step mode")
-
-    # Mark the continuation live before returning control to the response machinery.
-    # This closes the same scheduled-before-coroutine window handled by /start.
-    _runner.mark_scheduled(reset_stop=True)
-    background_tasks.add_task(_runner.continue_from_step_mode)
+    runner = _runner
+    try:
+        token = runner.schedule_continue()
+    except SimulationOperationConflict as exc:
+        _raise_operation_conflict(exc)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    background_tasks.add_task(runner.continue_from_step_mode, token)
 
     return {
         "success": True,
-        "currentTime": _runner.current_time,
+        "currentTime": runner.current_time,
         "status": "running",
     }
 

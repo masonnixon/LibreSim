@@ -9,7 +9,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from src.models.simulation import SimulationStatus
-from src.simulation.runner import SimulationRunner
+from src.simulation.runner import SimulationOperationToken, SimulationRunner
 
 
 @pytest.fixture
@@ -28,19 +28,22 @@ def controlled_runner(monkeypatch):
             self.operation_exited = asyncio.Event()
             ControlledRunner.created.put_nowait(self)
 
-        async def run(self):
+        async def run(self, token: SimulationOperationToken | None = None):
             self.run_entered.set()
             try:
                 await self.release.wait()
-                await super().run()
+                await super().run(token)
             finally:
                 self.operation_exited.set()
 
-        async def continue_from_step_mode(self):
+        async def continue_from_step_mode(
+            self,
+            token: SimulationOperationToken | None = None,
+        ):
             self.continue_entered.set()
             try:
                 await self.release.wait()
-                await super().continue_from_step_mode()
+                await super().continue_from_step_mode(token)
             finally:
                 self.operation_exited.set()
 
@@ -208,6 +211,70 @@ async def test_start_and_step_init_are_serialized(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("path", "payload"),
+    [
+        ("/api/simulate/reset", None),
+        ("/api/simulate/step/forward", {"numSteps": 1}),
+    ],
+)
+async def test_live_run_rejects_same_runner_mutations(
+    async_client: AsyncClient,
+    controlled_runner,
+    sample_model,
+    simulation_config,
+    path: str,
+    payload: dict | None,
+):
+    start_request = asyncio.create_task(
+        async_client.post(
+            "/api/simulate/start",
+            json=_request(sample_model, simulation_config, "euler"),
+        )
+    )
+    running = await controlled_runner.created.get()
+    await running.run_entered.wait()
+    time_before = running.current_time
+
+    response = await async_client.post(path, json=payload)
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Simulation is already running"
+    assert running.current_time == time_before
+    assert running.has_live_run
+    assert not running.operation_exited.is_set()
+
+    running.release.set()
+    assert (await start_request).status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_unpaused_live_run_rejects_step_mode_entry(
+    async_client: AsyncClient,
+    controlled_runner,
+    sample_model,
+    simulation_config,
+):
+    start_request = asyncio.create_task(
+        async_client.post(
+            "/api/simulate/start",
+            json=_request(sample_model, simulation_config, "euler"),
+        )
+    )
+    running = await controlled_runner.created.get()
+    await running.run_entered.wait()
+
+    response = await async_client.post("/api/simulate/step/enter")
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Simulation is already running"
+    assert running.has_live_run
+
+    running.release.set()
+    assert (await start_request).status_code == 200
+
+
+@pytest.mark.asyncio
 async def test_step_continue_is_tracked_until_replacement_stops_it(
     async_client: AsyncClient,
     controlled_runner,
@@ -272,6 +339,50 @@ async def test_second_step_continue_is_rejected_while_first_is_live(
 
     continuing.release.set()
     assert (await first_continue).status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_step_continue_is_reserved_before_background_task_starts(
+    async_client: AsyncClient,
+    controlled_runner,
+    sample_model,
+    simulation_config,
+):
+    from fastapi import HTTPException
+
+    from src.api.routes import simulation as simulation_routes
+
+    class CapturingTasks:
+        def __init__(self):
+            self.calls: list[tuple] = []
+
+        def add_task(self, function, *args, **kwargs):
+            self.calls.append((function, args, kwargs))
+
+    init_response = await async_client.post(
+        "/api/simulate/step/init",
+        json=_request(sample_model, simulation_config, "euler"),
+    )
+    runner = await controlled_runner.created.get()
+    assert init_response.status_code == 200
+
+    captured = CapturingTasks()
+    response = await simulation_routes.continue_from_step(captured)
+    assert response["success"] is True
+    assert runner.has_live_run
+    assert len(captured.calls) == 1
+    function, args, kwargs = captured.calls[0]
+    assert function == runner.continue_from_step_mode
+    assert args == (runner._active_operation,)
+    assert kwargs == {}
+
+    with pytest.raises(HTTPException) as conflict:
+        await simulation_routes.continue_from_step(CapturingTasks())
+    assert conflict.value.status_code == 409
+
+    runner.release.set()
+    await function(*args, **kwargs)
+    assert not runner.has_live_run
 
 
 @pytest.mark.asyncio
