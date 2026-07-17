@@ -386,6 +386,20 @@ describe('api', () => {
       expect(result).toEqual(mockResult)
     })
 
+    it('startSimulation opts into coexistence explicitly', async () => {
+      const mockModel = createMockModel({ id: '1' })
+      const mockConfig: SimulationConfig = { solver: 'rk4', startTime: 0, stopTime: 10, stepSize: 0.01 }
+      mockAxiosInstance.post.mockResolvedValueOnce({ data: { sessionId: 'session-2' } })
+
+      await api.startSimulation(mockModel, mockConfig, { replaceCurrent: false })
+
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/simulate/start', {
+        model: mockModel,
+        config: mockConfig,
+        replaceCurrent: false,
+      })
+    })
+
     it('stopSimulation stops a simulation', async () => {
       mockAxiosInstance.post.mockResolvedValueOnce({})
 
@@ -430,6 +444,29 @@ describe('api', () => {
       expect(result).toEqual(mockResult)
     })
 
+    it('targets simulation reads and controls by session ID', async () => {
+      mockAxiosInstance.get.mockResolvedValueOnce({ data: { status: 'running', progress: 0 } })
+      mockAxiosInstance.post.mockResolvedValueOnce({})
+
+      await api.getSimulationStatus({ sessionId: 'session-1' })
+      await api.stopSimulation({ sessionId: 'session-1' })
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/simulate/status', {
+        params: { sessionId: 'session-1' },
+      })
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/simulate/stop', undefined, {
+        params: { sessionId: 'session-1' },
+      })
+    })
+
+    it('deletes an encoded simulation session', async () => {
+      mockAxiosInstance.delete.mockResolvedValueOnce({})
+
+      await api.deleteSimulationSession('session/one')
+
+      expect(mockAxiosInstance.delete).toHaveBeenCalledWith('/simulate/sessions/session%2Fone')
+    })
+
     it('getSimulationResults gets simulation results', async () => {
       const mockResult = { signals: [], statistics: {} }
       mockAxiosInstance.get.mockResolvedValueOnce({ data: mockResult })
@@ -457,6 +494,20 @@ describe('api', () => {
       expect(result).toEqual(mockResult)
     })
 
+    it('initStepMode opts into coexistence explicitly', async () => {
+      const mockModel = createMockModel({ id: '1' })
+      const mockConfig: SimulationConfig = { solver: 'rk4', startTime: 0, stopTime: 10, stepSize: 0.01 }
+      mockAxiosInstance.post.mockResolvedValueOnce({ data: { success: true } })
+
+      await api.initStepMode(mockModel, mockConfig, { replaceCurrent: false })
+
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/simulate/step/init', {
+        model: mockModel,
+        config: mockConfig,
+        replaceCurrent: false,
+      })
+    })
+
     it('stepForward advances simulation', async () => {
       const mockResult = {
         success: true,
@@ -473,6 +524,18 @@ describe('api', () => {
 
       expect(mockAxiosInstance.post).toHaveBeenCalledWith('/simulate/step/forward', { numSteps: 1 })
       expect(result).toEqual(mockResult)
+    })
+
+    it('targets step operations without changing their request body', async () => {
+      mockAxiosInstance.post.mockResolvedValueOnce({ data: { success: true } })
+
+      await api.stepForward(3, { sessionId: 'session-1' })
+
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
+        '/simulate/step/forward',
+        { numSteps: 3 },
+        { params: { sessionId: 'session-1' } }
+      )
     })
 
     it('stepBackward reverses simulation', async () => {

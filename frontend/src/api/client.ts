@@ -9,6 +9,18 @@ const apiClient = axios.create({
   },
 })
 
+export interface SimulationCreateOptions {
+  replaceCurrent?: boolean
+}
+
+export interface SimulationTargetOptions {
+  sessionId?: string
+}
+
+function targetParams(options?: SimulationTargetOptions) {
+  return options?.sessionId ? { params: { sessionId: options.sessionId } } : undefined
+}
+
 export const api = {
   // Model operations
   async getModels(): Promise<Model[]> {
@@ -48,56 +60,92 @@ export const api = {
 
   async startSimulation(
     model: Model,
-    config: SimulationConfig
+    config: SimulationConfig,
+    options?: SimulationCreateOptions
   ): Promise<{ sessionId: string }> {
-    const response = await apiClient.post('/simulate/start', { model, config })
+    const body = options?.replaceCurrent === undefined
+      ? { model, config }
+      : { model, config, replaceCurrent: options.replaceCurrent }
+    const response = await apiClient.post('/simulate/start', body)
     return response.data
   },
 
-  async stopSimulation(): Promise<void> {
-    await apiClient.post('/simulate/stop')
+  async stopSimulation(options?: SimulationTargetOptions): Promise<void> {
+    const requestConfig = targetParams(options)
+    if (requestConfig) {
+      await apiClient.post('/simulate/stop', undefined, requestConfig)
+    } else {
+      await apiClient.post('/simulate/stop')
+    }
   },
 
-  async resetSimulation(): Promise<{
+  async resetSimulation(options?: SimulationTargetOptions): Promise<{
     success: boolean
     message: string
     currentTime: number
     progress: number
     status: string
+    sessionId?: string
   }> {
-    const response = await apiClient.post('/simulate/reset')
+    const requestConfig = targetParams(options)
+    const response = requestConfig
+      ? await apiClient.post('/simulate/reset', undefined, requestConfig)
+      : await apiClient.post('/simulate/reset')
     return response.data
   },
 
-  async pauseSimulation(): Promise<void> {
-    await apiClient.post('/simulate/pause')
+  async pauseSimulation(options?: SimulationTargetOptions): Promise<void> {
+    const requestConfig = targetParams(options)
+    if (requestConfig) {
+      await apiClient.post('/simulate/pause', undefined, requestConfig)
+    } else {
+      await apiClient.post('/simulate/pause')
+    }
   },
 
-  async resumeSimulation(): Promise<void> {
-    await apiClient.post('/simulate/resume')
+  async resumeSimulation(options?: SimulationTargetOptions): Promise<void> {
+    const requestConfig = targetParams(options)
+    if (requestConfig) {
+      await apiClient.post('/simulate/resume', undefined, requestConfig)
+    } else {
+      await apiClient.post('/simulate/resume')
+    }
   },
 
-  async getSimulationStatus(): Promise<{ status: string; progress: number; currentTime?: number; error?: string }> {
-    const response = await apiClient.get('/simulate/status')
+  async getSimulationStatus(options?: SimulationTargetOptions): Promise<{ status: string; progress: number; currentTime?: number; error?: string; sessionId?: string }> {
+    const requestConfig = targetParams(options)
+    const response = requestConfig
+      ? await apiClient.get('/simulate/status', requestConfig)
+      : await apiClient.get('/simulate/status')
     return response.data
   },
 
-  async getSimulationResults(): Promise<SimulationResults> {
-    const response = await apiClient.get('/simulate/results')
+  async getSimulationResults(
+    options?: SimulationTargetOptions
+  ): Promise<SimulationResults & { sessionId?: string }> {
+    const requestConfig = targetParams(options)
+    const response = requestConfig
+      ? await apiClient.get('/simulate/results', requestConfig)
+      : await apiClient.get('/simulate/results')
     return response.data
   },
 
   // Step mode simulation operations
   async initStepMode(
     model: Model,
-    config: SimulationConfig
+    config: SimulationConfig,
+    options?: SimulationCreateOptions
   ): Promise<{ success: boolean; sessionId: string; currentTime: number; status: string }> {
-    const response = await apiClient.post('/simulate/step/init', { model, config })
+    const body = options?.replaceCurrent === undefined
+      ? { model, config }
+      : { model, config, replaceCurrent: options.replaceCurrent }
+    const response = await apiClient.post('/simulate/step/init', body)
     return response.data
   },
 
   async stepForward(
-    numSteps: number = 1
+    numSteps: number = 1,
+    options?: SimulationTargetOptions
   ): Promise<{
     success: boolean
     stepsExecuted: number
@@ -106,13 +154,18 @@ export const api = {
     completed: boolean
     status: string
     historySize: number
+    sessionId?: string
   }> {
-    const response = await apiClient.post('/simulate/step/forward', { numSteps })
+    const requestConfig = targetParams(options)
+    const response = requestConfig
+      ? await apiClient.post('/simulate/step/forward', { numSteps }, requestConfig)
+      : await apiClient.post('/simulate/step/forward', { numSteps })
     return response.data
   },
 
   async stepBackward(
-    numSteps: number = 1
+    numSteps: number = 1,
+    options?: SimulationTargetOptions
   ): Promise<{
     success: boolean
     stepsExecuted: number
@@ -120,30 +173,58 @@ export const api = {
     progress: number
     historySize: number
     status: string
+    sessionId?: string
   }> {
-    const response = await apiClient.post('/simulate/step/backward', { numSteps })
+    const requestConfig = targetParams(options)
+    const response = requestConfig
+      ? await apiClient.post('/simulate/step/backward', { numSteps }, requestConfig)
+      : await apiClient.post('/simulate/step/backward', { numSteps })
     return response.data
   },
 
-  async resetStepMode(): Promise<{ success: boolean; currentTime: number; status: string }> {
-    const response = await apiClient.post('/simulate/step/reset')
+  async resetStepMode(options?: SimulationTargetOptions): Promise<{
+    success: boolean
+    currentTime: number
+    status: string
+    sessionId?: string
+  }> {
+    const requestConfig = targetParams(options)
+    const response = requestConfig
+      ? await apiClient.post('/simulate/step/reset', undefined, requestConfig)
+      : await apiClient.post('/simulate/step/reset')
     return response.data
   },
 
-  async continueFromStepMode(): Promise<{ success: boolean; currentTime: number; status: string }> {
-    const response = await apiClient.post('/simulate/step/continue')
+  async continueFromStepMode(options?: SimulationTargetOptions): Promise<{
+    success: boolean
+    currentTime: number
+    status: string
+    sessionId?: string
+  }> {
+    const requestConfig = targetParams(options)
+    const response = requestConfig
+      ? await apiClient.post('/simulate/step/continue', undefined, requestConfig)
+      : await apiClient.post('/simulate/step/continue')
     return response.data
   },
 
-  async enterStepMode(): Promise<{
+  async enterStepMode(options?: SimulationTargetOptions): Promise<{
     success: boolean
     currentTime: number
     progress: number
     status: string
     historySize: number
+    sessionId?: string
   }> {
-    const response = await apiClient.post('/simulate/step/enter')
+    const requestConfig = targetParams(options)
+    const response = requestConfig
+      ? await apiClient.post('/simulate/step/enter', undefined, requestConfig)
+      : await apiClient.post('/simulate/step/enter')
     return response.data
+  },
+
+  async deleteSimulationSession(sessionId: string): Promise<void> {
+    await apiClient.delete(`/simulate/sessions/${encodeURIComponent(sessionId)}`)
   },
 
   // Import operations
