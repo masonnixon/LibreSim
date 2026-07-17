@@ -4,6 +4,23 @@ import pytest
 from fastapi.testclient import TestClient
 
 
+@pytest.fixture(autouse=True)
+def isolated_simulation_registry():
+    """Keep process-local simulation sessions isolated between tests."""
+    from src.api.routes import simulation as simulation_routes
+    from src.simulation.session_registry import SessionRegistry
+
+    registry = SessionRegistry()
+    simulation_routes._registry = registry
+    yield
+    for record in list(registry._sessions.values()):
+        record.runner.stop()
+        if record.task is not None and not record.task.done():
+            record.task.cancel()
+    if simulation_routes._registry is registry:
+        simulation_routes._registry = SessionRegistry()
+
+
 @pytest.fixture
 def test_client():
     """Create a test client for the FastAPI application."""

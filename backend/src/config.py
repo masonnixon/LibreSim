@@ -1,5 +1,6 @@
 """Application configuration."""
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -16,6 +17,7 @@ class Settings(BaseSettings):
     max_simulation_time: float = 1000.0
     default_step_size: float = 0.01
     max_steps: int = 1000000
+    max_retained_simulation_sessions: int = Field(default=8, ge=1)
 
     @property
     def cors_origins_list(self) -> list[str]:

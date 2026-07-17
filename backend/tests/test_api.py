@@ -236,38 +236,21 @@ class TestSimulationEndpoint:
 
     def test_stop_simulation_no_runner(self, test_client: TestClient):
         """Test stopping simulation when none is running."""
-        # First ensure no simulation is running by resetting
-        from src.api.routes import simulation as sim_module
-
-        sim_module._runner = None
-
         response = test_client.post("/api/simulate/stop")
         assert response.status_code == 400
 
     def test_pause_simulation_no_runner(self, test_client: TestClient):
         """Test pausing simulation when none is running."""
-        from src.api.routes import simulation as sim_module
-
-        sim_module._runner = None
-
         response = test_client.post("/api/simulate/pause")
         assert response.status_code == 400
 
     def test_resume_simulation_no_runner(self, test_client: TestClient):
         """Test resuming simulation when none is running."""
-        from src.api.routes import simulation as sim_module
-
-        sim_module._runner = None
-
         response = test_client.post("/api/simulate/resume")
         assert response.status_code == 400
 
     def test_get_results_no_simulation(self, test_client: TestClient):
         """Test getting results when no simulation available."""
-        from src.api.routes import simulation as sim_module
-
-        sim_module._runner = None
-
         response = test_client.get("/api/simulate/results")
         assert response.status_code == 400
 
@@ -540,17 +523,15 @@ class TestSimulationEndpointExtended:
         # Manually set error message on runner
         from src.api.routes import simulation as sim_module
 
-        if sim_module._runner:
-            sim_module._runner._error_message = "Test error"
+        runner = sim_module.get_runner()
+        if runner:
+            runner._error_message = "Test error"
 
         # Get status
         response = test_client.get("/api/simulate/status")
         assert response.status_code == 200
         data = response.json()
         assert "error" in data
-
-        # Cleanup
-        sim_module._runner = None
 
     def test_debug_endpoint_with_valid_model_and_config(
         self, test_client: TestClient, sample_model, simulation_config
@@ -848,7 +829,7 @@ class TestSimulationEndpointFull:
 
         # Try reset endpoint
         reset_response = test_client.post("/api/simulate/reset")
-        assert reset_response.status_code in [200, 400, 404]
+        assert reset_response.status_code in [200, 400, 404, 409]
 
         # Cleanup
         test_client.post("/api/simulate/stop")

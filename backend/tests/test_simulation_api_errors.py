@@ -7,16 +7,6 @@ import pytest
 from fastapi.testclient import TestClient
 
 
-@pytest.fixture(autouse=True)
-def reset_simulation_runner():
-    """Keep the module-level runner from leaking into or out of these tests."""
-    from src.api.routes import simulation as simulation_routes
-
-    simulation_routes._runner = None
-    yield
-    simulation_routes._runner = None
-
-
 def _single_block_model(
     *, block_id: str, block_type: str, parameters: dict[str, Any] | None = None
 ) -> dict[str, Any]:

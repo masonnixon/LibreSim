@@ -1,5 +1,7 @@
 """Main FastAPI application entry point."""
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -18,10 +20,19 @@ LOCAL_PROJECT_ROOT = Path(__file__).parent.parent.parent
 
 PROJECT_ROOT = DOCKER_PROJECT_ROOT if DOCKER_PROJECT_ROOT.exists() else LOCAL_PROJECT_ROOT
 
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    """Release process-local simulation tasks when the application stops."""
+    yield
+    await simulation.shutdown_sessions()
+
+
 app = FastAPI(
     title="LibreSim API",
     description="Backend API for LibreSim block diagram simulation tool",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 # CORS middleware

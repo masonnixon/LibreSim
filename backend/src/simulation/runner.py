@@ -214,6 +214,18 @@ class SimulationRunner:
         self._status = SimulationStatus.COMPILING
         return token
 
+    def release_unadopted_operation(self, token: SimulationOperationToken) -> bool:
+        """Release an operation whose scheduled coroutine never adopted its token."""
+        with self._operation_lock:
+            if token.adopted or self._active_operation is not token:
+                return False
+            self._active_operation = None
+            self._should_stop = True
+            self._is_paused = False
+            self._status = SimulationStatus.IDLE
+        token.finished.set()
+        return True
+
     def schedule_continue(self) -> SimulationOperationToken:
         """Atomically validate and reserve a background step-mode continuation."""
         with self._operation_lock:

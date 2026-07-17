@@ -1,17 +1,27 @@
 """Simulation control API routes."""
 
-import asyncio
 import traceback
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Any, NoReturn
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
+from ...config import settings
 from ...models.model import Model
 from ...models.simulation import SimulationConfig
 from ...simulation.runner import (
     SimulationOperationConflict,
     SimulationOperationToken,
     SimulationRunner,
+)
+from ...simulation.session_registry import (
+    SessionCapacityExceeded,
+    SessionNotFound,
+    SessionRecord,
+    SessionRegistry,
+    SessionStopFailed,
+    SessionUnavailable,
 )
 
 router = APIRouter()
@@ -25,26 +35,28 @@ async def test_endpoint() -> dict[str, str]:
     return {"status": "ok", "message": "Simulation API is working"}
 
 
-# Global simulation runner instance (single-user for now)
-_runner: SimulationRunner | None = None
-_runner_lock = asyncio.Lock()
+# Process-local simulation sessions. Multi-worker deployments require sticky routing.
+_registry = SessionRegistry(settings.max_retained_simulation_sessions)
 
 
 async def _install_runner(
     runner: SimulationRunner,
     *,
     scheduled: bool,
+    replace_current: bool = True,
 ) -> SimulationOperationToken | None:
-    """Stop any live run and atomically install its replacement."""
-    global _runner
-
-    async with _runner_lock:
-        if _runner is not None and _runner.has_live_run:
-            if not await _runner.stop_and_wait():
-                raise HTTPException(status_code=409, detail="Previous simulation did not stop")
-        token = runner.mark_scheduled() if scheduled else None
-        _runner = runner
-        return token
+    """Install one runner with legacy replacement behavior by default."""
+    try:
+        record = await _registry.install(
+            runner,
+            replace_current=replace_current,
+            run_operation=runner.run if scheduled else None,
+        )
+    except SessionStopFailed as exc:
+        raise HTTPException(status_code=409, detail="Previous simulation did not stop") from exc
+    except SessionCapacityExceeded as exc:
+        raise HTTPException(status_code=429, detail=str(exc)) from exc
+    return record.operation_token
 
 
 def _raise_operation_conflict(exc: SimulationOperationConflict) -> NoReturn:
@@ -54,20 +66,44 @@ def _raise_operation_conflict(exc: SimulationOperationConflict) -> NoReturn:
 
 def get_runner() -> SimulationRunner | None:
     """Get the current simulation runner."""
-    global _runner
-    return _runner
+    return _registry.current_runner
+
+
+async def shutdown_sessions() -> None:
+    """Quiesce all process-local sessions during application shutdown."""
+    await _registry.shutdown()
+
+
+def _replace_current(request: dict[str, Any]) -> bool:
+    value = request.get("replaceCurrent", True)
+    if not isinstance(value, bool):
+        raise HTTPException(status_code=400, detail="replaceCurrent must be a boolean")
+    return value
+
+
+@asynccontextmanager
+async def _lease_record(session_id: str | None) -> AsyncIterator[SessionRecord | None]:
+    try:
+        async with _registry.lease(session_id) as record:
+            yield record
+    except SessionNotFound as exc:
+        raise HTTPException(status_code=404, detail="Simulation session not found") from exc
+    except SessionUnavailable as exc:
+        raise HTTPException(status_code=409, detail="Simulation session is being removed") from exc
+
+
+def _with_session(result: dict[str, Any], runner: SimulationRunner) -> dict[str, Any]:
+    return {**result, "sessionId": runner.session_id}
 
 
 @router.post("/start")
 async def start_simulation(
     request: dict[str, Any],
-    background_tasks: BackgroundTasks,
 ) -> dict[str, str]:
     """Start a simulation."""
-    global _runner
-
     model_data = request.get("model")
     config_data = request.get("config", {})
+    replace_current = _replace_current(request)
 
     if not model_data:
         raise HTTPException(status_code=400, detail="model is required")
@@ -96,12 +132,13 @@ async def start_simulation(
     try:
         # Create and start runner
         runner = SimulationRunner(model, config)
-        token = await _install_runner(runner, scheduled=True)
+        token = await _install_runner(
+            runner,
+            scheduled=True,
+            replace_current=replace_current,
+        )
         assert token is not None
         session_id = runner.session_id
-
-        # Run simulation in background
-        background_tasks.add_task(runner.run, token)
 
         return {"sessionId": session_id}
     except HTTPException:
@@ -113,107 +150,116 @@ async def start_simulation(
 
 
 @router.post("/stop")
-async def stop_simulation() -> dict[str, str]:
+async def stop_simulation(
+    session_id: str | None = Query(default=None, alias="sessionId"),
+) -> dict[str, str]:
     """Stop the current simulation."""
-    global _runner
-
-    if _runner is None:
-        raise HTTPException(status_code=400, detail="No simulation running")
-
-    _runner.stop()
-    return {"message": "Simulation stopped"}
+    async with _lease_record(session_id) as record:
+        if record is None:
+            raise HTTPException(status_code=400, detail="No simulation running")
+        record.runner.stop()
+        return {
+            "message": "Simulation stopped",
+            "sessionId": record.runner.session_id,
+        }
 
 
 @router.post("/reset")
-async def reset_simulation() -> dict[str, Any]:
+async def reset_simulation(
+    session_id: str | None = Query(default=None, alias="sessionId"),
+) -> dict[str, Any]:
     """Reset the simulation to initial state, ready to run again.
 
     This can be called after a simulation completes, pauses, or in step mode.
     It resets all state to initial values while preserving the compiled model.
     """
-    global _runner
-
-    if _runner is None:
-        raise HTTPException(status_code=400, detail="No simulation available")
-
-    runner = _runner
-    try:
-        runner.reset()
-    except SimulationOperationConflict as exc:
-        _raise_operation_conflict(exc)
-    return {
-        "success": True,
-        "message": "Simulation reset",
-        "currentTime": runner.current_time,
-        "progress": runner.progress,
-        "status": runner.status.value,
-    }
+    async with _lease_record(session_id) as record:
+        if record is None:
+            raise HTTPException(status_code=400, detail="No simulation available")
+        runner = record.runner
+        try:
+            runner.reset()
+        except SimulationOperationConflict as exc:
+            _raise_operation_conflict(exc)
+        return _with_session(
+            {
+                "success": True,
+                "message": "Simulation reset",
+                "currentTime": runner.current_time,
+                "progress": runner.progress,
+                "status": runner.status.value,
+            },
+            runner,
+        )
 
 
 @router.post("/pause")
-async def pause_simulation() -> dict[str, str]:
+async def pause_simulation(
+    session_id: str | None = Query(default=None, alias="sessionId"),
+) -> dict[str, str]:
     """Pause the current simulation."""
-    global _runner
-
-    if _runner is None:
-        raise HTTPException(status_code=400, detail="No simulation running")
-
-    runner = _runner
-    await runner.pause()
-    return {"message": "Simulation paused"}
+    async with _lease_record(session_id) as record:
+        if record is None:
+            raise HTTPException(status_code=400, detail="No simulation running")
+        await record.runner.pause()
+        return {
+            "message": "Simulation paused",
+            "sessionId": record.runner.session_id,
+        }
 
 
 @router.post("/resume")
-async def resume_simulation() -> dict[str, str]:
+async def resume_simulation(
+    session_id: str | None = Query(default=None, alias="sessionId"),
+) -> dict[str, str]:
     """Resume a paused simulation."""
-    global _runner
-
-    if _runner is None:
-        raise HTTPException(status_code=400, detail="No simulation running")
-
-    _runner.resume()
-    return {"message": "Simulation resumed"}
+    async with _lease_record(session_id) as record:
+        if record is None:
+            raise HTTPException(status_code=400, detail="No simulation running")
+        record.runner.resume()
+        return {
+            "message": "Simulation resumed",
+            "sessionId": record.runner.session_id,
+        }
 
 
 @router.get("/status")
-async def get_simulation_status() -> dict[str, Any]:
+async def get_simulation_status(
+    session_id: str | None = Query(default=None, alias="sessionId"),
+) -> dict[str, Any]:
     """Get current simulation status."""
-    global _runner
-
-    if _runner is None:
-        return {"status": "idle", "progress": 0}
-
-    result = {
-        "status": _runner.status.value,
-        "progress": _runner.progress,
-        "currentTime": _runner.current_time,
-    }
-
-    # Include error message if there is one
-    if _runner.error_message:
-        result["error"] = _runner.error_message
-
-    return result
+    async with _lease_record(session_id) as record:
+        if record is None:
+            return {"status": "idle", "progress": 0}
+        runner = record.runner
+        result = {
+            "status": runner.status.value,
+            "progress": runner.progress,
+            "currentTime": runner.current_time,
+            "sessionId": runner.session_id,
+        }
+        if runner.error_message:
+            result["error"] = runner.error_message
+        return result
 
 
 @router.get("/results")
-async def get_simulation_results() -> dict[str, Any]:
+async def get_simulation_results(
+    session_id: str | None = Query(default=None, alias="sessionId"),
+) -> dict[str, Any]:
     """Get simulation results."""
-    global _runner
-
-    if _runner is None:
-        raise HTTPException(status_code=400, detail="No simulation available")
-
-    return _runner.get_results()
+    async with _lease_record(session_id) as record:
+        if record is None:
+            raise HTTPException(status_code=400, detail="No simulation available")
+        return _with_session(record.runner.get_results(), record.runner)
 
 
 @router.post("/step/init")
 async def init_step_mode(request: dict[str, Any]) -> dict[str, Any]:
     """Initialize step mode simulation (compile model, ready for stepping)."""
-    global _runner
-
     model_data = request.get("model")
     config_data = request.get("config", {})
+    replace_current = _replace_current(request)
 
     if not model_data:
         raise HTTPException(status_code=400, detail="model is required")
@@ -234,7 +280,11 @@ async def init_step_mode(request: dict[str, Any]) -> dict[str, Any]:
 
     try:
         runner = SimulationRunner(model, config)
-        await _install_runner(runner, scheduled=False)
+        await _install_runner(
+            runner,
+            scheduled=False,
+            replace_current=replace_current,
+        )
         success = runner.initialize_step_mode()
 
         if not success:
@@ -257,133 +307,169 @@ async def init_step_mode(request: dict[str, Any]) -> dict[str, Any]:
 
 
 @router.post("/step/enter")
-async def enter_step_mode() -> dict[str, Any]:
+async def enter_step_mode(
+    session_id: str | None = Query(default=None, alias="sessionId"),
+) -> dict[str, Any]:
     """Enter step mode from a paused continuous simulation.
 
     This preserves the current simulation state and time position,
     unlike /step/init which reinitializes from the start.
     """
-    global _runner
-
-    if _runner is None:
-        raise HTTPException(status_code=400, detail="No simulation running. Use /step/init first.")
-
-    try:
-        runner = _runner
-        success = await runner.enter_step_mode()
-
-        if not success:
+    async with _lease_record(session_id) as record:
+        if record is None:
             raise HTTPException(
-                status_code=500, detail=runner.error_message or "Failed to enter step mode"
+                status_code=400,
+                detail="No simulation running. Use /step/init first.",
             )
+        try:
+            runner = record.runner
+            success = await runner.enter_step_mode()
 
-        return {
-            "success": True,
-            "currentTime": runner.current_time,
-            "progress": runner.progress,
-            "status": runner.status.value,
-            "historySize": 1,
-        }
-    except SimulationOperationConflict as exc:
-        _raise_operation_conflict(exc)
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"Enter step mode error: {e}")
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Failed to enter step mode: {str(e)}")
+            if not success:
+                raise HTTPException(
+                    status_code=500,
+                    detail=runner.error_message or "Failed to enter step mode",
+                )
+
+            return _with_session(
+                {
+                    "success": True,
+                    "currentTime": runner.current_time,
+                    "progress": runner.progress,
+                    "status": runner.status.value,
+                    "historySize": 1,
+                },
+                runner,
+            )
+        except SimulationOperationConflict as exc:
+            _raise_operation_conflict(exc)
+        except HTTPException:
+            raise
+        except Exception as e:
+            print(f"Enter step mode error: {e}")
+            traceback.print_exc()
+            raise HTTPException(status_code=500, detail=f"Failed to enter step mode: {str(e)}")
 
 
 @router.post("/step/forward")
-async def step_forward(request: dict[str, Any] | None = None) -> dict[str, Any]:
+async def step_forward(
+    request: dict[str, Any] | None = None,
+    session_id: str | None = Query(default=None, alias="sessionId"),
+) -> dict[str, Any]:
     """Execute one or more simulation steps forward."""
-    global _runner
+    return await _step_forward(request, session_id)
 
-    if _runner is None:
-        raise HTTPException(
-            status_code=400, detail="No simulation initialized. Call /step/init first."
-        )
 
-    num_steps = 1
-    if request:
-        num_steps = request.get("numSteps", 1)
-
-    runner = _runner
-    try:
-        result = runner.step_forward(num_steps)
-    except SimulationOperationConflict as exc:
-        _raise_operation_conflict(exc)
-    result["status"] = runner.status.value
-
-    return result
+async def _step_forward(
+    request: dict[str, Any] | None,
+    session_id: str | None,
+) -> dict[str, Any]:
+    async with _lease_record(session_id) as record:
+        if record is None:
+            raise HTTPException(
+                status_code=400,
+                detail="No simulation initialized. Call /step/init first.",
+            )
+        num_steps = request.get("numSteps", 1) if request else 1
+        runner = record.runner
+        try:
+            result = runner.step_forward(num_steps)
+        except SimulationOperationConflict as exc:
+            _raise_operation_conflict(exc)
+        result["status"] = runner.status.value
+        return _with_session(result, runner)
 
 
 @router.post("/step/backward")
-async def step_backward(request: dict[str, Any] | None = None) -> dict[str, Any]:
+async def step_backward(
+    request: dict[str, Any] | None = None,
+    session_id: str | None = Query(default=None, alias="sessionId"),
+) -> dict[str, Any]:
     """Step backward by restoring previous state."""
-    global _runner
-
-    if _runner is None:
-        raise HTTPException(
-            status_code=400, detail="No simulation initialized. Call /step/init first."
-        )
-
-    num_steps = 1
-    if request:
-        num_steps = request.get("numSteps", 1)
-
-    runner = _runner
-    try:
-        result = runner.step_backward(num_steps)
-    except SimulationOperationConflict as exc:
-        _raise_operation_conflict(exc)
-    result["status"] = runner.status.value
-
-    return result
+    async with _lease_record(session_id) as record:
+        if record is None:
+            raise HTTPException(
+                status_code=400,
+                detail="No simulation initialized. Call /step/init first.",
+            )
+        num_steps = request.get("numSteps", 1) if request else 1
+        runner = record.runner
+        try:
+            result = runner.step_backward(num_steps)
+        except SimulationOperationConflict as exc:
+            _raise_operation_conflict(exc)
+        result["status"] = runner.status.value
+        return _with_session(result, runner)
 
 
 @router.post("/step/reset")
-async def reset_step_mode() -> dict[str, Any]:
+async def reset_step_mode(
+    session_id: str | None = Query(default=None, alias="sessionId"),
+) -> dict[str, Any]:
     """Reset step mode simulation to start time."""
-    global _runner
+    async with _lease_record(session_id) as record:
+        if record is None:
+            raise HTTPException(status_code=400, detail="No simulation initialized")
+        runner = record.runner
+        try:
+            runner.reset_step_mode()
+        except SimulationOperationConflict as exc:
+            _raise_operation_conflict(exc)
 
-    if _runner is None:
-        raise HTTPException(status_code=400, detail="No simulation initialized")
-
-    runner = _runner
-    try:
-        runner.reset_step_mode()
-    except SimulationOperationConflict as exc:
-        _raise_operation_conflict(exc)
-
-    return {
-        "success": True,
-        "currentTime": runner.current_time,
-        "status": runner.status.value,
-    }
+        return _with_session(
+            {
+                "success": True,
+                "currentTime": runner.current_time,
+                "status": runner.status.value,
+            },
+            runner,
+        )
 
 
 @router.post("/step/continue")
-async def continue_from_step(background_tasks: BackgroundTasks) -> dict[str, Any]:
+async def continue_from_step(
+    session_id: str | None = Query(default=None, alias="sessionId"),
+) -> dict[str, Any]:
     """Continue running simulation from current step mode position."""
-    global _runner
+    async with _lease_record(session_id) as record:
+        if record is None:
+            raise HTTPException(status_code=400, detail="No simulation initialized")
+        runner = record.runner
+        try:
+            token = runner.schedule_continue()
+            await _registry.schedule(record, token, runner.continue_from_step_mode)
+        except SimulationOperationConflict as exc:
+            _raise_operation_conflict(exc)
+        except SessionUnavailable as exc:
+            raise HTTPException(
+                status_code=409,
+                detail="Simulation session is being removed",
+            ) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    if _runner is None:
-        raise HTTPException(status_code=400, detail="No simulation initialized")
-    runner = _runner
+        return _with_session(
+            {
+                "success": True,
+                "currentTime": runner.current_time,
+                "status": "running",
+            },
+            runner,
+        )
+
+
+@router.delete("/sessions/{session_id}")
+async def delete_simulation_session(session_id: str) -> dict[str, str]:
+    """Stop and discard one retained simulation session."""
     try:
-        token = runner.schedule_continue()
-    except SimulationOperationConflict as exc:
-        _raise_operation_conflict(exc)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    background_tasks.add_task(runner.continue_from_step_mode, token)
-
-    return {
-        "success": True,
-        "currentTime": runner.current_time,
-        "status": "running",
-    }
+        await _registry.delete(session_id)
+    except SessionNotFound as exc:
+        raise HTTPException(status_code=404, detail="Simulation session not found") from exc
+    except SessionUnavailable as exc:
+        raise HTTPException(status_code=409, detail="Simulation session is being removed") from exc
+    except SessionStopFailed as exc:
+        raise HTTPException(status_code=409, detail="Simulation did not stop") from exc
+    return {"message": "Simulation session deleted", "sessionId": session_id}
 
 
 @router.post("/debug")
