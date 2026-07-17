@@ -4,6 +4,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field
+from threading import RLock
 
 EPS = 1e-10
 EVENT = -1
@@ -13,6 +14,7 @@ STAGE_TIME_OFFSETS = {
     "RK4": (0.0, 0.5, 0.5, 1.0),
     "Merson": (0.0, 1.0 / 3.0, 1.0 / 3.0, 0.5, 1.0),
 }
+_CONTEXT_OWNER_LOCK = RLock()
 
 
 @dataclass
@@ -39,10 +41,11 @@ class SimContext:
 
     def claim_owner(self, owner: object) -> None:
         """Claim this context for one graph, allowing idempotent repeat claims."""
-        if self._owner is None:
-            self._owner = owner
-        elif self._owner is not owner:
-            raise ValueError("SimContext is already owned by another simulation graph")
+        with _CONTEXT_OWNER_LOCK:
+            if self._owner is None:
+                self._owner = owner
+            elif self._owner is not owner:
+                raise ValueError("SimContext is already owned by another simulation graph")
 
     @property
     def effective_method(self) -> str:
@@ -142,12 +145,19 @@ class SimContext:
 
 
 _DEFAULT_CONTEXT = SimContext()
+_LEGACY_CONTEXT = _DEFAULT_CONTEXT
 _ACTIVE_CONTEXT: ContextVar[SimContext | None] = ContextVar("osk_active_sim_context", default=None)
 
 
 def get_active_context() -> SimContext:
     """Return the active context or the sequential legacy default."""
-    return _ACTIVE_CONTEXT.get() or _DEFAULT_CONTEXT
+    return _ACTIVE_CONTEXT.get() or _LEGACY_CONTEXT
+
+
+def set_legacy_context(context: SimContext) -> None:
+    """Select the fallback used by sequential direct-OSK compatibility calls."""
+    global _LEGACY_CONTEXT
+    _LEGACY_CONTEXT = context
 
 
 @contextmanager

@@ -30,6 +30,9 @@ class DecayBlock(Block):
     def __init__(self, x0: float = 1.0):
         super().__init__()
         self.s = State([x0, 0.0])
+        # Custom integrators must be registered so graph binding can move them
+        # from the block's provisional context to the owning simulation context.
+        self.vState.append(self.s)
 
     def update(self):
         self.s.x[1] = -self.s.x[0]

@@ -5,7 +5,12 @@ All simulation blocks should inherit from this class and implement
 init(), update(), and rpt() methods.
 """
 
+from threading import RLock
+
+from .context import SimContext, get_active_context
 from .state import State
+
+_GRAPH_BIND_LOCK = RLock()
 
 
 class Block:
@@ -36,6 +41,8 @@ class Block:
 
     def __init__(self):
         """Initialize the block with empty state vector."""
+        self.context = get_active_context()
+        self._context_owner: object | None = None
         self.vState = []  # Vector of State objects (integrators)
         self.initCount = 0  # Initialization counter
         self.block_id: str | None = None
@@ -87,9 +94,29 @@ class Block:
         """
         if initial is None:
             initial = [0.0, 0.0]
-        state = State(initial)
+        state = State(initial, context=self.context)
         self.vState.append(state)
         return state.x
+
+    def check_context_binding(self, context: SimContext, owner: object) -> None:
+        """Validate a prospective graph binding without mutating this block."""
+        if context.owner is not None and context.owner is not owner:
+            raise ValueError("SimContext is already owned by another simulation graph")
+        if self._context_owner is not None and (
+            self._context_owner is not owner or self.context is not context
+        ):
+            raise ValueError("Block is already owned by another simulation graph")
+
+    def bind_context(self, context: SimContext, owner: object) -> None:
+        """Bind this block and its registered integrators to one graph."""
+        with _GRAPH_BIND_LOCK:
+            self.check_context_binding(context, owner)
+            context.claim_owner(owner)
+            if self._context_owner is None:
+                self.context = context
+                for state in self.vState:
+                    state.context = context
+                self._context_owner = owner
 
     def set_method(self, method="RK4"):
         """Set the integration method for all states.
@@ -97,7 +124,7 @@ class Block:
         Args:
             method: One of 'Euler', 'RK2', 'RK4', 'Merson'
         """
-        State.method = method
+        self.context.method = method
 
     def propagateStates(self):
         """Propagate all integrator states.

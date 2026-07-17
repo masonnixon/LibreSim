@@ -1,177 +1,216 @@
-"""Sim class - Simulation orchestrator.
+"""Instance-scoped Object-oriented Simulation Kernel orchestrator."""
 
-Based on H.R. Sells' OSK implementation (updated 210129).
-Manages the execution of simulation blocks through stages.
-"""
-
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from typing import Any
 
-from .state import State
+from .block import _GRAPH_BIND_LOCK
+from .context import (
+    EPS,
+    SimContext,
+    activate_context,
+    get_active_context,
+    set_legacy_context,
+)
+
+_SIM_FIELDS = frozenset({"stop", "stop0", "dt", "tmax", "dts", "vStage", "clock"})
+_SIM_DEFAULTS: dict[str, Any] = {
+    "stop": 0,
+    "stop0": 0,
+    "dt": 0.0,
+    "tmax": 0.0,
+    "dts": [],
+    "vStage": [],
+    "clock": None,
+}
+_ACTIVE_SIM: ContextVar[Any] = ContextVar("osk_active_sim", default=None)
+_LEGACY_SIM: Any = None
 
 
-class Sim:
-    """Simulation orchestrator.
+def _current_sim() -> Any:
+    return _ACTIVE_SIM.get() or _LEGACY_SIM
 
-    Manages the execution of simulation blocks organized into stages.
-    Each stage can have a different time step.
 
-    Example usage:
-        # Create blocks
-        source = StepSource()
-        system = SecondOrderSystem()
-        scope = Scope()
+@contextmanager
+def _activate_sim(sim: "Sim") -> Iterator["Sim"]:
+    token = _ACTIVE_SIM.set(sim)
+    try:
+        yield sim
+    finally:
+        _ACTIVE_SIM.reset(token)
 
-        # Connect blocks (application-specific)
-        system.input_block = source
-        scope.input_block = system
 
-        # Create stage with all blocks
-        stage = [source, system, scope]
+class _SimFacade(type):
+    """Route deprecated ``Sim.*`` class state to the active/legacy instance."""
 
-        # Create and run simulation
-        sim = Sim(
-            dts=[0.01],           # Time steps for each stage
-            tmax=10.0,            # Maximum simulation time
-            vStage=[stage]        # Vector of stages
-        )
-        sim.run()
-    """
+    def __getattribute__(cls, name: str) -> Any:
+        if name in _SIM_FIELDS:
+            sim = _current_sim()
+            if sim is not None:
+                return getattr(sim, name)
+            return _SIM_DEFAULTS[name]
+        return super().__getattribute__(name)
 
-    stop0: int = 0  # Previous stop flag
-    stop: int = 0  # Current stop flag (set by blocks to terminate)
-    dts: list[float]  # Time steps for each stage
-    dt: float = 0  # Current time step
-    tmax: float = 0  # Maximum simulation time
-    vStage: list[list[Any]]  # Vector of stages (each stage is a list of blocks)
-    clock: State | None = None  # Clock State object
+    def __setattr__(cls, name: str, value: Any) -> None:
+        if name in _SIM_FIELDS:
+            sim = _current_sim()
+            if sim is not None:
+                setattr(sim, name, value)
+            else:
+                _SIM_DEFAULTS[name] = value
+            return
+        super().__setattr__(name, value)
 
-    def __init__(self, dts, tmax, vStage):
-        """Initialize the simulation.
 
-        Args:
-            dts: List of time steps, one per stage
-            tmax: Maximum simulation time
-            vStage: List of stages, each stage is a list of Block objects
-        """
-        Sim.tmax = tmax
-        Sim.vStage = vStage
-        Sim.dts = dts
-        Sim.clock = State()
-        Sim.stop = 0
-        Sim.stop0 = 0
+class Sim(metaclass=_SimFacade):
+    """Execute one block graph using one explicit simulation context."""
+
+    def __init__(
+        self,
+        dts: list[float],
+        tmax: float,
+        vStage: list[list[Any]],
+        *,
+        context: SimContext | None = None,
+        owner: object | None = None,
+    ):
+        native_context = context is None
+        if context is None:
+            context = SimContext(method=get_active_context().method)
+
+        owner_token = owner if owner is not None else self
+        unique_blocks = []
+        seen_blocks: set[int] = set()
+        for stage in vStage:
+            for block in stage:
+                if id(block) not in seen_blocks:
+                    unique_blocks.append(block)
+                    seen_blocks.add(id(block))
+
+        with _GRAPH_BIND_LOCK:
+            for block in unique_blocks:
+                block.check_context_binding(context, owner_token)
+            context.claim_owner(owner_token)
+            for block in unique_blocks:
+                block.bind_context(context, owner_token)
+
+        self.context = context
+        self._owner = owner_token
+        self.dts = dts
+        self.dt = 0.0
+        self.tmax = tmax
+        self.vStage = vStage
+        self.clock = None
+        self.context.stop = 0
+        self.context.stop0 = 0
+
+        if native_context or owner is None:
+            global _LEGACY_SIM
+            _LEGACY_SIM = self
+            set_legacy_context(context)
+
+    @property
+    def stop(self) -> int:
+        return self.context.stop
+
+    @stop.setter
+    def stop(self, value: int) -> None:
+        self.context.stop = value
+
+    @property
+    def stop0(self) -> int:
+        return self.context.stop0
+
+    @stop0.setter
+    def stop0(self, value: int) -> None:
+        self.context.stop0 = value
 
     @classmethod
-    def sample(cls, t_event):
-        """Class method for sampling - delegates to clock."""
-        if cls.clock:
-            cls.clock.sample(t_event)
+    def sample(cls, t_event: float) -> None:
+        """Sample the active/legacy instance for class-level compatibility."""
+        sim = _current_sim()
+        if sim is not None:
+            sim.context.sample(t_event)
+        else:
+            get_active_context().sample(t_event)
 
-    def run(self):
-        """Execute the simulation.
+    @classmethod
+    def terminate(cls, code: int = 1) -> None:
+        """Terminate the active/legacy instance for class-level compatibility."""
+        sim = _current_sim()
+        if sim is not None:
+            sim.context.request_stop(code)
+        else:
+            _SIM_DEFAULTS["stop"] = code
 
-        Iterates through stages, executing blocks in order:
-        1. Initialize all blocks in stage
-        2. For each time step:
-           a. Sample (check timing)
-           b. Update all blocks (compute derivatives)
-           c. Report outputs (if ready)
-           d. Propagate states
-           e. Update clock
-        3. Final report
+    def run(self) -> dict[str, Any]:
+        """Execute this simulation with its context and facade active."""
+        with activate_context(self.context), _activate_sim(self):
+            return self._run()
 
-        Returns:
-            Dictionary with simulation results
-        """
+    def _run(self) -> dict[str, Any]:
         results: dict[str, Any] = {"times": [], "outputs": {}}
 
-        if Sim.clock is not None:
-            Sim.clock.set()
-        Sim.stop = Sim.stop0 = 0
+        self.context.legacy_set()
+        self.stop = 0
+        self.stop0 = 0
 
-        # Reset init counters
-        for stage in Sim.vStage:
+        for stage in self.vStage:
             for obj in stage:
                 obj.initCount = 0
 
-        State.ticklast = 0
-        n = 0
+        self.context.ticklast = 0
+        last_stage = 0
+        for stage_index, stage in enumerate(self.vStage):
+            last_stage = stage_index
+            self.dt = (
+                self.dts[stage_index]
+                if stage_index < len(self.dts)
+                else self.dts[-1]
+            )
+            self.context.reset_step(self.dt)
+            self.context.tickfirst = 1
+            self.context.ready = 1
 
-        # Process each stage
-        for ii in range(len(Sim.vStage)):
-            n = ii
-            stage = Sim.vStage[ii]
-            dt = Sim.dts[ii] if ii < len(Sim.dts) else Sim.dts[-1]
-
-            if Sim.clock is not None:
-                Sim.clock.reset(dt)
-            State.tickfirst = 1
-            State.ready = 1
-
-            # Initialize all blocks in stage
             for obj in stage:
                 obj.init()
                 obj.initCount += 1
 
-            # Main simulation loop
             while True:
-                if Sim.clock is not None and State.kpass == 0:
-                    Sim.clock.sample(Sim.tmax)
+                if self.context.kpass == 0:
+                    self.context.sample(self.tmax)
 
-                # Update all blocks
                 for obj in stage:
                     obj.update()
 
-                # Report if ready (complete integration step)
-                if State.ready:
-                    # Record time
-                    results["times"].append(State.t)
-
-                    # Report and collect outputs
+                if self.context.ready:
+                    results["times"].append(self.context.t)
                     for obj in stage:
                         obj.rpt()
-
-                        # Collect outputs from blocks that have them
                         block_id = getattr(obj, "block_id", None) or id(obj)
                         if block_id not in results["outputs"]:
                             results["outputs"][block_id] = []
                         results["outputs"][block_id].append(obj.getOutput())
 
-                    State.tickfirst = 0
-
-                    # Check stop conditions
-                    if Sim.stop != Sim.stop0:
-                        Sim.stop0 = Sim.stop
+                    self.context.tickfirst = 0
+                    if self.stop != self.stop0:
+                        self.stop0 = self.stop
+                        break
+                    if self.context.t + EPS >= self.tmax:
+                        self.stop = -1
                         break
 
-                    if State.t + State.EPS >= Sim.tmax:
-                        Sim.stop = -1
-                        break
-
-                # Propagate all states
                 for obj in stage:
                     obj.propagateStates()
+                self.context.update_clock()
 
-                # Advance clock
-                if Sim.clock is not None:
-                    Sim.clock.updateclock()
-
-            # Check if simulation should terminate
-            if Sim.stop < 0:
+            if self.stop < 0:
                 break
 
-        # Final report
-        State.ticklast = 1
-        stage = Sim.vStage[n]
-        for obj in stage:
-            obj.rpt()
+        self.context.ticklast = 1
+        if self.vStage:
+            for obj in self.vStage[last_stage]:
+                obj.rpt()
 
         return results
-
-    @classmethod
-    def terminate(cls, code=1):
-        """Request simulation termination.
-
-        Args:
-            code: Stop code (positive to stop, negative for error)
-        """
-        cls.stop = code

@@ -947,6 +947,7 @@ class OSKAdapter:
         # Create the block instance
         try:
             osk_block = block_class(**osk_params)
+            osk_block.bind_context(self.context, self)
             osk_block.block_id = compiled_block.id
             self._osk_blocks[compiled_block.id] = osk_block
 
@@ -1546,7 +1547,13 @@ class OSKAdapter:
         ]
 
         # Create and run simulation
-        sim = Sim(dts=[self._config.step_size], tmax=self._config.stop_time, vStage=[stage])
+        sim = Sim(
+            dts=[self._config.step_size],
+            tmax=self._config.stop_time,
+            vStage=[stage],
+            context=self.context,
+            owner=self,
+        )
 
         results = sim.run()
 

@@ -4,13 +4,15 @@ import ast
 import asyncio
 import math
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from threading import Barrier
 
 import pytest
 
 from src.models.model import Model
 from src.models.simulation import SimulationConfig, SolverType
-from src.osk import SimContext, State, activate_context, get_active_context
+from src.osk import Block, Sim, SimContext, State, activate_context, get_active_context
 from src.simulation.compiler import CompiledBlock, CompiledModel, ModelCompiler
 from src.simulation.osk_adapter import OSKAdapter
 from src.simulation.runner import SimulationRunner
@@ -106,6 +108,52 @@ def _advance_decay(context: SimContext, state: State, start: float) -> None:
         state.x[1] = -state.x[0]
         state.propagate()
     context.complete_step()
+
+
+class _NativeProbe(Block):
+    """Small native-OSK block that records compatibility-facade values."""
+
+    def __init__(self, barrier: Barrier | None = None):
+        super().__init__()
+        self.x = self.addIntegrator([1.0, 0.0])
+        self.barrier = barrier
+        self.waited = False
+        self.facade_checks: tuple[int, int, int] | None = None
+        self.observed: list[tuple[float, str, float, list[float], object]] = []
+
+    def update(self) -> None:
+        if self.barrier is not None and not self.waited:
+            self.waited = True
+            self.barrier.wait(timeout=5)
+        if self.facade_checks is None:
+            Sim.stop = 7
+            assigned_stop = self.context.stop
+            Sim.terminate(9)
+            terminated_stop = self.context.stop
+            Sim.stop = 0
+            original_ready = self.context.ready
+            self.context.ready = 0
+            Sim.sample(State.t)
+            sampled_ready = self.context.ready
+            self.context.ready = original_ready
+            self.facade_checks = (assigned_stop, terminated_stop, sampled_ready)
+        self.observed.append((State.t, State.method, Sim.tmax, Sim.dts, Sim.vStage))
+        self.x[1] = -self.x[0]
+
+    def getOutput(self, port: int = 0) -> float:
+        return self.x[0]
+
+
+def _native_sim(
+    method: str,
+    step_size: float,
+    stop_time: float,
+    barrier: Barrier | None = None,
+) -> tuple[Sim, _NativeProbe]:
+    with activate_context(SimContext(method=method)):
+        block = _NativeProbe(barrier)
+        sim = Sim(dts=[step_size], tmax=stop_time, vStage=[[block]])
+    return sim, block
 
 
 def test_explicit_contexts_alternate_every_stage_without_crosstalk():
@@ -391,6 +439,172 @@ def test_runners_with_different_solvers_can_step_alternately_without_crosstalk()
     assert _adapter_value(rk4._adapter) == pytest.approx(rk4_reference)
 
 
+def test_native_sim_rebinds_registered_states_from_the_provisional_context():
+    block = _NativeProbe()
+    provisional_context = block.context
+
+    sim = Sim(dts=[0.1], tmax=0.2, vStage=[[block]])
+
+    assert block.context is sim.context
+    assert block.context is not provisional_context
+    assert all(state.context is sim.context for state in block.vState)
+    assert sim.clock is None
+    assert not hasattr(sim.context, "clock")
+
+
+def test_block_binding_is_idempotent_only_for_the_same_context_and_owner():
+    block = _NativeProbe()
+    sim = Sim(dts=[0.1], tmax=0.2, vStage=[[block]])
+
+    block.bind_context(sim.context, sim)
+
+    assert block.context is sim.context
+    assert block._context_owner is sim
+    with pytest.raises(ValueError, match="already owned"):
+        block.bind_context(sim.context, object())
+
+
+def test_direct_block_binding_claims_context_and_rejects_an_owner_split():
+    context = SimContext()
+    owner = object()
+    block = _NativeProbe()
+
+    block.bind_context(context, owner)
+
+    assert context.owner is owner
+    assert block._context_owner is owner
+    assert block.context is context
+
+    claimed_context = SimContext()
+    claimed_context.claim_owner(object())
+    unowned_block = _NativeProbe()
+    provisional_context = unowned_block.context
+    with pytest.raises(ValueError, match="already owned"):
+        unowned_block.bind_context(claimed_context, owner)
+    assert unowned_block._context_owner is None
+    assert unowned_block.context is provisional_context
+
+
+def test_native_block_cannot_be_reused_by_a_second_simulation():
+    block = _NativeProbe()
+    first = Sim(dts=[0.1], tmax=0.2, vStage=[[block]])
+
+    with pytest.raises(ValueError, match="already owned"):
+        Sim(dts=[0.05], tmax=0.4, vStage=[[block]])
+
+    assert block.context is first.context
+    assert block._context_owner is first
+
+
+def test_native_sim_preflight_failure_does_not_partially_bind_other_blocks():
+    owned = _NativeProbe()
+    first = Sim(dts=[0.1], tmax=0.2, vStage=[[owned]])
+    unowned = _NativeProbe()
+    provisional_context = unowned.context
+
+    with pytest.raises(ValueError, match="already owned"):
+        Sim(dts=[0.05], tmax=0.4, vStage=[[unowned, owned]])
+
+    assert owned.context is first.context
+    assert owned._context_owner is first
+    assert unowned.context is provisional_context
+    assert unowned._context_owner is None
+
+
+def test_adapter_owned_blocks_accept_only_the_adapter_context_owner_pair():
+    adapter = OSKAdapter()
+    adapter.initialize(
+        ModelCompiler().compile(_driven_integrator_model()),
+        _config(SolverType.RK4, 0.05),
+    )
+    blocks = list(adapter._osk_blocks.values())
+
+    sim = Sim(
+        dts=[0.05],
+        tmax=1.0,
+        vStage=[blocks],
+        context=adapter.context,
+        owner=adapter,
+    )
+
+    assert sim.context is adapter.context
+    assert all(block._context_owner is adapter for block in blocks)
+    with pytest.raises(ValueError, match="already owned"):
+        Sim(
+            dts=[0.05],
+            tmax=1.0,
+            vStage=[blocks],
+            context=adapter.context,
+            owner=object(),
+        )
+
+
+def test_adapter_sim_does_not_split_legacy_state_and_sim_facades():
+    native, _ = _native_sim("Euler", 0.1, 0.3)
+    adapter = OSKAdapter()
+    adapter.initialize(
+        ModelCompiler().compile(_driven_integrator_model()),
+        _config(SolverType.RK4, 0.05),
+    )
+
+    adapter.run_simulation()
+    State.t = 0.15
+    State.ready = 0
+    Sim.sample(0.15)
+
+    assert Sim.tmax == native.tmax
+    assert native.context.t == pytest.approx(0.15)
+    assert native.context.ready == 1
+    assert adapter.context.t == pytest.approx(1.0)
+
+
+def test_first_native_sim_keeps_its_fields_after_a_second_is_constructed():
+    first, first_block = _native_sim("Euler", 0.1, 0.3)
+    second, _ = _native_sim("Merson", 0.05, 0.2)
+
+    assert Sim.tmax == second.tmax
+    first.run()
+
+    assert first.context.method == "Euler"
+    assert first.context.t == pytest.approx(0.3)
+    assert first_block.observed
+    assert all(method == "Euler" for _, method, _, _, _ in first_block.observed)
+    assert all(tmax == first.tmax for _, _, tmax, _, _ in first_block.observed)
+    assert all(dts is first.dts for _, _, _, dts, _ in first_block.observed)
+    assert all(stages is first.vStage for _, _, _, _, stages in first_block.observed)
+    assert Sim.tmax == second.tmax
+
+
+def test_native_sims_run_concurrently_without_context_or_facade_crosstalk():
+    barrier = Barrier(2)
+    euler, euler_block = _native_sim("Euler", 0.1, 0.3, barrier)
+    merson, merson_block = _native_sim("Merson", 0.05, 0.2, barrier)
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        euler_future = executor.submit(euler.run)
+        merson_future = executor.submit(merson.run)
+        euler_future.result(timeout=10)
+        merson_future.result(timeout=10)
+
+    euler_reference, euler_reference_block = _native_sim("Euler", 0.1, 0.3)
+    merson_reference, merson_reference_block = _native_sim("Merson", 0.05, 0.2)
+    euler_reference.run()
+    merson_reference.run()
+
+    assert euler_block.getOutput() == pytest.approx(euler_reference_block.getOutput())
+    assert merson_block.getOutput() == pytest.approx(merson_reference_block.getOutput())
+    assert all(method == "Euler" for _, method, _, _, _ in euler_block.observed)
+    assert all(method == "Merson" for _, method, _, _, _ in merson_block.observed)
+    assert all(tmax == euler.tmax for _, _, tmax, _, _ in euler_block.observed)
+    assert all(tmax == merson.tmax for _, _, tmax, _, _ in merson_block.observed)
+    assert all(dts is euler.dts for _, _, _, dts, _ in euler_block.observed)
+    assert all(dts is merson.dts for _, _, _, dts, _ in merson_block.observed)
+    assert all(stages is euler.vStage for _, _, _, _, stages in euler_block.observed)
+    assert all(stages is merson.vStage for _, _, _, _, stages in merson_block.observed)
+    assert euler_block.facade_checks == (7, 9, 1)
+    assert merson_block.facade_checks == (7, 9, 1)
+
+
 def test_mutable_state_facade_inventory_does_not_grow():
     """Freeze the temporary built-in compatibility surface for later migration."""
     backend_root = Path(__file__).resolve().parents[1]
@@ -426,7 +640,6 @@ def test_mutable_state_facade_inventory_does_not_grow():
 
     assert actual == Counter(
         {
-            "src/osk/block.py": 1,
             "src/osk/blocks/continuous.py": 2,
             "src/osk/blocks/discrete.py": 26,
             "src/osk/blocks/nonlinear.py": 3,
@@ -436,6 +649,5 @@ def test_mutable_state_facade_inventory_does_not_grow():
             "src/osk/blocks/signal_processing.py": 21,
             "src/osk/blocks/sinks.py": 7,
             "src/osk/blocks/sources.py": 26,
-            "src/osk/sim.py": 9,
         }
     )
