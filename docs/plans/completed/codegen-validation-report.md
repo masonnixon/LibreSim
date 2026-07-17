@@ -1,5 +1,11 @@
 # Codegen Validation Report
 
+> **Historical validation artifact — not the current codegen result.** This archived
+> report preserves the 36/156 validation state last updated on 2026-01-21 in `5d51047`.
+> The authoritative generated report is `docs/codegen-validation-report.md`, which
+> reached 156/156 in `6a60e13`. Retain this file for audit chronology; do not regenerate
+> or use it as the current validation baseline.
+
 This report compares the outputs of generated code against the headless simulation.
 
 ## Summary

@@ -1,6 +1,6 @@
 # LibreSim — FAC-9 SimContext and Concurrent Simulations
 
-> **Status:** draft; maintainer approval required before implementation
+> **Status:** approved for implementation by the maintainer on 2026-07-16
 > **Drafted:** 2026-07-16
 > **Closes:** FAC-9 / LS-10
 > **Parent plan:** `docs/plans/fable-audit-completion.md`
@@ -22,8 +22,8 @@ This policy preserves the current frontend contract while making the `sessionId`
 already returned by the API meaningful. Changing concurrent creation to the default,
 or designing a distributed multi-worker session store, is not part of FAC-9.
 
-No production refactor begins until the maintainer approves this plan and the API
-policy above.
+The maintainer approved this plan and the API policy above on 2026-07-16. Production
+implementation begins after the pre-FAC-9 verification checkpoint is recorded.
 
 ## 2. Problem statement and evidence
 
@@ -484,9 +484,9 @@ If a phase fails its gate, revert or correct that phase before proceeding. Do no
 cross-talk by restoring a process-wide lock: serialization is retained only as the
 legacy API default, not as the simulation-state correctness mechanism.
 
-## 9. Approval checklist
+## 9. Approval record
 
-Approval confirms all three decisions:
+The maintainer approved all three decisions on 2026-07-16:
 
 1. implement one explicit `SimContext` per simulation with a temporary `State.*`
    compatibility facade;

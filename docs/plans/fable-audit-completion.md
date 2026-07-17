@@ -88,18 +88,36 @@ versions, counts, and failures in the task ledger.
 Commands:
 
 ```bash
-docker compose run --rm backend sh -c "pip install -q -e '.[dev]' && pytest tests/ -q"
-docker compose run --rm backend sh -c "pip install -q -e '.[dev]' && ruff check src/ tests/"
-docker compose run --rm backend sh -c "pip install -q -e '.[dev]' && mypy src/ --config-file=pyproject.toml"
-docker compose run --rm frontend npm test -- --run
-docker compose run --rm frontend npm run lint
-docker compose run --rm frontend npx tsc --noEmit
+DOCKER_HOST=unix:///run/docker.sock docker compose run --rm -v "$PWD/examples:/examples:ro" backend sh -c "pip install -q -e '.[dev]' && pytest tests/ -q"
+DOCKER_HOST=unix:///run/docker.sock docker compose run --rm backend sh -c "pip install -q -e '.[dev]' && ruff check src/ tests/"
+DOCKER_HOST=unix:///run/docker.sock docker compose run --rm backend sh -c "pip install -q -e '.[dev]' && mypy src/ --config-file=pyproject.toml"
+DOCKER_HOST=unix:///run/docker.sock docker compose run --rm --no-deps frontend npm test -- --run
+DOCKER_HOST=unix:///run/docker.sock docker compose run --rm --no-deps frontend npm run lint
+DOCKER_HOST=unix:///run/docker.sock docker compose run --rm --no-deps frontend npx tsc --noEmit
 ```
 
 Also run the canonical numerical subset and `scripts/validate_codegen.py` using the
 same compiler environment as CI. Confirm that the report is written to
 `docs/codegen-validation-report.md` and that its summary agrees with the process exit
 status.
+
+```bash
+DOCKER_HOST=unix:///run/docker.sock docker compose run --rm -v "$PWD/examples:/examples:ro" backend sh -c "pip install -q -e '.[dev]' && pytest tests/test_osk.py tests/test_integration_accuracy.py tests/test_codegen_accuracy.py -q"
+
+repo_path="$PWD"
+backend_image="$(DOCKER_HOST=unix:///run/docker.sock docker compose images -q backend)"
+DOCKER_HOST=unix:///run/docker.sock docker run --rm \
+  -v "$repo_path:$repo_path" \
+  -v /run/docker.sock:/var/run/docker.sock \
+  -v /usr/bin/docker:/usr/bin/docker \
+  -w "$repo_path" \
+  -e "PYTHONPATH=$repo_path/backend" \
+  "$backend_image" \
+  sh -c "pip install -q -e '$repo_path/backend' && python scripts/validate_codegen.py"
+```
+
+The identical host/container repository path is required because the validator starts
+nested compiler containers through the mounted Docker socket.
 
 **Acceptance:** a dated baseline is recorded without modifying source or generated
 fixtures.
@@ -249,9 +267,9 @@ literal types over `any` and casts. Remove genuinely unused variables.
 Run:
 
 ```bash
-docker compose run --rm frontend npm run lint
-docker compose run --rm frontend npx tsc --noEmit
-docker compose run --rm frontend npm test -- --run
+DOCKER_HOST=unix:///run/docker.sock docker compose run --rm --no-deps frontend npm run lint
+DOCKER_HOST=unix:///run/docker.sock docker compose run --rm --no-deps frontend npx tsc --noEmit
+DOCKER_HOST=unix:///run/docker.sock docker compose run --rm --no-deps frontend npm test -- --run
 ```
 
 **Acceptance:** all three commands pass in a clean container and the CI definitions
@@ -325,6 +343,10 @@ exclusions.
 **Depends on:** FAC-1, FAC-7, FAC-8  
 **Approval gate:** explicit maintainer decision required before implementation
 
+**Current status (2026-07-16):** The maintainer selected implementation in `e536fb4`,
+approved the dedicated `docs/plans/fac-9-sim-context-concurrency.md` design after
+`16c97ab`, and authorized production work after the pre-FAC-9 checkpoint.
+
 Present two closeout choices:
 
 1. **Implement:** write a dedicated design plan for an instance-scoped `SimContext`
@@ -352,14 +374,14 @@ branch. Record exact counts, tool versions, validator classifications, and commi
 
 Then:
 
-1. replace every `this commit` placeholder in
-   `simulation-correctness-remediation.md` with actual hashes;
-2. update `.claude/docs/fable-audit-remediation-status-2026-07-10.md`, or add a new dated
-   final status, so it does not point at stale report paths or counts;
+1. verify the concrete LS-1 through LS-10 hashes and final statuses in
+   `simulation-correctness-remediation.md` against the completed work;
+2. add a new dated final remediation status while preserving
+   `.claude/docs/fable-audit-remediation-status-2026-07-10.md` as a historical checkpoint;
 3. mark original LS tasks complete only where their full acceptance criteria pass;
 4. record the LS-10 decision;
-5. move `simulation-correctness-remediation.md` and this plan to
-   `docs/plans/completed/`; and
+5. move `simulation-correctness-remediation.md`,
+   `fac-9-sim-context-concurrency.md`, and this plan to `docs/plans/completed/`; and
 6. leave `refactoring-recommendations.md` active until its independent backlog is
    completed or intentionally superseded.
 
@@ -370,7 +392,7 @@ no active plan falsely claims completion.
 
 | Task | Status | Commit(s) | Verification / notes |
 |---|---|---|---|
-| FAC-0 | in progress | | 2026-07-10: backend 1,915 passed/1 skipped after fixing Docker example lookup; numerical subset 33 passed; frontend 659 passed; Ruff 7 UP042 errors; mypy 27 errors/4 files; initial ESLint 7 errors and TypeScript 10 errors. Codegen validator blocked because the Docker daemon disappeared; existing report remained byte-identical. 2026-07-13 working-tree unit-test rerun: backend 1,945 passed/1 skipped and frontend 659 passed in Docker. Static-analysis and codegen gates were not part of this rerun. |
+| FAC-0 | complete | | Reproduced on 2026-07-16 from clean detached `d0d3382`: backend 1,915 passed/1 skipped, numerical subset 33 passed, frontend 659 passed, Ruff 7 UP042 findings, mypy 27 errors/4 files, ESLint 7 errors, TypeScript 10 errors, and validator 53/156 with an exit status and generated summary that agreed. The reproduction exposed and corrected two command assumptions: tests require the repository examples mounted at `/examples`, and one-shot frontend checks use `--no-deps` when the development backend port is occupied. Current pre-FAC-9 readiness at `16c97ab`: backend 2,106 passed/1 skipped, numerical subset 33 passed, frontend 659 passed, Ruff/mypy/ESLint/TypeScript clean, and validator 156/156 with the canonical report byte-identical. Toolchain: Docker 29.5.2, Compose 5.1.4, Python 3.11.15, pytest 9.1.1, Ruff 0.15.22, mypy 2.3.0, Node 18.20.8, npm 10.8.2, Vitest 1.6.1, ESLint 8.57.1, TypeScript 5.9.3. |
 | FAC-1 | complete | `a2cfd1c` | Deterministic API replacement tests cover scheduled-run races, `/start` versus `/step/init`, 409 preservation, and live `/step/continue` tracking. Included in the 2026-07-13 full Docker pass; strengthened focused suite passed 128 tests on 2026-07-14. |
 | FAC-2 | complete | `b5e4bfa` | Committed-state/generation-aware rollback restores exact decimated results plus Scope and Scope3D state with bounded checkpoint retention. Included in the 2026-07-13 full Docker pass; strengthened focused suite passed 128 tests on 2026-07-14. |
 | FAC-3 | complete | `5ed9bdf` | Nested subsystem boundary rewriting now preserves port identity, rejects malformed boundary indexes, and executes the two-level numerical regression. Pydantic rejects recursive object graphs. Strengthened focused suite passed on 2026-07-14. |
@@ -379,8 +401,8 @@ no active plan falsely claims completion.
 | FAC-6 | complete | `9f1ebed` | ESLint and TypeScript pass; Vitest 659/659 passes in Docker. |
 | FAC-7 | complete | `5079dd5`, `b5e4bfa` | Seven StrEnums converted with compatibility coverage and touched runner/adapter typing corrected. Canonical Docker verification passed on 2026-07-13: backend pytest 1,945 passed/1 skipped, Ruff reported `All checks passed!`, and mypy reported no issues in 117 source files. |
 | FAC-8 | complete | `5c3899c`, `2aa06ba`, `b34d2a0`, `d7dc2d1`, `7ed9e45`, `8a73430`, `a414038`, `57c485c`, `ee853ee`, `6e1250a`, `b4487d0`, `0860cc5`, `ec19d1a`, `927376d`, `c7b851f`, `07db0e4`, `6a60e13` | Strict CSV/key-set validation and a shared, stable output schema now reject empty, malformed, duplicate, missing, unexpected, nonfinite, and shape-mismatched output instead of accepting positional or empty comparisons. Declared source-port dimensions eliminated all nine simulation-shape failures. Generated runtimes now separate the OSK major/ready update from integration stages, hold ready-only noise/discrete/observer state during RK passes, use the runtime step plus canonical parameter names for rate limiting, and propagate PI, PD, and model-reference continuous state in every target language. Python now honors the generated two-port contract for quaternion-vector rotation and implements discrete Kalman filtering instead of silently emitting passthrough blocks. All four targets now implement the OSK discrete-PID sample timing, integration methods, and filtered derivative instead of emitting passthrough blocks. C, C++, and Rust noise sources embed CPython's expanded MT19937 state and use its 53-bit random and cached Gaussian sampling contract. First-order low-pass filters now derive their coefficient from the configured simulation step, and all four targets emit OSK-compatible analog-filter biquad cascades instead of silent passthrough blocks. LQR and pole-placement controllers now infer full gain dimensions in OSK, and generated Python consumes its wired state vector instead of a disconnected zero state. Compiled blocks now preserve declared port IDs so headless simulation resolves named multi-input and multi-output ports before legacy suffix heuristics. RF budget, external-carrier AM, alpha-beta, and alpha-beta-gamma blocks now have matching OSK and four-language generated semantics; the tracking example also uses an explicit deterministic noise stream. Compiled integrators now expose live state during Runge-Kutta stages, restoring Lorenz parity. Navigation targets now share degree-based WGS84 transforms and distances, split-reference mapping, and canonical Ramp parameter names. Generated window and FFT blocks now preserve the OSK frame contract and interleaved complex spectrum in every target. Generated ZIP metadata is fixed so repeated canonical regeneration is byte-reproducible. Demux now preserves selected vector-port segments, and generated IMU, Madgwick, and complementary-filter blocks match the OSK port order, runtime-step equations, seeded Gaussian stream, vector biases, and scale errors in all four targets. Control-analysis blocks now expose their single declared scalar output through an explicit analysis schema while retaining rich visualization arrays outside generated CSV, and every target embeds the canonical OSK initialization result. The focused codegen suite passed 550/550 with Ruff clean and mypy clean across 135 source files; the focused frontend registry suite passed 25/25. Canonical regeneration completed for all 156 archives. The 2026-07-16 full matrix improved from 52/156 to 156/156 semantic passes (100.0%) with zero simulation, build, run, or output-validation failures. |
-| FAC-9 | design drafted; approval pending | | 2026-07-16 maintainer decision: implement concurrent simulations with instance-scoped state. The dedicated design is recorded in `docs/plans/fac-9-sim-context-concurrency.md`; it covers explicit context ownership, compatibility migration, versioned snapshots, concurrent runners, and opt-in session-addressed API concurrency while preserving replacement by default. Implementation remains gated on explicit maintainer approval. |
-| FAC-10 | pending | | Full matrix, ledger repair, and archival. |
+| FAC-9 | approved; implementation starting | `e536fb4`, `16c97ab` | 2026-07-16 maintainer selected implementation of concurrent simulations and explicitly approved the dedicated `docs/plans/fac-9-sim-context-concurrency.md` design, including opt-in session-addressed API concurrency with replacement preserved by default. Production implementation is authorized after the pre-FAC-9 checkpoint completes. |
+| FAC-10 | pending | | Full matrix, final ledger verification, dated closeout status, and archival. |
 
 ## 6. Definition of done
 

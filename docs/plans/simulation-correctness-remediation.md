@@ -15,12 +15,19 @@
 ## 0. Ground rules for any agent executing this plan
 
 1. **All tests, linters, and type checks run inside Docker — never on the host.**
-   The backend image does not include dev tools (`requirements.txt` has no pytest), so use:
+   The Codex sandbox exposes Docker at `/run/docker.sock`, so prefix every Compose
+   invocation with `DOCKER_HOST=unix:///run/docker.sock`. The backend image does not
+   include dev tools (`requirements.txt` has no pytest), so use:
    ```bash
-   docker compose run --rm backend sh -c "pip install -q -e '.[dev]' && pytest tests/ -q"
-   docker compose run --rm backend sh -c "pip install -q -e '.[dev]' && ruff check src/ tests/ && mypy src/ --config-file=pyproject.toml"
+   DOCKER_HOST=unix:///run/docker.sock docker compose run --rm -v "$PWD/examples:/examples:ro" backend sh -c "pip install -q -e '.[dev]' && pytest tests/ -q"
+   DOCKER_HOST=unix:///run/docker.sock docker compose run --rm backend sh -c "pip install -q -e '.[dev]' && ruff check src/ tests/ && mypy src/ --config-file=pyproject.toml"
    ```
-   Frontend: `docker compose run --rm frontend npm test -- --run` and `docker compose run --rm frontend npx tsc --noEmit`.
+   Frontend:
+   ```bash
+   DOCKER_HOST=unix:///run/docker.sock docker compose run --rm --no-deps frontend npm test -- --run
+   DOCKER_HOST=unix:///run/docker.sock docker compose run --rm --no-deps frontend npm run lint
+   DOCKER_HOST=unix:///run/docker.sock docker compose run --rm --no-deps frontend npx tsc --noEmit
+   ```
 2. **Every fix ships with its regression test in the same commit.** A bug fix without a
    test that fails on the old code is incomplete. Follow the pattern of
    `backend/tests/test_crosstalk_bug.py` (named regression test for a past bug).
@@ -453,18 +460,17 @@ One commit per item:
 
 ---
 
-### LS-10 — Long-term: instance-scoped simulation context (design outline, not yet scheduled)
+### LS-10 — Instance-scoped simulation context
 
-**Priority:** P3 (do not start without maintainer sign-off) · **Capability:** T3-strong ·
+**Priority:** P1 (originally P3 before maintainer approval) · **Capability:** T3-strong ·
 **Depends on:** LS-1, LS-2, LS-3, LS-4 all merged and green.
 
-The proper fix for §1.2's global-state problem: a `SimContext` instance (t, t1, dt, dtp,
-kpass, ready, method) owned by the adapter/runner, passed to blocks (constructor or a
-`ctx` attribute set at creation), replacing every `State.<attr>` class read in
-`osk/blocks/` (7 files read `State.t` today — see grep in §1.1). This unlocks true
-concurrent simulations and removes LS-3's serialization. It touches every block file and
-all kernel tests; treat as its own plan document when scheduled. Until then, LS-3's
-serialization is the supported concurrency story.
+The maintainer selected implementation in `e536fb4` and approved the dedicated design
+in `docs/plans/fac-9-sim-context-concurrency.md` on 2026-07-16. That plan supersedes this
+historical outline and governs implementation, compatibility, snapshots, API sessions,
+and verification. LS-3 serialization remains the default compatibility behavior during
+the migration, but instance-owned state—not process-wide locking—is the approved
+concurrency mechanism.
 
 ---
 
@@ -490,15 +496,15 @@ serialization is the supported concurrency story.
 
 Agents: update this table in the same commit as the work.
 
-| Task | Status | Commit | Notes |
+| Task | Status | Commit(s) | Notes |
 |---|---|---|---|
-| LS-1 | complete | this commit | Restored RK4 fourth-order autonomous convergence. |
-| LS-2 | complete | this commit | Added stage-local time to backend/codegen loops; guarded stateful major-step updates. |
-| LS-3 | complete | this commit | Serialized replacement and waited for scheduled/paused runs to exit. |
-| LS-4 | complete | this commit | Hardened CI gates, app-path ground truth, and validator output matching/baseline. |
-| LS-5 | complete | this commit | Bounded results and replaced runner/scope history copies with lengths. |
-| LS-6 | complete | this commit | Recursively flattened nested subsystem contents. |
-| LS-7 | complete | this commit | Removed unity-gain fallbacks for unknown/invalid blocks. |
-| LS-8 | complete | this commit series | Simplified sampling, stabilized result keys, removed mutable defaults. |
-| LS-9 | complete | this commit series | Sanitized project names, restricted examples, enforced WS origins. |
-| LS-10 | blocked (needs sign-off) | | |
+| LS-1 | complete | `09552bd` | Restored RK4 fourth-order autonomous convergence. |
+| LS-2 | complete | `88fcf73` | Added stage-local time to backend/codegen loops; guarded stateful major-step updates. |
+| LS-3 | complete | `9efe204`, `a2cfd1c` | Serialized replacement, waited for scheduled/paused runs to exit, and added deterministic API race coverage. |
+| LS-4 | complete | `15fa0bd`, `d0d3382` | Hardened CI gates, app-path ground truth, and strict output-set comparison. FAC-8 separately completed semantic parity. |
+| LS-5 | complete | `896f0ff`, `b5e4bfa` | Bounded results and made rollback exact across decimation and sink history. |
+| LS-6 | complete | `2b79fcb`, `5ed9bdf` | Recursively flattened nested subsystem contents and verified boundary wiring numerically. |
+| LS-7 | complete | `230086b`, `3f07404` | Removed unity-gain fallbacks and verified actionable errors through the API. |
+| LS-8 | complete | `e75e26c`, `570d036`, `cd0f509` | Simplified sampling, stabilized result keys, removed mutable defaults. |
+| LS-9 | complete | `c28fee1`, `2172fa0`, `043a29a`, `24741bf` | Sanitized project names, restricted examples, enforced origins, and completed endpoint coverage. |
+| LS-10 | approved; implementation starting | `e536fb4`, `16c97ab` | Dedicated FAC-9 design approved by the maintainer on 2026-07-16. |
