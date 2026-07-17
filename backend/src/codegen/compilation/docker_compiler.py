@@ -6,6 +6,7 @@ into standalone executables using Docker containers.
 
 import asyncio
 import logging
+import shutil
 import subprocess
 import tempfile
 from dataclasses import dataclass, field
@@ -59,9 +60,7 @@ class DockerCompiler:
         """
         if docker_compose_dir is None:
             # Default to project's docker/codegen directory
-            self.docker_compose_dir = (
-                Path(__file__).parent.parent.parent.parent.parent.parent / "docker" / "codegen"
-            )
+            self.docker_compose_dir = Path(__file__).parents[4] / "docker" / "codegen"
         else:
             self.docker_compose_dir = docker_compose_dir
 
@@ -238,12 +237,18 @@ class DockerCompiler:
                         errors=["No executable produced"],
                     )
 
-                # Copy executable to a persistent location
+                # Copy the executable out of TemporaryDirectory before it is cleaned up.
                 executable = executables[0]
+                suffix = f"-{executable.name}" if executable.name else ""
+                with tempfile.NamedTemporaryFile(
+                    prefix="libresim-compiled-", suffix=suffix, delete=False
+                ) as persistent_file:
+                    persistent_path = Path(persistent_file.name)
+                shutil.copy2(executable, persistent_path)
 
                 return CompilationResult(
                     success=True,
-                    executable_path=executable,
+                    executable_path=persistent_path,
                     executable_name=executable.name,
                     stdout=result.stdout,
                     stderr=result.stderr,
@@ -292,5 +297,8 @@ class DockerCompiler:
         if result.executable_path is None:
             raise CompilationError("No executable path in result")
 
-        executable_bytes = result.executable_path.read_bytes()
-        return executable_bytes, result.executable_name
+        try:
+            executable_bytes = result.executable_path.read_bytes()
+            return executable_bytes, result.executable_name
+        finally:
+            result.executable_path.unlink(missing_ok=True)

@@ -355,7 +355,7 @@ files verified mirrored, `docs/refs/testing.md` coverage tables updated to final
 |---|---|---|---|---|
 | B1 | complete | this commit | B: 85.82% combined (89.10% lines / 74.47% branches) | 2,185 passed; external MDL fixture has a documented `skipif` |
 | B2 | not started | | | |
-| B3 | not started | | | |
+| B3 | complete | this commit | B: 86.33% combined; `docker_compiler.py` 100% line/branch | 2,212 passed; fixed persistent-artifact and default-path regressions |
 | B4 | not started (FAC-9 prerequisite complete) | | | |
 | B5.1–B5.8 | not started | | | |
 | B6 | not started | | | |
