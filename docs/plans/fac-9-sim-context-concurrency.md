@@ -1,6 +1,6 @@
 # LibreSim — FAC-9 SimContext and Concurrent Simulations
 
-> **Status:** implementation in progress; Phases 0-4 completed through `e33a9fd`
+> **Status:** implementation in progress; Phases 0-5 completed through `959e8aa`
 > **Drafted:** 2026-07-16
 > **Closes:** FAC-9 / LS-10
 > **Parent plan:** `docs/plans/fable-audit-completion.md`
@@ -335,7 +335,8 @@ instance. Two native simulations with different solvers execute concurrently in 
 threads without clock, field, write, sampling, or termination cross-talk. The Phase 2
 Docker gate passed 2,130 tests with 1 skip; Ruff and mypy passed across 136 source files,
 and the overlapped thread regression passed 20 consecutive repetitions. Phase 3
-completed in `a450f20` and `ec15bb1`. Phase 4 completed in `e33a9fd`; Phase 5 is next.
+completed in `a450f20` and `ec15bb1`. Phase 4 completed in `e33a9fd`. Phase 5
+completed in `3898ed5` and `959e8aa`; session-addressed API concurrency is next.
 
 ### Phase 0 — Characterize cross-talk and freeze compatibility
 
@@ -446,6 +447,18 @@ filters, discrete timestamps, seeded noise, Scope, and Scope3D; a peer runner re
 unchanged. Injected failure after at least one prepared block assignment proves complete
 rollback, the codec registry covers every built-in, and bounded-history tests retain
 FAC-2's memory behavior.
+
+**Completed:** `3898ed5` and `959e8aa` (2026-07-16). Frozen, versioned adapter and
+runner envelopes now carry canonical model/config fingerprints, every mutable context
+and integrator-stage field, exact block identity/type sets, and explicit codec versions.
+The codec registry covers all 181 built-in types. Internal checkpoints retain compact
+FAC-2 generation/length references, while public captures detach complete result and
+sink histories. Restore validates the complete boundary before mutation and rolls back
+atomically if an assignment fails. Operation ownership also covers capture and restore.
+State-zoo replay tests exercise an integrator, seeded noise, filtering, discrete and
+transport delays, Scope, and Scope3D while proving peer isolation and injected-failure
+rollback. The full Docker gate passed 2,164 tests with 1 skip; Ruff and mypy were clean
+across 137 source files.
 
 ### Phase 6 — Add session-addressed API concurrency
 
