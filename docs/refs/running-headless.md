@@ -45,22 +45,17 @@ times = data['times']
 signals = data['signals']
 ```
 
-### Working with State
+### Simulation Context
 
-The simulation state can be controlled via the `State` class:
+Timing and solver state are owned by each simulation's `SimContext`. Blocks and
+integrator states receive that context when their graph is compiled or bound; code that
+uses `SimulationRunner`, `OSKAdapter`, or native `Sim` should not mutate process-global
+clock fields.
 
-```python
-from src.osk.state import State
-
-# Configure time step
-State.dt = 0.001
-State.time = 0.0
-
-# Check if ready for output recording
-if State.ready:
-    # Record outputs
-    pass
-```
+`State.dt`, `State.t`, `State.ready`, and the corresponding class-level `Sim.*` fields
+remain temporary compatibility facades for older custom blocks. They resolve to the
+currently active simulation context and are not a shared-state API. New code should use
+the bound `block.context`, `state.context`, or explicit `SimContext` instead.
 
 ## Option 2: Backend REST API
 
@@ -84,7 +79,7 @@ Or using the conda environment:
 #### Run Simulation
 
 ```bash
-curl -X POST http://localhost:9000/api/simulate/run \
+curl -X POST http://localhost:9000/api/simulate/start \
   -H "Content-Type: application/json" \
   -d @model.json
 ```
@@ -107,11 +102,36 @@ Where `model.json` contains the model definition:
 }
 ```
 
-#### Get Results
+The response contains a stable session ID:
+
+```json
+{"sessionId": "7a40..."}
+```
+
+By default, `/start` and `/step/init` stop and replace the current session for backward
+compatibility. To retain existing sessions and run another simulation concurrently, add
+top-level `"replaceCurrent": false` to the request body.
+
+#### Read and Control a Session
 
 ```bash
-curl http://localhost:9000/api/simulate/results/{run_id}
+curl "http://localhost:9000/api/simulate/status?sessionId=7a40..."
+curl "http://localhost:9000/api/simulate/results?sessionId=7a40..."
+curl -X POST "http://localhost:9000/api/simulate/pause?sessionId=7a40..."
+curl -X POST "http://localhost:9000/api/simulate/resume?sessionId=7a40..."
+curl -X POST "http://localhost:9000/api/simulate/stop?sessionId=7a40..."
+curl -X DELETE "http://localhost:9000/api/simulate/sessions/7a40..."
 ```
+
+The `sessionId` query parameter is optional on status, results, control, and step-mode
+routes. When omitted, the most recently installed retained session is used. Explicitly
+unknown IDs return 404.
+
+The registry is bounded and process-local. Its default capacity is 8 retained sessions
+and can be configured with `MAX_RETAINED_SIMULATION_SESSIONS`. When capacity is full,
+LibreSim prunes only safe terminal sessions; if every retained session is live or paused,
+creation returns 429. A multi-worker deployment must use sticky routing because workers
+do not share session registries.
 
 ## Option 3: Running via Docker (Backend Only)
 
