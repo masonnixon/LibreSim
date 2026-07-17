@@ -1,7 +1,6 @@
 # LibreSim — FAC-9 SimContext and Concurrent Simulations
 
-> **Status:** implementation in progress; Phases 0-2 completed in `f3051b9` and
-> `9d4531a`
+> **Status:** implementation in progress; Phases 0-3 completed through `ec15bb1`
 > **Drafted:** 2026-07-16
 > **Closes:** FAC-9 / LS-10
 > **Parent plan:** `docs/plans/fable-audit-completion.md`
@@ -335,8 +334,8 @@ and the temporary `Sim.*` facade follows the active or paired sequential-legacy
 instance. Two native simulations with different solvers execute concurrently in real
 threads without clock, field, write, sampling, or termination cross-talk. The Phase 2
 Docker gate passed 2,130 tests with 1 skip; Ruff and mypy passed across 136 source files,
-and the overlapped thread regression passed 20 consecutive repetitions. Phase 3 is
-next.
+and the overlapped thread regression passed 20 consecutive repetitions. Phase 3
+completed in `a450f20` and `ec15bb1`; Phase 4 is next.
 
 ### Phase 0 — Characterize cross-talk and freeze compatibility
 
@@ -396,6 +395,20 @@ before the final gate.
 
 **Gate:** two runners with different solvers and time-varying sources run concurrently
 for more than 100 steps, crossing cooperative yields, with identical normalized output.
+
+**Completed:** `a450f20` and `ec15bb1` (2026-07-16). Runner and adapter lifecycle
+initialization now honor nonzero configured start times, reset every timing/control
+field consistently, and activate the owned context at reporting and state boundaries.
+Deterministic AABB/ABAB adapter schedules and event-gated runners cross the 100-step
+cooperative boundary and match sequential isolated references. Every runner graph
+mutation now requires an exact opaque operation token; scheduled background calls pass
+that token into the coroutine, stale/double releases cannot clear a newer operation,
+and API conflicts return 409. Pause uses a committed-boundary acknowledgment, while
+enter-step transfers ownership from the background run to an exact pending handoff
+token with cancellation cleanup. The final Docker gate passed 2,147 tests with 1 skip;
+Ruff and mypy were clean across 136 source files. Coordinator review found and the
+implementation corrected reset bookkeeping, handoff cancellation, stop-while-paused,
+early-resume, repeated-pause, and unpaused-entry edge cases before the final gate.
 
 ### Phase 4 — Migrate built-in blocks
 
