@@ -1,6 +1,6 @@
 # LibreSim — FAC-9 SimContext and Concurrent Simulations
 
-> **Status:** approved for implementation by the maintainer on 2026-07-16
+> **Status:** implementation in progress; Phases 0 and 1 completed in `f3051b9`
 > **Drafted:** 2026-07-16
 > **Closes:** FAC-9 / LS-10
 > **Parent plan:** `docs/plans/fable-audit-completion.md`
@@ -323,6 +323,12 @@ one runner cannot alter another runner's context, results, or snapshot.
 Each implementation phase is a focused commit or small commit series. Characterization
 tests land green with the behavior they protect. Main-thread review and the listed gate
 are required before advancing.
+
+**Progress (2026-07-16):** Phase 0 deterministically reproduced solver/clock cross-talk
+for alternating adapters and step-mode runners. Phase 1 completed in `f3051b9` with an
+instance-owned context kernel, active-context compatibility facade, adapter ownership,
+clock-transition validation, and task/exception/cancellation restoration coverage. The
+Docker gate passed 2,121 tests with 1 skip; Ruff and mypy passed across 136 source files.
 
 ### Phase 0 — Characterize cross-talk and freeze compatibility
 

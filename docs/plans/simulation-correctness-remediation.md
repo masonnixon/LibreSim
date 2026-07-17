@@ -507,4 +507,4 @@ Agents: update this table in the same commit as the work.
 | LS-7 | complete | `230086b`, `3f07404` | Removed unity-gain fallbacks and verified actionable errors through the API. |
 | LS-8 | complete | `e75e26c`, `570d036`, `cd0f509` | Simplified sampling, stabilized result keys, removed mutable defaults. |
 | LS-9 | complete | `c28fee1`, `2172fa0`, `043a29a`, `24741bf` | Sanitized project names, restricted examples, enforced origins, and completed endpoint coverage. |
-| LS-10 | approved; implementation starting | `e536fb4`, `16c97ab` | Dedicated FAC-9 design approved by the maintainer on 2026-07-16. |
+| LS-10 | in progress; FAC-9 Phases 0-1 complete | `e536fb4`, `16c97ab`, `f3051b9` | Instance-owned context kernel, compatibility facade, and isolated adapter/runner stepping completed; block and native `Sim` ownership is next. |
