@@ -157,23 +157,8 @@ export function Editor() {
   // Highlighted connections for signal tracing
   const [highlightedConnections, setHighlightedConnections] = useState<Set<string>>(new Set())
 
-  // Selection toolbar position (used for future toolbar positioning, currently tracked but not displayed)
-  const [, setSelectionBounds] = useState<{ x: number; y: number; width: number; height: number } | null>(null)
-
   // Selected edge ID for showing signal dimensions
-  const [selectedEdgeId, setSelectedEdgeIdInternal] = useState<string | null>(null)
-
-  // Wrap setSelectedEdgeId to log all changes with stack trace
-  const setSelectedEdgeId = useCallback((value: string | null | ((prev: string | null) => string | null)) => {
-    setSelectedEdgeIdInternal(prev => {
-      const newValue = typeof value === 'function' ? value(prev) : value
-      if (newValue !== prev) {
-        console.log('[Editor] setSelectedEdgeId:', prev, '->', newValue)
-        console.trace('[Editor] setSelectedEdgeId stack')
-      }
-      return newValue
-    })
-  }, [])
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
 
   // Track if we're dragging from an input port (for visual feedback)
   const [isDraggingFromInput, setIsDraggingFromInput] = useState(false)
@@ -242,14 +227,11 @@ export function Editor() {
   const [nodes, setNodes, onNodesChangeBase] = useNodesState(initialNodes)
   const [edges, setEdges, onEdgesChangeBase] = useEdgesState(initialEdges)
 
-  // Wrap onEdgesChange to log and filter edge changes
+  // Keep model actions authoritative for deletion while forwarding visual changes.
   const onEdgesChange = useCallback(
     (changes: Parameters<typeof onEdgesChangeBase>[0]) => {
-      // Log all edge changes to understand what's happening
       const removeChanges = changes.filter((c) => c.type === 'remove')
       if (removeChanges.length > 0) {
-        console.log('[Editor] onEdgesChange - REMOVE changes:', removeChanges)
-        console.trace('[Editor] onEdgesChange remove stack')
         // Don't process remove changes from ReactFlow - let our model handle deletion
         const nonRemoveChanges = changes.filter((c) => c.type !== 'remove')
         if (nonRemoveChanges.length > 0) {
@@ -283,12 +265,8 @@ export function Editor() {
 
   // Sync React Flow nodes with model state when model or current path changes
   useEffect(() => {
-    console.log('[Editor] useEffect sync - model:', model ? 'exists' : 'null',
-      'currentBlocks:', currentBlocks.length, 'currentConnections:', currentConnections.length,
-      'selectedEdgeId:', selectedEdgeId)
 
     if (!model) {
-      console.log('[Editor] Model is null - clearing nodes and edges')
       setNodes([])
       setEdges([])
       return
@@ -301,6 +279,7 @@ export function Editor() {
       id: block.id,
       type: block.type === 'subsystem' ? 'subsystemNode' : 'blockNode',
       position: block.position,
+      ...(block.size && { width: block.size.width, height: block.size.height }),
       selected: selectedNodeIds.has(block.id),
       data: {
         block,
@@ -324,19 +303,15 @@ export function Editor() {
         const dstBlock = blockPortMap.get(conn.targetBlockId)
 
         if (!srcBlock) {
-          console.warn(`[Editor] Skipping edge: source block ${conn.sourceBlockId} not found`)
           return false
         }
         if (!dstBlock) {
-          console.warn(`[Editor] Skipping edge: target block ${conn.targetBlockId} not found`)
           return false
         }
         if (!srcBlock.outputs.has(conn.sourcePortId)) {
-          console.warn(`[Editor] Skipping edge: source port ${conn.sourcePortId} not found on block`)
           return false
         }
         if (!dstBlock.inputs.has(conn.targetPortId)) {
-          console.warn(`[Editor] Skipping edge: target port ${conn.targetPortId} not found on block`)
           return false
         }
         return true
@@ -395,7 +370,6 @@ export function Editor() {
         }
       })
 
-    console.log('[Editor] Setting nodes:', newNodes.length, 'edges:', validEdges.length)
     setNodes(newNodes)
     setEdges(validEdges)
   }, [model, currentBlocks, currentConnections, selectedEdgeId, selectedBlockIds, nearestEdgeForBranch, highlightedConnections, setNodes, setEdges])
@@ -482,7 +456,6 @@ export function Editor() {
     (_, { nodeId, handleId, handleType }) => {
       connectStartRef.current = { nodeId, handleId, handleType }
       setIsDraggingFromInput(handleType === 'target')
-      console.log('[Editor] onConnectStart:', { nodeId, handleId, handleType })
     },
     []
   )
@@ -500,10 +473,13 @@ export function Editor() {
       const fromHandleId = connectionState.fromHandle?.id
       if (!fromNodeId || !fromHandleId) return
 
-      const mouseEvent = event as MouseEvent
+      const pointerEvent = 'changedTouches' in event
+        ? event.changedTouches[0] ?? event.touches[0]
+        : event
+      if (!pointerEvent) return
       const dropPosition = screenToFlowPosition({
-        x: mouseEvent.clientX,
-        y: mouseEvent.clientY,
+        x: pointerEvent.clientX,
+        y: pointerEvent.clientY,
       })
 
       // Check if we're dragging FROM an input port (target handle)
@@ -513,13 +489,11 @@ export function Editor() {
 
       // Case: Branching - dragging from input port to existing line
       if (isDraggingFromInput && !connectionState.isValid) {
-        console.log('[Editor] Checking for branch - dragging from input port')
 
         // Find if dropped near an existing edge
         const nearestEdge = findNearestEdge(dropPosition, currentConnections, currentBlocks, 30)
 
         if (nearestEdge) {
-          console.log('[Editor] Found nearby edge for branching:', nearestEdge.connection.id, 'distance:', nearestEdge.distance)
 
           // Create a branch: connect the edge's source to this input port
           pushHistory()
@@ -531,11 +505,12 @@ export function Editor() {
           })
           return
         }
+        return
       }
 
       // Case 1: Invalid connection - check if dropped on Scope body
       if (!connectionState.isValid) {
-        const target = (event as MouseEvent).target as HTMLElement
+        const target = event.target as HTMLElement | null
         if (!target) return
 
         const nodeElement = target.closest('.react-flow__node')
@@ -605,7 +580,6 @@ export function Editor() {
 
   const onNodesDelete = useCallback(
     (deleted: Node[]) => {
-      console.log('[Editor] onNodesDelete triggered, nodes:', deleted.map(n => n.id))
       deleted.forEach((node) => removeBlock(node.id))
     },
     [removeBlock]
@@ -613,8 +587,6 @@ export function Editor() {
 
   const onEdgesDelete = useCallback(
     (deleted: Edge[]) => {
-      console.log('[Editor] onEdgesDelete triggered, edges:', deleted.map(e => e.id))
-      console.trace('[Editor] onEdgesDelete stack trace')
       deleted.forEach((edge) => removeConnection(edge.id))
     },
     [removeConnection]
@@ -635,7 +607,6 @@ export function Editor() {
       // If this is a rapid click on the same edge (within 500ms), ignore it
       // This handles double-clicks, triple-clicks, and rapid clicking
       if (lastClick && lastClick.edgeId === edge.id && (now - lastClick.time) < 500) {
-        console.log('[Editor] onEdgeClick - ignoring rapid click on same edge')
         // Update timestamp but don't change selection
         lastEdgeClickRef.current = { edgeId: edge.id, time: now }
         return
@@ -661,7 +632,6 @@ export function Editor() {
       event.preventDefault()
       // Record timestamp so paneClick can ignore events too close to this
       lastEdgeDoubleClickRef.current = Date.now()
-      console.log('[Editor] onEdgeDoubleClick - prevented default behavior')
     },
     []
   )
@@ -670,7 +640,6 @@ export function Editor() {
   const onPaneClick = useCallback(() => {
     // Don't deselect if we're dragging an edge segment or waypoint
     if (isEdgeDragging) {
-      console.log('[Editor] onPaneClick - ignoring, edge drag in progress')
       return
     }
     // Don't deselect if this click is immediately after any edge click/double-click
@@ -678,10 +647,8 @@ export function Editor() {
     const timeSinceDoubleClick = Date.now() - lastEdgeDoubleClickRef.current
     const timeSinceEdgeClick = lastEdgeClickRef.current ? Date.now() - lastEdgeClickRef.current.time : Infinity
     if (timeSinceDoubleClick < 500 || timeSinceEdgeClick < 500) {
-      console.log('[Editor] onPaneClick - ignoring, too close to edge interaction')
       return
     }
-    console.log('[Editor] onPaneClick - deselecting edge')
     setSelectedEdgeId(null)
   }, [isEdgeDragging, setSelectedEdgeId])
 
@@ -689,22 +656,6 @@ export function Editor() {
     ({ nodes: selectedNodes }: { nodes: Node[] }) => {
       selectBlocks(selectedNodes.map((n) => n.id))
 
-      // Calculate selection bounds for toolbar positioning
-      if (selectedNodes.length >= 2) {
-        const positions = selectedNodes.map((n) => n.position)
-        const minX = Math.min(...positions.map((p) => p.x))
-        const maxX = Math.max(...positions.map((p) => p.x)) + 140 // approximate block width
-        const minY = Math.min(...positions.map((p) => p.y))
-        const maxY = Math.max(...positions.map((p) => p.y)) + 60 // approximate block height
-        setSelectionBounds({
-          x: (minX + maxX) / 2,
-          y: minY - 50, // Position above the selection
-          width: maxX - minX,
-          height: maxY - minY,
-        })
-      } else {
-        setSelectionBounds(null)
-      }
     },
     [selectBlocks]
   )
@@ -722,7 +673,10 @@ export function Editor() {
       if (!draggingBlockType) return
 
       const definition = blockRegistry.get(draggingBlockType)
-      if (!definition) return
+      if (!definition) {
+        setDraggingBlockType(null)
+        return
+      }
 
       const position = screenToFlowPosition({
         x: event.clientX,
@@ -917,7 +871,6 @@ export function Editor() {
       createSubsystem(selectedBlockIds)
     }
     setContextMenu(null)
-    setSelectionBounds(null)
   }, [selectedBlockIds, createSubsystem])
 
   const handleExpandSubsystem = useCallback(() => {
