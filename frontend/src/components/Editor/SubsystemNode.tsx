@@ -45,6 +45,26 @@ function getCategoryColor(category: string): string {
       return '#fb923c' // orange
     case 'observers':
       return '#818cf8' // indigo
+    case 'logic':
+      return '#d97706'
+    case 'control_analysis':
+      return '#e11d48'
+    case 'data_types':
+      return '#65a30d'
+    case 'matrix_ops':
+      return '#059669'
+    case 'control_design':
+      return '#7c3aed'
+    case 'aerospace':
+      return '#0284c7'
+    case 'dsp':
+      return '#c026d3'
+    case 'rf':
+      return '#dc2626'
+    case 'navigation':
+      return '#2563eb'
+    case 'sensor_fusion':
+      return '#ca8a04'
     default:
       return '#6c7086'
   }
@@ -60,7 +80,7 @@ function SubsystemPreview({
 }) {
   // Calculate bounds and scale
   const { blocks, scale, offsetX, offsetY, width, height } = useMemo(() => {
-    if (!children || children.length === 0) {
+    if (children.length === 0) {
       return { blocks: [], scale: 1, offsetX: 0, offsetY: 0, width: 120, height: 80 }
     }
 
@@ -103,7 +123,7 @@ function SubsystemPreview({
 
   // Create connection paths
   const connectionPaths = useMemo(() => {
-    if (!connections || !children) return []
+    if (!connections) return []
 
     const blockMap = new Map(children.map((b) => [b.id, b]))
     const paths: { id: string; d: string }[] = []
@@ -212,10 +232,11 @@ function SubsystemPreview({
 function SubsystemNodeComponent({ data, selected }: NodeProps<SubsystemNode>) {
   const { block, definition } = data
   const toggleSubsystemExpanded = useModelStore((state) => state.toggleSubsystemExpanded)
+  const blockId = block?.id
 
   const handleDoubleClick = useCallback(() => {
-    toggleSubsystemExpanded(block.id)
-  }, [block.id, toggleSubsystemExpanded])
+    toggleSubsystemExpanded(blockId!)
+  }, [blockId, toggleSubsystemExpanded])
 
   if (!block || !definition) {
     return <div className="p-2 bg-red-500 text-white rounded">Invalid Subsystem</div>
@@ -341,11 +362,11 @@ function arePropsEqual(
   if (JSON.stringify(prevBlock.parameters) !== JSON.stringify(nextBlock.parameters)) return false
 
   // Check ports
-  if (prevBlock.inputPorts.length !== nextBlock.inputPorts.length) return false
-  if (prevBlock.outputPorts.length !== nextBlock.outputPorts.length) return false
+  if (JSON.stringify(prevBlock.inputPorts) !== JSON.stringify(nextBlock.inputPorts)) return false
+  if (JSON.stringify(prevBlock.outputPorts) !== JSON.stringify(nextBlock.outputPorts)) return false
 
-  // Check children count (for preview)
-  if ((prevBlock.children?.length || 0) !== (nextBlock.children?.length || 0)) return false
+  if (JSON.stringify(prevBlock.children) !== JSON.stringify(nextBlock.children)) return false
+  if (JSON.stringify(prevBlock.childConnections) !== JSON.stringify(nextBlock.childConnections)) return false
 
   return true
 }
