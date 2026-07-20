@@ -26,8 +26,8 @@ import { blockRegistry } from '../../blocks'
 import { getIsPropertiesFocused } from '../Properties/PropertiesPanel'
 import { findNearestEdge, generateSmartWaypoints } from '../../utils/smartRouting'
 import { getDownstreamConnectionIds, getSourceBranchConnectionIds } from '../../utils/signalTraversal'
-import { deepCopySubsystemContents } from '../../utils/subsystemUtils'
 import type { BlockDefinition, BlockInstance } from '../../types/block'
+import { useEditorKeyboardShortcuts } from '../../hooks/useEditorKeyboardShortcuts'
 
 // Create a fallback definition for unknown block types
 function getDefinitionOrFallback(block: BlockInstance): BlockDefinition {
@@ -183,15 +183,29 @@ export function Editor() {
   const [isDraggingFromInput, setIsDraggingFromInput] = useState(false)
   const [nearestEdgeForBranch, setNearestEdgeForBranch] = useState<string | null>(null)
 
-  // Clipboard for copy/paste functionality
-  const [clipboard, setClipboard] = useState<{
-    blocks: BlockInstance[]
-    connections: { sourceBlockId: string; sourcePortId: string; targetBlockId: string; targetPortId: string }[]
-  }>({ blocks: [], connections: [] })
-
   // Get current view blocks and connections (handles subsystem navigation)
   const currentBlocks = getCurrentBlocks()
   const currentConnections = getCurrentConnections()
+
+  useEditorKeyboardShortcuts({
+    inputFocused,
+    selectedBlockIds,
+    selectedEdgeId,
+    currentBlocks,
+    currentConnections,
+    dropBlock: removeBlock,
+    dropConnection: removeConnection,
+    selectBlocks,
+    addBlock,
+    addConnection,
+    spreadBlocks,
+    rotateSelectedBlocks,
+    undo,
+    redo,
+    pushHistory,
+    setSelectedEdgeId,
+    setHighlightedConnections,
+  })
 
   // Convert model blocks to React Flow nodes
   const initialNodes: Node[] = useMemo(() => {
@@ -961,262 +975,6 @@ export function Editor() {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [currentPath, exitSubsystem, fitView, inputFocused])
-
-  // Handle keyboard shortcuts (Delete, Ctrl+C, Ctrl+V, Ctrl+A)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't handle keyboard events when input fields are focused
-      if (inputFocused || getIsPropertiesFocused()) return
-
-      const isCtrlOrCmd = e.ctrlKey || e.metaKey
-
-      // Delete key - delete selected blocks and/or selected edge
-      if (e.key === 'Delete' || e.key === 'Backspace') {
-        e.preventDefault()
-
-        // Push history before deletion
-        if (selectedBlockIds.length > 0 || selectedEdgeId) {
-          pushHistory()
-        }
-
-        // Delete selected blocks
-        if (selectedBlockIds.length > 0) {
-          selectedBlockIds.forEach(blockId => removeBlock(blockId))
-        }
-
-        // Delete selected edge
-        if (selectedEdgeId) {
-          removeConnection(selectedEdgeId)
-          setSelectedEdgeId(null)
-        }
-      }
-
-      // Ctrl+A - Select all blocks
-      if (isCtrlOrCmd && e.key === 'a') {
-        e.preventDefault()
-        const allBlockIds = currentBlocks.map(b => b.id)
-        selectBlocks(allBlockIds)
-      }
-
-      // Ctrl+S - Save model
-      if (isCtrlOrCmd && e.key === 's') {
-        e.preventDefault()
-        useModelStore.getState().saveModel()
-      }
-
-      // Ctrl+] - Spread blocks apart by 5%
-      if (isCtrlOrCmd && e.key === ']') {
-        e.preventDefault()
-        pushHistory()
-        spreadBlocks(1.05)
-      }
-
-      // Ctrl+[ - Retract blocks closer by 5%
-      if (isCtrlOrCmd && e.key === '[') {
-        e.preventDefault()
-        pushHistory()
-        spreadBlocks(0.95)
-      }
-
-      // Ctrl+R - Rotate selected blocks 90 degrees clockwise
-      if (isCtrlOrCmd && e.key === 'r') {
-        e.preventDefault()
-        pushHistory()
-        rotateSelectedBlocks()
-      }
-
-      // Ctrl+Z - Undo
-      if (isCtrlOrCmd && e.key === 'z' && !e.shiftKey) {
-        e.preventDefault()
-        undo()
-      }
-
-      // Ctrl+Y or Ctrl+Shift+Z - Redo
-      if (isCtrlOrCmd && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
-        e.preventDefault()
-        redo()
-      }
-
-      // Signal highlighting shortcuts (when edge is selected)
-      if (isCtrlOrCmd && e.shiftKey && selectedEdgeId) {
-        // Ctrl+Shift+S - Highlight to Source
-        if (e.key === 'S' || e.key === 's') {
-          e.preventDefault()
-          const conn = currentConnections.find(c => c.id === selectedEdgeId)
-          if (conn) {
-            setHighlightedConnections(getSourceBranchConnectionIds(conn, currentConnections))
-          }
-        }
-        // Ctrl+Shift+D - Highlight to Destination
-        if (e.key === 'D' || e.key === 'd') {
-          e.preventDefault()
-          const conn = currentConnections.find(c => c.id === selectedEdgeId)
-          if (conn) {
-            setHighlightedConnections(getDownstreamConnectionIds(conn, currentConnections))
-          }
-        }
-        // Ctrl+Shift+H - Remove Highlighting
-        if (e.key === 'H' || e.key === 'h') {
-          e.preventDefault()
-          setHighlightedConnections(new Set())
-        }
-      }
-
-      // Ctrl+C - Copy selected blocks and their internal connections
-      if (isCtrlOrCmd && e.key === 'c') {
-        e.preventDefault()
-        if (selectedBlockIds.length > 0) {
-          const blocksToCopy = currentBlocks.filter(b => selectedBlockIds.includes(b.id))
-
-          // Find connections between selected blocks
-          const connectionsToCopy = currentConnections
-            .filter(conn =>
-              selectedBlockIds.includes(conn.sourceBlockId) &&
-              selectedBlockIds.includes(conn.targetBlockId)
-            )
-            .map(conn => ({
-              sourceBlockId: conn.sourceBlockId,
-              sourcePortId: conn.sourcePortId,
-              targetBlockId: conn.targetBlockId,
-              targetPortId: conn.targetPortId,
-            }))
-
-          // Deep copy the blocks and connections
-          setClipboard({
-            blocks: JSON.parse(JSON.stringify(blocksToCopy)),
-            connections: JSON.parse(JSON.stringify(connectionsToCopy)),
-          })
-        }
-      }
-
-      // Ctrl+V - Paste copied blocks and their connections
-      if (isCtrlOrCmd && e.key === 'v') {
-        e.preventDefault()
-        if (clipboard.blocks.length > 0) {
-          pushHistory()
-          // Calculate offset for pasted blocks (paste slightly offset from original)
-          const pasteOffset = { x: 50, y: 50 }
-
-          const newBlockIds: string[] = []
-          const oldToNewIdMap = new Map<string, string>()
-          const oldToNewPortIdMap = new Map<string, string>()
-
-          clipboard.blocks.forEach(block => {
-            const definition = blockRegistry.get(block.type)
-            if (definition) {
-              const newPosition = {
-                x: block.position.x + pasteOffset.x,
-                y: block.position.y + pasteOffset.y,
-              }
-              const newId = addBlock(definition, newPosition)
-              if (newId) {
-                newBlockIds.push(newId)
-                oldToNewIdMap.set(block.id, newId)
-
-                // Map old port IDs to new port IDs
-                block.inputPorts.forEach((port, idx) => {
-                  oldToNewPortIdMap.set(port.id, `${newId}-in-${idx}`)
-                })
-                block.outputPorts.forEach((port, idx) => {
-                  oldToNewPortIdMap.set(port.id, `${newId}-out-${idx}`)
-                })
-
-                // Copy parameters from the original block
-                if (Object.keys(block.parameters).length > 0) {
-                  // Use setTimeout to ensure the block is created before updating
-                  setTimeout(() => {
-                    useModelStore.getState().updateBlockParameters(newId, block.parameters)
-                  }, 0)
-                }
-
-                // For subsystems, deep copy the children and internal connections
-                if (block.type === 'subsystem' && block.children && block.children.length > 0) {
-                  const { children, childConnections } = deepCopySubsystemContents(
-                    block.children,
-                    block.childConnections,
-                    newId
-                  )
-                  // Update the block with copied children and connections
-                  setTimeout(() => {
-                    const state = useModelStore.getState()
-                    const model = state.model
-                    if (model) {
-                      const blockToUpdate = model.blocks.find(b => b.id === newId)
-                      if (blockToUpdate) {
-                        blockToUpdate.children = children
-                        blockToUpdate.childConnections = childConnections
-                        // Trigger a state update
-                        state.updateBlockParameters(newId, blockToUpdate.parameters)
-                      }
-                    }
-                  }, 0)
-                }
-              }
-            }
-          })
-
-          // Recreate connections between pasted blocks
-          if (clipboard.connections.length > 0) {
-            setTimeout(() => {
-              clipboard.connections.forEach(conn => {
-                const newSourceBlockId = oldToNewIdMap.get(conn.sourceBlockId)
-                const newTargetBlockId = oldToNewIdMap.get(conn.targetBlockId)
-                const newSourcePortId = oldToNewPortIdMap.get(conn.sourcePortId)
-                const newTargetPortId = oldToNewPortIdMap.get(conn.targetPortId)
-
-                if (newSourceBlockId && newTargetBlockId && newSourcePortId && newTargetPortId) {
-                  addConnection({
-                    sourceBlockId: newSourceBlockId,
-                    sourcePortId: newSourcePortId,
-                    targetBlockId: newTargetBlockId,
-                    targetPortId: newTargetPortId,
-                  })
-                }
-              })
-            }, 10)
-          }
-
-          // Select the newly pasted blocks
-          if (newBlockIds.length > 0) {
-            selectBlocks(newBlockIds)
-          }
-
-          // Update clipboard positions for next paste
-          setClipboard(prev => ({
-            ...prev,
-            blocks: prev.blocks.map(b => ({
-              ...b,
-              position: {
-                x: b.position.x + pasteOffset.x,
-                y: b.position.y + pasteOffset.y,
-              }
-            }))
-          }))
-        }
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [
-    inputFocused,
-    selectedBlockIds,
-    selectedEdgeId,
-    currentBlocks,
-    currentConnections,
-    clipboard,
-    removeBlock,
-    removeConnection,
-    selectBlocks,
-    addBlock,
-    addConnection,
-    spreadBlocks,
-    rotateSelectedBlocks,
-    undo,
-    redo,
-    pushHistory,
-    setSelectedEdgeId,
-  ])
 
   // Track nearest edge during branching drag for visual feedback
   useEffect(() => {
