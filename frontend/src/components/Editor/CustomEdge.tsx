@@ -1,6 +1,15 @@
 import React, { memo, useCallback, useMemo, useState, useRef } from 'react'
 import { BaseEdge, EdgeLabelRenderer, EdgeProps, useReactFlow } from '@xyflow/react'
 import { useModelStore } from '../../store/modelStore'
+import {
+  clampPerpendicularOffset,
+  generateOrthogonalPath,
+  getPositionOnPath,
+  isSegmentDraggable,
+  projectOntoPath,
+  snapToGrid,
+  type EdgeSegment,
+} from '../../utils/edgeRouting'
 
 interface WaypointData {
   waypoints?: Array<{ x: number; y: number }>
@@ -14,213 +23,6 @@ interface WaypointData {
   onDragStateChange?: (isDragging: boolean) => void
 }
 
-// Segment represents a horizontal or vertical line segment
-interface Segment {
-  type: 'h' | 'v' // horizontal or vertical
-  x1: number
-  y1: number
-  x2: number
-  y2: number
-  // For dragging: which waypoint's coordinate this segment controls
-  // -1 means drag will CREATE a new waypoint
-  // null means segment is NOT draggable (e.g., output port segment)
-  controlsWaypointIndex: number | null
-  // Which coordinate of the waypoint this segment controls when dragged
-  controlsCoordinate: 'x' | 'y'
-  // For segments that create waypoints: where to insert the new waypoint
-  insertWaypointAt?: number
-}
-
-/**
- * Generate an orthogonal (Manhattan-style) path through waypoints.
- * Follows Simulink behavior:
- * - Output port segment (first segment) is NOT draggable
- * - Input port segment and internal segments ARE draggable
- *
- * With 0 waypoints, the path is:
- *   source(sX, sY) → (midX, sY) → (midX, tY) → target(tX, tY)
- *   - Seg 0: H from source - NOT draggable (output port segment)
- *   - Seg 1: V at midX - draggable (creates wp at index 0, controls X)
- *   - Seg 2: H to target - draggable (creates wp at index 0, controls Y)
- *
- * With 1+ waypoints:
- *   - Seg 0: H from source - NOT draggable (output port segment)
- *   - Internal segments - draggable (control waypoints)
- *   - Last segment to target - draggable (input port side)
- */
-function generateOrthogonalPath(
-  sourceX: number,
-  sourceY: number,
-  targetX: number,
-  targetY: number,
-  waypoints: Array<{ x: number; y: number }>
-): { path: string; segments: Segment[]; labelX: number; labelY: number; pathPoints: Array<{ x: number; y: number }> } {
-  const segments: Segment[] = []
-  // Collect all path points for center calculation and label positioning
-  const pathPoints: Array<{ x: number; y: number }> = []
-
-  if (waypoints.length === 0) {
-    // No waypoints - create simple 3-segment orthogonal route
-    // Path: source → (midX, sourceY) → (midX, targetY) → target
-    const midX = (sourceX + targetX) / 2
-
-    const path = `M ${sourceX},${sourceY} L ${midX},${sourceY} L ${midX},${targetY} L ${targetX},${targetY}`
-
-    // Build path points for this simple case
-    pathPoints.push({ x: sourceX, y: sourceY })
-    pathPoints.push({ x: midX, y: sourceY })
-    pathPoints.push({ x: midX, y: targetY })
-    pathPoints.push({ x: targetX, y: targetY })
-
-    // Segment 0: horizontal from source to midX - NOT draggable (output port segment per Simulink)
-    segments.push({
-      type: 'h', x1: sourceX, y1: sourceY, x2: midX, y2: sourceY,
-      controlsWaypointIndex: null, controlsCoordinate: 'y'
-    })
-    // Segment 1: vertical at midX - draggable (creates waypoint, controls X)
-    segments.push({
-      type: 'v', x1: midX, y1: sourceY, x2: midX, y2: targetY,
-      controlsWaypointIndex: -1, controlsCoordinate: 'x', insertWaypointAt: 0
-    })
-    // Segment 2: horizontal from midX to target - draggable (creates waypoint, controls Y)
-    segments.push({
-      type: 'h', x1: midX, y1: targetY, x2: targetX, y2: targetY,
-      controlsWaypointIndex: -1, controlsCoordinate: 'y', insertWaypointAt: 0
-    })
-
-    // Calculate center of path (center of vertical segment since it's typically the longest/middle)
-    const labelX = midX
-    const labelY = (sourceY + targetY) / 2
-    return { path, segments, labelX, labelY, pathPoints }
-  }
-
-  // With waypoints, build a path that goes through each waypoint
-  // For each waypoint, we go: horizontal to wp.x, then vertical to wp.y
-  // After all waypoints: horizontal to target.x, then vertical to target.y
-
-  let path = `M ${sourceX},${sourceY}`
-  let prevX = sourceX
-  let prevY = sourceY
-  pathPoints.push({ x: sourceX, y: sourceY })
-
-  for (let i = 0; i < waypoints.length; i++) {
-    const wp = waypoints[i]
-
-    // Horizontal segment: from prevX to wp.x at prevY
-    path += ` L ${wp.x},${prevY}`
-    pathPoints.push({ x: wp.x, y: prevY })
-    segments.push({
-      type: 'h',
-      x1: prevX, y1: prevY, x2: wp.x, y2: prevY,
-      // First horizontal segment is NOT draggable (output port segment per Simulink)
-      // Others control the previous waypoint's Y
-      controlsWaypointIndex: i === 0 ? null : i - 1,
-      controlsCoordinate: 'y',
-    })
-    prevX = wp.x
-
-    // Vertical segment: from prevY to wp.y at wp.x
-    path += ` L ${wp.x},${wp.y}`
-    pathPoints.push({ x: wp.x, y: wp.y })
-    segments.push({
-      type: 'v',
-      x1: wp.x, y1: prevY, x2: wp.x, y2: wp.y,
-      // This controls this waypoint's X
-      controlsWaypointIndex: i,
-      controlsCoordinate: 'x'
-    })
-    prevY = wp.y
-  }
-
-  const lastWpIndex = waypoints.length - 1
-
-  // Final horizontal segment: from last waypoint X to target X, at last waypoint's Y
-  path += ` L ${targetX},${prevY}`
-  pathPoints.push({ x: targetX, y: prevY })
-  segments.push({
-    type: 'h',
-    x1: prevX, y1: prevY, x2: targetX, y2: prevY,
-    // This controls the last waypoint's Y
-    controlsWaypointIndex: lastWpIndex,
-    controlsCoordinate: 'y'
-  })
-  prevX = targetX
-
-  // Final vertical segment: from last waypoint Y to target Y, at target X
-  path += ` L ${targetX},${targetY}`
-  pathPoints.push({ x: targetX, y: targetY })
-  segments.push({
-    type: 'v',
-    x1: targetX, y1: prevY, x2: targetX, y2: targetY,
-    // Creates a new waypoint at the end when dragged
-    controlsWaypointIndex: -1,
-    controlsCoordinate: 'x',
-    insertWaypointAt: waypoints.length
-  })
-
-  // Calculate center of path by finding the point at half the total path length
-  const { labelX, labelY } = calculatePathCenter(pathPoints)
-
-  return { path, segments, labelX, labelY, pathPoints }
-}
-
-/**
- * Calculate the center point along a path (at half the total path length)
- */
-function calculatePathCenter(points: Array<{ x: number; y: number }>): { labelX: number; labelY: number } {
-  if (points.length < 2) {
-    return { labelX: points[0]?.x || 0, labelY: points[0]?.y || 0 }
-  }
-
-  // Calculate total path length
-  let totalLength = 0
-  const segmentLengths: number[] = []
-  for (let i = 1; i < points.length; i++) {
-    const dx = points[i].x - points[i - 1].x
-    const dy = points[i].y - points[i - 1].y
-    const len = Math.abs(dx) + Math.abs(dy) // Manhattan distance for orthogonal paths
-    segmentLengths.push(len)
-    totalLength += len
-  }
-
-  // Find the point at half the total length
-  const halfLength = totalLength / 2
-  let accumulatedLength = 0
-
-  for (let i = 0; i < segmentLengths.length; i++) {
-    const segLen = segmentLengths[i]
-    if (accumulatedLength + segLen >= halfLength) {
-      // The center is on this segment
-      const remaining = halfLength - accumulatedLength
-      const ratio = segLen > 0 ? remaining / segLen : 0
-      const p1 = points[i]
-      const p2 = points[i + 1]
-      return {
-        labelX: p1.x + (p2.x - p1.x) * ratio,
-        labelY: p1.y + (p2.y - p1.y) * ratio
-      }
-    }
-    accumulatedLength += segLen
-  }
-
-  // Fallback: return midpoint of last segment
-  const last = points[points.length - 1]
-  const secondLast = points[points.length - 2]
-  return {
-    labelX: (last.x + secondLast.x) / 2,
-    labelY: (last.y + secondLast.y) / 2
-  }
-}
-
-
-// Snap position to grid - normal grid is 10px, fine grid (Alt key) is 1px
-function snapToGrid(position: { x: number; y: number }, useFineGrid: boolean): { x: number; y: number } {
-  const gridSize = useFineGrid ? 1 : 10
-  return {
-    x: Math.round(position.x / gridSize) * gridSize,
-    y: Math.round(position.y / gridSize) * gridSize,
-  }
-}
 
 // Draggable waypoint handle component (the bend point circles)
 // Per Simulink behavior: drag to move, NO double-click to delete
@@ -322,7 +124,7 @@ function DraggableSegment({
   onDragStart,
   onDragEnd,
 }: {
-  segment: Segment
+  segment: EdgeSegment
   connectionId: string
   waypoints: Array<{ x: number; y: number }>
   onDragStart: () => void
@@ -344,15 +146,7 @@ function DraggableSegment({
   const segmentRef = useRef(segment)
   segmentRef.current = segment
 
-  // Calculate segment length
-  const length = segment.type === 'h'
-    ? Math.abs(segment.x2 - segment.x1)
-    : Math.abs(segment.y2 - segment.y1)
-
-  // Segments are draggable if:
-  // 1. controlsWaypointIndex is not null (null means output port segment, not draggable per Simulink)
-  // 2. Segment is long enough to interact with (reduced to 3px to allow dragging close to ports)
-  const isDraggable = segment.controlsWaypointIndex !== null && length >= 3
+  const canDrag = isSegmentDraggable(segment)
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -463,7 +257,7 @@ function DraggableSegment({
   )
 
   // Don't render segments that cannot be dragged or are too small
-  if (!isDraggable) return null
+  if (!canDrag) return null
 
   // Render an invisible wider line for easier grabbing
   return (
@@ -487,143 +281,6 @@ function DraggableSegment({
   )
 }
 
-// Maximum perpendicular offset from the path in pixels
-const MAX_PERP_OFFSET = 25
-
-/**
- * Get position and direction at a given t value (0-1) along the path
- */
-function getPositionOnPath(
-  pathPoints: Array<{ x: number; y: number }>,
-  t: number
-): { x: number; y: number; perpX: number; perpY: number } {
-  if (pathPoints.length < 2) {
-    return { x: pathPoints[0]?.x || 0, y: pathPoints[0]?.y || 0, perpX: 0, perpY: -1 }
-  }
-
-  // Calculate total path length
-  let totalLength = 0
-  const segmentLengths: number[] = []
-  for (let i = 1; i < pathPoints.length; i++) {
-    const dx = pathPoints[i].x - pathPoints[i - 1].x
-    const dy = pathPoints[i].y - pathPoints[i - 1].y
-    const len = Math.abs(dx) + Math.abs(dy) // Manhattan distance
-    segmentLengths.push(len)
-    totalLength += len
-  }
-
-  // Find position at t * totalLength
-  const targetLength = Math.max(0, Math.min(1, t)) * totalLength
-  let accumulatedLength = 0
-
-  for (let i = 0; i < segmentLengths.length; i++) {
-    const segLen = segmentLengths[i]
-    if (accumulatedLength + segLen >= targetLength || i === segmentLengths.length - 1) {
-      const remaining = targetLength - accumulatedLength
-      const ratio = segLen > 0 ? remaining / segLen : 0
-      const p1 = pathPoints[i]
-      const p2 = pathPoints[i + 1]
-      const dx = p2.x - p1.x
-      const dy = p2.y - p1.y
-
-      // Calculate perpendicular direction (rotate 90 degrees CCW)
-      // For horizontal segment (dy=0): perp is (0, -1) pointing up
-      // For vertical segment (dx=0): perp is (-1, 0) pointing left
-      let perpX = 0, perpY = -1
-      if (Math.abs(dx) > Math.abs(dy)) {
-        // Horizontal segment - perpendicular points up
-        perpX = 0
-        perpY = -1
-      } else {
-        // Vertical segment - perpendicular points left
-        perpX = -1
-        perpY = 0
-      }
-
-      return {
-        x: p1.x + dx * ratio,
-        y: p1.y + dy * ratio,
-        perpX,
-        perpY
-      }
-    }
-    accumulatedLength += segLen
-  }
-
-  // Fallback
-  const last = pathPoints[pathPoints.length - 1]
-  return { x: last.x, y: last.y, perpX: 0, perpY: -1 }
-}
-
-/**
- * Find the closest point on the path to a given position
- * Returns t value (0-1) and perpendicular distance
- */
-function projectOntoPath(
-  pathPoints: Array<{ x: number; y: number }>,
-  px: number,
-  py: number
-): { t: number; perpOffset: number } {
-  if (pathPoints.length < 2) {
-    return { t: 0.5, perpOffset: 0 }
-  }
-
-  // Calculate total path length and find closest point
-  let totalLength = 0
-  const segmentLengths: number[] = []
-  for (let i = 1; i < pathPoints.length; i++) {
-    const dx = pathPoints[i].x - pathPoints[i - 1].x
-    const dy = pathPoints[i].y - pathPoints[i - 1].y
-    const len = Math.abs(dx) + Math.abs(dy)
-    segmentLengths.push(len)
-    totalLength += len
-  }
-
-  let bestT = 0.5
-  let bestDist = Infinity
-  let bestPerpOffset = 0
-  let accumulatedLength = 0
-
-  for (let i = 0; i < segmentLengths.length; i++) {
-    const p1 = pathPoints[i]
-    const p2 = pathPoints[i + 1]
-    const segLen = segmentLengths[i]
-
-    // For orthogonal paths, project onto the segment
-    const dx = p2.x - p1.x
-    const dy = p2.y - p1.y
-
-    let projT: number // 0-1 along this segment
-    let closestX: number, closestY: number
-    let perpOffset: number
-
-    if (Math.abs(dx) > Math.abs(dy)) {
-      // Horizontal segment
-      projT = dx !== 0 ? Math.max(0, Math.min(1, (px - p1.x) / dx)) : 0
-      closestX = p1.x + dx * projT
-      closestY = p1.y
-      perpOffset = py - closestY // positive = below, negative = above
-    } else {
-      // Vertical segment
-      projT = dy !== 0 ? Math.max(0, Math.min(1, (py - p1.y) / dy)) : 0
-      closestX = p1.x
-      closestY = p1.y + dy * projT
-      perpOffset = px - closestX // positive = right, negative = left
-    }
-
-    const dist = Math.abs(px - closestX) + Math.abs(py - closestY)
-
-    if (dist < bestDist) {
-      bestDist = dist
-      bestT = totalLength > 0 ? (accumulatedLength + projT * segLen) / totalLength : 0.5
-      bestPerpOffset = perpOffset
-    }
-
-    accumulatedLength += segLen
-  }
-
-  return { t: bestT, perpOffset: bestPerpOffset }
-}
 
 // Draggable label component for signal names - tethered to the path
 function DraggableLabel({
@@ -686,7 +343,7 @@ function DraggableLabel({
         const { t, perpOffset: rawPerpOffset } = projectOntoPath(pathPoints, flowPos.x, flowPos.y)
 
         // Constrain perpendicular offset
-        const constrainedPerpOffset = Math.max(-MAX_PERP_OFFSET, Math.min(MAX_PERP_OFFSET, rawPerpOffset))
+        const constrainedPerpOffset = clampPerpendicularOffset(rawPerpOffset)
 
         updateConnectionLabelOffset(connectionId, { t, perpOffset: constrainedPerpOffset })
       }
