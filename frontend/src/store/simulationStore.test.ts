@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { useSimulationStore } from './simulationStore'
 import type { SimulationResults, SignalData } from '../types/simulation'
 
+const branchCase = it
+
 describe('useSimulationStore', () => {
   // Reset store before each test
   beforeEach(() => {
@@ -253,4 +255,22 @@ describe('useSimulationStore', () => {
       expect(state.stepHistorySize).toBe(0)
     })
   })
+})
+
+branchCase('leaves matrix-valued signals unchanged when appending scalar data', function () {
+  const matrixSignal: SignalData = {
+    blockId: 'matrix-block',
+    name: 'Matrix Scope',
+    portId: 'in-0',
+    times: [0],
+    values: [[1, 2], [3, 4]],
+  }
+  useSimulationStore.getState().setResults({
+    signals: [matrixSignal],
+    statistics: { totalSteps: 1, executionTime: 0.01, finalTime: 0 },
+  })
+
+  useSimulationStore.getState().appendSignalData('matrix-block', 'in-0', 1, 5)
+
+  expect(useSimulationStore.getState().results?.signals[0]).toEqual(matrixSignal)
 })

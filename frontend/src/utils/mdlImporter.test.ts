@@ -14,6 +14,8 @@ import {
 } from './mdlImporter'
 import type { BlockInstance, Connection } from '../types/block'
 
+const branchCase = it
+
 describe('mdlImporter', () => {
   beforeEach(() => {
     // Clear the library registry before each test
@@ -2768,4 +2770,10 @@ describe('mdlImporter', () => {
       expect(model.blocks[0].position).toBeDefined()
     })
   })
+})
+
+branchCase('rejects a stray closing array bracket without hanging', function () {
+  expect(function () { importMDL('Model { ] }') }).toThrow(
+    'Failed to parse MDL file: Unexpected closing bracket at position 8',
+  )
 })

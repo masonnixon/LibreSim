@@ -3,6 +3,8 @@ import { modelToMDL, exportModelAsMDL } from './mdlExporter'
 import type { Model } from '../types/model'
 import type { BlockInstance, Connection } from '../types/block'
 
+const branchCase = it
+
 // Helper to create a minimal model
 function createTestModel(overrides: Partial<Model> = {}): Model {
   return {
@@ -790,4 +792,45 @@ describe('exportModelAsMDL', () => {
     expect(blob).toBeInstanceOf(Blob)
     expect(blob.type).toBe('text/plain')
   })
+})
+
+branchCase('validates referenced connection ports', function () {
+  const source = createTestBlock({
+    id: 'source',
+    name: 'Source',
+    outputPorts: [{ id: 'source-out', name: 'out', dataType: 'double', dimensions: [1] }],
+  })
+  const target = createTestBlock({
+    id: 'target',
+    name: 'Target',
+    inputPorts: [{ id: 'target-in', name: 'in', dataType: 'double', dimensions: [1] }],
+  })
+  const connection: Connection = {
+    id: 'bad-connection',
+    sourceBlockId: 'source',
+    sourcePortId: 'source-out',
+    targetBlockId: 'target',
+    targetPortId: 'target-in',
+  }
+  const sourceResult = modelToMDL(createTestModel({
+    blocks: [source, target],
+    connections: [{ ...connection, sourcePortId: 'unknown-output' }],
+  }))
+  const targetResult = modelToMDL(createTestModel({
+    blocks: [source, target],
+    connections: [{ ...connection, targetPortId: 'unknown-input' }],
+  }))
+
+  expect(sourceResult).not.toContain('Line {')
+  expect(targetResult).not.toContain('Line {')
+})
+
+branchCase('writes only configured integrator limits', function () {
+  const mdl = modelToMDL(createTestModel({
+    blocks: [createTestBlock({ type: 'integrator', parameters: { limitOutput: true } })],
+  }))
+
+  expect(mdl).toContain('LimitOutput\t      "on"')
+  expect(mdl).not.toContain('UpperSaturationLimit')
+  expect(mdl).not.toContain('LowerSaturationLimit')
 })

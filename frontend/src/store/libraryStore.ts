@@ -101,6 +101,12 @@ export const useLibraryStore = create<LibraryState>()(
           }
         })
 
+        const previousTypes = new Set(existingLibrary?.blocks.map((block) => block.type) ?? [])
+        const acceptedBlocks = processedBlocks.filter(
+          (block) => !existingTypes.has(block.type) || previousTypes.has(block.type)
+        )
+        processedBlocks.splice(0, processedBlocks.length, ...acceptedBlocks)
+
         // Create the library object
         const library: Library = {
           id: libraryId,
@@ -110,7 +116,7 @@ export const useLibraryStore = create<LibraryState>()(
           sourcePath: libraryData.sourcePath,
           sourceFormat: libraryData.sourceFormat,
           importedAt,
-          blocks: processedBlocks,
+          blocks: acceptedBlocks,
         }
 
         // Remove existing library if replacing

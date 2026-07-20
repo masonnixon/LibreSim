@@ -239,8 +239,9 @@ function connectionToMDL(
   if (!sourceBlock || !targetBlock) return ''
 
   // Determine port numbers (1-indexed in Simulink)
-  const srcPortIndex = sourceBlock.outputPorts?.findIndex(p => p.id === connection.sourcePortId) ?? 0
-  const dstPortIndex = targetBlock.inputPorts?.findIndex(p => p.id === connection.targetPortId) ?? 0
+  const srcPortIndex = sourceBlock.outputPorts.findIndex(p => p.id === connection.sourcePortId)
+  const dstPortIndex = targetBlock.inputPorts.findIndex(p => p.id === connection.targetPortId)
+  if (srcPortIndex < 0 || dstPortIndex < 0) return ''
 
   const lines: string[] = [
     `${indent}Line {`,

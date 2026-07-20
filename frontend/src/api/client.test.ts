@@ -4,6 +4,8 @@ import axios from 'axios'
 import type { Model } from '../types/model'
 import type { SimulationConfig } from '../types/simulation'
 
+const branchCase = it
+
 // Mock axios
 vi.mock('axios', () => {
   const mockAxiosInstance = {
@@ -17,6 +19,49 @@ vi.mock('axios', () => {
       create: vi.fn(() => mockAxiosInstance),
     },
   }
+})
+
+branchCase('targets every session-specific simulation control', async function () {
+  vi.clearAllMocks()
+  const response = { data: { success: true } }
+  mockAxiosInstance.post.mockResolvedValue(response)
+  mockAxiosInstance.get.mockResolvedValue(response)
+  const target = { params: { sessionId: 'target-session' } }
+
+  await api.resetSimulation({ sessionId: 'target-session' })
+  await api.pauseSimulation({ sessionId: 'target-session' })
+  await api.resumeSimulation({ sessionId: 'target-session' })
+  await api.getSimulationResults({ sessionId: 'target-session' })
+  await api.stepBackward(2, { sessionId: 'target-session' })
+  await api.resetStepMode({ sessionId: 'target-session' })
+  await api.continueFromStepMode({ sessionId: 'target-session' })
+  await api.enterStepMode({ sessionId: 'target-session' })
+
+  expect(mockAxiosInstance.post).toHaveBeenCalledWith('/simulate/reset', undefined, target)
+  expect(mockAxiosInstance.post).toHaveBeenCalledWith('/simulate/pause', undefined, target)
+  expect(mockAxiosInstance.post).toHaveBeenCalledWith('/simulate/resume', undefined, target)
+  expect(mockAxiosInstance.get).toHaveBeenCalledWith('/simulate/results', target)
+  expect(mockAxiosInstance.post).toHaveBeenCalledWith(
+    '/simulate/step/backward',
+    { numSteps: 2 },
+    target,
+  )
+  expect(mockAxiosInstance.post).toHaveBeenCalledWith('/simulate/step/reset', undefined, target)
+  expect(mockAxiosInstance.post).toHaveBeenCalledWith('/simulate/step/continue', undefined, target)
+  expect(mockAxiosInstance.post).toHaveBeenCalledWith('/simulate/step/enter', undefined, target)
+})
+
+branchCase('preserves documentation responses through the configured transformers', async function () {
+  vi.clearAllMocks()
+  mockAxiosInstance.get.mockResolvedValue({ data: 'documentation' })
+
+  await api.getProjectReadme()
+  await api.getExamplesReadme()
+
+  const projectConfig = mockAxiosInstance.get.mock.calls[0][1]
+  const examplesConfig = mockAxiosInstance.get.mock.calls[1][1]
+  expect(projectConfig.transformResponse[0]('# project')).toBe('# project')
+  expect(examplesConfig.transformResponse[0]('# examples')).toBe('# examples')
 })
 
 // Get the mocked axios instance

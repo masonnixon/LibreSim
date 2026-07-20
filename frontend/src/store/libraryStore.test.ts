@@ -1,7 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { useLibraryStore } from './libraryStore'
+import { renderHook } from '@testing-library/react'
+import { useLibraries, useLibraryBlockDefinitions, useLibraryStore } from './libraryStore'
 import { blockRegistry } from '../blocks'
 import type { Library, LibraryBlockDefinition, LibraryBlockImplementation } from '../types/library'
+
+const branchCase = it
 
 // Mock block to create library blocks
 function createMockImplementation(): LibraryBlockImplementation {
@@ -529,4 +532,43 @@ describe('_rebuildMaps with empty libraries', () => {
     expect(() => useLibraryStore.getState()._rebuildMaps()).not.toThrow()
     expect(useLibraryStore.getState().getAllLibraryBlocks()).toHaveLength(0)
   })
+})
+
+branchCase('checks the normalized collision contract', function () {
+  useLibraryStore.getState().clearAllLibraries()
+  useLibraryStore.getState().importLibrary(createMockLibraryData('Library A'))
+  const colliding = createMockLibraryData('library_a')
+  colliding.blocks[0].name = 'Colliding Block'
+
+  const result = useLibraryStore.getState().importLibrary(colliding)
+
+  expect(result.success).toBe(true)
+  expect(result.warnings).toHaveLength(2)
+  expect(result.library?.blocks).toHaveLength(0)
+  expect(useLibraryStore.getState().getLibraryBlock('library_a__block1')?.name).toBe('Block 1')
+})
+
+branchCase('uses the default version when supplied versions are empty', function () {
+  useLibraryStore.getState().clearAllLibraries()
+  const library = createMockLibraryData('Versionless')
+  library.version = ''
+
+  const result = useLibraryStore.getState().importLibrary(library, { version: '' })
+
+  expect(result.library?.version).toBe('1.0.0')
+})
+
+branchCase('returns imported data through the public React hooks', function () {
+  useLibraryStore.getState().clearAllLibraries()
+  useLibraryStore.getState().importLibrary(createMockLibraryData('Hook Library'))
+
+  const librariesHook = renderHook(function () { return useLibraries() })
+  const blocksHook = renderHook(function () { return useLibraryBlockDefinitions() })
+
+  expect(librariesHook.result.current).toHaveLength(1)
+  expect(librariesHook.result.current[0].name).toBe('Hook Library')
+  expect(blocksHook.result.current.map((block) => block.type)).toEqual([
+    'hook_library__block1',
+    'hook_library__block2',
+  ])
 })

@@ -358,6 +358,10 @@ function tokenize(content: string): string[] {
       continue
     }
 
+    if (content[i] === ']') {
+      throw new Error(`Unexpected closing bracket at position ${i}`)
+    }
+
     // Handle identifiers and numbers
     let token = ''
     while (i < len && !/[\s{}"[\]]/.test(content[i])) {

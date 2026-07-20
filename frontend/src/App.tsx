@@ -13,23 +13,22 @@ import { useUIStore } from './store/uiStore'
 import '@xyflow/react/dist/style.css'
 
 function App() {
-  const { showProperties, sidebarCollapsed, toggleSidebar } = useUIStore()
-  const [isMobile, setIsMobile] = useState(false)
+  const { showProperties } = useUIStore()
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
 
   // Check for mobile screen size and auto-collapse panels
   useEffect(() => {
     const checkMobile = () => {
       const mobile = window.innerWidth < 768
       setIsMobile(mobile)
-      // Auto-collapse sidebar on mobile on first load
-      if (mobile && !sidebarCollapsed) {
-        toggleSidebar()
+      // Keep the sidebar collapsed while the viewport is mobile.
+      if (mobile && !useUIStore.getState().sidebarCollapsed) {
+        useUIStore.setState({ sidebarCollapsed: true })
       }
     }
     checkMobile()
     window.addEventListener('resize', checkMobile)
     return () => window.removeEventListener('resize', checkMobile)
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- Intentionally run only on mount; we use initial values of sidebarCollapsed/toggleSidebar
   }, [])
 
   return (
