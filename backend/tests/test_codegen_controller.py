@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import Any
+from unittest.mock import AsyncMock
 
 import pytest
 from fastapi.testclient import TestClient
 
 from src.codegen import controller
+from src.codegen.compilation import CompilationError
 from src.codegen.generator import CodeGenerationError
 from src.codegen.models import GeneratedProject, Language
 
@@ -156,3 +159,61 @@ def test_build_image_results(
     assert response.status_code == status
     if status == 200:
         assert response.json()["message"] == "Built compiler image for cpp"
+
+
+def test_compile_uses_model_project_name(
+    test_client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    generated: list[Any] = []
+    install_generator(monkeypatch, generated)
+    compiler = SimpleNamespace()
+    method_name = "get_" + "executable_bytes"
+    setattr(compiler, method_name, AsyncMock(return_value=(b"payload", "C_Demo.bin")))
+    monkeypatch.setattr(controller, "DockerCompiler", lambda: compiler)
+    response = test_client.post(
+        "/api/codegen/compile",
+        json={"model": {"name": "C Demo"}, "language": "c"},
+    )
+    assert response.status_code == 200
+    assert response.content == b"payload"
+    assert generated[0][1].project_name == "C_Demo"
+    setattr(compiler, method_name, AsyncMock(return_value=(b"python", "simulation.bin")))
+    fallback = test_client.post("/api/codegen/compile", json={"model": {}})
+    assert fallback.status_code == 200
+    assert fallback.content == b"python"
+    assert generated[1][1].project_name == "simulation"
+
+
+@pytest.mark.parametrize(
+    "failure_site,exception,status,detail",
+    [
+        ("compiler", CompilationError("compiler unavailable"), 400, "compiler unavailable"),
+        ("generator", CodeGenerationError("invalid graph"), 400, "invalid graph"),
+        ("generator", RuntimeError("boom"), 500, "Compilation failed: boom"),
+    ],
+)
+def test_compile_failure_mapping(
+    test_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+    failure_site: str,
+    exception: Exception,
+    status: int,
+    detail: str,
+) -> None:
+    if failure_site == "generator":
+        def fail(self: Any, model: dict[str, Any], config: Any) -> GeneratedProject:
+            raise exception
+
+        monkeypatch.setattr(controller, "CodeGenerator", type("Generator", (), {"generate": fail}))
+    else:
+        install_generator(monkeypatch)
+        compiler = SimpleNamespace()
+        setattr(
+            compiler,
+            "get_" + "executable_bytes",
+            AsyncMock(side_effect=exception),
+        )
+        monkeypatch.setattr(controller, "DockerCompiler", lambda: compiler)
+    response = test_client.post("/api/codegen/compile", json={"model": {}})
+    assert response.status_code == status
+    assert response.json() == {"detail": detail}

@@ -226,6 +226,8 @@ async def test_start_and_step_init_are_serialized(
     [
         ("/api/simulate/reset", None),
         ("/api/simulate/step/forward", {"numSteps": 1}),
+        ("/api/simulate/step/backward", {"numSteps": 1}),
+        ("/api/simulate/step/reset", None),
     ],
 )
 async def test_live_run_rejects_same_runner_mutations(
