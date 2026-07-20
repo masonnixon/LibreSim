@@ -1,8 +1,9 @@
-import { useMemo, useState, useRef, useEffect, useCallback } from 'react'
+import { useMemo, useRef, useCallback } from 'react'
 import Plot from 'react-plotly.js'
 import type { PlotRelayoutEvent } from 'plotly.js'
 import { useUIStore, PlotWindowState } from '../../store/uiStore'
 import type { SignalData } from '../../types/simulation'
+import { useDraggableWindow, type ResizeDirection } from '../../hooks/useDraggableWindow'
 
 interface CameraState {
   eye?: { x: number; y: number; z: number }
@@ -18,6 +19,8 @@ interface Scope3DWindowProps {
   zIndex: number
   onFocus: () => void
 }
+
+const SCOPE_3D_MIN_SIZE = { width: 450, height: 400 }
 
 export function Scope3DWindow({
   blockId,
@@ -49,135 +52,25 @@ export function Scope3DWindow({
 
   const { position, size, isMinimized } = windowState
 
-  // Drag state
-  const [isDragging, setIsDragging] = useState(false)
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
-
-  // Resize state
-  const [isResizing, setIsResizing] = useState(false)
-  const [resizeDirection, setResizeDirection] = useState<string | null>(null)
-  const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0, posX: 0, posY: 0 })
-
   const modalRef = useRef<HTMLDivElement>(null)
-
-  // Minimum dimensions - larger for 3D plots
-  const MIN_WIDTH = 450
-  const MIN_HEIGHT = 400
-
-  // Drag handlers
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('button')) return
-    onFocus()
-    setIsDragging(true)
-    setDragOffset({
-      x: e.clientX - position.x,
-      y: e.clientY - position.y,
-    })
-  }
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if ((e.target as HTMLElement).closest('button')) return
-    onFocus()
-    const touch = e.touches[0]
-    setIsDragging(true)
-    setDragOffset({
-      x: touch.clientX - position.x,
-      y: touch.clientY - position.y,
-    })
-  }
-
-  // Resize handlers
-  const handleResizeStart = useCallback((e: React.MouseEvent | React.TouchEvent, direction: string) => {
-    e.preventDefault()
-    e.stopPropagation()
-    onFocus()
-    setIsResizing(true)
-    setResizeDirection(direction)
-
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
-
-    setResizeStart({
-      x: clientX,
-      y: clientY,
-      width: size.width,
-      height: size.height,
-      posX: position.x,
-      posY: position.y,
-    })
-  }, [onFocus, size, position])
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (isDragging) {
-        const newX = Math.max(0, Math.min(window.innerWidth - 100, e.clientX - dragOffset.x))
-        const newY = Math.max(50, Math.min(window.innerHeight - 50, e.clientY - dragOffset.y))
-        updatePlotWindowPosition(blockId, { x: newX, y: newY })
-      }
-
-      if (isResizing && resizeDirection) {
-        const deltaX = e.clientX - resizeStart.x
-        const deltaY = e.clientY - resizeStart.y
-        let newWidth = resizeStart.width
-        let newHeight = resizeStart.height
-        let newX = resizeStart.posX
-        let newY = resizeStart.posY
-
-        if (resizeDirection.includes('e')) {
-          newWidth = Math.max(MIN_WIDTH, resizeStart.width + deltaX)
-        }
-        if (resizeDirection.includes('w')) {
-          const possibleWidth = resizeStart.width - deltaX
-          if (possibleWidth >= MIN_WIDTH) {
-            newWidth = possibleWidth
-            newX = resizeStart.posX + deltaX
-          }
-        }
-        if (resizeDirection.includes('s')) {
-          newHeight = Math.max(MIN_HEIGHT, resizeStart.height + deltaY)
-        }
-        if (resizeDirection.includes('n')) {
-          const possibleHeight = resizeStart.height - deltaY
-          if (possibleHeight >= MIN_HEIGHT) {
-            newHeight = possibleHeight
-            newY = resizeStart.posY + deltaY
-          }
-        }
-
-        updatePlotWindowSize(blockId, { width: newWidth, height: newHeight })
-        updatePlotWindowPosition(blockId, { x: newX, y: newY })
-      }
-    }
-
-    const handleTouchMove = (e: TouchEvent) => {
-      const touch = e.touches[0]
-      if (isDragging) {
-        const newX = Math.max(0, Math.min(window.innerWidth - 100, touch.clientX - dragOffset.x))
-        const newY = Math.max(50, Math.min(window.innerHeight - 50, touch.clientY - dragOffset.y))
-        updatePlotWindowPosition(blockId, { x: newX, y: newY })
-      }
-    }
-
-    const handleEnd = () => {
-      setIsDragging(false)
-      setIsResizing(false)
-      setResizeDirection(null)
-    }
-
-    if (isDragging || isResizing) {
-      window.addEventListener('mousemove', handleMouseMove)
-      window.addEventListener('mouseup', handleEnd)
-      window.addEventListener('touchmove', handleTouchMove)
-      window.addEventListener('touchend', handleEnd)
-    }
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove)
-      window.removeEventListener('mouseup', handleEnd)
-      window.removeEventListener('touchmove', handleTouchMove)
-      window.removeEventListener('touchend', handleEnd)
-    }
-  }, [isDragging, isResizing, dragOffset, resizeDirection, resizeStart, blockId, updatePlotWindowPosition, updatePlotWindowSize])
+  const handlePositionChange = useCallback(function (nextPosition: { x: number; y: number }) {
+    updatePlotWindowPosition(blockId, nextPosition)
+  }, [blockId, updatePlotWindowPosition])
+  const handleSizeChange = useCallback(function (nextSize: { width: number; height: number }) {
+    updatePlotWindowSize(blockId, nextSize)
+  }, [blockId, updatePlotWindowSize])
+  const {
+    isDragging,
+    dragHandleProps,
+    getResizeHandleProps,
+  } = useDraggableWindow({
+    position,
+    size,
+    minSize: SCOPE_3D_MIN_SIZE,
+    onFocus,
+    onPositionChange: handlePositionChange,
+    onSizeChange: handleSizeChange,
+  })
 
   // Build 3D plot data
   const plotData = useMemo(() => {
@@ -243,11 +136,10 @@ export function Scope3DWindow({
   }, [])
 
   // Resize handle component
-  const ResizeHandle = ({ direction, className }: { direction: string; className: string }) => (
+  const ResizeHandle = ({ direction, className }: { direction: ResizeDirection; className: string }) => (
     <div
       className={`absolute ${className} opacity-0 hover:opacity-100 transition-opacity`}
-      onMouseDown={(e) => handleResizeStart(e, direction)}
-      onTouchStart={(e) => handleResizeStart(e, direction)}
+      {...getResizeHandleProps(direction)}
       style={{ touchAction: 'none' }}
     />
   )
@@ -269,8 +161,7 @@ export function Scope3DWindow({
       {/* Header - Draggable */}
       <div
         className="flex items-center justify-between px-3 py-2 border-b border-editor-border bg-slate-800/80 cursor-grab active:cursor-grabbing select-none shrink-0"
-        onMouseDown={handleMouseDown}
-        onTouchStart={handleTouchStart}
+        {...dragHandleProps}
       >
         <div className="flex items-center gap-2 min-w-0">
           {/* Drag handle indicator */}
