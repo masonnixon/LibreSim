@@ -27,9 +27,7 @@ function BlockNodeComponent({ data, selected }: NodeProps<BlockNode>) {
 
   const handleResizeEnd = useCallback(
     (_event: unknown, params: { width: number; height: number }) => {
-      if (block) {
-        updateBlockSize(block.id, { width: params.width, height: params.height })
-      }
+      updateBlockSize(block.id, { width: params.width, height: params.height })
     },
     [block, updateBlockSize]
   )
@@ -98,6 +96,14 @@ function BlockNodeComponent({ data, selected }: NodeProps<BlockNode>) {
         return 'bg-violet-600 border-violet-400 border-2'
       case 'aerospace':
         return 'bg-sky-600 border-sky-400 border-2'
+      case 'dsp':
+        return 'bg-fuchsia-600 border-fuchsia-400 border-2'
+      case 'rf':
+        return 'bg-red-600 border-red-400 border-2'
+      case 'navigation':
+        return 'bg-blue-600 border-blue-400 border-2'
+      case 'sensor_fusion':
+        return 'bg-yellow-600 border-yellow-400 border-2'
       default:
         return 'bg-gray-600 border-gray-500'
     }
@@ -260,8 +266,8 @@ function arePropsEqual(
   if (JSON.stringify(prevBlock.parameters) !== JSON.stringify(nextBlock.parameters)) return false
 
   // Check ports
-  if (prevBlock.inputPorts.length !== nextBlock.inputPorts.length) return false
-  if (prevBlock.outputPorts.length !== nextBlock.outputPorts.length) return false
+  if (JSON.stringify(prevBlock.inputPorts) !== JSON.stringify(nextBlock.inputPorts)) return false
+  if (JSON.stringify(prevBlock.outputPorts) !== JSON.stringify(nextBlock.outputPorts)) return false
 
   return true
 }

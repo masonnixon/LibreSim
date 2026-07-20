@@ -293,6 +293,16 @@ describe('BlockNode', () => {
 
       expect(screen.getByText('K')).toBeInTheDocument()
     })
+    it('uses definition icons when operator parameters are missing', () => {
+      for (const type of ['compare_to_zero', 'compare_to_constant', 'relational_operator', 'logical_operator']) {
+        const block = createMockBlock({ type, parameters: {} })
+        const definition = createMockDefinition({ type, category: 'logic', icon: 'fallback' })
+        const view = renderBlockNode(block, definition)
+        expect(screen.getByText('fallback')).toBeInTheDocument()
+        view.unmount()
+      }
+    })
+
   })
 
   describe('category styling', () => {
@@ -313,6 +323,10 @@ describe('BlockNode', () => {
       { category: 'matrix_ops', expectedClass: 'bg-emerald-600' },
       { category: 'control_design', expectedClass: 'bg-violet-600' },
       { category: 'aerospace', expectedClass: 'bg-sky-600' },
+      { category: 'dsp', expectedClass: 'bg-fuchsia-600' },
+      { category: 'rf', expectedClass: 'bg-red-600' },
+      { category: 'navigation', expectedClass: 'bg-blue-600' },
+      { category: 'sensor_fusion', expectedClass: 'bg-yellow-600' },
     ]
 
     testCases.forEach(({ category, expectedClass }) => {
