@@ -213,12 +213,10 @@ class IIRFilter(Block):
         # Apply IIR filter: y = sum(b*x) - sum(a*y) for a indices >= 1
         y = 0.0
         for i, b in enumerate(self.numerator):
-            if i < len(self.x_buffer):
-                y += b * self.x_buffer[i]
+            y += b * self.x_buffer[i]
 
         for i in range(1, len(self.denominator)):
-            if i <= len(self.y_buffer):
-                y -= self.denominator[i] * self.y_buffer[i - 1]
+            y -= self.denominator[i] * self.y_buffer[i - 1]
 
         self.output = y
         self.y_buffer = [y] + self.y_buffer[:-1]
@@ -472,12 +470,10 @@ class WindowFunction(Block):
                 # Simplified Kaiser window (uses approximation for Bessel function)
                 alpha = (N - 1) / 2
                 ratio = (n - alpha) / alpha
-                if abs(ratio) <= 1:
-                    w = self._bessel_i0(self.beta * math.sqrt(1 - ratio * ratio)) / self._bessel_i0(
-                        self.beta
-                    )
-                else:
-                    w = 0.0
+                # n is in [0, N - 1], so ratio is always in [-1, 1].
+                w = self._bessel_i0(self.beta * math.sqrt(1 - ratio * ratio)) / self._bessel_i0(
+                    self.beta
+                )
             else:
                 w = 1.0  # Default to rectangular
 
