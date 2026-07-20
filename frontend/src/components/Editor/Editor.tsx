@@ -26,6 +26,7 @@ import { CustomEdge } from './CustomEdge'
 import { blockRegistry } from '../../blocks'
 import { getIsPropertiesFocused } from '../Properties/PropertiesPanel'
 import { findNearestEdge, generateSmartWaypoints } from '../../utils/smartRouting'
+import { getDownstreamConnectionIds, getSourceBranchConnectionIds } from '../../utils/signalTraversal'
 import type { BlockDefinition, BlockInstance, Connection as ConnectionType } from '../../types/block'
 
 /**
@@ -955,12 +956,7 @@ export function Editor() {
     const conn = currentConnections.find(c => c.id === signalContextMenu.connectionId)
     if (!conn) return
 
-    // Find all connections that share this source (including this one)
-    const sourceBranchIds = currentConnections
-      .filter(c => c.sourceBlockId === conn.sourceBlockId && c.sourcePortId === conn.sourcePortId)
-      .map(c => c.id)
-
-    setHighlightedConnections(new Set(sourceBranchIds))
+    setHighlightedConnections(getSourceBranchConnectionIds(conn, currentConnections))
     setSignalContextMenu(null)
   }, [signalContextMenu, currentConnections])
 
@@ -969,25 +965,7 @@ export function Editor() {
     const conn = currentConnections.find(c => c.id === signalContextMenu.connectionId)
     if (!conn) return
 
-    // Find all connections downstream from this target block
-    const visited = new Set<string>()
-    const toVisit = [conn.targetBlockId]
-    const highlightIds = new Set<string>([conn.id])
-
-    while (toVisit.length > 0) {
-      const blockId = toVisit.shift()!
-      if (visited.has(blockId)) continue
-      visited.add(blockId)
-
-      // Find all connections from this block's outputs
-      const outgoing = currentConnections.filter(c => c.sourceBlockId === blockId)
-      outgoing.forEach(c => {
-        highlightIds.add(c.id)
-        toVisit.push(c.targetBlockId)
-      })
-    }
-
-    setHighlightedConnections(highlightIds)
+    setHighlightedConnections(getDownstreamConnectionIds(conn, currentConnections))
     setSignalContextMenu(null)
   }, [signalContextMenu, currentConnections])
 
@@ -1131,10 +1109,7 @@ export function Editor() {
           e.preventDefault()
           const conn = currentConnections.find(c => c.id === selectedEdgeId)
           if (conn) {
-            const sourceBranchIds = currentConnections
-              .filter(c => c.sourceBlockId === conn.sourceBlockId && c.sourcePortId === conn.sourcePortId)
-              .map(c => c.id)
-            setHighlightedConnections(new Set(sourceBranchIds))
+            setHighlightedConnections(getSourceBranchConnectionIds(conn, currentConnections))
           }
         }
         // Ctrl+Shift+D - Highlight to Destination
@@ -1142,20 +1117,7 @@ export function Editor() {
           e.preventDefault()
           const conn = currentConnections.find(c => c.id === selectedEdgeId)
           if (conn) {
-            const visited = new Set<string>()
-            const toVisit = [conn.targetBlockId]
-            const highlightIds = new Set<string>([conn.id])
-            while (toVisit.length > 0) {
-              const blockId = toVisit.shift()!
-              if (visited.has(blockId)) continue
-              visited.add(blockId)
-              const outgoing = currentConnections.filter(c => c.sourceBlockId === blockId)
-              outgoing.forEach(c => {
-                highlightIds.add(c.id)
-                toVisit.push(c.targetBlockId)
-              })
-            }
-            setHighlightedConnections(highlightIds)
+            setHighlightedConnections(getDownstreamConnectionIds(conn, currentConnections))
           }
         }
         // Ctrl+Shift+H - Remove Highlighting
