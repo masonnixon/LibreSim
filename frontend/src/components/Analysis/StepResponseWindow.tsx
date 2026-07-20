@@ -1,7 +1,8 @@
-import { useMemo, useState, useRef, useEffect, useCallback } from 'react'
+import { useMemo, useRef, useCallback } from 'react'
 import Plot from 'react-plotly.js'
 import { useUIStore, PlotWindowState } from '../../store/uiStore'
 import type { AnalysisData } from '../../types/simulation'
+import { useDraggableWindow, type ResizeDirection } from '../../hooks/useDraggableWindow'
 
 interface StepResponseWindowProps {
   blockId: string
@@ -11,6 +12,8 @@ interface StepResponseWindowProps {
   zIndex: number
   onFocus: () => void
 }
+
+const STEP_RESPONSE_MIN_SIZE = { width: 400, height: 350 }
 
 export function StepResponseWindow({
   blockId,
@@ -29,116 +32,22 @@ export function StepResponseWindow({
 
   const { position, size, isMinimized } = windowState
 
-  const [isDragging, setIsDragging] = useState(false)
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
-  const [isResizing, setIsResizing] = useState(false)
-  const [resizeDirection, setResizeDirection] = useState<string | null>(null)
-  const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0, posX: 0, posY: 0 })
-
   const modalRef = useRef<HTMLDivElement>(null)
+  const handlePositionChange = useCallback(function (nextPosition: { x: number; y: number }) {
+    updatePlotWindowPosition(blockId, nextPosition)
+  }, [blockId, updatePlotWindowPosition])
+  const handleSizeChange = useCallback(function (nextSize: { width: number; height: number }) {
+    updatePlotWindowSize(blockId, nextSize)
+  }, [blockId, updatePlotWindowSize])
+  const { isDragging, dragHandleProps, getResizeHandleProps } = useDraggableWindow({
+    position,
+    size,
+    minSize: STEP_RESPONSE_MIN_SIZE,
+    onFocus,
+    onPositionChange: handlePositionChange,
+    onSizeChange: handleSizeChange,
+  })
 
-  const MIN_WIDTH = 400
-  const MIN_HEIGHT = 350
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('button')) return
-    onFocus()
-    setIsDragging(true)
-    setDragOffset({
-      x: e.clientX - position.x,
-      y: e.clientY - position.y,
-    })
-  }
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if ((e.target as HTMLElement).closest('button')) return
-    onFocus()
-    const touch = e.touches[0]
-    setIsDragging(true)
-    setDragOffset({
-      x: touch.clientX - position.x,
-      y: touch.clientY - position.y,
-    })
-  }
-
-  const handleResizeStart = useCallback((e: React.MouseEvent | React.TouchEvent, direction: string) => {
-    e.preventDefault()
-    e.stopPropagation()
-    onFocus()
-    setIsResizing(true)
-    setResizeDirection(direction)
-
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
-
-    setResizeStart({
-      x: clientX,
-      y: clientY,
-      width: size.width,
-      height: size.height,
-      posX: position.x,
-      posY: position.y,
-    })
-  }, [onFocus, size, position])
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (isDragging) {
-        const newX = Math.max(0, Math.min(window.innerWidth - 100, e.clientX - dragOffset.x))
-        const newY = Math.max(50, Math.min(window.innerHeight - 50, e.clientY - dragOffset.y))
-        updatePlotWindowPosition(blockId, { x: newX, y: newY })
-      }
-
-      if (isResizing && resizeDirection) {
-        const deltaX = e.clientX - resizeStart.x
-        const deltaY = e.clientY - resizeStart.y
-        let newWidth = resizeStart.width
-        let newHeight = resizeStart.height
-        let newX = resizeStart.posX
-        let newY = resizeStart.posY
-
-        if (resizeDirection.includes('e')) {
-          newWidth = Math.max(MIN_WIDTH, resizeStart.width + deltaX)
-        }
-        if (resizeDirection.includes('w')) {
-          const possibleWidth = resizeStart.width - deltaX
-          if (possibleWidth >= MIN_WIDTH) {
-            newWidth = possibleWidth
-            newX = resizeStart.posX + deltaX
-          }
-        }
-        if (resizeDirection.includes('s')) {
-          newHeight = Math.max(MIN_HEIGHT, resizeStart.height + deltaY)
-        }
-        if (resizeDirection.includes('n')) {
-          const possibleHeight = resizeStart.height - deltaY
-          if (possibleHeight >= MIN_HEIGHT) {
-            newHeight = possibleHeight
-            newY = resizeStart.posY + deltaY
-          }
-        }
-
-        updatePlotWindowSize(blockId, { width: newWidth, height: newHeight })
-        updatePlotWindowPosition(blockId, { x: newX, y: newY })
-      }
-    }
-
-    const handleEnd = () => {
-      setIsDragging(false)
-      setIsResizing(false)
-      setResizeDirection(null)
-    }
-
-    if (isDragging || isResizing) {
-      window.addEventListener('mousemove', handleMouseMove)
-      window.addEventListener('mouseup', handleEnd)
-    }
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove)
-      window.removeEventListener('mouseup', handleEnd)
-    }
-  }, [isDragging, isResizing, dragOffset, resizeDirection, resizeStart, blockId, updatePlotWindowPosition, updatePlotWindowSize])
 
   const plotData = useMemo(() => {
     if (!data.times || !data.response) return []
@@ -187,10 +96,10 @@ export function StepResponseWindow({
     return traces
   }, [data])
 
-  const ResizeHandle = ({ direction, className }: { direction: string; className: string }) => (
+  const ResizeHandle = ({ direction, className }: { direction: ResizeDirection; className: string }) => (
     <div
       className={`absolute ${className} opacity-0 hover:opacity-100 transition-opacity`}
-      onMouseDown={(e) => handleResizeStart(e, direction)}
+      {...getResizeHandleProps(direction)}
       style={{ touchAction: 'none' }}
     />
   )
@@ -217,8 +126,7 @@ export function StepResponseWindow({
       {/* Header */}
       <div
         className="flex items-center justify-between px-3 py-2 border-b border-editor-border bg-slate-800/80 cursor-grab active:cursor-grabbing select-none shrink-0"
-        onMouseDown={handleMouseDown}
-        onTouchStart={handleTouchStart}
+        {...dragHandleProps}
       >
         <div className="flex items-center gap-2 min-w-0">
           <svg className="w-4 h-4 text-gray-500 shrink-0" fill="currentColor" viewBox="0 0 24 24">
