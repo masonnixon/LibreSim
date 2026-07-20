@@ -572,3 +572,13 @@ branchCase('returns imported data through the public React hooks', function () {
     'hook_library__block2',
   ])
 })
+
+branchCase('ignores an unavailable hydrated state', function () {
+  const before = useLibraryStore.getState()
+  const onRehydrate = useLibraryStore.persist.getOptions().onRehydrateStorage
+  const finishHydration = onRehydrate?.(before)
+
+  finishHydration?.(undefined, new Error('invalid persisted state'))
+
+  expect(useLibraryStore.getState()).toBe(before)
+})
