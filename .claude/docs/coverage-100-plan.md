@@ -356,12 +356,12 @@ files verified mirrored, `docs/refs/testing.md` coverage tables updated to final
 | B1 | complete | this commit | B: 85.82% combined (89.10% lines / 74.47% branches) | 2,185 passed; external MDL fixture has a documented `skipif` |
 | B2 | complete | `3b77036`, this commit | B: 87.18% combined; all B2 targets 100% line/branch | 2,270 passed; invalid language/method preserve HTTP 400 |
 | B3 | complete | this commit | B: 86.33% combined; `docker_compiler.py` 100% line/branch | 2,212 passed; fixed persistent-artifact and default-path regressions |
-| B4 | not started (FAC-9 prerequisite complete) | | | |
+| B4 | in progress | `cbf0713` | B: 87.36% combined; `compiler.py` and `osk/sim.py` 100% | 2,283 passed, 1 documented skip; runner/adapter matrices remain |
 | B5.1–B5.8 | not started | | | |
 | B6 | not started | | | |
 | B7 | not started | | | |
 | F1 | complete | this commit | F: 40.34% stmts / 35.64% branches / 44.41% funcs / 39.00% lines | 664 passed; both CI pipelines use coverage command |
-| F2 | not started | | | |
+| F2 | in progress | `00d2f3b` | F: 45.37% stmts / 38.45% branches / 49.32% funcs / 44.27% lines | 682 passed; App/client/examples/exporter/simulationStore 100%; importer/modelStore remain |
 | F3 | not started | | | |
 | F4 | not started | | | |
 | F5 | not started (maintainer descope decision point) | | | |
