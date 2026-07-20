@@ -363,6 +363,6 @@ files verified mirrored, `docs/refs/testing.md` coverage tables updated to final
 | F1 | complete | this commit | F: 40.34% stmts / 35.64% branches / 44.41% funcs / 39.00% lines | 664 passed; both CI pipelines use coverage command |
 | F2 | complete | `00d2f3b`, `d73ad04`, this commit | F: 51.92% stmts / 51.22% branches / 53.40% funcs / 50.38% lines | 724 passed, 0 failed; modelStore, libraryStore, mdlImporter, mdlExporter, simulationStore, api/client, data/examples, and App at 100% |
 | F3 | complete | `06aa4f0`, `6ff3af8`, `2bfff43`, `3c4175c`, `3114ad0`, `97ef57a`, `4301ddb`, `abe3835`, `4bfea0d`, `355a93c`, this commit | F: 71.00% stmts / 66.82% branches / 63.52% funcs / 70.51% lines | 819 passed, 0 failed; Editor, CustomEdge, and Toolbar extractions complete; shared mouse/touch drag-resize and simulation-control hooks are 100% covered |
-| F4 | not started | | | |
+| F4 | complete | `d00145c`, `438228a`, `4bfa6d7`, `33dedf2`, `dc8eee4`, `b205e33`, `924af9e`, `1eda4ad`, this commit | F: 79.61% stmts / 77.11% branches / 77.18% funcs / 79.31% lines | 886 passed, 0 failed; all nine F4 targets at 100%; fixed failed-export naming, documentation retry loops, node category styling, and memoization regressions |
 | F5 | not started (maintainer descope decision point) | | | |
 | F6 | not started | | | |
