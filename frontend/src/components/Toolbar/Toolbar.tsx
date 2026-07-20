@@ -1,6 +1,5 @@
-import { useRef, useCallback, ChangeEvent, useState, useEffect } from 'react'
+import { useRef, ChangeEvent, useState, useEffect } from 'react'
 import { useModelStore } from '../../store/modelStore'
-import { useSimulationStore } from '../../store/simulationStore'
 import { useUIStore } from '../../store/uiStore'
 import { useLibraryStore } from '../../store/libraryStore'
 import { api } from '../../api/client'
@@ -14,23 +13,12 @@ import { importMDL, isMDLFile, importMDLAsLibrary } from '../../utils/mdlImporte
 import { blockRegistry } from '../../blocks'
 import type { Model } from '../../types/model'
 import { findAllScopeBlockIds } from '../../utils/toolbarUtils'
+import { useSimulationControls } from '../../hooks/useSimulationControls'
 
 const STORAGE_KEY = 'libresim_last_model'
 
 export function Toolbar() {
   const { model, isDirty, createNewModel, saveModel, loadModel, undo, redo, canUndo, canRedo } = useModelStore()
-  const {
-    state: simState,
-    setStatus,
-    setProgress,
-    setResults,
-    setError,
-    clearResults,
-    stepModeActive,
-    stepHistorySize,
-    setStepModeActive,
-    setStepHistorySize,
-  } = useSimulationStore()
   const {
     toggleProperties,
     showProperties,
@@ -51,7 +39,6 @@ export function Toolbar() {
   } = useUIStore()
   const importLibrary = useLibraryStore((state) => state.importLibrary)
 
-  const pollingRef = useRef<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const importInputRef = useRef<HTMLInputElement>(null)
   const libraryInputRef = useRef<HTMLInputElement>(null)
@@ -59,6 +46,25 @@ export function Toolbar() {
   const [showImportMenu, setShowImportMenu] = useState(false)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  const {
+    simState,
+    clearResults,
+    stepModeActive,
+    stepHistorySize,
+    isRunning,
+    isPaused,
+    isCompleted,
+    handleRun,
+    handleStop,
+    handleReset,
+    handlePause,
+    handleResume,
+    handleStepForward,
+    handleStepBackward,
+  } = useSimulationControls({
+    model,
+    onInteractionEnd: function () { setShowMobileMenu(false) },
+  })
 
   // Check for mobile screen size
   useEffect(() => {
@@ -108,12 +114,6 @@ export function Toolbar() {
     return () => document.removeEventListener('click', handleClickOutside)
   }, [])
 
-  const stopPolling = useCallback(() => {
-    if (pollingRef.current) {
-      clearInterval(pollingRef.current)
-      pollingRef.current = null
-    }
-  }, [])
 
   const handleNew = () => {
     const name = prompt('Enter model name:', 'Untitled')
@@ -406,296 +406,6 @@ export function Toolbar() {
     }
   }
 
-  const handleRun = async () => {
-    if (!model) return
-
-    try {
-      clearResults()
-      setStatus('running')
-
-      await api.startSimulation(model, model.simulationConfig)
-
-      pollingRef.current = window.setInterval(async () => {
-        try {
-          const status = await api.getSimulationStatus()
-          setProgress(status.currentTime || 0, status.progress || 0)
-
-          if (status.status === 'completed') {
-            stopPolling()
-            setStatus('completed')
-            const results = await api.getSimulationResults()
-            // DEBUG: Log raw results from API
-            console.log('[Toolbar] Raw simulation results from API:', JSON.stringify({
-              signalsCount: results.signals?.length,
-              statistics: results.statistics,
-              signals: results.signals?.map(s => ({
-                blockId: s.blockId,
-                name: s.name,
-                numInputs: s.numInputs,
-                inputNames: s.inputNames,
-                timesLength: s.times?.length,
-                valuesType: Array.isArray(s.values) ? (Array.isArray(s.values[0]) ? 'number[][]' : 'number[]') : typeof s.values,
-                sampleValues: Array.isArray(s.values) ?
-                  (Array.isArray(s.values[0]) ?
-                    (s.values as number[][]).map(arr => arr?.slice(0, 3)) :
-                    (s.values as number[]).slice(0, 5)) :
-                  s.values
-              }))
-            }, null, 2))
-            setResults(results)
-          } else if (status.status === 'error') {
-            stopPolling()
-            const errorMsg = status.error || 'Simulation failed'
-            setError(errorMsg)
-            toast.warning('Simulation Error', errorMsg)
-          } else if (status.status === 'idle') {
-            stopPolling()
-            setStatus('idle')
-          }
-        } catch (err) {
-          console.error('Failed to get simulation status:', err)
-        }
-      }, 100)
-    } catch (error: unknown) {
-      console.error('Failed to start simulation:', error)
-      let errorMessage = 'Failed to start simulation'
-      if (error && typeof error === 'object') {
-        const axiosError = error as { response?: { data?: { detail?: string } }; message?: string }
-        if (axiosError.response?.data?.detail) {
-          errorMessage = axiosError.response.data.detail
-        } else if (axiosError.message) {
-          errorMessage = axiosError.message
-        }
-      }
-      setError(errorMessage)
-    }
-    setShowMobileMenu(false)
-  }
-
-  const handleStop = async () => {
-    try {
-      stopPolling()
-      await api.stopSimulation()
-      setStatus('idle')
-      setStepModeActive(false)
-    } catch (error) {
-      console.error('Failed to stop simulation:', error)
-    }
-    setShowMobileMenu(false)
-  }
-
-  const handleReset = async () => {
-    try {
-      stopPolling()
-      const result = await api.resetSimulation()
-      if (result.success) {
-        clearResults()
-        setStatus('idle')
-        setStepModeActive(false)
-        setStepHistorySize(0)
-        setProgress(0, 0)
-        toast.info('Reset', 'Simulation reset to initial state')
-      }
-    } catch (error) {
-      console.error('Failed to reset simulation:', error)
-      // If there's no runner yet (never ran), just clear the UI state
-      clearResults()
-      setStatus('idle')
-      setStepModeActive(false)
-      setStepHistorySize(0)
-      setProgress(0, 0)
-    }
-    setShowMobileMenu(false)
-  }
-
-  const handlePause = async () => {
-    try {
-      await api.pauseSimulation()
-      setStatus('paused')
-
-      // Fetch results to show data up to paused point in scope windows
-      try {
-        const results = await api.getSimulationResults()
-        setResults(results)
-      } catch (resultsError) {
-        console.error('Failed to fetch paused results:', resultsError)
-      }
-    } catch (error) {
-      console.error('Failed to pause simulation:', error)
-    }
-    setShowMobileMenu(false)
-  }
-
-  const handleResume = async () => {
-    if (stepModeActive) {
-      // Resume from step mode - continue running the simulation
-      try {
-        // Call the backend to continue from step mode
-        await api.continueFromStepMode()
-
-        setStepModeActive(false)
-        setStatus('running')
-
-        // Start polling for status
-        pollingRef.current = window.setInterval(async () => {
-          try {
-            const status = await api.getSimulationStatus()
-            setProgress(status.currentTime || 0, status.progress || 0)
-
-            if (status.status === 'completed') {
-              stopPolling()
-              setStatus('completed')
-              const results = await api.getSimulationResults()
-              setResults(results)
-            } else if (status.status === 'error') {
-              stopPolling()
-              const errorMsg = status.error || 'Simulation failed'
-              setError(errorMsg)
-              toast.warning('Simulation Error', errorMsg)
-            } else if (status.status === 'idle') {
-              stopPolling()
-              setStatus('idle')
-            }
-          } catch (err) {
-            console.error('Failed to get simulation status:', err)
-          }
-        }, 100)
-      } catch (error) {
-        console.error('Failed to resume from step mode:', error)
-        setStepModeActive(true)
-        setStatus('paused')
-      }
-    } else {
-      // Resume from paused state (normal pause)
-      try {
-        await api.resumeSimulation()
-        setStatus('running')
-      } catch (error) {
-        console.error('Failed to resume simulation:', error)
-      }
-    }
-    setShowMobileMenu(false)
-  }
-
-  // Step mode handlers
-  const handleInitStepMode = async () => {
-    if (!model) return
-
-    try {
-      clearResults()
-      setStatus('compiling')
-      const result = await api.initStepMode(model, model.simulationConfig)
-      if (result.success) {
-        setStepModeActive(true)
-        setStepHistorySize(1) // Initial state
-        setStatus('paused')
-        setProgress(result.currentTime, 0)
-        toast.success('Step Mode', 'Simulation ready. Use step buttons to advance.')
-      }
-    } catch (error) {
-      console.error('Failed to initialize step mode:', error)
-      setStatus('error')
-      setStepModeActive(false)
-      let errorMessage = 'Failed to initialize step mode'
-      if (error && typeof error === 'object') {
-        const axiosError = error as { response?: { data?: { detail?: string } }; message?: string }
-        if (axiosError.response?.data?.detail) {
-          errorMessage = axiosError.response.data.detail
-        } else if (axiosError.message) {
-          errorMessage = axiosError.message
-        }
-      }
-      setError(errorMessage)
-    }
-  }
-
-  const handleStepForward = async () => {
-    console.log('[handleStepForward] Entry:', { stepModeActive, isPaused, currentTime: simState.currentTime })
-
-    if (!stepModeActive) {
-      // Check if we're in a paused state from a running simulation
-      if (isPaused) {
-        // Enter step mode from paused continuous simulation
-        // This preserves the current time position
-        try {
-          stopPolling() // Stop any status polling
-          console.log('[handleStepForward] Calling enterStepMode...')
-          const result = await api.enterStepMode()
-          console.log('[handleStepForward] enterStepMode result:', result)
-          if (result.success) {
-            setStepModeActive(true)
-            setProgress(result.currentTime, result.progress)
-            setStepHistorySize(result.historySize)
-            toast.info('Step Mode', `Entered step mode at t=${result.currentTime.toFixed(3)}s`)
-          }
-        } catch (error) {
-          console.error('Failed to enter step mode:', error)
-          return
-        }
-      } else {
-        // Initialize step mode from scratch
-        await handleInitStepMode()
-        return
-      }
-    }
-
-    try {
-      console.log('[handleStepForward] Calling stepForward...')
-      const result = await api.stepForward(1)
-      console.log('[handleStepForward] stepForward result:', result)
-      if (result.success) {
-        setProgress(result.currentTime, result.progress)
-        // Update history size for step backward button
-        setStepHistorySize(result.historySize)
-
-        // Always fetch results after each step to update scope display
-        try {
-          const results = await api.getSimulationResults()
-          setResults(results)
-        } catch (resultsError) {
-          console.error('Failed to fetch step results:', resultsError)
-        }
-
-        if (result.completed) {
-          setStatus('completed')
-          toast.info('Step Mode', 'Simulation completed.')
-        }
-      }
-    } catch (error) {
-      console.error('Failed to step forward:', error)
-    }
-  }
-
-  const handleStepBackward = async () => {
-    console.log('[handleStepBackward] Entry:', { stepModeActive, stepHistorySize, currentTime: simState.currentTime })
-    if (!stepModeActive) return
-
-    try {
-      console.log('[handleStepBackward] Calling stepBackward...')
-      const result = await api.stepBackward(1)
-      console.log('[handleStepBackward] stepBackward result:', result)
-      if (result.success) {
-        setProgress(result.currentTime, result.progress)
-        setStepHistorySize(result.historySize)
-
-        // Fetch results to update scope display after stepping back
-        try {
-          const results = await api.getSimulationResults()
-          setResults(results)
-        } catch (resultsError) {
-          console.error('Failed to fetch step results:', resultsError)
-        }
-      } else {
-        toast.info('Step Mode', 'Cannot step backward - at beginning.')
-      }
-    } catch (error) {
-      console.error('Failed to step backward:', error)
-    }
-  }
-
-  const isRunning = simState.status === 'running'
-  const isPaused = simState.status === 'paused'
-  const isCompleted = simState.status === 'completed'
 
   // Mobile hamburger menu
   const MobileMenu = () => (
