@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { api } from '../../api/client'
@@ -81,23 +81,26 @@ export function ExamplesModal({ isOpen, onClose, examples, onLoadExample, onOpen
   const [docsLoading, setDocsLoading] = useState(false)
   const [docsError, setDocsError] = useState<string | null>(null)
 
-  // Fetch documentation when docs view is opened
-  useEffect(() => {
-    if (showDocs && !docsContent && !docsLoading) {
-      setDocsLoading(true)
-      setDocsError(null)
-      api.getExamplesReadme()
-        .then((content) => {
-          setDocsContent(content)
-          setDocsLoading(false)
-        })
-        .catch((err) => {
-          console.error('Failed to load examples documentation:', err)
-          setDocsError('Failed to load documentation. Please try again.')
-          setDocsLoading(false)
-        })
+  const loadDocs = useCallback(function () {
+    setDocsLoading(true)
+    setDocsError(null)
+    api.getExamplesReadme()
+      .then(function (content) {
+        setDocsContent(content)
+        setDocsLoading(false)
+      })
+      .catch(function (err) {
+        console.error('Failed to load examples documentation:', err)
+        setDocsError('Failed to load documentation. Please try again.')
+        setDocsLoading(false)
+      })
+  }, [])
+
+  useEffect(function () {
+    if (showDocs && !docsContent) {
+      loadDocs()
     }
-  }, [showDocs, docsContent, docsLoading])
+  }, [showDocs, docsContent, loadDocs])
 
   if (!isOpen) return null
 
@@ -242,10 +245,7 @@ export function ExamplesModal({ isOpen, onClose, examples, onLoadExample, onOpen
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <div className="text-red-400 mb-4">{docsError}</div>
                   <button
-                    onClick={() => {
-                      setDocsContent('')
-                      setDocsError(null)
-                    }}
+                    onClick={loadDocs}
                     className="text-blue-400 hover:text-blue-300"
                   >
                     Retry

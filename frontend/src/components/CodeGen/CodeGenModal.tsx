@@ -59,11 +59,6 @@ export function CodeGenModal({ isOpen, onClose }: CodeGenModalProps) {
   }
 
   const handleGenerate = useCallback(async () => {
-    if (!model) {
-      toast.warning('No Model', 'Please create or open a model first.')
-      return
-    }
-
     setIsGenerating(true)
 
     try {
