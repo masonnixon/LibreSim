@@ -17,7 +17,6 @@ import {
   Panel,
   OnConnectStart,
 } from '@xyflow/react'
-import { nanoid } from 'nanoid'
 import { useModelStore } from '../../store/modelStore'
 import { useUIStore } from '../../store/uiStore'
 import { BlockNode } from './BlockNode'
@@ -27,72 +26,8 @@ import { blockRegistry } from '../../blocks'
 import { getIsPropertiesFocused } from '../Properties/PropertiesPanel'
 import { findNearestEdge, generateSmartWaypoints } from '../../utils/smartRouting'
 import { getDownstreamConnectionIds, getSourceBranchConnectionIds } from '../../utils/signalTraversal'
-import type { BlockDefinition, BlockInstance, Connection as ConnectionType } from '../../types/block'
-
-/**
- * Deep copy a subsystem's children and connections with new IDs
- */
-function deepCopySubsystemContents(
-  children: BlockInstance[] | undefined,
-  childConnections: ConnectionType[] | undefined,
-  newParentId: string
-): { children: BlockInstance[]; childConnections: ConnectionType[] } {
-  if (!children || children.length === 0) {
-    return { children: [], childConnections: [] }
-  }
-
-  const idMap = new Map<string, string>() // old ID -> new ID
-  const portIdMap = new Map<string, string>() // old port ID -> new port ID
-
-  // Deep copy children with new IDs
-  const newChildren: BlockInstance[] = children.map(child => {
-    const newChildId = `${newParentId}__${nanoid()}`
-    idMap.set(child.id, newChildId)
-
-    // Map input port IDs
-    const newInputPorts = child.inputPorts.map((port, idx) => {
-      const newPortId = `${newChildId}-in-${idx}`
-      portIdMap.set(port.id, newPortId)
-      return { ...port, id: newPortId }
-    })
-
-    // Map output port IDs
-    const newOutputPorts = child.outputPorts.map((port, idx) => {
-      const newPortId = `${newChildId}-out-${idx}`
-      portIdMap.set(port.id, newPortId)
-      return { ...port, id: newPortId }
-    })
-
-    // Recursively copy nested subsystems
-    let nestedChildren: BlockInstance[] | undefined
-    let nestedConnections: ConnectionType[] | undefined
-    if (child.children && child.children.length > 0) {
-      const nested = deepCopySubsystemContents(child.children, child.childConnections, newChildId)
-      nestedChildren = nested.children
-      nestedConnections = nested.childConnections
-    }
-
-    return {
-      ...child,
-      id: newChildId,
-      inputPorts: newInputPorts,
-      outputPorts: newOutputPorts,
-      children: nestedChildren,
-      childConnections: nestedConnections,
-    }
-  })
-
-  // Deep copy connections with new IDs
-  const newChildConnections: ConnectionType[] = (childConnections || []).map(conn => ({
-    id: `${newParentId}__conn__${nanoid()}`,
-    sourceBlockId: idMap.get(conn.sourceBlockId) || conn.sourceBlockId,
-    sourcePortId: portIdMap.get(conn.sourcePortId) || conn.sourcePortId,
-    targetBlockId: idMap.get(conn.targetBlockId) || conn.targetBlockId,
-    targetPortId: portIdMap.get(conn.targetPortId) || conn.targetPortId,
-  }))
-
-  return { children: newChildren, childConnections: newChildConnections }
-}
+import { deepCopySubsystemContents } from '../../utils/subsystemUtils'
+import type { BlockDefinition, BlockInstance } from '../../types/block'
 
 // Create a fallback definition for unknown block types
 function getDefinitionOrFallback(block: BlockInstance): BlockDefinition {
