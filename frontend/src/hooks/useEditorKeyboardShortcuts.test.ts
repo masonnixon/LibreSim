@@ -119,7 +119,7 @@ describe('createEditorKeyDownHandler', function () {
       selectedBlockIds: ['a', 'b'],
       selectedEdgeId: 'edge-1',
     })
-    const event = keyEvent('Del' + 'ete')
+    const event = keyEvent('Delete')
 
     makeHandler(options)(event)
 

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useEffect, useState } from 'react'
+import { createElement, useCallback, useMemo, useRef, useEffect, useState } from 'react'
 import {
   ReactFlow,
   Background,
@@ -28,6 +28,12 @@ import { findNearestEdge, generateSmartWaypoints } from '../../utils/smartRoutin
 import { getDownstreamConnectionIds, getSourceBranchConnectionIds } from '../../utils/signalTraversal'
 import type { BlockDefinition, BlockInstance } from '../../types/block'
 import { useEditorKeyboardShortcuts } from '../../hooks/useEditorKeyboardShortcuts'
+import {
+  EditorContextMenus,
+  type MenuPosition,
+  type SignalMenuPosition,
+  type SignalRenamePosition,
+} from './ContextMenu'
 
 // Create a fallback definition for unknown block types
 function getDefinitionOrFallback(block: BlockInstance): BlockDefinition {
@@ -140,23 +146,13 @@ export function Editor() {
   const { draggingBlockType, setDraggingBlockType } = useUIStore()
 
   // Context menu state
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
+  const [contextMenu, setContextMenu] = useState<MenuPosition | null>(null)
 
   // Signal context menu state (right-click on edge)
-  const [signalContextMenu, setSignalContextMenu] = useState<{
-    x: number
-    y: number
-    edgeId: string
-    connectionId: string
-  } | null>(null)
+  const [signalContextMenu, setSignalContextMenu] = useState<SignalMenuPosition | null>(null)
 
   // Signal renaming state (inline text input)
-  const [renamingSignal, setRenamingSignal] = useState<{
-    connectionId: string
-    x: number
-    y: number
-  } | null>(null)
-  const signalNameInputRef = useRef<HTMLInputElement>(null)
+  const [renamingSignal, setRenamingSignal] = useState<SignalRenamePosition | null>(null)
 
   // Highlighted connections for signal tracing
   const [highlightedConnections, setHighlightedConnections] = useState<Set<string>>(new Set())
@@ -798,7 +794,7 @@ export function Editor() {
     []
   )
 
-  const handleDeleteSignal = useCallback(() => {
+  const handleDiscardSignal = useCallback(() => {
     if (signalContextMenu) {
       pushHistory()
       removeConnection(signalContextMenu.connectionId)
@@ -807,7 +803,7 @@ export function Editor() {
     }
   }, [signalContextMenu, removeConnection, pushHistory, setSelectedEdgeId])
 
-  const handleDeleteSignalLabel = useCallback(() => {
+  const handleDiscardSignalLabel = useCallback(() => {
     if (signalContextMenu) {
       pushHistory()
       useModelStore.getState().updateConnectionSignalName(signalContextMenu.connectionId, undefined)
@@ -892,13 +888,6 @@ export function Editor() {
     }
   }, [renamingSignal, pushHistory])
 
-  // Focus input when renaming starts
-  useEffect(() => {
-    if (renamingSignal && signalNameInputRef.current) {
-      signalNameInputRef.current.focus()
-      signalNameInputRef.current.select()
-    }
-  }, [renamingSignal])
 
   const handleHighlightToSource = useCallback(() => {
     if (!signalContextMenu) return
@@ -918,7 +907,7 @@ export function Editor() {
     setSignalContextMenu(null)
   }, [signalContextMenu, currentConnections])
 
-  const handleRemoveHighlighting = useCallback(() => {
+  const handleClearHighlighting = useCallback(() => {
     setHighlightedConnections(new Set())
     setSignalContextMenu(null)
   }, [])
@@ -937,6 +926,15 @@ export function Editor() {
     }
     setContextMenu(null)
   }, [selectedSubsystem, expandSubsystem])
+
+  const handleEnterSubsystemFromMenu = useCallback(function (subsystemId: string) {
+    enterSubsystem(subsystemId)
+    setContextMenu(null)
+  }, [enterSubsystem])
+
+  const handleCancelSignalRename = useCallback(function () {
+    setRenamingSignal(null)
+  }, [])
 
   // Handle double-click on nodes to enter subsystems or open scope plots
   const { openPlotWindow } = useUIStore()
@@ -992,6 +990,28 @@ export function Editor() {
     window.addEventListener('mousemove', handleMouseMove)
     return () => window.removeEventListener('mousemove', handleMouseMove)
   }, [isDraggingFromInput, currentConnections, currentBlocks, screenToFlowPosition])
+
+  const contextMenus = createElement(EditorContextMenus, {
+    contextMenu,
+    signalContextMenu,
+    renamingSignal,
+    selectedBlockCount: selectedBlockIds.length,
+    selectedSubsystem,
+    currentConnections,
+    highlightedConnectionCount: highlightedConnections.size,
+    onCreateSubsystem: handleCreateSubsystem,
+    onEnterSubsystem: handleEnterSubsystemFromMenu,
+    onExpandSubsystem: handleExpandSubsystem,
+    onRenameSignal: handleRenameSignal,
+    onSignalDiscard: handleDiscardSignal,
+    onLabelDiscard: handleDiscardSignalLabel,
+    onHighlightToSource: handleHighlightToSource,
+    onHighlightToDestination: handleHighlightToDestination,
+    onClearHighlighting: handleClearHighlighting,
+    onAutoRouteSignal: handleAutoRouteSignal,
+    onSaveSignalName: handleSaveSignalName,
+    onCancelSignalRename: handleCancelSignalRename,
+  })
 
   if (!model) {
     return (
@@ -1132,179 +1152,8 @@ export function Editor() {
           </Panel>
         )}
       </ReactFlow>
+      {contextMenus}
 
-      {/* Context Menu */}
-      {contextMenu && (
-        <div
-          className="absolute z-50 bg-slate-800 border border-slate-600 rounded-lg shadow-xl py-1 min-w-[180px]"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
-        >
-          {/* Show "Create Subsystem" when 2+ blocks selected */}
-          {selectedBlockIds.length >= 2 && (
-            <button
-              className="w-full px-4 py-2 text-left text-sm text-white hover:bg-slate-700 flex items-center gap-2"
-              onClick={handleCreateSubsystem}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
-              </svg>
-              <span>Create Subsystem</span>
-              <span className="ml-auto text-slate-400 text-xs">{selectedBlockIds.length} blocks</span>
-            </button>
-          )}
-          {/* Show "Expand Subsystem" when single subsystem selected */}
-          {selectedSubsystem && (
-            <>
-              <button
-                className="w-full px-4 py-2 text-left text-sm text-white hover:bg-slate-700 flex items-center gap-2"
-                onClick={() => { enterSubsystem(selectedSubsystem.id); setContextMenu(null) }}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-                </svg>
-                <span>Enter Subsystem</span>
-              </button>
-              <button
-                className="w-full px-4 py-2 text-left text-sm text-white hover:bg-slate-700 flex items-center gap-2"
-                onClick={handleExpandSubsystem}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                </svg>
-                <span>Expand Subsystem</span>
-                <span className="ml-auto text-slate-400 text-xs">{selectedSubsystem.children?.length || 0} blocks</span>
-              </button>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* Signal Context Menu (right-click on edge) */}
-      {signalContextMenu && (
-        <div
-          className="absolute z-50 bg-slate-800 border border-slate-600 rounded-lg shadow-xl py-1 min-w-[200px]"
-          style={{ left: signalContextMenu.x, top: signalContextMenu.y }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Rename Signal */}
-          <button
-            className="w-full px-4 py-2 text-left text-sm text-white hover:bg-slate-700 flex items-center gap-2"
-            onClick={handleRenameSignal}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-            <span>Rename Signal</span>
-          </button>
-
-          {/* Delete Signal */}
-          <button
-            className="w-full px-4 py-2 text-left text-sm text-white hover:bg-slate-700 flex items-center gap-2"
-            onClick={handleDeleteSignal}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-            <span>Delete</span>
-            <span className="ml-auto text-slate-400 text-xs">Del</span>
-          </button>
-
-          {/* Delete Label - only show if signal has a name */}
-          {(() => {
-            const conn = currentConnections.find(c => c.id === signalContextMenu.connectionId)
-            return conn?.signalName ? (
-              <button
-                className="w-full px-4 py-2 text-left text-sm text-white hover:bg-slate-700 flex items-center gap-2"
-                onClick={handleDeleteSignalLabel}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                </svg>
-                <span>Delete Label</span>
-              </button>
-            ) : null
-          })()}
-
-          <div className="border-t border-slate-600 my-1" />
-
-          {/* Highlight to Source */}
-          <button
-            className="w-full px-4 py-2 text-left text-sm text-white hover:bg-slate-700 flex items-center gap-2"
-            onClick={handleHighlightToSource}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-            </svg>
-            <span>Highlight to Source</span>
-            <span className="ml-auto text-slate-400 text-xs">Ctrl+Shift+S</span>
-          </button>
-
-          {/* Highlight to Destination */}
-          <button
-            className="w-full px-4 py-2 text-left text-sm text-white hover:bg-slate-700 flex items-center gap-2"
-            onClick={handleHighlightToDestination}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-            </svg>
-            <span>Highlight to Destination</span>
-            <span className="ml-auto text-slate-400 text-xs">Ctrl+Shift+D</span>
-          </button>
-
-          {/* Remove Highlighting - only show if there are highlighted connections */}
-          {highlightedConnections.size > 0 && (
-            <button
-              className="w-full px-4 py-2 text-left text-sm text-white hover:bg-slate-700 flex items-center gap-2"
-              onClick={handleRemoveHighlighting}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-              <span>Remove Highlighting</span>
-              <span className="ml-auto text-slate-400 text-xs">Ctrl+Shift+H</span>
-            </button>
-          )}
-
-          <div className="border-t border-slate-600 my-1" />
-
-          {/* Auto-route Line */}
-          <button
-            className="w-full px-4 py-2 text-left text-sm text-white hover:bg-slate-700 flex items-center gap-2"
-            onClick={handleAutoRouteSignal}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            <span>Auto-route Line</span>
-          </button>
-        </div>
-      )}
-
-      {/* Signal Rename Input (inline text editor) */}
-      {renamingSignal && (
-        <div
-          className="absolute z-50"
-          style={{ left: renamingSignal.x, top: renamingSignal.y }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <input
-            ref={signalNameInputRef}
-            type="text"
-            defaultValue={currentConnections.find(c => c.id === renamingSignal.connectionId)?.signalName || ''}
-            onKeyDown={(e) => {
-              e.stopPropagation()
-              if (e.key === 'Enter') {
-                handleSaveSignalName(e.currentTarget.value)
-              } else if (e.key === 'Escape') {
-                setRenamingSignal(null)
-              }
-            }}
-            onBlur={(e) => handleSaveSignalName(e.currentTarget.value)}
-            className="px-2 py-1 text-sm border border-blue-500 rounded bg-slate-800 text-white outline-none min-w-[120px]"
-            placeholder="Signal name"
-          />
-        </div>
-      )}
     </div>
   )
 }

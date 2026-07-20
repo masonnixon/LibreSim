@@ -50,7 +50,7 @@ export function createEditorKeyDownHandler(options: KeyboardHandlerOptions) {
     if (options.inputFocused || getIsPropertiesFocused()) return
 
     const isCtrlOrCmd = event.ctrlKey || event.metaKey
-    const isRemovalKey = event.key === 'Del' + 'ete' || event.key === 'Backspace'
+    const isRemovalKey = event.key === 'Delete' || event.key === 'Backspace'
 
     if (isRemovalKey) {
       event.preventDefault()
