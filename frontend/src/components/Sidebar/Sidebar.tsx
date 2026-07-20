@@ -144,7 +144,6 @@ export function Sidebar() {
 
   // Handle tap/click to add block on mobile
   const handleBlockTap = (block: BlockDefinition) => {
-    if (!isMobile) return
 
     const position = calculateNewBlockPosition()
     addBlock(block, position)

@@ -50,7 +50,7 @@ vi.mock('../../blocks', () => ({
             name: 'Step',
             category: 'sources',
             description: 'A step function',
-            icon: 'S',
+            icon: undefined,
             inputs: [],
             outputs: [{ name: 'out', dataType: 'double', dimensions: [1] }],
             parameters: [],
@@ -86,11 +86,31 @@ vi.mock('../../blocks', () => ({
 import { useUIStore } from '../../store/uiStore'
 import { useModelStore } from '../../store/modelStore'
 import { useLibraryStore } from '../../store/libraryStore'
+import { blockRegistry } from '../../blocks'
+import { toast } from '../Toast/Toast'
 
 const mockedUseUIStore = vi.mocked(useUIStore)
 const mockedUseModelStore = vi.mocked(useModelStore)
 const mockedUseLibraryStore = vi.mocked(useLibraryStore)
+const mockedBlockRegistry = vi.mocked(blockRegistry)
+const mockedToast = vi.mocked(toast)
 type LibraryState = ReturnType<typeof useLibraryStore.getState>
+const testLibrary: LibraryState['libraries'][number] = {
+  id: 'lib-1',
+  name: 'Test Library',
+  description: 'A test library',
+  version: '1.0.0',
+  sourcePath: 'test.mdl',
+  sourceFormat: 'mdl',
+  importedAt: '2026-01-01T00:00:00.000Z',
+  blocks: [],
+}
+const libraryBlocks = [
+  { type: 'lib_gain', name: 'Library Gain', category: 'math', description: 'Boost a signal', icon: 'L', inputs: [], outputs: [], parameters: [] },
+  { type: 'lib_filter', name: 'Library Filter', category: 'signal_processing', description: 'Special smoothing', icon: undefined, inputs: [], outputs: [], parameters: [] },
+]
+
+
 
 describe('Sidebar', () => {
   const mockToggleSidebar = vi.fn()
@@ -118,6 +138,8 @@ describe('Sidebar', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1024 })
+    Object.defineProperty(navigator, 'maxTouchPoints', { configurable: true, value: 0 })
 
     // Default mock implementations
     mockedUseUIStore.mockReturnValue({
@@ -265,6 +287,13 @@ describe('Sidebar', () => {
       expect(screen.queryByText('Step')).not.toBeInTheDocument()
       expect(screen.queryByText('Scope')).not.toBeInTheDocument()
     })
+    it('filters blocks by description', () => {
+      render(<Sidebar />)
+      fireEvent.change(screen.getByPlaceholderText('Search blocks...'), { target: { value: 'display signals' } })
+      expect(screen.getByText('Scope')).toBeInTheDocument()
+      expect(screen.queryByText('Constant')).not.toBeInTheDocument()
+    })
+
   })
 
   describe('drag and drop', () => {
@@ -291,6 +320,54 @@ describe('Sidebar', () => {
       const constantBlock = screen.getByText('Constant').closest('div[draggable]')
       expect(constantBlock).toHaveAttribute('draggable', 'true')
     })
+    it('does not add blocks from a desktop click', () => {
+      render(<Sidebar />)
+      fireEvent.click(screen.getByText('Constant'))
+      expect(mockAddBlock).not.toHaveBeenCalled()
+    })
+
+  })
+
+  describe('mobile placement', () => {
+    it('adds a block at the default position', () => {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 500 })
+      Object.defineProperty(navigator, 'maxTouchPoints', { configurable: true, value: 1 })
+      render(<Sidebar />)
+      expect(screen.getByText('Tap a block to add it to the canvas')).toBeInTheDocument()
+      const constant = screen.getByTitle('Tap to add Constant')
+      expect(constant).toHaveAttribute('draggable', 'false')
+      fireEvent.click(constant)
+      expect(mockAddBlock).toHaveBeenCalledWith(expect.objectContaining({ type: 'constant' }), { x: 200, y: 150 })
+      expect(mockedToast.success).toHaveBeenCalledWith('Block Added', 'Added "Constant" to canvas')
+      expect(mockToggleSidebar).toHaveBeenCalledOnce()
+    })
+    it.each([
+      [null, { x: 200, y: 150 }],
+      [{ blocks: [{ position: { x: 300, y: 40 } }], connections: [] }, { x: 480, y: 150 }],
+      [{ blocks: [{ position: { x: 900, y: 250 } }], connections: [] }, { x: 200, y: 350 }],
+    ])('places mobile blocks around the current model', (activeModel, expectedPosition) => {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 500 })
+      Object.defineProperty(navigator, 'maxTouchPoints', { configurable: true, value: 1 })
+      mockedUseModelStore.mockReturnValue({ model: activeModel, addBlock: mockAddBlock } as never)
+      render(<Sidebar />)
+      fireEvent.click(screen.getByTitle('Tap to add Constant'))
+      expect(mockAddBlock).toHaveBeenCalledWith(expect.any(Object), expectedPosition)
+    })
+
+    it('responds to touch-device resizes and removes its listener', () => {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 500 })
+      Object.defineProperty(window, 'ontouchstart', { configurable: true, value: null })
+      const removeListener = vi.spyOn(window, 'removeEventListener')
+      const view = render(<Sidebar />)
+      expect(screen.getByText('Tap a block to add it to the canvas')).toBeInTheDocument()
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 900 })
+      fireEvent(window, new Event('resize'))
+      expect(screen.queryByText('Tap a block to add it to the canvas')).not.toBeInTheDocument()
+      view.unmount()
+      expect(removeListener).toHaveBeenCalledWith('resize', expect.any(Function))
+      Reflect.deleteProperty(window, 'ontouchstart')
+    })
+
   })
 
   describe('libraries section', () => {
@@ -319,5 +396,66 @@ describe('Sidebar', () => {
       render(<Sidebar />)
       expect(screen.queryByText('Imported Libraries')).not.toBeInTheDocument()
     })
+    it('toggles an empty library and confirms removal', () => {
+      const state = createMockLibraryState([testLibrary])
+      mockedUseLibraryStore.mockImplementation((selector) => selector(state))
+      const confirmRemoval = vi.spyOn(window, 'confirm').mockReturnValue(false)
+      render(<Sidebar />)
+      const header = screen.getByText('Test Library').closest('[role="button"]') as HTMLElement
+      fireEvent.keyDown(header, { key: 'Space' })
+      expect(screen.queryByText('No blocks in this library')).not.toBeInTheDocument()
+      fireEvent.keyDown(header, { key: 'Enter' })
+      expect(screen.getByText('No blocks in this library')).toBeInTheDocument()
+      fireEvent.click(header)
+      expect(screen.queryByText('No blocks in this library')).not.toBeInTheDocument()
+      const remove = screen.getByTitle('Remove library')
+      fireEvent.click(remove)
+      expect(mockRemoveLibrary).not.toHaveBeenCalled()
+      confirmRemoval.mockReturnValue(true)
+      fireEvent.click(remove)
+      expect(mockRemoveLibrary).toHaveBeenCalledWith('lib-1')
+      expect(mockedBlockRegistry.unregisterLibrary).toHaveBeenCalledWith('lib-1')
+      expect(mockedToast.success).toHaveBeenCalledWith('Library Removed', '"Test Library" has been removed')
+      expect(screen.queryByText('No blocks in this library')).not.toBeInTheDocument()
+    })
+
+    it('renders, filters, and drags imported blocks', () => {
+      const state = createMockLibraryState([testLibrary])
+      mockedUseLibraryStore.mockImplementation((selector) => selector(state))
+      mockedBlockRegistry.getBlocksByLibrary.mockReturnValue(libraryBlocks as never)
+      render(<Sidebar />)
+      fireEvent.click(screen.getByText('Test Library'))
+      expect(screen.getByText('Library Gain')).toBeInTheDocument()
+      expect(screen.getByText('Library Filter')).toBeInTheDocument()
+      const gain = screen.getByText('Library Gain').closest('[draggable="true"]') as HTMLElement
+      const dataTransfer = { effectAllowed: '', setData: vi.fn() }
+      fireEvent.dragStart(gain, { dataTransfer })
+      expect(mockSetDraggingBlockType).toHaveBeenCalledWith('lib_gain')
+      fireEvent.click(gain)
+      expect(mockAddBlock).not.toHaveBeenCalled()
+      const search = screen.getByPlaceholderText('Search blocks...')
+      fireEvent.change(search, { target: { value: 'gain' } })
+      expect(screen.getByText('Library Gain')).toBeInTheDocument()
+      fireEvent.change(search, { target: { value: 'special' } })
+      expect(screen.getByText('Library Filter')).toBeInTheDocument()
+      expect(screen.queryByText('Library Gain')).not.toBeInTheDocument()
+      fireEvent.change(search, { target: { value: 'missing' } })
+      expect(screen.queryByText('Test Library')).not.toBeInTheDocument()
+    })
+
+    it('adds an imported block on mobile', () => {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 500 })
+      Object.defineProperty(navigator, 'maxTouchPoints', { configurable: true, value: 1 })
+      const state = createMockLibraryState([testLibrary])
+      mockedUseLibraryStore.mockImplementation((selector) => selector(state))
+      mockedBlockRegistry.getBlocksByLibrary.mockReturnValue(libraryBlocks as never)
+      render(<Sidebar />)
+      fireEvent.click(screen.getByText('Test Library'))
+      const gain = screen.getByTitle('Tap to add Library Gain')
+      expect(gain).toHaveAttribute('draggable', 'false')
+      fireEvent.click(gain)
+      expect(mockAddBlock).toHaveBeenCalledWith(expect.objectContaining({ type: 'lib_gain' }), { x: 200, y: 150 })
+    })
+
   })
 })
