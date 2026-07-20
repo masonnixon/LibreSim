@@ -21,7 +21,7 @@ class SimulationConfig(BaseModel):
     solver: SolverType = SolverType.RK4
     start_time: float = Field(default=0.0, alias="startTime")
     stop_time: float = Field(default=10.0, alias="stopTime")
-    step_size: float = Field(default=0.01, alias="stepSize")
+    step_size: float = Field(default=0.01, alias="stepSize", gt=0)
     max_step: float | None = Field(default=None, alias="maxStep")
     min_step: float | None = Field(default=None, alias="minStep")
     relative_tolerance: float = Field(default=1e-3, alias="relativeTolerance")

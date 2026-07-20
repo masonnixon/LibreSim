@@ -349,7 +349,7 @@ class SimulationRunner:
             with self._operation_lock:
                 if self._pending_handoff is token:
                     self._pending_handoff = None
-                elif self._active_operation is token:
+                elif self._active_operation is token:  # pragma: no branch -- lock-owned token
                     self._active_operation = None
                     token.finished.set()
                     self._transition_requested = False
@@ -518,6 +518,8 @@ class SimulationRunner:
         token: SimulationOperationToken,
     ) -> None:
         self._claim_operation("snapshot-restore", token)
+        if not isinstance(snapshot, RunnerSnapshot):
+            raise SnapshotValidationError("Unsupported runner snapshot object")
         if snapshot.compact:
             raise SnapshotValidationError("Public restore requires a detached snapshot")
         target = self._prepare_snapshot_restore(snapshot)
@@ -1038,10 +1040,10 @@ class SimulationRunner:
 
             if self._transition_requested:
                 self._status = SimulationStatus.PAUSED
-            elif self._should_stop or self._step_mode:
-                # Don't set to IDLE if we switched to step mode - keep PAUSED status
-                if not self._step_mode:
-                    self._status = SimulationStatus.IDLE
+            elif self._step_mode:
+                self._status = SimulationStatus.PAUSED
+            elif self._should_stop:
+                self._status = SimulationStatus.IDLE
             else:
                 self._status = SimulationStatus.COMPLETED
 

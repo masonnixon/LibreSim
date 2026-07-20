@@ -356,7 +356,7 @@ files verified mirrored, `docs/refs/testing.md` coverage tables updated to final
 | B1 | complete | this commit | B: 85.82% combined (89.10% lines / 74.47% branches) | 2,185 passed; external MDL fixture has a documented `skipif` |
 | B2 | complete | `3b77036`, this commit | B: 87.18% combined; all B2 targets 100% line/branch | 2,270 passed; invalid language/method preserve HTTP 400 |
 | B3 | complete | this commit | B: 86.33% combined; `docker_compiler.py` 100% line/branch | 2,212 passed; fixed persistent-artifact and default-path regressions |
-| B4 | in progress | `cbf0713` | B: 87.36% combined; `compiler.py` and `osk/sim.py` 100% | 2,283 passed, 1 documented skip; runner/adapter matrices remain |
+| B4 | complete | `cbf0713`, this commit | B: 88.46% combined; all B4 targets 100% line/branch | 2,328 passed, 1 documented skip; fixed snapshot validation, step-mode finalization, and nonpositive step sizes |
 | B5.1–B5.8 | not started | | | |
 | B6 | not started | | | |
 | B7 | not started | | | |
