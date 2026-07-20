@@ -362,7 +362,7 @@ files verified mirrored, `docs/refs/testing.md` coverage tables updated to final
 | B7 | not started | | | |
 | F1 | complete | this commit | F: 40.34% stmts / 35.64% branches / 44.41% funcs / 39.00% lines | 664 passed; both CI pipelines use coverage command |
 | F2 | complete | `00d2f3b`, `d73ad04`, this commit | F: 51.92% stmts / 51.22% branches / 53.40% funcs / 50.38% lines | 724 passed, 0 failed; modelStore, libraryStore, mdlImporter, mdlExporter, simulationStore, api/client, data/examples, and App at 100% |
-| F3 | in progress | `06aa4f0`, `6ff3af8`, `2bfff43`, `3c4175c`, `3114ad0`, this commit | F: 61.81% stmts / 60.88% branches / 59.44% funcs / 60.56% lines | 787 passed, 0 failed; Editor helpers and menus plus CustomEdge routing geometry extracted and 100% covered |
+| F3 | in progress | `06aa4f0`, `6ff3af8`, `2bfff43`, `3c4175c`, `3114ad0`, `97ef57a`, this commit | F: 61.91% stmts / 61.16% branches / 59.44% funcs / 60.66% lines | 790 passed, 0 failed; Editor and CustomEdge extractions complete; Toolbar scope discovery extracted and 100% covered |
 | F4 | not started | | | |
 | F5 | not started (maintainer descope decision point) | | | |
 | F6 | not started | | | |

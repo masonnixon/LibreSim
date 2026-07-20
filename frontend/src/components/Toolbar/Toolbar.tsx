@@ -13,25 +13,7 @@ import { exportModelAsMDL } from '../../utils/mdlExporter'
 import { importMDL, isMDLFile, importMDLAsLibrary } from '../../utils/mdlImporter'
 import { blockRegistry } from '../../blocks'
 import type { Model } from '../../types/model'
-import type { BlockInstance } from '../../types/block'
-
-/**
- * Recursively find all scope block IDs in the model, including inside subsystems.
- * Returns flattened IDs that match backend naming convention.
- */
-function findAllScopeBlockIds(blocks: BlockInstance[], parentPath: string = ''): string[] {
-  const result: string[] = []
-  for (const block of blocks) {
-    const flattenedId = parentPath ? `${parentPath}__${block.id}` : block.id
-    if (block.type === 'scope' || block.type === 'xy_graph') {
-      result.push(flattenedId)
-    }
-    if (block.type === 'subsystem' && block.children) {
-      result.push(...findAllScopeBlockIds(block.children, flattenedId))
-    }
-  }
-  return result
-}
+import { findAllScopeBlockIds } from '../../utils/toolbarUtils'
 
 const STORAGE_KEY = 'libresim_last_model'
 
