@@ -1,6 +1,12 @@
 import React, { memo, useCallback, useMemo, useState, useRef } from 'react'
-import { BaseEdge, EdgeLabelRenderer, EdgeProps, useReactFlow } from '@xyflow/react'
+import {
+  BaseEdge,
+  EdgeLabelRenderer,
+  EdgeProps,
+  useReactFlow,
+} from '@xyflow/react'
 import { useModelStore } from '../../store/modelStore'
+import { useDocumentMouseDrag } from '../../hooks/useDocumentMouseDrag'
 import {
   clampPerpendicularOffset,
   generateOrthogonalPath,
@@ -23,10 +29,9 @@ interface WaypointData {
   onDragStateChange?: (isDragging: boolean) => void
 }
 
-
 // Draggable waypoint handle component (the bend point circles)
 // Per Simulink behavior: drag to move, NO double-click to delete
-function WaypointHandle({
+export function WaypointHandle({
   x,
   y,
   index,
@@ -41,10 +46,13 @@ function WaypointHandle({
   onDragStart: () => void
   onDragEnd: () => void
 }) {
-  const updateConnectionWaypoint = useModelStore((state) => state.updateConnectionWaypoint)
+  const updateConnectionWaypoint = useModelStore(
+    (state) => state.updateConnectionWaypoint
+  )
   const pushHistory = useModelStore((state) => state.pushHistory)
   const { screenToFlowPosition } = useReactFlow()
   const [isDragging, setIsDragging] = useState(false)
+  const startDocumentDrag = useDocumentMouseDrag()
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -85,14 +93,20 @@ function WaypointHandle({
           setIsDragging(false)
           onDragEnd()
         }
-        document.removeEventListener('mousemove', handleMouseMove)
-        document.removeEventListener('mouseup', handleMouseUp)
       }
 
-      document.addEventListener('mousemove', handleMouseMove)
-      document.addEventListener('mouseup', handleMouseUp)
+      startDocumentDrag({ onMove: handleMouseMove, onEnd: handleMouseUp })
     },
-    [connectionId, index, screenToFlowPosition, updateConnectionWaypoint, pushHistory, onDragStart, onDragEnd]
+    [
+      connectionId,
+      index,
+      screenToFlowPosition,
+      updateConnectionWaypoint,
+      pushHistory,
+      onDragStart,
+      onDragEnd,
+      startDocumentDrag,
+    ]
   )
 
   return (
@@ -117,7 +131,7 @@ function WaypointHandle({
 }
 
 // Draggable segment component (for dragging horizontal/vertical line segments)
-function DraggableSegment({
+export function DraggableSegment({
   segment,
   connectionId,
   waypoints,
@@ -130,14 +144,17 @@ function DraggableSegment({
   onDragStart: () => void
   onDragEnd: () => void
 }) {
-  const updateConnectionWaypoint = useModelStore((state) => state.updateConnectionWaypoint)
-  const addConnectionWaypoint = useModelStore((state) => state.addConnectionWaypoint)
+  const updateConnectionWaypoint = useModelStore(
+    (state) => state.updateConnectionWaypoint
+  )
+  const addConnectionWaypoint = useModelStore(
+    (state) => state.addConnectionWaypoint
+  )
   const pushHistory = useModelStore((state) => state.pushHistory)
   const { screenToFlowPosition } = useReactFlow()
   const [isDragging, setIsDragging] = useState(false)
+  const startDocumentDrag = useDocumentMouseDrag()
   const waypointCreatedRef = useRef(false)
-  // Track last mousedown time to detect double-clicks
-  const lastMouseDownRef = useRef(0)
 
   // Use refs to access current waypoints in mouse handlers (avoids stale closure)
   const waypointsRef = useRef(waypoints)
@@ -156,20 +173,7 @@ function DraggableSegment({
 
       // Check if this is part of a double-click using the event's detail property
       // detail === 1 for single click, detail === 2 for double-click
-      if (e.detail >= 2) {
-        console.log('[DraggableSegment] Ignoring mouseDown - part of double-click (detail=' + e.detail + ')')
-        return
-      }
-
-      // Also check timing as a backup (in case component just mounted)
-      const now = Date.now()
-      const timeSinceLastMouseDown = now - lastMouseDownRef.current
-      lastMouseDownRef.current = now
-
-      if (timeSinceLastMouseDown < 300) {
-        console.log('[DraggableSegment] Ignoring mouseDown - too fast (likely double-click)')
-        return
-      }
+      if (e.detail >= 2) return
 
       setIsDragging(true)
       onDragStart()
@@ -177,10 +181,6 @@ function DraggableSegment({
 
       // Push history once at start of drag
       pushHistory()
-
-      console.log('[DraggableSegment] mouseDown segment:', segment.type,
-        'controls waypoint', segment.controlsWaypointIndex, 'coord', segment.controlsCoordinate,
-        'waypoints:', waypoints.length)
 
       const handleMouseMove = (moveEvent: MouseEvent) => {
         const rawPos = screenToFlowPosition({
@@ -196,11 +196,8 @@ function DraggableSegment({
         const coord = currentSegment.controlsCoordinate
         const insertAt = currentSegment.insertWaypointAt
 
-        // Skip if segment is not draggable (null means output port segment)
-        if (wpIndex === null) return
-
-        // If this segment needs to create a waypoint (wpIndex === -1 with insertWaypointAt defined)
-        if (wpIndex === -1 && insertAt !== undefined && !waypointCreatedRef.current) {
+        // Insertion segments always provide an insertion index.
+        if (wpIndex === -1 && !waypointCreatedRef.current) {
           // Create a new waypoint at the appropriate position
           // For horizontal segments (controls Y): create at (current segment's X midpoint, mouse Y)
           // For vertical segments (controls X): create at (mouse X, current segment's Y midpoint)
@@ -208,25 +205,31 @@ function DraggableSegment({
           if (coord === 'y') {
             // Horizontal segment - create waypoint with X at segment midpoint, Y at mouse position
             const midX = (currentSegment.x1 + currentSegment.x2) / 2
-            newWp = { x: snapToGrid({ x: midX, y: 0 }, moveEvent.altKey).x, y: currentPos.y }
+            newWp = {
+              x: snapToGrid({ x: midX, y: 0 }, moveEvent.altKey).x,
+              y: currentPos.y,
+            }
           } else {
             // Vertical segment - create waypoint with X at mouse position, Y at segment midpoint
             const midY = (currentSegment.y1 + currentSegment.y2) / 2
-            newWp = { x: currentPos.x, y: snapToGrid({ x: 0, y: midY }, moveEvent.altKey).y }
+            newWp = {
+              x: currentPos.x,
+              y: snapToGrid({ x: 0, y: midY }, moveEvent.altKey).y,
+            }
           }
-          addConnectionWaypoint(connectionId, newWp, insertAt)
+          addConnectionWaypoint(connectionId, newWp, insertAt as number)
           waypointCreatedRef.current = true
-          console.log('[DraggableSegment] Created waypoint at index', insertAt, 'position:', newWp)
           return
         }
 
         // If waypoint was just created, now update it
         // The insertAt index tells us where the waypoint was inserted
-        const actualWpIndex = waypointCreatedRef.current && insertAt !== undefined ? insertAt : wpIndex as number
+        const actualWpIndex = waypointCreatedRef.current
+          ? (insertAt as number)
+          : (wpIndex as number)
 
         // Skip if we don't have a valid waypoint to control
-        if (actualWpIndex < 0 || actualWpIndex >= currentWaypoints.length) {
-          console.log('[DraggableSegment] Skipping - invalid wpIndex', actualWpIndex, 'waypoints:', currentWaypoints.length)
+        if (actualWpIndex >= currentWaypoints.length) {
           return
         }
 
@@ -234,26 +237,36 @@ function DraggableSegment({
 
         if (coord === 'x') {
           // Dragging vertical segment left/right - set waypoint's X to mouse X
-          console.log('[DraggableSegment] Moving vertical segment, setting X to', currentPos.x)
-          updateConnectionWaypoint(connectionId, actualWpIndex, { x: currentPos.x, y: wp.y })
-        } else if (coord === 'y') {
+          updateConnectionWaypoint(connectionId, actualWpIndex, {
+            x: currentPos.x,
+            y: wp.y,
+          })
+        } else {
           // Dragging horizontal segment up/down - set waypoint's Y to mouse Y
-          console.log('[DraggableSegment] Moving horizontal segment, setting Y to', currentPos.y)
-          updateConnectionWaypoint(connectionId, actualWpIndex, { x: wp.x, y: currentPos.y })
+          updateConnectionWaypoint(connectionId, actualWpIndex, {
+            x: wp.x,
+            y: currentPos.y,
+          })
         }
       }
 
       const handleMouseUp = () => {
         setIsDragging(false)
         onDragEnd()
-        document.removeEventListener('mousemove', handleMouseMove)
-        document.removeEventListener('mouseup', handleMouseUp)
       }
 
-      document.addEventListener('mousemove', handleMouseMove)
-      document.addEventListener('mouseup', handleMouseUp)
+      startDocumentDrag({ onMove: handleMouseMove, onEnd: handleMouseUp })
     },
-    [connectionId, screenToFlowPosition, updateConnectionWaypoint, addConnectionWaypoint, pushHistory, onDragStart, onDragEnd, segment.type, segment.controlsCoordinate, segment.controlsWaypointIndex, waypoints.length]
+    [
+      connectionId,
+      screenToFlowPosition,
+      updateConnectionWaypoint,
+      addConnectionWaypoint,
+      pushHistory,
+      onDragStart,
+      onDragEnd,
+      startDocumentDrag,
+    ]
   )
 
   // Don't render segments that cannot be dragged or are too small
@@ -281,9 +294,8 @@ function DraggableSegment({
   )
 }
 
-
 // Draggable label component for signal names - tethered to the path
-function DraggableLabel({
+export function DraggableLabel({
   connectionId,
   pathPoints,
   offset,
@@ -298,13 +310,21 @@ function DraggableLabel({
   onDragStart: () => void
   onDragEnd: () => void
 }) {
-  const updateConnectionLabelOffset = useModelStore((state) => state.updateConnectionLabelOffset)
+  const updateConnectionLabelOffset = useModelStore(
+    (state) => state.updateConnectionLabelOffset
+  )
   const pushHistory = useModelStore((state) => state.pushHistory)
   const { screenToFlowPosition } = useReactFlow()
   const [isDragging, setIsDragging] = useState(false)
+  const startDocumentDrag = useDocumentMouseDrag()
 
   // Calculate label position from t and perpOffset
-  const { x: pathX, y: pathY, perpX, perpY } = useMemo(
+  const {
+    x: pathX,
+    y: pathY,
+    perpX,
+    perpY,
+  } = useMemo(
     () => getPositionOnPath(pathPoints, offset.t),
     [pathPoints, offset.t]
   )
@@ -337,15 +357,25 @@ function DraggableLabel({
         }
 
         // Convert mouse position to flow coordinates
-        const flowPos = screenToFlowPosition({ x: moveEvent.clientX, y: moveEvent.clientY })
+        const flowPos = screenToFlowPosition({
+          x: moveEvent.clientX,
+          y: moveEvent.clientY,
+        })
 
         // Project onto path to get new t and perpOffset
-        const { t, perpOffset: rawPerpOffset } = projectOntoPath(pathPoints, flowPos.x, flowPos.y)
+        const { t, perpOffset: rawPerpOffset } = projectOntoPath(
+          pathPoints,
+          flowPos.x,
+          flowPos.y
+        )
 
         // Constrain perpendicular offset
         const constrainedPerpOffset = clampPerpendicularOffset(rawPerpOffset)
 
-        updateConnectionLabelOffset(connectionId, { t, perpOffset: constrainedPerpOffset })
+        updateConnectionLabelOffset(connectionId, {
+          t,
+          perpOffset: constrainedPerpOffset,
+        })
       }
 
       const handleMouseUp = () => {
@@ -353,14 +383,20 @@ function DraggableLabel({
           setIsDragging(false)
           onDragEnd()
         }
-        document.removeEventListener('mousemove', handleMouseMove)
-        document.removeEventListener('mouseup', handleMouseUp)
       }
 
-      document.addEventListener('mousemove', handleMouseMove)
-      document.addEventListener('mouseup', handleMouseUp)
+      startDocumentDrag({ onMove: handleMouseMove, onEnd: handleMouseUp })
     },
-    [connectionId, pathPoints, screenToFlowPosition, updateConnectionLabelOffset, pushHistory, onDragStart, onDragEnd]
+    [
+      connectionId,
+      pathPoints,
+      screenToFlowPosition,
+      updateConnectionLabelOffset,
+      pushHistory,
+      onDragStart,
+      onDragEnd,
+      startDocumentDrag,
+    ]
   )
 
   return (
@@ -422,12 +458,16 @@ function CustomEdgeComponent({
   const isHighlighted = waypointData?.isHighlighted || false
   const onDragStateChange = waypointData?.onDragStateChange
 
-  // Get padding values
-  const padX = Array.isArray(labelBgPadding) ? labelBgPadding[0] : (labelBgPadding || 4)
-  const padY = Array.isArray(labelBgPadding) ? labelBgPadding[1] : (labelBgPadding || 4)
+  const [padX = 4, padY = 4] = labelBgPadding ?? []
 
   // Generate orthogonal path
-  const { path: edgePath, segments, labelX, labelY, pathPoints } = useMemo(() => {
+  const {
+    path: edgePath,
+    segments,
+    labelX,
+    labelY,
+    pathPoints,
+  } = useMemo(() => {
     return generateOrthogonalPath(sourceX, sourceY, targetX, targetY, waypoints)
   }, [sourceX, sourceY, targetX, targetY, waypoints])
 
@@ -457,47 +497,61 @@ function CustomEdgeComponent({
         style={{
           ...style,
           // Priority: branch target (green) > highlighted (yellow) > selected (cyan) > default
-          stroke: isBranchTarget ? '#22c55e' : isHighlighted ? '#eab308' : selected ? '#22d3ee' : '#94a3b8',
-          strokeWidth: isBranchTarget ? 3 : isHighlighted ? 3 : selected ? 2.5 : 2,
+          stroke: isBranchTarget
+            ? '#22c55e'
+            : isHighlighted
+              ? '#eab308'
+              : selected
+                ? '#22d3ee'
+                : '#94a3b8',
+          strokeWidth: isBranchTarget
+            ? 3
+            : isHighlighted
+              ? 3
+              : selected
+                ? 2.5
+                : 2,
           pointerEvents: 'none', // Let the invisible path handle events
         }}
         markerEnd={markerEnd}
       />
       {/* Draggable segments - only show when selected */}
-      {selected && segments.map((seg, index) => (
-        <DraggableSegment
-          key={`seg-${index}`}
-          segment={seg}
-          connectionId={connectionId}
-          waypoints={waypoints}
-          onDragStart={() => {
-            setIsWaypointDragging(true)
-            onDragStateChange?.(true)
-          }}
-          onDragEnd={() => {
-            setIsWaypointDragging(false)
-            onDragStateChange?.(false)
-          }}
-        />
-      ))}
+      {selected &&
+        segments.map((seg, index) => (
+          <DraggableSegment
+            key={`seg-${index}`}
+            segment={seg}
+            connectionId={connectionId}
+            waypoints={waypoints}
+            onDragStart={() => {
+              setIsWaypointDragging(true)
+              onDragStateChange?.(true)
+            }}
+            onDragEnd={() => {
+              setIsWaypointDragging(false)
+              onDragStateChange?.(false)
+            }}
+          />
+        ))}
       {/* Waypoint handles (bend points) - only show when selected */}
-      {selected && waypoints.map((wp, index) => (
-        <WaypointHandle
-          key={index}
-          x={wp.x}
-          y={wp.y}
-          index={index}
-          connectionId={connectionId}
-          onDragStart={() => {
-            setIsWaypointDragging(true)
-            onDragStateChange?.(true)
-          }}
-          onDragEnd={() => {
-            setIsWaypointDragging(false)
-            onDragStateChange?.(false)
-          }}
-        />
-      ))}
+      {selected &&
+        waypoints.map((wp, index) => (
+          <WaypointHandle
+            key={index}
+            x={wp.x}
+            y={wp.y}
+            index={index}
+            connectionId={connectionId}
+            onDragStart={() => {
+              setIsWaypointDragging(true)
+              onDragStateChange?.(true)
+            }}
+            onDragEnd={() => {
+              setIsWaypointDragging(false)
+              onDragStateChange?.(false)
+            }}
+          />
+        ))}
       {/* Signal name label - show always if name exists, or show dimension label when selected */}
       <EdgeLabelRenderer>
         {/* Signal name display (always visible if set) - positioned along the trace, draggable */}
@@ -525,7 +579,7 @@ function CustomEdgeComponent({
               transform: `translate(-50%, 0%) translate(${labelX}px,${labelY + 2}px)`,
               pointerEvents: 'none',
               padding: `${padY}px ${padX}px`,
-              borderRadius: labelBgBorderRadius || 4,
+              borderRadius: labelBgBorderRadius ?? 4,
               ...labelBgStyle,
             }}
             className="nodrag nopan"
