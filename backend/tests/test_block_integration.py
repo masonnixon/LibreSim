@@ -641,11 +641,12 @@ class TestFrontendBackendParameterConversion:
         assert adapter._convert_product_operations("/") == "/"
 
     def test_product_operations_none_defaults(self):
-        """Test that None defaults to two multiply operations."""
+        """Test that absent and empty operations default to two multiply inputs."""
         from src.simulation.osk_adapter import OSKAdapter
 
         adapter = OSKAdapter()
         assert adapter._convert_product_operations(None) == "**"
+        assert adapter._convert_product_operations("") == "**"
 
     def test_product_operations_invalid_defaults(self):
         """Test that invalid strings default to multiply operations."""

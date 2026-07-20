@@ -420,12 +420,12 @@ class SimulationRunner:
                 self._status = SimulationStatus.COMPILING
                 self._compiled = self._compiler.compile(self.model)
 
-                if not self._compiled.success:
-                    self._status = SimulationStatus.ERROR
-                    self._error_message = self._compiled.message
-                    if self._compiled.errors:
-                        self._error_message = "; ".join(self._compiled.errors)
-                    return False
+            if not self._compiled.success:
+                self._status = SimulationStatus.ERROR
+                self._error_message = self._compiled.message
+                if self._compiled.errors:
+                    self._error_message = "; ".join(self._compiled.errors)
+                return False
 
             # A fresh step-mode lifecycle always starts from the configured
             # boundary, even when compilation is reused from an earlier run.
@@ -561,7 +561,7 @@ class SimulationRunner:
         expected_progress = (
             (snapshot.current_time - self.config.start_time) / duration
             if duration > 0
-            else math.nan
+            else 0.0
         )
         if (
             snapshot.total_steps < 0
@@ -1103,7 +1103,7 @@ class SimulationRunner:
 
         for key, data in self._results.items():
             # Key format: "blockId:portId:signalName" or "blockId:inputIndex:sourceName"
-            parts = key.split(":")
+            parts = key.split(":", 2)
             block_id = parts[0] if len(parts) > 0 else ""
             parts[1] if len(parts) > 1 else ""
             # Use the signal name from the key (source block name for scope inputs)

@@ -1216,6 +1216,8 @@ class OSKAdapter:
 
         # Convert to string if needed
         value_str = str(value)
+        if not value_str:
+            return "**"
 
         # If it's a pure number, convert to that many '*' characters
         try:
