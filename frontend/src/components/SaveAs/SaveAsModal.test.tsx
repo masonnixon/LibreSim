@@ -168,7 +168,7 @@ describe('SaveAsModal', function () {
     expect(stores.closeSaveAsModal).not.toHaveBeenCalled()
   })
 
-  it('uses an unknown-error message for non-Error MDL failures', function () {
+  it('does not rename the model when MDL export fails with a non-Error value', function () {
     const stores = setup()
     render(<SaveAsModal />)
     fireEvent.click(screen.getByRole('radio', { name: /MDL/ }))
@@ -177,6 +177,7 @@ describe('SaveAsModal', function () {
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     expect(mockedToast.warning).toHaveBeenCalledWith('Export Failed', 'Unknown error')
+    expect(stores.updateMetadata).not.toHaveBeenCalled()
     expect(stores.closeSaveAsModal).not.toHaveBeenCalled()
   })
 

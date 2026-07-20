@@ -33,11 +33,6 @@ export function SaveAsModal() {
 
     const cleanFilename = filename.trim()
 
-    // Optionally update the model name to match the new filename
-    if (updateModelName) {
-      updateMetadata({ name: cleanFilename })
-    }
-
     if (format === 'json') {
       // Export as JSON
       const modelToExport = updateModelName
@@ -69,6 +64,11 @@ export function SaveAsModal() {
         toast.warning('Export Failed', `${error instanceof Error ? error.message : 'Unknown error'}`)
         return
       }
+    }
+
+    // Update only after the selected export completes successfully.
+    if (updateModelName) {
+      updateMetadata({ name: cleanFilename })
     }
 
     closeSaveAsModal()
