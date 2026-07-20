@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useUIStore } from '../../store/uiStore'
@@ -426,22 +426,25 @@ function AboutTab() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (!content && !loading) {
-      setLoading(true)
-      setError(null)
-      api.getProjectReadme()
-        .then((readme) => {
-          setContent(readme)
-          setLoading(false)
-        })
-        .catch((err) => {
-          console.error('Failed to load project README:', err)
-          setError('Failed to load documentation. Please try again.')
-          setLoading(false)
-        })
-    }
-  }, [content, loading])
+  const loadReadme = useCallback(function () {
+    setLoading(true)
+    setError(null)
+    api.getProjectReadme()
+      .then(function (readme) {
+        setContent(readme)
+        setLoading(false)
+      })
+      .catch(function (err) {
+        console.error('Failed to load project README:', err)
+        setError('Failed to load documentation. Please try again.')
+        setLoading(false)
+      })
+  }, [])
+
+  useEffect(function () {
+    loadReadme()
+  }, [loadReadme])
+
 
   if (loading) {
     return (
@@ -456,10 +459,7 @@ function AboutTab() {
       <div className="flex flex-col items-center justify-center py-12 text-center">
         <div className="text-red-400 mb-4">{error}</div>
         <button
-          onClick={() => {
-            setContent('')
-            setError(null)
-          }}
+          onClick={loadReadme}
           className="text-blue-400 hover:text-blue-300"
         >
           Retry
