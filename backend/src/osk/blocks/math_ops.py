@@ -72,26 +72,23 @@ class Sum(Block):
             # Vector sum
             self._output_vector = [0.0] * max_len
             for i, sign in enumerate(self.signs):
-                if i < self.num_inputs:
-                    sign_mult = 1.0 if sign == "+" else -1.0
-                    if self._input_vectors[i] is not None:
-                        for j in range(len(self._input_vectors[i])):
-                            if j < max_len:
-                                self._output_vector[j] += sign_mult * self._input_vectors[i][j]
-                    else:
-                        # Scalar input - add to first element only (or broadcast)
-                        self._output_vector[0] += sign_mult * self.inputs[i]
+                sign_mult = 1.0 if sign == "+" else -1.0
+                if self._input_vectors[i] is not None:
+                    for j in range(len(self._input_vectors[i])):
+                        self._output_vector[j] += sign_mult * self._input_vectors[i][j]
+                else:
+                    # Scalar input - add to first element only (or broadcast)
+                    self._output_vector[0] += sign_mult * self.inputs[i]
             self.output = self._output_vector[0] if self._output_vector else 0.0
         else:
             # Scalar sum
             self._output_vector = None
             self.output = 0.0
             for i, sign in enumerate(self.signs):
-                if i < len(self.inputs):
-                    if sign == "+":
-                        self.output += self.inputs[i]
-                    else:
-                        self.output -= self.inputs[i]
+                if sign == "+":
+                    self.output += self.inputs[i]
+                else:
+                    self.output -= self.inputs[i]
 
     def getOutput(self, port=0):
         if self._is_vector and self._output_vector:
@@ -253,43 +250,40 @@ class Product(Block):
             # Vector product
             self._output_vector = [1.0] * max_len
             for i, op in enumerate(self.operations):
-                if i < self.num_inputs:
-                    if self._input_vectors[i] is not None:
-                        for j in range(len(self._input_vectors[i])):
-                            if j < max_len:
-                                val = self._input_vectors[i][j]
-                                if op == "*":
-                                    self._output_vector[j] *= val
-                                else:
-                                    if abs(val) > EPS:
-                                        self._output_vector[j] /= val
-                                    else:
-                                        self._output_vector[j] /= EPS
-                    else:
-                        # Apply scalar to all elements
-                        val = self.inputs[i]
-                        for j in range(max_len):
-                            if op == "*":
-                                self._output_vector[j] *= val
+                if self._input_vectors[i] is not None:
+                    for j in range(len(self._input_vectors[i])):
+                        val = self._input_vectors[i][j]
+                        if op == "*":
+                            self._output_vector[j] *= val
+                        else:
+                            if abs(val) > EPS:
+                                self._output_vector[j] /= val
                             else:
-                                if abs(val) > EPS:
-                                    self._output_vector[j] /= val
-                                else:
-                                    self._output_vector[j] /= EPS
+                                self._output_vector[j] /= EPS
+                else:
+                    # Apply scalar to all elements
+                    val = self.inputs[i]
+                    for j in range(max_len):
+                        if op == "*":
+                            self._output_vector[j] *= val
+                        else:
+                            if abs(val) > EPS:
+                                self._output_vector[j] /= val
+                            else:
+                                self._output_vector[j] /= EPS
             self.output = self._output_vector[0] if self._output_vector else 0.0
         else:
             # Scalar product
             self._output_vector = None
             self.output = 1.0
             for i, op in enumerate(self.operations):
-                if i < len(self.inputs):
-                    if op == "*":
-                        self.output *= self.inputs[i]
+                if op == "*":
+                    self.output *= self.inputs[i]
+                else:
+                    if abs(self.inputs[i]) > EPS:
+                        self.output /= self.inputs[i]
                     else:
-                        if abs(self.inputs[i]) > EPS:
-                            self.output /= self.inputs[i]
-                        else:
-                            self.output /= EPS
+                        self.output /= EPS
 
     def getOutput(self, port=0):
         if self._is_vector and self._output_vector:
@@ -1521,8 +1515,6 @@ class MinMax(Block):
         if not self._is_vector or (self._output_vector and len(self._output_vector) != n):
             self._is_vector = True
             self._output_vector = [0.0] * n
-            while len(self._input_vectors) < self.num_inputs:
-                self._input_vectors.append(None)
 
     def connectInput(self, block, port=0, source_port=0):
         if port < self.num_inputs:
