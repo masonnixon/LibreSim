@@ -42,13 +42,16 @@ export function Scope3DWindow({
 
   // Track data revision to help Plotly know when to update data vs layout
   const dataRevision = useRef(0)
-  const prevDataLength = useRef(0)
+  const previousCoordinates = useRef<Pick<SignalData, 'x' | 'y' | 'z'>>({})
 
-  // Increment revision only when data length changes
-  if (signal.x && signal.x.length !== prevDataLength.current) {
+  if (signal.x !== previousCoordinates.current.x ||
+      signal.y !== previousCoordinates.current.y ||
+      signal.z !== previousCoordinates.current.z) {
     dataRevision.current += 1
-    prevDataLength.current = signal.x.length
+    previousCoordinates.current = { x: signal.x, y: signal.y, z: signal.z }
   }
+
+  const hasData = Boolean(signal.x?.length && signal.y?.length && signal.z?.length)
 
   const { position, size, isMinimized } = windowState
 
@@ -74,7 +77,7 @@ export function Scope3DWindow({
 
   // Build 3D plot data
   const plotData = useMemo(() => {
-    if (!signal.x || !signal.y || !signal.z) return []
+    if (!hasData) return []
 
     const inputNames = signal.inputNames || ['X', 'Y', 'Z']
 
@@ -95,7 +98,7 @@ export function Scope3DWindow({
         `${inputNames[2]}: %{z:.4f}<br>` +
         '<extra></extra>',
     }]
-  }, [signal])
+  }, [hasData, signal])
 
   // Axis labels from signal
   const axisLabels = signal.inputNames || ['X', 'Y', 'Z']
@@ -204,7 +207,7 @@ export function Scope3DWindow({
       {!isMinimized && (
         <div className="flex-1 flex flex-col min-h-0">
           <div className="flex-1 min-h-0">
-            {!signal.x || signal.x.length === 0 ? (
+            {!hasData ? (
               <div className="h-full flex items-center justify-center text-gray-400 text-sm">
                 No data available
               </div>
@@ -263,9 +266,9 @@ export function Scope3DWindow({
       )}
 
       {/* Info bar */}
-      {!isMinimized && signal.x && signal.x.length > 0 && (
+      {!isMinimized && hasData && (
         <div className="flex justify-between text-xs text-gray-400 px-2 py-1 bg-gray-900/50 border-t border-editor-border">
-          <span>Points: {signal.x.length}</span>
+          <span>Points: {signal.x?.length}</span>
           <span>Drag to rotate, scroll to zoom</span>
         </div>
       )}

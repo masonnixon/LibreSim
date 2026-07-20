@@ -77,23 +77,7 @@ export function PlotWindow({
   ]
 
   const plotData = useMemo(() => {
-    if (!signals || signals.length === 0) return []
-
-    // DEBUG: Log raw signal data received by PlotWindow
-    console.log(`[PlotWindow ${blockName}] Raw signals:`, JSON.stringify(signals.map(s => ({
-      blockId: s.blockId,
-      name: s.name,
-      numInputs: s.numInputs,
-      inputNames: s.inputNames,
-      timesLength: s.times?.length,
-      valuesType: Array.isArray(s.values) ? (Array.isArray(s.values[0]) ? 'number[][]' : 'number[]') : typeof s.values,
-      valuesLength: Array.isArray(s.values) ? s.values.length : 0,
-      sampleValues: Array.isArray(s.values) ?
-        (Array.isArray(s.values[0]) ?
-          (s.values as number[][]).map((arr) => arr?.slice(0, 3)) :
-          (s.values as number[]).slice(0, 5)) :
-        s.values
-    })), null, 2))
+    if (signals.length === 0) return []
 
     const traces: Array<{
       x: number[]
@@ -109,26 +93,11 @@ export function PlotWindow({
       const inputNames = signal.inputNames || []
       const values = signal.values
 
-      // DEBUG: Log each signal processing
-      console.log(`[PlotWindow ${blockName}] Processing signal:`, {
-        numInputs,
-        inputNames,
-        isMultiInput: numInputs > 1 && Array.isArray(values) && Array.isArray(values[0])
-      })
-
       if (numInputs > 1 && Array.isArray(values) && Array.isArray(values[0])) {
         // Multi-input scope: create a trace for each input
         for (let i = 0; i < numInputs; i++) {
           const traceName = inputNames[i] || `Input ${i + 1}`
           const traceValues = (values as number[][])[i] || []
-          // DEBUG: Log trace values
-          console.log(`[PlotWindow ${blockName}] Trace ${i} (${traceName}):`, {
-            valuesLength: traceValues.length,
-            first5: traceValues.slice(0, 5),
-            last5: traceValues.slice(-5),
-            min: Math.min(...traceValues),
-            max: Math.max(...traceValues)
-          })
           traces.push({
             x: signal.times,
             y: traceValues,
@@ -141,14 +110,6 @@ export function PlotWindow({
       } else {
         // Single-input scope or backward compatible format
         const flatValues = values as number[]
-        // DEBUG: Log single trace values
-        console.log(`[PlotWindow ${blockName}] Single trace (${signal.name}):`, {
-          valuesLength: flatValues.length,
-          first5: flatValues.slice(0, 5),
-          last5: flatValues.slice(-5),
-          min: Math.min(...flatValues),
-          max: Math.max(...flatValues)
-        })
         traces.push({
           x: signal.times,
           y: flatValues,
@@ -162,7 +123,7 @@ export function PlotWindow({
 
     return traces
     // eslint-disable-next-line react-hooks/exhaustive-deps -- traceColors is a constant array defined above, never changes
-  }, [signals, blockName])
+  }, [signals])
 
   // Determine if we should show the legend (multiple traces)
   const showLegend = plotData.length > 1
@@ -171,15 +132,13 @@ export function PlotWindow({
   const dataBounds = useMemo(() => {
     let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity
     for (const trace of plotData) {
-      if (trace.x && trace.y) {
-        for (const x of trace.x as number[]) {
-          if (x < xMin) xMin = x
-          if (x > xMax) xMax = x
-        }
-        for (const y of trace.y as number[]) {
-          if (y < yMin) yMin = y
-          if (y > yMax) yMax = y
-        }
+      for (const x of trace.x) {
+        if (x < xMin) xMin = x
+        if (x > xMax) xMax = x
+      }
+      for (const y of trace.y) {
+        if (y < yMin) yMin = y
+        if (y > yMax) yMax = y
       }
     }
     // Add some padding (5%)
