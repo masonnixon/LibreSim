@@ -361,7 +361,7 @@ files verified mirrored, `docs/refs/testing.md` coverage tables updated to final
 | B6 | not started | | | |
 | B7 | not started | | | |
 | F1 | complete | this commit | F: 40.34% stmts / 35.64% branches / 44.41% funcs / 39.00% lines | 664 passed; both CI pipelines use coverage command |
-| F2 | in progress | `00d2f3b`, this commit | F: 50.94% stmts / 45.24% branches / 52.42% funcs / 49.59% lines | 697 passed; libraryStore 100%; importer 99.60% stmts / 82.11% branches / 100% funcs / 99.76% lines; modelStore remains |
+| F2 | complete | `00d2f3b`, `d73ad04`, this commit | F: 51.92% stmts / 51.22% branches / 53.40% funcs / 50.38% lines | 724 passed, 0 failed; modelStore, libraryStore, mdlImporter, mdlExporter, simulationStore, api/client, data/examples, and App at 100% |
 | F3 | not started | | | |
 | F4 | not started | | | |
 | F5 | not started (maintainer descope decision point) | | | |

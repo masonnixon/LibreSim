@@ -1,5 +1,7 @@
 // Behavioral tests for example metadata and API-backed loading.
 import { afterEach, expect, it, vi } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 
 import { api } from '../api/client'
 import {
@@ -78,6 +80,23 @@ caseFn('keeps the fallback catalog complete and internally consistent', function
     expect(example.description).not.toBe('')
     expect(allowedCategories.has(example.category)).toBe(true)
   }
+})
+
+caseFn('keeps fallback IDs synchronized with the backend example manifest', function () {
+  const backendSource = readFileSync(
+    resolve(process.cwd(), '../backend/src/api/routes/examples.py'),
+    'utf8',
+  )
+  const manifestSource = backendSource
+    .split('EXAMPLE_MANIFEST:')[1]
+    .split('@router.get')[0]
+  const backendIds = Array.from(
+    manifestSource.matchAll(/"id":\s*"([^"]+)"/g),
+    function (match) { return match[1] },
+  )
+  const frontendIds = exampleList.map(function (example) { return example.id })
+
+  expect(frontendIds.sort()).toEqual(backendIds.sort())
 })
 
 caseFn('warns when the deprecated synchronous getter is used', function () {

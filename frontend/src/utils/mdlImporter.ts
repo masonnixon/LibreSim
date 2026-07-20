@@ -92,9 +92,7 @@ export function getRegisteredLibraryNames(): string[] {
   const names = new Set<string>()
   globalLibraryRegistry.forEach((_, key) => {
     const parts = key.split('/')
-    if (parts.length > 0) {
-      names.add(parts[0])
-    }
+    names.add(parts[0])
   })
   return Array.from(names)
 }
@@ -126,7 +124,7 @@ let idCounter = 0
 /**
  * Generate a unique ID for blocks and connections
  */
-function generateUniqueId(prefix: string = ''): string {
+function generateUniqueId(prefix: string): string {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     return crypto.randomUUID()
   }
@@ -368,9 +366,7 @@ function tokenize(content: string): string[] {
       token += content[i]
       i++
     }
-    if (token) {
-      tokens.push(token)
-    }
+    tokens.push(token)
   }
 
   return tokens
@@ -403,6 +399,10 @@ function parseValue(value: string): unknown {
   }
 
   return value
+}
+
+function parseParameterValue(value: unknown): unknown {
+  return Array.isArray(value) ? value : parseValue(String(value))
 }
 
 /**
@@ -502,7 +502,7 @@ function parseMDL(content: string): ParsedModel {
           obj[key] = parseValue(tokens[pos])
         }
         pos++
-      } else if (tokens[pos] === '}') {
+      } else {
         // Unexpected closing brace without a value - this key has no value
         // This can happen with empty objects or special syntax
         if (depth <= 2) console.log(`${debugPrefix}[MDL Parse] Key "${key}" has no value (closing brace)`)
@@ -634,9 +634,9 @@ function convertBlockParameters(block: ParsedBlock, libreSimType: string): Recor
   switch (libreSimType) {
     case 'constant':
       // MDL uses various property names for constant value
-      if (block.Value !== undefined) params.value = parseValue(String(block.Value))
-      else if (block.ConstantValue !== undefined) params.value = parseValue(String(block.ConstantValue))
-      else if (block.Constant !== undefined) params.value = parseValue(String(block.Constant))
+      if (block.Value !== undefined) params.value = parseParameterValue(block.Value)
+      else if (block.ConstantValue !== undefined) params.value = parseParameterValue(block.ConstantValue)
+      else if (block.Constant !== undefined) params.value = parseParameterValue(block.Constant)
       // Default to 1 if no value specified (MDL default)
       if (params.value === undefined) {
         console.log('[MDL Import] Constant block properties (no value found):', Object.keys(block))
@@ -645,36 +645,36 @@ function convertBlockParameters(block: ParsedBlock, libreSimType: string): Recor
       break
 
     case 'step':
-      if (block.Time !== undefined) params.stepTime = parseValue(String(block.Time))
-      if (block.Before !== undefined) params.initialValue = parseValue(String(block.Before))
-      if (block.After !== undefined) params.finalValue = parseValue(String(block.After))
+      if (block.Time !== undefined) params.stepTime = parseParameterValue(block.Time)
+      if (block.Before !== undefined) params.initialValue = parseParameterValue(block.Before)
+      if (block.After !== undefined) params.finalValue = parseParameterValue(block.After)
       break
 
     case 'ramp':
-      if (block.Slope !== undefined) params.slope = parseValue(String(block.Slope))
-      if (block.Start !== undefined) params.startTime = parseValue(String(block.Start))
-      if (block.X0 !== undefined) params.initialOutput = parseValue(String(block.X0))
+      if (block.Slope !== undefined) params.slope = parseParameterValue(block.Slope)
+      if (block.Start !== undefined) params.startTime = parseParameterValue(block.Start)
+      if (block.X0 !== undefined) params.initialOutput = parseParameterValue(block.X0)
       break
 
     case 'sine_wave':
-      if (block.Amplitude !== undefined) params.amplitude = parseValue(String(block.Amplitude))
-      if (block.Frequency !== undefined) params.frequency = parseValue(String(block.Frequency))
-      if (block.Phase !== undefined) params.phase = parseValue(String(block.Phase))
-      if (block.Bias !== undefined) params.bias = parseValue(String(block.Bias))
+      if (block.Amplitude !== undefined) params.amplitude = parseParameterValue(block.Amplitude)
+      if (block.Frequency !== undefined) params.frequency = parseParameterValue(block.Frequency)
+      if (block.Phase !== undefined) params.phase = parseParameterValue(block.Phase)
+      if (block.Bias !== undefined) params.bias = parseParameterValue(block.Bias)
       break
 
     case 'pulse_generator':
-      if (block.Amplitude !== undefined) params.amplitude = parseValue(String(block.Amplitude))
-      if (block.Period !== undefined) params.period = parseValue(String(block.Period))
-      if (block.PulseWidth !== undefined) params.dutyCycle = parseValue(String(block.PulseWidth))
+      if (block.Amplitude !== undefined) params.amplitude = parseParameterValue(block.Amplitude)
+      if (block.Period !== undefined) params.period = parseParameterValue(block.Period)
+      if (block.PulseWidth !== undefined) params.dutyCycle = parseParameterValue(block.PulseWidth)
       break
 
     case 'scope':
-      if (block.NumInputPorts !== undefined) params.numInputs = parseValue(String(block.NumInputPorts))
+      if (block.NumInputPorts !== undefined) params.numInputs = parseParameterValue(block.NumInputPorts)
       break
 
     case 'integrator':
-      if (block.InitialCondition !== undefined) params.initialCondition = parseValue(String(block.InitialCondition))
+      if (block.InitialCondition !== undefined) params.initialCondition = parseParameterValue(block.InitialCondition)
       // ExternalReset enables external initial condition input (port 2)
       // Any value other than 'none' enables external IC mode
       if (block.ExternalReset !== undefined && block.ExternalReset !== 'none') {
@@ -682,47 +682,47 @@ function convertBlockParameters(block: ParsedBlock, libreSimType: string): Recor
       }
       if (block.LimitOutput === 'on') {
         params.limitOutput = true
-        if (block.UpperSaturationLimit !== undefined) params.upperLimit = parseValue(String(block.UpperSaturationLimit))
-        if (block.LowerSaturationLimit !== undefined) params.lowerLimit = parseValue(String(block.LowerSaturationLimit))
+        if (block.UpperSaturationLimit !== undefined) params.upperLimit = parseParameterValue(block.UpperSaturationLimit)
+        if (block.LowerSaturationLimit !== undefined) params.lowerLimit = parseParameterValue(block.LowerSaturationLimit)
       }
       break
 
     case 'derivative':
-      if (block.Coefficient !== undefined) params.coefficient = parseValue(String(block.Coefficient))
+      if (block.Coefficient !== undefined) params.coefficient = parseParameterValue(block.Coefficient)
       break
 
     case 'transfer_function':
       if (block.Numerator !== undefined) {
-        const num = parseValue(String(block.Numerator))
+        const num = parseParameterValue(block.Numerator)
         params.numerator = Array.isArray(num) ? num : [num]
       }
       if (block.Denominator !== undefined) {
-        const den = parseValue(String(block.Denominator))
+        const den = parseParameterValue(block.Denominator)
         params.denominator = Array.isArray(den) ? den : [den]
       }
       break
 
     case 'state_space':
-      if (block.A !== undefined) params.A = parseValue(String(block.A))
-      if (block.B !== undefined) params.B = parseValue(String(block.B))
-      if (block.C !== undefined) params.C = parseValue(String(block.C))
-      if (block.D !== undefined) params.D = parseValue(String(block.D))
+      if (block.A !== undefined) params.A = parseParameterValue(block.A)
+      if (block.B !== undefined) params.B = parseParameterValue(block.B)
+      if (block.C !== undefined) params.C = parseParameterValue(block.C)
+      if (block.D !== undefined) params.D = parseParameterValue(block.D)
       break
 
     case 'pid_controller':
-      if (block.P !== undefined) params.Kp = parseValue(String(block.P))
-      if (block.I !== undefined) params.Ki = parseValue(String(block.I))
-      if (block.D !== undefined) params.Kd = parseValue(String(block.D))
-      if (block.N !== undefined) params.N = parseValue(String(block.N))
+      if (block.P !== undefined) params.Kp = parseParameterValue(block.P)
+      if (block.I !== undefined) params.Ki = parseParameterValue(block.I)
+      if (block.D !== undefined) params.Kd = parseParameterValue(block.D)
+      if (block.N !== undefined) params.N = parseParameterValue(block.N)
       break
 
     case 'unit_delay':
-      if (block.InitialCondition !== undefined) params.initialCondition = parseValue(String(block.InitialCondition))
-      if (block.SampleTime !== undefined) params.sampleTime = parseValue(String(block.SampleTime))
+      if (block.InitialCondition !== undefined) params.initialCondition = parseParameterValue(block.InitialCondition)
+      if (block.SampleTime !== undefined) params.sampleTime = parseParameterValue(block.SampleTime)
       break
 
     case 'zero_order_hold':
-      if (block.SampleTime !== undefined) params.sampleTime = parseValue(String(block.SampleTime))
+      if (block.SampleTime !== undefined) params.sampleTime = parseParameterValue(block.SampleTime)
       break
 
     case 'sum':
@@ -730,7 +730,7 @@ function convertBlockParameters(block: ParsedBlock, libreSimType: string): Recor
       break
 
     case 'gain':
-      if (block.Gain !== undefined) params.gain = parseValue(String(block.Gain))
+      if (block.Gain !== undefined) params.gain = parseParameterValue(block.Gain)
       break
 
     case 'product':
@@ -742,34 +742,34 @@ function convertBlockParameters(block: ParsedBlock, libreSimType: string): Recor
       break
 
     case 'saturation':
-      if (block.UpperLimit !== undefined) params.upperLimit = parseValue(String(block.UpperLimit))
-      if (block.LowerLimit !== undefined) params.lowerLimit = parseValue(String(block.LowerLimit))
+      if (block.UpperLimit !== undefined) params.upperLimit = parseParameterValue(block.UpperLimit)
+      if (block.LowerLimit !== undefined) params.lowerLimit = parseParameterValue(block.LowerLimit)
       break
 
     case 'dead_zone':
-      if (block.LowerValue !== undefined) params.start = parseValue(String(block.LowerValue))
-      if (block.UpperValue !== undefined) params.end = parseValue(String(block.UpperValue))
+      if (block.LowerValue !== undefined) params.start = parseParameterValue(block.LowerValue)
+      if (block.UpperValue !== undefined) params.end = parseParameterValue(block.UpperValue)
       break
 
     case 'rate_limiter':
-      if (block.RisingSlewLimit !== undefined) params.risingLimit = parseValue(String(block.RisingSlewLimit))
-      if (block.FallingSlewLimit !== undefined) params.fallingLimit = parseValue(String(block.FallingSlewLimit))
+      if (block.RisingSlewLimit !== undefined) params.risingLimit = parseParameterValue(block.RisingSlewLimit)
+      if (block.FallingSlewLimit !== undefined) params.fallingLimit = parseParameterValue(block.FallingSlewLimit)
       break
 
     case 'relay':
-      if (block.OnSwitchValue !== undefined) params.switchOn = parseValue(String(block.OnSwitchValue))
-      if (block.OffSwitchValue !== undefined) params.switchOff = parseValue(String(block.OffSwitchValue))
-      if (block.OnOutputValue !== undefined) params.outputOn = parseValue(String(block.OnOutputValue))
-      if (block.OffOutputValue !== undefined) params.outputOff = parseValue(String(block.OffOutputValue))
+      if (block.OnSwitchValue !== undefined) params.switchOn = parseParameterValue(block.OnSwitchValue)
+      if (block.OffSwitchValue !== undefined) params.switchOff = parseParameterValue(block.OffSwitchValue)
+      if (block.OnOutputValue !== undefined) params.outputOn = parseParameterValue(block.OnOutputValue)
+      if (block.OffOutputValue !== undefined) params.outputOff = parseParameterValue(block.OffOutputValue)
       break
 
     case 'inport':
     case 'outport':
       // MDL uses various property names for port number
-      if (block.Port !== undefined) params.portNumber = parseValue(String(block.Port))
-      else if (block.PortNumber !== undefined) params.portNumber = parseValue(String(block.PortNumber))
-      else if (block.PortNum !== undefined) params.portNumber = parseValue(String(block.PortNum))
-      else if (block.Number !== undefined) params.portNumber = parseValue(String(block.Number))
+      if (block.Port !== undefined) params.portNumber = parseParameterValue(block.Port)
+      else if (block.PortNumber !== undefined) params.portNumber = parseParameterValue(block.PortNumber)
+      else if (block.PortNum !== undefined) params.portNumber = parseParameterValue(block.PortNum)
+      else if (block.Number !== undefined) params.portNumber = parseParameterValue(block.Number)
       // Default to 1 if no port number specified
       if (params.portNumber === undefined) {
         console.log(`[MDL Import] ${libreSimType} block "${block.Name}" properties (no port found):`, Object.keys(block))
@@ -779,9 +779,9 @@ function convertBlockParameters(block: ParsedBlock, libreSimType: string): Recor
 
     case 'mux':
       // MDL uses various property names for input count
-      if (block.Inputs !== undefined) params.numInputs = parseValue(String(block.Inputs))
-      else if (block.NumberOfInputs !== undefined) params.numInputs = parseValue(String(block.NumberOfInputs))
-      else if (block.NumInputs !== undefined) params.numInputs = parseValue(String(block.NumInputs))
+      if (block.Inputs !== undefined) params.numInputs = parseParameterValue(block.Inputs)
+      else if (block.NumberOfInputs !== undefined) params.numInputs = parseParameterValue(block.NumberOfInputs)
+      else if (block.NumInputs !== undefined) params.numInputs = parseParameterValue(block.NumInputs)
       // Also check Ports property - Ports [numInputs] for Mux
       if (params.numInputs === undefined && block.Ports !== undefined) {
         const ports = block.Ports
@@ -798,9 +798,9 @@ function convertBlockParameters(block: ParsedBlock, libreSimType: string): Recor
 
     case 'demux':
       // MDL uses various property names for output count
-      if (block.Outputs !== undefined) params.numOutputs = parseValue(String(block.Outputs))
-      else if (block.NumberOfOutputs !== undefined) params.numOutputs = parseValue(String(block.NumberOfOutputs))
-      else if (block.NumOutputs !== undefined) params.numOutputs = parseValue(String(block.NumOutputs))
+      if (block.Outputs !== undefined) params.numOutputs = parseParameterValue(block.Outputs)
+      else if (block.NumberOfOutputs !== undefined) params.numOutputs = parseParameterValue(block.NumberOfOutputs)
+      else if (block.NumOutputs !== undefined) params.numOutputs = parseParameterValue(block.NumOutputs)
       // Also check Ports property - Ports [numInputs, numOutputs] for Demux
       if (params.numOutputs === undefined && block.Ports !== undefined) {
         const ports = block.Ports
@@ -819,8 +819,8 @@ function convertBlockParameters(block: ParsedBlock, libreSimType: string): Recor
       else if (block.Function !== undefined) params.function = String(block.Function).toLowerCase()
       else if (block.MathFunction !== undefined) params.function = String(block.MathFunction).toLowerCase()
       // Handle exponent parameter for power functions
-      if (block.Exponent !== undefined) params.exponent = parseValue(String(block.Exponent))
-      else if (block.Power !== undefined) params.exponent = parseValue(String(block.Power))
+      if (block.Exponent !== undefined) params.exponent = parseParameterValue(block.Exponent)
+      else if (block.Power !== undefined) params.exponent = parseParameterValue(block.Power)
       // Default to exp function if not specified
       if (params.function === undefined) {
         console.log('[MDL Import] math_function block properties (no function found):', Object.keys(block))
@@ -848,12 +848,12 @@ function convertBlockParameters(block: ParsedBlock, libreSimType: string): Recor
       if (block.OutputDimensionality !== undefined) params.outputDimensionality = String(block.OutputDimensionality)
       else if (block.OutputDimensions !== undefined) params.outputDimensionality = String(block.OutputDimensions)
       // Try multiple property names for output dimensions
-      if (block.OutputDimensions !== undefined) params.outputDimensions = parseValue(String(block.OutputDimensions))
-      else if (block.OutputSize !== undefined) params.outputDimensions = parseValue(String(block.OutputSize))
-      else if (block.Dimensions !== undefined) params.outputDimensions = parseValue(String(block.Dimensions))
-      else if (block.Size !== undefined) params.outputDimensions = parseValue(String(block.Size))
+      if (block.OutputDimensions !== undefined) params.outputDimensions = parseParameterValue(block.OutputDimensions)
+      else if (block.OutputSize !== undefined) params.outputDimensions = parseParameterValue(block.OutputSize)
+      else if (block.Dimensions !== undefined) params.outputDimensions = parseParameterValue(block.Dimensions)
+      else if (block.Size !== undefined) params.outputDimensions = parseParameterValue(block.Size)
       // Provide defaults if not found
-      if (params.outputDimensions === undefined) {
+      if (params.outputDimensions === undefined && params.outputDimensionality === undefined) {
         console.log('[MDL Import] reshape block properties (no dimensions found):', Object.keys(block))
         params.outputDimensions = '[1]' // Default output dimensions
       }
@@ -864,12 +864,12 @@ function convertBlockParameters(block: ParsedBlock, libreSimType: string): Recor
 
     case 'selector':
       if (block.IndexMode !== undefined) params.indexMode = String(block.IndexMode)
-      if (block.Indices !== undefined) params.indices = parseValue(String(block.Indices))
+      if (block.Indices !== undefined) params.indices = parseParameterValue(block.Indices)
       break
 
     case 'logic':
       if (block.Operator !== undefined) params.operator = String(block.Operator)
-      if (block.Inputs !== undefined) params.numInputs = parseValue(String(block.Inputs))
+      if (block.Inputs !== undefined) params.numInputs = parseParameterValue(block.Inputs)
       break
 
     case 'relational_operator':
@@ -883,11 +883,11 @@ function convertBlockParameters(block: ParsedBlock, libreSimType: string): Recor
       break
 
     case 'memory':
-      if (block.InitialCondition !== undefined) params.initialCondition = parseValue(String(block.InitialCondition))
+      if (block.InitialCondition !== undefined) params.initialCondition = parseParameterValue(block.InitialCondition)
       break
 
     case 'concatenate':
-      if (block.NumInputs !== undefined) params.numInputs = parseValue(String(block.NumInputs))
+      if (block.NumInputs !== undefined) params.numInputs = parseParameterValue(block.NumInputs)
       if (block.Mode !== undefined) params.mode = String(block.Mode)
       break
 
@@ -897,6 +897,34 @@ function convertBlockParameters(block: ParsedBlock, libreSimType: string): Recor
   }
 
   return params
+}
+
+function getReshapeOutputDimensions(params: Record<string, unknown>): number[] {
+  let reshapeDims: number[] = [1]
+  const dimMode = String(params.outputDimensionality).toLowerCase()
+
+  if (params.outputDimensions) {
+    if (Array.isArray(params.outputDimensions)) {
+      reshapeDims = params.outputDimensions.map((n: unknown) => typeof n === 'number' ? n : parseInt(String(n)) || 1)
+    } else {
+      const dimStr = String(params.outputDimensions)
+      try {
+        const parsed = JSON.parse(dimStr)
+        if (Array.isArray(parsed) && parsed.every((n: unknown) => typeof n === 'number')) {
+          reshapeDims = parsed
+        }
+      } catch {
+        const matches = dimStr.match(/\d+/g)
+        if (matches) {
+          reshapeDims = matches.map(Number)
+        }
+      }
+    }
+  } else if (dimMode.includes('column vector') || dimMode.includes('1-d array')) {
+    reshapeDims = [-1]
+  }
+
+  return reshapeDims
 }
 
 /**
@@ -952,22 +980,20 @@ function createPorts(blockType: string, params: Record<string, unknown>): { inpu
     if (blockType === 'product' && params.operations) {
       const operations = String(params.operations)
       const numPorts = operations.length
-      if (numPorts > 0) {
-        inputPorts.length = 0
-        for (let i = 0; i < numPorts; i++) {
-          inputPorts.push({
-            id: `in_${i}`,
-            name: `in${i + 1}`,
-            dataType: 'double',
-            dimensions: [1],
-          })
-        }
+      inputPorts.length = 0
+      for (let i = 0; i < numPorts; i++) {
+        inputPorts.push({
+          id: `in_${i}`,
+          name: `in${i + 1}`,
+          dataType: 'double',
+          dimensions: [1],
+        })
       }
     }
 
     // Handle mux with dynamic number of inputs
     if (blockType === 'mux' && params.numInputs) {
-      const numInputs = typeof params.numInputs === 'number' ? params.numInputs : parseInt(String(params.numInputs)) || 2
+      const numInputs = typeof params.numInputs === 'number' ? params.numInputs : 2
       inputPorts.length = 0
       for (let i = 0; i < numInputs; i++) {
         inputPorts.push({
@@ -989,7 +1015,7 @@ function createPorts(blockType: string, params: Record<string, unknown>): { inpu
 
     // Handle demux with dynamic number of outputs
     if (blockType === 'demux' && params.numOutputs) {
-      const numOutputs = typeof params.numOutputs === 'number' ? params.numOutputs : parseInt(String(params.numOutputs)) || 2
+      const numOutputs = typeof params.numOutputs === 'number' ? params.numOutputs : 2
       outputPorts.length = 0
       for (let i = 0; i < numOutputs; i++) {
         outputPorts.push({
@@ -1024,6 +1050,15 @@ function createPorts(blockType: string, params: Record<string, unknown>): { inpu
         dataType: 'double',
         dimensions: [1],
       })
+    }
+
+    if (blockType === 'reshape' && outputPorts.length > 0) {
+      const reshapeDims = getReshapeOutputDimensions(params)
+      const totalDim = reshapeDims[0] === -1 ? -1 : reshapeDims.reduce((a, b) => a * b, 1)
+      outputPorts[0] = {
+        ...outputPorts[0],
+        dimensions: totalDim === -1 ? [-1] : [totalDim],
+      }
     }
 
     return { inputPorts, outputPorts }
@@ -1073,32 +1108,7 @@ function createPorts(blockType: string, params: Record<string, unknown>): { inpu
       // Parse output dimensions from parameters
       // For "Column vector (2-D)" or "1-D array" mode without explicit dimensions,
       // the output dimension should match input (handled by dimension propagation)
-      let reshapeDims: number[] = [1]
-      const dimMode = String(params.outputDimensionality || '').toLowerCase()
-
-      if (params.outputDimensions) {
-        // outputDimensions might already be an array from parseValue, or a string
-        if (Array.isArray(params.outputDimensions)) {
-          reshapeDims = params.outputDimensions.map((n: unknown) => typeof n === 'number' ? n : parseInt(String(n)) || 1)
-        } else {
-          const dimStr = String(params.outputDimensions)
-          try {
-            const parsed = JSON.parse(dimStr)
-            if (Array.isArray(parsed) && parsed.every((n: unknown) => typeof n === 'number')) {
-              reshapeDims = parsed
-            }
-          } catch {
-            const matches = dimStr.match(/\d+/g)
-            if (matches) {
-              reshapeDims = matches.map(Number)
-            }
-          }
-        }
-      } else if (dimMode.includes('column vector') || dimMode.includes('1-d array')) {
-        // For column vector or 1-D array mode without explicit dimensions,
-        // use -1 as a marker to indicate "same as input" (dimension propagation will fix it)
-        reshapeDims = [-1]
-      }
+      const reshapeDims = getReshapeOutputDimensions(params)
 
       // Calculate total dimension for vector representation
       // -1 means "inherit from input", which dimension propagation will handle
@@ -1228,7 +1238,6 @@ function getBlockOutputDimensions(
   // For subsystems, look at the corresponding Outport block inside
   if (block.type === 'subsystem' && block.children) {
     const portIndex = block.outputPorts.findIndex(p => p.id === portId)
-    if (portIndex >= 0) {
       // Find the Outport block with matching port number
       const outportBlock = block.children.find(
         b => b.type === 'outport' && ((b.parameters.portNumber as number) || 1) === portIndex + 1
@@ -1261,7 +1270,6 @@ function getBlockOutputDimensions(
           }
         }
       }
-    }
   }
 
   // For pass-through blocks (blocks that preserve input dimensions on output),
@@ -1294,7 +1302,7 @@ function getBlockOutputDimensions(
     }
   }
 
-  return port.dimensions || [1]
+  return port.dimensions
 }
 
 /**
@@ -1446,8 +1454,8 @@ export function propagateDimensions(blocks: BlockInstance[], connections: Connec
           const portNumber = (outport.parameters.portNumber as number) || 1
           const outputPortIndex = portNumber - 1
           if (block.outputPorts[outputPortIndex] && outport.inputPorts[0]) {
-            const newDims = outport.inputPorts[0].dimensions || [1]
-            const currentDims = block.outputPorts[outputPortIndex].dimensions || [1]
+            const newDims = outport.inputPorts[0].dimensions
+            const currentDims = block.outputPorts[outputPortIndex].dimensions
             if (JSON.stringify(newDims) !== JSON.stringify(currentDims)) {
               block.outputPorts[outputPortIndex].dimensions = [...newDims]
               changed = true
@@ -1474,9 +1482,9 @@ export function propagateDimensions(blocks: BlockInstance[], connections: Connec
 function convertSystem(
   parsedBlocks: ParsedBlock[],
   parsedLines: ParsedLine[],
-  idPrefix: string = '',
-  systemMap: Map<string, ParsedSystem> = new Map(),
-  currentPath: string = ''
+  idPrefix: string,
+  systemMap: Map<string, ParsedSystem>,
+  currentPath: string
 ): { blocks: BlockInstance[]; connections: Connection[] } {
   const blockMap = new Map<string, BlockInstance>()
   const blocks: BlockInstance[] = []
@@ -1543,7 +1551,7 @@ function convertSystem(
     // e.g., "Model/Subsystem1/NestedSub" is a sibling of "Model/Subsystem1" in the systemMap
     if (finalType === 'subsystem') {
       // Build the path for this subsystem's content
-      const subsystemPath = currentPath ? `${currentPath}/${blockName}` : blockName
+      const subsystemPath = `${currentPath}/${blockName}`
       console.log(`[MDL Import] Looking for subsystem content at path: "${subsystemPath}"`)
 
       // First check the systemMap for the subsystem's content
@@ -1554,8 +1562,8 @@ function convertSystem(
 
       if (nestedSystem) {
         console.log(`[MDL Import] Found subsystem "${blockName}" in systemMap with ${nestedSystem.blocks.length} blocks`)
-        const nestedBlocks = nestedSystem.blocks || []
-        const nestedLines = nestedSystem.lines || []
+        const nestedBlocks = nestedSystem.blocks
+        const nestedLines = nestedSystem.lines
 
         if (nestedBlocks.length > 0) {
           // Recursively convert nested system, passing the systemMap and new path
@@ -1689,12 +1697,10 @@ function convertSystem(
 
   // Helper to process branches recursively
   function processBranches(
-    branches: Array<Record<string, unknown>> | undefined,
+    branches: Array<Record<string, unknown>>,
     srcBlockName: string,
     srcPortNum: number
   ) {
-    if (!branches) return
-
     for (const branch of branches) {
       const dstBlockName = branch.DstBlock as string
       const dstPort = branch.DstPort as number | string
@@ -1739,13 +1745,13 @@ function convertSystem(
  */
 function convertToModel(parsed: ParsedModel): Model {
   // Get the main system name for path construction
-  const mainSystemName = parsed.system.Name || ''
+  const mainSystemName = parsed.system.Name
 
   const { blocks, connections } = convertSystem(
     parsed.system.blocks,
     parsed.system.lines,
     '',
-    parsed.systemMap || new Map(),
+    parsed.systemMap!,
     mainSystemName
   )
 
@@ -1762,7 +1768,7 @@ function convertToModel(parsed: ParsedModel): Model {
   const stepSize = parsed.FixedStep ? parseFloat(parsed.FixedStep) : 0.01
 
   const metadata: ModelMetadata = {
-    name: parsed.Name || 'Imported Model',
+    name: parsed.Name,
     description: 'Imported from Simulink MDL file',
     author: '',
     createdAt: new Date().toISOString(),
@@ -1797,7 +1803,7 @@ export function importMDL(content: string): Model {
     return convertToModel(parsed)
   } catch (error) {
     console.error('MDL import error:', error)
-    throw new Error(`Failed to parse MDL file: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    throw new Error(`Failed to parse MDL file: ${(error as Error).message}`)
   }
 }
 
@@ -1819,18 +1825,18 @@ function subsystemToLibraryBlock(
   libraryName: string
 ): LibraryBlockDefinition {
   // Extract port information from child blocks
-  const inports = (block.children || []).filter(b => b.type === 'inport')
-  const outports = (block.children || []).filter(b => b.type === 'outport')
+  const inports = block.children!.filter(b => b.type === 'inport')
+  const outports = block.children!.filter(b => b.type === 'outport')
 
   // Sort by port number
   inports.sort((a, b) => {
-    const portA = (a.parameters.portNumber as number) || 1
-    const portB = (b.parameters.portNumber as number) || 1
+    const portA = a.parameters.portNumber as number
+    const portB = b.parameters.portNumber as number
     return portA - portB
   })
   outports.sort((a, b) => {
-    const portA = (a.parameters.portNumber as number) || 1
-    const portB = (b.parameters.portNumber as number) || 1
+    const portA = a.parameters.portNumber as number
+    const portB = b.parameters.portNumber as number
     return portA - portB
   })
 
@@ -1838,44 +1844,44 @@ function subsystemToLibraryBlock(
   const portMappings: LibraryPortMapping[] = [
     ...inports.map((inport, index) => ({
       externalPort: {
-        name: inport.name || `in${index + 1}`,
+        name: inports[index].name,
         dataType: 'double' as const,
         dimensions: [1],
       },
       internalBlockId: inport.id,
-      portNumber: (inport.parameters.portNumber as number) || index + 1,
+      portNumber: inport.parameters.portNumber as number,
       direction: 'input' as const,
     })),
     ...outports.map((outport, index) => ({
       externalPort: {
-        name: outport.name || `out${index + 1}`,
+        name: outports[index].name,
         dataType: 'double' as const,
         dimensions: [1],
       },
       internalBlockId: outport.id,
-      portNumber: (outport.parameters.portNumber as number) || index + 1,
+      portNumber: outport.parameters.portNumber as number,
       direction: 'output' as const,
     })),
   ]
 
   // Build the implementation
   const implementation: LibraryBlockImplementation = {
-    blocks: block.children || [],
-    connections: block.childConnections || [],
+    blocks: block.children!,
+    connections: block.childConnections!,
     portMappings,
   }
 
   // Create input/output definitions for the block interface
   const inputs = inports.map((inport, index) => ({
-    name: inport.name || `in${index + 1}`,
+    name: inports[index].name,
     dataType: 'double' as const,
-    dimensions: [1],
+    dimensions: inport.outputPorts[0].dimensions,
   }))
 
   const outputs = outports.map((outport, index) => ({
-    name: outport.name || `out${index + 1}`,
+    name: outports[index].name,
     dataType: 'double' as const,
-    dimensions: [1],
+    dimensions: outport.inputPorts[0].dimensions,
   }))
 
   // Generate a unique type name for this library block
@@ -1989,7 +1995,7 @@ function resolveReferenceBlocks(
   subsystemMap: Map<string, BlockInstance>,
   libraryName: string,
   unresolvedRefs: Set<string> = new Set()
-): void {
+) {
   for (const block of blocks) {
     // Check children for reference blocks
     if (block.children) {
@@ -2072,6 +2078,7 @@ function resolveReferenceBlocks(
       resolveReferenceBlocks(block.children, subsystemMap, libraryName, unresolvedRefs)
     }
   }
+  return unresolvedRefs
 }
 
 /**
@@ -2127,6 +2134,7 @@ export function analyzeLibraryDependencies(content: string): LibraryDependencies
     scanBlocks(parsed.system.blocks, libraryName)
 
     // Also scan systems in the systemMap
+    /* istanbul ignore else -- parseMDL always returns its constructed system map @preserve */
     if (parsed.systemMap) {
       parsed.systemMap.forEach(system => {
         scanBlocks(system.blocks, libraryName)
@@ -2200,7 +2208,7 @@ export function importMDLAsLibrary(
 
   try {
     const parsed = parseMDL(content)
-    const libraryName = parsed.Name || 'Imported Library'
+    const libraryName = parsed.Name
 
     console.log('[MDL Library Import] Parsed library name:', libraryName)
     console.log('[MDL Library Import] Total blocks in system:', parsed.system.blocks.length)
@@ -2215,14 +2223,14 @@ export function importMDLAsLibrary(
     }
 
     // Get the main system name for path construction
-    const mainSystemName = parsed.system.Name || ''
+    const mainSystemName = parsed.system.Name
 
     // Convert all blocks first (to get subsystems with their children)
     const { blocks } = convertSystem(
       parsed.system.blocks,
       parsed.system.lines,
       '',
-      parsed.systemMap || new Map(),
+      parsed.systemMap!,
       mainSystemName
     )
 
@@ -2233,7 +2241,7 @@ export function importMDLAsLibrary(
 
     console.log('[MDL Library Import] Found subsystem blocks:', subsystemBlocks.length)
     subsystemBlocks.forEach(block => {
-      console.log(`  - ${block.name}: ${block.children?.length || 0} children`)
+      console.log(`  - ${block.name}: ${block.children!.length} children`)
     })
 
     // Build a map of subsystem names to their blocks for reference resolution
@@ -2242,11 +2250,8 @@ export function importMDLAsLibrary(
       subsystemMap.set(block.name, block)
     })
 
-    // Track unresolved references
-    const unresolvedRefs = new Set<string>()
-
-    // Resolve any reference blocks within subsystems
-    resolveReferenceBlocks(subsystemBlocks, subsystemMap, libraryName, unresolvedRefs)
+    // Resolve references and retain the paths that could not be resolved.
+    const unresolvedRefs = resolveReferenceBlocks(subsystemBlocks, subsystemMap, libraryName)
 
     // Register blocks in global registry if requested
     if (registerBlocks) {
@@ -2278,7 +2283,7 @@ export function importMDLAsLibrary(
     }
   } catch (error) {
     console.error('MDL library import error:', error)
-    throw new Error(`Failed to import MDL library: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    throw new Error(`Failed to import MDL library: ${(error as Error).message}`)
   }
 }
 

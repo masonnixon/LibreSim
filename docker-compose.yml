@@ -7,6 +7,7 @@ services:
       - "4200:4200"
     volumes:
       - ./frontend:/app
+      - ./backend:/backend:ro
       - /app/node_modules
     environment:
       - VITE_API_URL=http://localhost:9000

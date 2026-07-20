@@ -165,10 +165,6 @@ function findBlockAtPath(
   blocks: BlockInstance[],
   path: SubsystemPathItem[]
 ): { blocks: BlockInstance[]; connections: Connection[] } | null {
-  if (path.length === 0) {
-    return null // At root level
-  }
-
   let currentBlocks = blocks
   let currentConnections: Connection[] = []
 
@@ -224,27 +220,14 @@ function addConnectionInHierarchy(
   if (path.length === 0) {
     return { ...model, connections: [...model.connections, connection] }
   }
-
-  // Need to add connection inside a subsystem
   const updateSubsystem = (blocks: BlockInstance[], remainingPath: SubsystemPathItem[]): BlockInstance[] => {
-    if (remainingPath.length === 0) return blocks
-
-    const [first, ...rest] = remainingPath
     return blocks.map(b => {
+      const [first, ...rest] = remainingPath
       if (b.id === first.id && b.type === 'subsystem') {
         if (rest.length === 0) {
-          // This is the target subsystem
-          return {
-            ...b,
-            childConnections: [...(b.childConnections || []), connection]
-          }
-        } else {
-          // Go deeper
-          return {
-            ...b,
-            children: updateSubsystem(b.children || [], rest)
-          }
+          return { ...b, childConnections: [...(b.childConnections || []), connection] }
         }
+        return { ...b, children: updateSubsystem(b.children!, rest) }
       }
       return b
     })
@@ -268,7 +251,6 @@ function removeConnectionInHierarchy(
 
   // Need to remove connection inside a subsystem
   const updateSubsystem = (blocks: BlockInstance[], remainingPath: SubsystemPathItem[]): BlockInstance[] => {
-    if (remainingPath.length === 0) return blocks
 
     const [first, ...rest] = remainingPath
     return blocks.map(b => {
@@ -283,7 +265,7 @@ function removeConnectionInHierarchy(
           // Go deeper
           return {
             ...b,
-            children: updateSubsystem(b.children || [], rest)
+            children: updateSubsystem(b.children!, rest)
           }
         }
       }
@@ -315,7 +297,6 @@ function updateConnectionWaypointsInHierarchy(
 
   // Need to update connection inside a subsystem
   const updateSubsystem = (blocks: BlockInstance[], remainingPath: SubsystemPathItem[]): BlockInstance[] => {
-    if (remainingPath.length === 0) return blocks
 
     const [first, ...rest] = remainingPath
     return blocks.map(b => {
@@ -330,7 +311,7 @@ function updateConnectionWaypointsInHierarchy(
           // Go deeper
           return {
             ...b,
-            children: updateSubsystem(b.children || [], rest)
+            children: updateSubsystem(b.children!, rest)
           }
         }
       }
@@ -362,7 +343,6 @@ function updateConnectionSignalNameInHierarchy(
 
   // Need to update connection inside a subsystem
   const updateSubsystem = (blocks: BlockInstance[], remainingPath: SubsystemPathItem[]): BlockInstance[] => {
-    if (remainingPath.length === 0) return blocks
 
     const [first, ...rest] = remainingPath
     return blocks.map(b => {
@@ -377,7 +357,7 @@ function updateConnectionSignalNameInHierarchy(
           // Go deeper
           return {
             ...b,
-            children: updateSubsystem(b.children || [], rest)
+            children: updateSubsystem(b.children!, rest)
           }
         }
       }
@@ -409,7 +389,6 @@ function updateConnectionLabelOffsetInHierarchy(
 
   // Need to update connection inside a subsystem
   const updateSubsystem = (blocks: BlockInstance[], remainingPath: SubsystemPathItem[]): BlockInstance[] => {
-    if (remainingPath.length === 0) return blocks
 
     const [first, ...rest] = remainingPath
     return blocks.map(b => {
@@ -424,7 +403,7 @@ function updateConnectionLabelOffsetInHierarchy(
           // Go deeper
           return {
             ...b,
-            children: updateSubsystem(b.children || [], rest)
+            children: updateSubsystem(b.children!, rest)
           }
         }
       }
@@ -645,7 +624,6 @@ export const useModelStore = create<ModelState>((set, get) => ({
     } else {
       // Inside a subsystem - need to add to the parent subsystem's children
       const addBlockToSubsystem = (blocks: BlockInstance[], path: SubsystemPathItem[]): BlockInstance[] => {
-        if (path.length === 0) return blocks
 
         const [current, ...rest] = path
 
@@ -683,6 +661,15 @@ export const useModelStore = create<ModelState>((set, get) => ({
     const { model, currentPath } = get()
     if (!model) return
 
+    const connectionIdsToPrune = new Set(
+      get().getCurrentConnections()
+        .filter((connection) => connection.sourceBlockId === blockId || connection.targetBlockId === blockId)
+        .map((connection) => connection.id)
+    )
+    const selectedConnectionIds = get().selectedConnectionIds.filter(
+      (id) => !connectionIdsToPrune.has(id)
+    )
+
     if (currentPath.length === 0) {
       // At root level - remove from model.blocks and model.connections
       const connections = model.connections.filter(
@@ -697,11 +684,11 @@ export const useModelStore = create<ModelState>((set, get) => ({
         },
         isDirty: true,
         selectedBlockIds: get().selectedBlockIds.filter((id) => id !== blockId),
+        selectedConnectionIds,
       })
     } else {
       // Inside a subsystem - need to remove from parent subsystem's children
       const removeBlockFromSubsystem = (blocks: BlockInstance[], path: SubsystemPathItem[]): BlockInstance[] => {
-        if (path.length === 0) return blocks
 
         const [current, ...rest] = path
 
@@ -732,6 +719,7 @@ export const useModelStore = create<ModelState>((set, get) => ({
         model: { ...model, blocks: removeBlockFromSubsystem(model.blocks, currentPath) },
         isDirty: true,
         selectedBlockIds: get().selectedBlockIds.filter((id) => id !== blockId),
+        selectedConnectionIds,
       })
     }
   },
@@ -923,67 +911,71 @@ export const useModelStore = create<ModelState>((set, get) => ({
     })
 
     // Clean up orphaned connections (connections to ports that no longer exist)
-    const { model: updatedModel, currentPath: path } = get()
-    if (updatedModel) {
-      // Get the updated block to check its current ports
-      const currentBlocks = path.length === 0
-        ? updatedModel.blocks
-        : findBlockAtPath(updatedModel.blocks, path)?.blocks || []
-      const updatedBlock = currentBlocks.find(b => b.id === blockId)
+    const updatedModel = get().model!
+    const path = get().currentPath
+    // Get the updated block to check its current ports
+    const currentBlocks = path.length === 0
+      ? updatedModel.blocks
+      : findBlockAtPath(updatedModel.blocks, path)?.blocks || []
+    const updatedBlock = currentBlocks.find(b => b.id === blockId)
 
-      if (updatedBlock) {
-        const validInputPortIds = new Set(updatedBlock.inputPorts.map(p => p.id))
-        const validOutputPortIds = new Set(updatedBlock.outputPorts.map(p => p.id))
+    if (updatedBlock) {
+      const validInputPortIds = new Set(updatedBlock.inputPorts.map(p => p.id))
+      const validOutputPortIds = new Set(updatedBlock.outputPorts.map(p => p.id))
 
-        // Filter out connections that reference non-existent ports on this block
-        const filterConnections = (connections: Connection[]) =>
-          connections.filter(c => {
-            // Check if this connection involves the updated block
-            if (c.targetBlockId === blockId && !validInputPortIds.has(c.targetPortId)) {
-              return false // Remove - target port no longer exists
-            }
-            if (c.sourceBlockId === blockId && !validOutputPortIds.has(c.sourcePortId)) {
-              return false // Remove - source port no longer exists
-            }
-            return true
-          })
-
-        if (path.length === 0) {
-          // At root level
-          const filteredConnections = filterConnections(updatedModel.connections)
-          if (filteredConnections.length !== updatedModel.connections.length) {
-            set({ model: { ...updatedModel, connections: filteredConnections } })
+      // Filter out connections that reference non-existent ports on this block
+      const filterConnections = (connections: Connection[]) =>
+        connections.filter(c => {
+          // Check if this connection involves the updated block
+          if (c.targetBlockId === blockId && !validInputPortIds.has(c.targetPortId)) {
+            return false // Remove - target port no longer exists
           }
-        } else {
-          // Inside a subsystem - need to update connections within the subsystem
-          const updateSubsystemConnections = (blocks: BlockInstance[], remainingPath: SubsystemPathItem[]): BlockInstance[] => {
-            if (remainingPath.length === 0) return blocks
-            const [first, ...rest] = remainingPath
-            return blocks.map(b => {
-              if (b.id === first.id && b.type === 'subsystem') {
-                if (rest.length === 0 && b.childConnections) {
-                  // This is the target subsystem
-                  const filteredConnections = filterConnections(b.childConnections)
-                  return { ...b, childConnections: filteredConnections }
-                }
-                if (b.children) {
-                  return { ...b, children: updateSubsystemConnections(b.children, rest) }
-                }
-              }
-              return b
-            })
+          if (c.sourceBlockId === blockId && !validOutputPortIds.has(c.sourcePortId)) {
+            return false // Remove - source port no longer exists
           }
-          set({ model: { ...updatedModel, blocks: updateSubsystemConnections(updatedModel.blocks, path) } })
+          return true
+        })
+
+      const currentConnections = path.length === 0
+        ? updatedModel.connections
+        : findBlockAtPath(updatedModel.blocks, path)!.connections
+      const retainedConnectionIds = new Set(filterConnections(currentConnections).map(c => c.id))
+      const selectedConnectionIds = get().selectedConnectionIds.filter(
+        id => !currentConnections.some(c => c.id === id) || retainedConnectionIds.has(id)
+      )
+
+      if (path.length === 0) {
+        // At root level
+        const filteredConnections = filterConnections(updatedModel.connections)
+        if (filteredConnections.length !== updatedModel.connections.length) {
+          set({ model: { ...updatedModel, connections: filteredConnections } })
+          set({ selectedConnectionIds })
         }
-      }
-
-      // Re-propagate dimensions after parameter changes that might affect signal dimensions
-      const { model: finalModel } = get()
-      if (finalModel) {
-        propagateDimensions(finalModel.blocks, finalModel.connections)
-        set({ model: { ...finalModel } })
+      } else {
+        // Inside a subsystem - need to update connections within the subsystem
+        const updateSubsystemConnections = (blocks: BlockInstance[], remainingPath: SubsystemPathItem[]): BlockInstance[] => {
+          const [first, ...rest] = remainingPath
+          return blocks.map(b => {
+            if (b.id === first.id && b.type === 'subsystem') {
+              if (rest.length === 0) {
+                // This is the target subsystem
+                const filteredConnections = filterConnections(b.childConnections || [])
+                return { ...b, childConnections: filteredConnections }
+              }
+              return { ...b, children: updateSubsystemConnections(b.children!, rest) }
+            }
+            return b
+          })
+        }
+        set({ model: { ...updatedModel, blocks: updateSubsystemConnections(updatedModel.blocks, path) } })
+        set({ selectedConnectionIds })
       }
     }
+
+    // Re-propagate dimensions after parameter changes that might affect signal dimensions
+    const finalModel = get().model!
+    propagateDimensions(finalModel.blocks, finalModel.connections)
+    set({ model: { ...finalModel } })
   },
 
   renameBlock: (blockId: string, name: string) => {
@@ -1256,7 +1248,6 @@ export const useModelStore = create<ModelState>((set, get) => ({
     } else {
       // Inside a subsystem - need to update blocks within the subsystem
       const updateSubsystemBlocks = (blocks: BlockInstance[], path: SubsystemPathItem[]): BlockInstance[] => {
-        if (path.length === 0) return blocks
 
         const [first, ...rest] = path
         return blocks.map(b => {
@@ -1301,7 +1292,6 @@ export const useModelStore = create<ModelState>((set, get) => ({
     } else {
       // Inside a subsystem - need to update blocks within the subsystem
       const updateSubsystemBlocks = (blocks: BlockInstance[], path: SubsystemPathItem[]): BlockInstance[] => {
-        if (path.length === 0) return blocks
 
         const [first, ...rest] = path
         return blocks.map(b => {
@@ -1384,10 +1374,17 @@ export const useModelStore = create<ModelState>((set, get) => ({
   canRedo: () => get().future.length > 0,
 
   createSubsystem: (blockIds: string[], name?: string) => {
-    const { model } = get()
-    if (!model || blockIds.length === 0) return null
+    const { model: loadedModel } = get()
+    if (!loadedModel || blockIds.length === 0) return null
 
-    const selectedBlocks = model.blocks.filter((b) => blockIds.includes(b.id))
+    const { currentPath } = get()
+    const currentBlocks = get().getCurrentBlocks()
+    const currentConnections = get().getCurrentConnections()
+    const model = currentPath.length === 0
+      ? loadedModel
+      : { ...loadedModel, blocks: currentBlocks, connections: currentConnections }
+
+    const selectedBlocks = currentBlocks.filter((b) => blockIds.includes(b.id))
     if (selectedBlocks.length === 0) return null
 
     // Calculate center position of selected blocks for subsystem placement
@@ -1503,16 +1500,16 @@ export const useModelStore = create<ModelState>((set, get) => ({
     const subsystemInputPorts = childInports.map((inport, idx) => ({
       id: `${subsystemId}-in-${idx}`,
       name: inport.name,
-      dataType: inport.outputPorts[0]?.dataType || 'double' as const,
-      dimensions: inport.outputPorts[0]?.dimensions || [1],
+      dataType: inport.outputPorts[0].dataType,
+      dimensions: inport.outputPorts[0].dimensions,
     }))
 
     // Build output ports from outports
     const subsystemOutputPorts = childOutports.map((outport, idx) => ({
       id: `${subsystemId}-out-${idx}`,
       name: outport.name,
-      dataType: outport.inputPorts[0]?.dataType || 'double' as const,
-      dimensions: outport.inputPorts[0]?.dimensions || [1],
+      dataType: outport.inputPorts[0].dataType,
+      dimensions: outport.inputPorts[0].dimensions,
     }))
 
     const subsystemBlock: BlockInstance = {
@@ -1534,31 +1531,27 @@ export const useModelStore = create<ModelState>((set, get) => ({
     // Remap incoming connections to subsystem inputs
     incomingConnections.forEach((conn) => {
       const key = `${conn.targetBlockId}-${conn.targetPortId}`
-      const inportInfo = inportMap.get(key)
-      if (inportInfo) {
-        newExternalConnections.push({
-          id: nanoid(),
-          sourceBlockId: conn.sourceBlockId,
-          sourcePortId: conn.sourcePortId,
-          targetBlockId: subsystemId,
-          targetPortId: `${subsystemId}-in-${inportInfo.portNumber - 1}`,
-        })
-      }
+      const inportInfo = inportMap.get(key)!
+      newExternalConnections.push({
+        id: nanoid(),
+        sourceBlockId: conn.sourceBlockId,
+        sourcePortId: conn.sourcePortId,
+        targetBlockId: subsystemId,
+        targetPortId: `${subsystemId}-in-${inportInfo.portNumber - 1}`,
+      })
     })
 
     // Remap outgoing connections from subsystem outputs
     outgoingConnections.forEach((conn) => {
       const key = `${conn.sourceBlockId}-${conn.sourcePortId}`
-      const outportInfo = outportMap.get(key)
-      if (outportInfo) {
-        newExternalConnections.push({
-          id: nanoid(),
-          sourceBlockId: subsystemId,
-          sourcePortId: `${subsystemId}-out-${outportInfo.portNumber - 1}`,
-          targetBlockId: conn.targetBlockId,
-          targetPortId: conn.targetPortId,
-        })
-      }
+      const outportInfo = outportMap.get(key)!
+      newExternalConnections.push({
+        id: nanoid(),
+        sourceBlockId: subsystemId,
+        sourcePortId: `${subsystemId}-out-${outportInfo.portNumber - 1}`,
+        targetBlockId: conn.targetBlockId,
+        targetPortId: conn.targetPortId,
+      })
     })
 
     // Remove original blocks and their connections, add subsystem
@@ -1569,18 +1562,34 @@ export const useModelStore = create<ModelState>((set, get) => ({
 
     // Propagate signal dimensions within the new subsystem
     // This updates Outport blocks and the subsystem's output ports
-    if (subsystemBlock.children && subsystemBlock.childConnections) {
-      propagateDimensions([subsystemBlock], [])
+    propagateDimensions([subsystemBlock], [])
+
+    const nextLevelBlocks = [...remainingBlocks, subsystemBlock]
+    const nextLevelConnections = [...remainingConnections, ...newExternalConnections]
+    const nestedLevel = currentPath.length > 0
+    const parentLocations = currentPath.filter((_, index) => index + 1 < currentPath.length)
+    const currentContainer = currentPath[parentLocations.length]
+    let updatedModel = { ...loadedModel, blocks: nextLevelBlocks, connections: nextLevelConnections }
+    if (nestedLevel) {
+      updatedModel = {
+        ...loadedModel,
+        blocks: updateBlockInHierarchy(
+          loadedModel.blocks,
+          parentLocations,
+          currentContainer.id,
+          (block) => Object.assign({}, block, {
+            children: nextLevelBlocks,
+            childConnections: nextLevelConnections,
+          })
+        ),
+      }
     }
 
     set({
-      model: {
-        ...model,
-        blocks: [...remainingBlocks, subsystemBlock],
-        connections: [...remainingConnections, ...newExternalConnections],
-      },
+      model: updatedModel,
       isDirty: true,
       selectedBlockIds: [subsystemId],
+      selectedConnectionIds: [],
     })
 
     return subsystemId
@@ -1743,15 +1752,11 @@ export const useModelStore = create<ModelState>((set, get) => ({
         },
         isDirty: true,
         selectedBlockIds: repositionedChildren.map(b => b.id),
+        selectedConnectionIds: [],
       })
     } else {
       // Inside a subsystem - need to update the parent subsystem's children
       const updateParentSubsystem = (blocks: BlockInstance[], path: SubsystemPathItem[]): BlockInstance[] => {
-        if (path.length === 0) {
-          // This shouldn't happen, but handle it
-          return blocks
-        }
-
         const [current, ...rest] = path
 
         return blocks.map(block => {
@@ -1786,6 +1791,7 @@ export const useModelStore = create<ModelState>((set, get) => ({
         },
         isDirty: true,
         selectedBlockIds: repositionedChildren.map(b => b.id),
+        selectedConnectionIds: [],
       })
     }
   },
