@@ -50,7 +50,7 @@ function findAllScopeBlocks(
 
     // Recursively search in subsystem children
     if (block.type === 'subsystem' && block.children) {
-      const childScopes = findAllScopeBlocks(block.children, flattenedId, block.name)
+      const childScopes = findAllScopeBlocks(block.children, flattenedId, displayName)
       result.push(...childScopes)
     }
   }
@@ -80,7 +80,7 @@ function findAllAnalysisBlocks(
 
     // Recursively search in subsystem children
     if (block.type === 'subsystem' && block.children) {
-      const childAnalysis = findAllAnalysisBlocks(block.children, flattenedId, block.name)
+      const childAnalysis = findAllAnalysisBlocks(block.children, flattenedId, displayName)
       result.push(...childAnalysis)
     }
   }
@@ -164,7 +164,9 @@ export function PlotWindowManager() {
   // Auto-open windows for new scope and analysis blocks when simulation completes, pauses, or in step mode
   useEffect(() => {
     // Open windows when simulation completes, is paused with results, or when step mode has results
-    const hasResults = results && results.signals && results.signals.length > 0
+    const hasResults = results && (
+      results.signals.length > 0 || Object.keys(results.analyses || {}).length > 0
+    )
     const shouldOpenWindows = (
       state.status === 'completed' ||
       (state.status === 'paused' && hasResults) ||
@@ -246,7 +248,6 @@ export function PlotWindowManager() {
         if (analysisInfo) {
           const { data, blockName } = analysisInfo
           const commonProps = {
-            key: blockId,
             blockId,
             blockName,
             data,
@@ -257,13 +258,13 @@ export function PlotWindowManager() {
 
           switch (data.analysisType) {
             case 'bode':
-              return <BodePlotWindow {...commonProps} />
+              return <BodePlotWindow key={blockId} {...commonProps} />
             case 'nyquist':
-              return <NyquistPlotWindow {...commonProps} />
+              return <NyquistPlotWindow key={blockId} {...commonProps} />
             case 'pzmap':
-              return <PoleZeroMapWindow {...commonProps} />
+              return <PoleZeroMapWindow key={blockId} {...commonProps} />
             case 'stepinfo':
-              return <StepResponseWindow {...commonProps} />
+              return <StepResponseWindow key={blockId} {...commonProps} />
             default:
               return null
           }
