@@ -357,12 +357,12 @@ files verified mirrored, `docs/refs/testing.md` coverage tables updated to final
 | B2 | complete | `3b77036`, this commit | B: 87.18% combined; all B2 targets 100% line/branch | 2,270 passed; invalid language/method preserve HTTP 400 |
 | B3 | complete | this commit | B: 86.33% combined; `docker_compiler.py` 100% line/branch | 2,212 passed; fixed persistent-artifact and default-path regressions |
 | B4 | complete | `cbf0713`, this commit | B: 88.46% combined; all B4 targets 100% line/branch | 2,328 passed, 1 documented skip; fixed snapshot validation, step-mode finalization, and nonpositive step sizes |
-| B5.1–B5.8 | not started | | | |
-| B6 | not started | | | |
-| B7 | not started | | | |
+| B5.1–B5.8 | complete | `77829ae`, `1b4ac81`, `24efef6`, `93a57d4`, `d004a94`, `40d0ac8`, `5dac85c`, `78da81d` | B: 100% statements / branches | All OSK block families covered with independent edge/shape assertions |
+| B6 | complete | `ddb543d`, `e585c99`, `9e24c59` | B: 100% statements / branches | Emitters, shared helpers, generators, and parser covered |
+| B7 | complete | this commit | B: 100% statements / branches | Final async-context branch residue covered and audited |
 | F1 | complete | this commit | F: 40.34% stmts / 35.64% branches / 44.41% funcs / 39.00% lines | 664 passed; both CI pipelines use coverage command |
 | F2 | complete | `00d2f3b`, `d73ad04`, this commit | F: 51.92% stmts / 51.22% branches / 53.40% funcs / 50.38% lines | 724 passed, 0 failed; modelStore, libraryStore, mdlImporter, mdlExporter, simulationStore, api/client, data/examples, and App at 100% |
 | F3 | complete | `06aa4f0`, `6ff3af8`, `2bfff43`, `3c4175c`, `3114ad0`, `97ef57a`, `4301ddb`, `abe3835`, `4bfea0d`, `355a93c`, this commit | F: 71.00% stmts / 66.82% branches / 63.52% funcs / 70.51% lines | 819 passed, 0 failed; Editor, CustomEdge, and Toolbar extractions complete; shared mouse/touch drag-resize and simulation-control hooks are 100% covered |
 | F4 | complete | `d00145c`, `438228a`, `4bfa6d7`, `33dedf2`, `dc8eee4`, `b205e33`, `924af9e`, `1eda4ad`, this commit | F: 79.61% stmts / 77.11% branches / 77.18% funcs / 79.31% lines | 886 passed, 0 failed; all nine F4 targets at 100%; fixed failed-export naming, documentation retry loops, node category styling, and memoization regressions |
-| F5 | not started (maintainer descope decision point) | | | |
-| F6 | not started | | | |
+| F5 | complete | `b50ebc5`, `de5080f`, `c5b71ce`, `8dd61df`, `dea9ef2`, `7cf546a` | F: 100% statements / branches / functions / lines | Plot windows, editor shell, custom edge, and toolbar covered |
+| F6 | complete | this commit | F: 100% statements / branches / functions / lines | Final 100% thresholds and testing documentation updated |

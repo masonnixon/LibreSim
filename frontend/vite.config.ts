@@ -49,7 +49,7 @@ export default defineConfig({
         'src/main.tsx',
         'src/vite-env.d.ts',
       ],
-      thresholds: { statements: 79, branches: 77, functions: 77, lines: 79 },
+      thresholds: { statements: 100, branches: 100, functions: 100, lines: 100 },
     },
   },
 })

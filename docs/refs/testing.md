@@ -18,32 +18,24 @@ LibreSim employs three types of tests:
 
 | Metric | Value |
 |--------|-------|
-| **Tests Passing** | 1904 |
-| **Overall Coverage** | 84% |
+| **Tests Passing** | 3,769 |
+| **Skipped** | 1 (documented external MDL fixture) |
+| **Overall Coverage** | 100% statements / 100% branches |
 | **Test Framework** | pytest |
 
-**High-coverage modules (>90%):**
-- `src/codegen/languages/*/blocks/` - Code generation templates
-- `src/osk/blocks/` - LibreSim simulation blocks
-- `src/models/` - Pydantic data models
-- `src/simulation/compiler.py` - Model compilation
-
-**Lower-coverage modules (needs improvement):**
-- `src/api/` - API routes (0% - need integration tests)
-- `src/main.py` - Application entry point (0%)
-- `src/simulation/runner.py` - Simulation runner (83%)
-- `src/simulation/osk_adapter.py` - OSK adapter (76%)
+All backend modules, including API routes, application entry points, codegen,
+OSK blocks, and simulation services, are fully covered.
 
 ### Frontend (TypeScript/React)
 
 | Metric | Value |
 |--------|-------|
-| **Tests Passing** | 659 |
-| **Overall Coverage** | 40% |
+| **Tests Passing** | 962 |
+| **Overall Coverage** | 100% statements / branches / functions / lines |
 | **Test Framework** | Vitest |
-| **Test Files** | 14 |
+| **Measured Source Files** | 42 |
 
-**High-coverage modules (90%+):**
+**Representative fully covered modules:**
 - `src/blocks/` - Block definitions and registry (100%)
 - `src/store/simulationStore.ts` - Simulation state management (100%)
 - `src/store/uiStore.ts` - UI state management (100%)
@@ -55,16 +47,16 @@ LibreSim employs three types of tests:
 - `src/store/libraryStore.ts` - Library state management (92%)
 - `src/store/modelStore.ts` - Model state management (88%)
 
-**Moderate-coverage modules (50-85%):**
-- `src/components/Editor/BlockNode.tsx` - Block node component (82%)
-- `src/utils/mdlImporter.ts` - MDL import (74%)
-- `src/components/Sidebar/Sidebar.tsx` - Block library sidebar (63%)
+**Additional fully covered modules:**
+- `src/components/Editor/BlockNode.tsx` - Block node component (100%)
+- `src/utils/mdlImporter.ts` - MDL import (100%)
+- `src/components/Sidebar/Sidebar.tsx` - Block library sidebar (100%)
 
-**Lower-coverage modules (needs improvement):**
-- `src/components/Toolbar/Toolbar.tsx` - Toolbar (16% - complex component)
-- `src/components/Editor/Editor.tsx` - Main editor (0% - requires ReactFlow mocking)
-- `src/components/Editor/CustomEdge.tsx` - Edge routing (0% - requires ReactFlow mocking)
-- `src/components/*/` - Modal components (0% - need component tests)
+**No lower-coverage modules remain:**
+- `src/components/Toolbar/Toolbar.tsx` - Toolbar (100%)
+- `src/components/Editor/Editor.tsx` - Main editor (100%)
+- `src/components/Editor/CustomEdge.tsx` - Edge routing (100%)
+- `src/components/*/` - Modal components (100%)
 
 **Test files:**
 - `src/api/client.test.ts` - API client tests (36 tests)
@@ -86,28 +78,17 @@ LibreSim employs three types of tests:
 
 ### Backend Tests
 
-**Prerequisites:**
-- Python 3.11+ with conda environment `libresim`
-- Dependencies installed: `pip install -e ".[dev]"`
+All project commands run in Docker. From the repository root:
 
 ```bash
-# Navigate to backend directory
-cd backend
+# Complete backend suite with the permanent 100% gate
+DOCKER_HOST=unix:///run/docker.sock docker compose run --rm --no-deps \
+  -v "$PWD/examples:/examples:ro" backend sh -c \
+  "pip install -q -e '.[dev]' && pytest tests/ -q"
 
-# Run all tests with coverage
-/c/Users/Mason/anaconda3/envs/libresim/python.exe -m pytest tests/ -v
-
-# Run with coverage report
-/c/Users/Mason/anaconda3/envs/libresim/python.exe -m pytest tests/ --cov=src --cov-report=term-missing
-
-# Run specific test file
-/c/Users/Mason/anaconda3/envs/libresim/python.exe -m pytest tests/test_blocks.py -v
-
-# Run specific test class
-/c/Users/Mason/anaconda3/envs/libresim/python.exe -m pytest tests/test_blocks.py::TestGainBlock -v
-
-# Run tests in parallel (faster)
-/c/Users/Mason/anaconda3/envs/libresim/python.exe -m pytest tests/ -n auto
+# Focused backend test file
+DOCKER_HOST=unix:///run/docker.sock docker compose run --rm --no-deps backend sh -c \
+  "pip install -q -e '.[dev]' && pytest tests/test_blocks.py -q"
 ```
 
 **Coverage Reports:**
@@ -117,52 +98,42 @@ cd backend
 
 ### Frontend Tests
 
-**Prerequisites:**
-- Docker Compose running (`docker compose up`)
-- Frontend container must be active
-
 ```bash
-# Run all tests
-docker exec libresimgit-frontend-1 npm run test
+# Run coverage (the 100% gate)
+DOCKER_HOST=unix:///run/docker.sock docker compose run --rm --no-deps frontend \
+  npm run test:coverage
 
-# Run tests once (no watch mode)
-docker exec libresimgit-frontend-1 npm run test:run
-
-# Run with coverage
-docker exec libresimgit-frontend-1 npm run test:coverage
-
-# Run specific test file
-docker exec libresimgit-frontend-1 npx vitest run src/store/modelStore.test.ts
+# Run a specific test file
+DOCKER_HOST=unix:///run/docker.sock docker compose run --rm --no-deps frontend \
+  npx vitest run src/store/modelStore.test.ts
 ```
 
-**Note:** The host machine does not have Node.js installed. All frontend commands must run inside the Docker container.
+All frontend commands run inside the Docker container.
 
 ### SQA Checks
 
 **Backend:**
 ```bash
-cd backend
-
 # Linting
-/c/Users/Mason/anaconda3/envs/libresim/python.exe -m ruff check src/ tests/
-
-# Auto-fix lint issues
-/c/Users/Mason/anaconda3/envs/libresim/python.exe -m ruff check src/ tests/ --fix
+DOCKER_HOST=unix:///run/docker.sock docker compose run --rm --no-deps backend \
+  ruff check src/ tests/
 
 # Type checking
-/c/Users/Mason/anaconda3/envs/libresim/python.exe -m mypy src/ --config-file=pyproject.toml
+DOCKER_HOST=unix:///run/docker.sock docker compose run --rm --no-deps backend \
+  mypy src/ --config-file=pyproject.toml
 
 # Security scanning
-/c/Users/Mason/anaconda3/envs/libresim/python.exe -m bandit -r src/ -c pyproject.toml
+DOCKER_HOST=unix:///run/docker.sock docker compose run --rm --no-deps backend \
+  bandit -r src/ -c pyproject.toml
 ```
 
 **Frontend:**
 ```bash
 # ESLint
-docker exec libresimgit-frontend-1 npm run lint
+DOCKER_HOST=unix:///run/docker.sock docker compose run --rm --no-deps frontend npm run lint
 
 # TypeScript type checking
-docker exec libresimgit-frontend-1 npx tsc --noEmit
+DOCKER_HOST=unix:///run/docker.sock docker compose run --rm --no-deps frontend npm run typecheck
 ```
 
 ### Pre-commit Hooks
@@ -221,6 +192,7 @@ test: {
       'src/main.tsx',
       'src/vite-env.d.ts',
     ],
+    thresholds: { statements: 100, branches: 100, functions: 100, lines: 100 },
   },
 }
 ```
@@ -423,7 +395,7 @@ pip install -e ".[dev]"
 ```bash
 # Rebuild the container
 docker compose down
-docker compose up --build
+DOCKER_HOST=unix:///run/docker.sock docker compose up --build
 ```
 
 ### Coverage not updating
