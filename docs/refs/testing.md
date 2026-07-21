@@ -33,7 +33,8 @@ OSK blocks, and simulation services, are fully covered.
 | **Tests Passing** | 962 |
 | **Overall Coverage** | 100% statements / branches / functions / lines |
 | **Test Framework** | Vitest |
-| **Measured Source Files** | 42 |
+| **Test Files** | 42 |
+| **Measured Source Files** | 62 |
 
 **Representative fully covered modules:**
 - `src/blocks/` - Block definitions and registry (100%)
@@ -386,23 +387,23 @@ Tests run automatically in CI on:
 
 ### Backend tests not finding modules
 ```bash
-# Ensure package is installed in dev mode
-cd backend
-pip install -e ".[dev]"
+# Reinstall the backend package and run a focused import-bearing test
+DOCKER_HOST=unix:///run/docker.sock docker compose run --rm --no-deps backend sh -c \
+  "pip install -q -e '.[dev]' && pytest tests/test_blocks.py -q"
 ```
 
 ### Frontend tests failing with "Cannot find module"
 ```bash
 # Rebuild the container
-docker compose down
+DOCKER_HOST=unix:///run/docker.sock docker compose down
 DOCKER_HOST=unix:///run/docker.sock docker compose up --build
 ```
 
 ### Coverage not updating
 ```bash
-# Clear pytest cache
-cd backend
-rm -rf .pytest_cache htmlcov .coverage
+# Reset coverage data and pytest's cache inside the project container
+DOCKER_HOST=unix:///run/docker.sock docker compose run --rm --no-deps backend sh -c \
+  "coverage erase && pytest --cache-clear --collect-only -q"
 ```
 
 ### Pre-commit hooks failing

@@ -5,8 +5,8 @@ This checklist tracks the work still required to complete
 
 - Backend: 3,769 passed, 1 documented skip, 0 failed; 100% statements and
   99.89% branches (five session-registry branch arcs remaining).
-- Frontend: 962 passed, 0 failed; 100% statements, branches, functions, and
-  lines across all 42 measured files.
+- Frontend: 962 passed in 42 test files, 0 failed; 100% statements, branches,
+  functions, and lines across all 62 measured source files.
 
 ## Guardrails
 
@@ -56,8 +56,9 @@ This checklist tracks the work still required to complete
   - Acceptance: both configurations enforce 100% without altering unrelated
     settings or CI behavior.
   - Completed: backend `fail_under` and all four Vitest thresholds are 100;
-    only the threshold hunk is staged, while the unrelated `allowedHosts`
-    change remains unstaged; both CI files already invoke coverage.
+    only the threshold hunk was included in the coverage commit, while the
+    unrelated `allowedHosts` change remained separate; both CI files invoke
+    coverage.
 
 - [x] **4. Bring coverage documentation and the status ledger current.**
   - Mark B5.1–B5.8, B6, B7, F5, and F6 complete in
@@ -89,5 +90,5 @@ This checklist tracks the work still required to complete
   - Review `git status`, staged diffs, and recent commits after committing.
   - Acceptance: all plan work is committed, unrelated changes remain intact
     and uncommitted, and the worktree contains no accidentally staged reports.
-  - Completed: `6cf71c5` contains the backend coverage work and this commit
+  - Completed: `6cf71c5` contains the backend coverage work; `2934032`
     contains the thresholds, ledger, checklist, and testing-guide updates.
