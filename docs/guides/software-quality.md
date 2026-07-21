@@ -62,8 +62,8 @@ configuration.
 `.pre-commit-config.yaml` currently runs Ruff, Ruff formatting, Bandit,
 repository hygiene checks, and detect-secrets. Frontend ESLint and TypeScript
 hooks call the running frontend container. The backend pytest hook is a
-pre-push hook. mypy runs in GitHub Actions and GitLab CI rather than as an
-active pre-commit hook.
+pre-push hook. mypy runs in GitHub Actions rather than as an active pre-commit
+hook.
 
 Pre-commit itself is a host Git integration, so installing or invoking it is
 the sole exception to the Docker-only project-command rule:
@@ -79,17 +79,18 @@ the canonical Docker commands above before merging.
 
 ## Continuous integration
 
-`.github/workflows/ci.yml` and `.gitlab-ci.yml` both require backend Ruff,
-mypy, Bandit, pytest coverage, code-generation validation, frontend ESLint,
-TypeScript, and Vitest coverage. The workflows install C/C++ and Rust
-toolchains before code-generation validation and publish the canonical report
-at `docs/reports/codegen-validation-report.md`.
+`.github/workflows/ci.yml` requires backend Ruff, mypy, Bandit, pytest
+coverage, code-generation validation, frontend ESLint, TypeScript, Vitest
+coverage, and browser-facing GUI stack regressions. The workflow installs
+C/C++ and Rust toolchains before code-generation validation and publishes the
+canonical report at `docs/reports/codegen-validation-report.md`.
 
 When adding or changing a quality rule:
 
 1. Change the owning configuration file.
 2. Run the relevant canonical Docker command.
-3. Update both CI pipelines if the command or artifact contract changes.
+3. Update the GitHub Actions workflow if the command or artifact contract
+   changes.
 4. Update this guide only when the workflow or responsibility changes.
 
 Never lower a quality or coverage threshold merely to make a failing gate

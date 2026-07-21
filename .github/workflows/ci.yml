@@ -2,9 +2,11 @@ name: CI
 
 on:
   push:
-    branches: [main, master, develop, toolboxes]
   pull_request:
-    branches: [main, master, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   backend-tests:

@@ -153,9 +153,11 @@ Nice-to-have cleanups. Do these opportunistically when touching nearby code.
 
 `docker-compose.yml` declares a named `node_modules:` volume at the bottom that is never referenced by any service.
 
-### 22. Consolidate or remove duplicate CI configs
+### 22. Consolidate or remove duplicate CI configs (completed)
 
-`.github/workflows/ci.yml` and `.gitlab-ci.yml` run the same pipeline with minor divergences. If only one CI system is in use, remove the other. The `continue-on-error: true` on frontend tests in GitHub Actions and `|| true` in GitLab CI are both outdated now that 659 tests exist.
+GitHub Actions is the sole CI system. The duplicate `.gitlab-ci.yml` pipeline
+was removed, and the GitHub workflow runs the backend, frontend, codegen, and
+GUI stack test gates.
 
 ### 23. Clean up scripts directory
 
