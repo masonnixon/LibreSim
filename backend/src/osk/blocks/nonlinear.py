@@ -47,17 +47,19 @@ class LookupTable1D(Block):
         # Find the interval containing x
         if x <= self.x_data[0]:
             # Extrapolate below
-            if len(self.x_data) >= 2:
-                slope = (self.y_data[1] - self.y_data[0]) / (self.x_data[1] - self.x_data[0])
-                return self.y_data[0] + slope * (x - self.x_data[0])
-            return self.y_data[0]
+            dx = self.x_data[1] - self.x_data[0]
+            if dx == 0:
+                return self.y_data[0]
+            slope = (self.y_data[1] - self.y_data[0]) / dx
+            return self.y_data[0] + slope * (x - self.x_data[0])
 
         if x >= self.x_data[-1]:
             # Extrapolate above
-            if len(self.x_data) >= 2:
-                slope = (self.y_data[-1] - self.y_data[-2]) / (self.x_data[-1] - self.x_data[-2])
-                return self.y_data[-1] + slope * (x - self.x_data[-1])
-            return self.y_data[-1]
+            dx = self.x_data[-1] - self.x_data[-2]
+            if dx == 0:
+                return self.y_data[-1]
+            slope = (self.y_data[-1] - self.y_data[-2]) / dx
+            return self.y_data[-1] + slope * (x - self.x_data[-1])
 
         # Binary search for interval
         idx = bisect.bisect_right(self.x_data, x) - 1
@@ -67,9 +69,8 @@ class LookupTable1D(Block):
         x0, x1 = self.x_data[idx], self.x_data[idx + 1]
         y0, y1 = self.y_data[idx], self.y_data[idx + 1]
 
-        if x1 == x0:
-            return y0
-
+        # bisect_right selects the last repeated breakpoint, so the interior
+        # interval always has positive width for sorted breakpoint data.
         t = (x - x0) / (x1 - x0)
         return y0 + t * (y1 - y0)
 
@@ -349,19 +350,12 @@ class VariableTransportDelay(Block):
         elif len(self.buffer) == 1 or target_time <= self.buffer[0][0]:
             self.output = self.buffer[0][1]
         else:
-            # Linear interpolation between two nearest samples
-            for i in range(len(self.buffer) - 1):
-                if self.buffer[i][0] <= target_time <= self.buffer[i + 1][0]:
-                    t0, v0 = self.buffer[i]
-                    t1, v1 = self.buffer[i + 1]
-                    if t1 != t0:
-                        alpha = (target_time - t0) / (t1 - t0)
-                        self.output = v0 + alpha * (v1 - v0)
-                    else:
-                        self.output = v0
-                    break
-            else:
-                self.output = self.buffer[-1][1]
+            # Pruning above guarantees the target lies between the first two
+            # samples, and the earlier boundary check guarantees t0 < t1.
+            t0, v0 = self.buffer[0]
+            t1, v1 = self.buffer[1]
+            alpha = (target_time - t0) / (t1 - t0)
+            self.output = v0 + alpha * (v1 - v0)
 
     def getOutput(self, port=0):
         return self.output
