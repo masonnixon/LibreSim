@@ -260,6 +260,12 @@ or references to purged files.
 Acceptance: all affected tests and tooling pass, and the diff is predominantly
 renames, link updates, merges, and reviewed removals.
 
+Verification note: the focused API suite passed 30/30 with coverage disabled
+for the narrow run. The report-path validator invocation reached the producer
+and wrote the new location, but the backend image has no C/C++/Rust toolchains,
+so its generated-language matrix could not build; the committed canonical
+156/156 report and prior Docker validation remain the authoritative result.
+
 ### 11. Commit in reviewable units
 
 - [x] Commit the documentation index and directory skeleton.
