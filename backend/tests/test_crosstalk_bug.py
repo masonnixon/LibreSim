@@ -27,7 +27,6 @@ from src.osk.blocks.math_ops import Gain, Product, Sum, Trigonometry
 from src.osk.blocks.sources import Constant
 from src.osk.state import State
 
-
 CUBE_EULER_MDL = Path("/examples/cube_closed_loop_euler.mdl")
 
 

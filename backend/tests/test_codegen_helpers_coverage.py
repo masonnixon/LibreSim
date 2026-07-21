@@ -4,8 +4,7 @@ import math
 
 import pytest
 
-from src.codegen import analysis
-from src.codegen import filter_design
+from src.codegen import analysis, filter_design
 from src.codegen.analysis import compute_analysis_output
 from src.codegen.dsp_utils import window_coefficients
 from src.codegen.filter_design import BiquadCoefficients, design_analog_filter

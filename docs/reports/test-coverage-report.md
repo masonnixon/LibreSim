@@ -2,7 +2,6 @@
 
 **Date:** July 21, 2026  
 **Branch:** `fable-audit-plan`  
-**Commit:** `647baac`
 
 Fresh full-suite coverage runs report 100% coverage for the configured backend and frontend production source sets.
 
@@ -17,8 +16,8 @@ Fresh full-suite coverage runs report 100% coverage for the configured backend a
 
 ## Coverage Counters
 
-- Backend: 15,901 of 15,901 statements and 4,542 of 4,542 branches covered.
+- Backend: 15,899 of 15,899 statements and 4,540 of 4,540 branches covered.
 - Frontend: 4,892 of 4,892 statements, 3,378 of 3,378 branches, 1,011 of 1,011 functions, and 4,355 of 4,355 lines covered.
-- Combined: 20,793 covered statements and 7,920 covered branches.
+- Combined: 20,791 covered statements and 7,918 covered branches.
 
 Coverage excludes test code, generated reports, TypeScript declaration files, test infrastructure, and other files excluded by the project coverage configurations. The GUI stack tests exercise example loading and a sine-wave-to-scope simulation through the deployed frontend proxy. The run emitted one Starlette/httpx deprecation warning and had no test failures.

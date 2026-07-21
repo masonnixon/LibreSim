@@ -5,8 +5,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from src.simulation import osk_adapter as adapter_module
 from src.models.simulation import SimulationConfig
+from src.simulation import osk_adapter as adapter_module
 from src.simulation.compiler import CompiledBlock, CompiledModel
 from src.simulation.osk_adapter import BLOCK_SNAPSHOT_CODECS, OSKAdapter
 from src.simulation.snapshot import SnapshotValidationError

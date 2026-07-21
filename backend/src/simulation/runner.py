@@ -1038,9 +1038,7 @@ class SimulationRunner:
             # Finalize
             self._execution_time = time.time() - self._start_time
 
-            if self._transition_requested:
-                self._status = SimulationStatus.PAUSED
-            elif self._step_mode:
+            if self._transition_requested or self._step_mode:
                 self._status = SimulationStatus.PAUSED
             elif self._should_stop:
                 self._status = SimulationStatus.IDLE

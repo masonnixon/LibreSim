@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
-import pickle
+import pickle  # nosec B403
 from collections import deque
 from dataclasses import asdict, dataclass
 from typing import Any
@@ -16,6 +16,7 @@ from ..osk.context import SimContext
 from ..osk.state import State
 from .compiler import CompiledModel
 
+# Pickle payloads are created and restored only as internal, in-memory checkpoints.
 SNAPSHOT_SCHEMA_VERSION = 1
 BLOCK_CODEC_VERSION = 1
 
