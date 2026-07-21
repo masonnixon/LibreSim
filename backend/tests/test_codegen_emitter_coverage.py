@@ -20,7 +20,12 @@ EMITTER_MODULES = [
         "dsp",
         "estimation",
         "logic",
+        "math_ops",
+        "nonlinear",
         "rf",
+        "sensor_fusion",
+        "signal_processing",
+        "sinks",
         "sources",
     )
 ]
@@ -148,3 +153,52 @@ def test_emitter_parameter_defaults_return_named_source(emitter, representative_
     assert isinstance(source, str)
     assert len(source) > 30
     assert "DefaultBlock" in source
+
+
+@pytest.mark.parametrize("emitter", _emitter_functions())
+def test_emitter_edge_variants_return_named_source(emitter, representative_block):
+    """Exercise the documented shape and enum alternatives shared by emitters."""
+    name = emitter.__name__
+    variants = []
+
+    if "logical_operator" in name:
+        for operator in ("OR", "NAND", "NOR", "XOR", "NOT", "unsupported"):
+            variants.append({"operator": operator, "numInputs": 3})
+    elif "transfer_function" in name:
+        variants.append({"numerator": 1.0, "denominator": 0.0})
+    elif "state_space" in name:
+        variants.extend(
+            [
+                {"A": [], "B": [], "C": [], "D": []},
+                {"A": [1.0], "B": [1.0], "C": [1.0], "D": [0.0]},
+            ]
+        )
+    elif name in {"template_sum", "sum_template"}:
+        variants.append({"signs": "+-"})
+    elif name in {"template_product", "product_template"}:
+        variants.append({"inputs": "*/"})
+    elif "fir_filter" in name:
+        variants.append({"coefficients": 2.0})
+    elif "iir_filter" in name:
+        variants.append({"numerator": 1.0, "denominator": 2.0})
+    elif "zero_crossing_detector" in name:
+        variants.extend([{"direction": "rising"}, {"direction": "falling"}])
+    elif "band_limited_white_noise" in name:
+        variants.append({"sampleTime": 0.0, "noisePower": 0.1})
+    elif "constant" in name:
+        variants.append({"value": [1.0, 2.0]})
+    elif "scope" in name:
+        variants.append({"numInputs": 3})
+
+    blocks = [replace(representative_block, parameters=params) for params in variants]
+    if "gain" in name:
+        blocks.append(replace(representative_block, input_dimensions=[[3]]))
+
+    if not blocks:
+        blocks = [representative_block]
+
+    for block in blocks:
+        source = emitter(block, "VariantBlock")
+        assert isinstance(source, str)
+        assert len(source) > 30
+        assert "VariantBlock" in source
