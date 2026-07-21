@@ -245,9 +245,6 @@ class LogicalOperator(Block):
             self._is_vector = True
             self._n = n
             self._output_vector = [0.0] * n
-            # Expand input vectors array if needed
-            while len(self._input_vectors) < self.num_inputs:
-                self._input_vectors.append(None)
 
     def connectInput(self, block, port=0, source_port=0):
         if port < self.num_inputs:

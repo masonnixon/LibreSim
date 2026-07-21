@@ -125,12 +125,10 @@ class Scope(Block):
                 if self.input_blocks[i] is not None:  # Only record connected inputs
                     if i in self._vector_inputs:
                         for val in self._vector_inputs[i]:
-                            if trace_idx < len(self.values):
-                                self.values[trace_idx].append(val)
+                            self.values[trace_idx].append(val)
                             trace_idx += 1
                     else:
-                        if trace_idx < len(self.values):
-                            self.values[trace_idx].append(self.inputs[i])
+                        self.values[trace_idx].append(self.inputs[i])
                         trace_idx += 1
 
             self._total_traces = total_traces
@@ -143,10 +141,8 @@ class Scope(Block):
             if self.input_blocks[i] is not None:  # Only include connected inputs
                 if i in self._vector_names:
                     all_names.extend(self._vector_names[i])
-                elif i < len(self.input_names):
-                    all_names.append(self.input_names[i])
                 else:
-                    all_names.append(f"Input {i + 1}")
+                    all_names.append(self.input_names[i])
 
         return {
             "times": self.times,
