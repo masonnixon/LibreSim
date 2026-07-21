@@ -10,17 +10,18 @@ services:
       - ./backend:/backend:ro
       - /app/node_modules
     environment:
-      - VITE_API_URL=https://butterbot.tail7d452.ts.net:9000
+      - VITE_BACKEND_URL=http://backend:9000
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     command: npm run dev -- --host
 
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    ports:
-      - "127.0.0.1:9000:9000"
+    expose:
+      - "9000"
     volumes:
       - ./backend:/app
       - ./README.md:/project/README.md:ro
@@ -30,6 +31,16 @@ services:
       - DATABASE_URL=sqlite:///./libresim.db
       - CORS_ORIGINS=http://localhost:4200,https://butterbot.tail7d452.ts.net:4200
     command: uvicorn src.main:app --host 0.0.0.0 --port 9000 --reload
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:9000/health', timeout=2)
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 5s
 
 volumes:
   node_modules:

@@ -116,3 +116,21 @@ jobs:
 
       - name: Run tests
         run: npm run test:coverage
+
+  gui-stack-tests:
+    name: GUI Stack Tests (Docker)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run browser-facing API regressions with backend port occupied
+        run: |
+          timeout 300 python3 -m http.server 9000 --bind 127.0.0.1 >/tmp/libresim-port-occupier.log 2>&1 &
+          curl --retry 10 --retry-connrefused --retry-delay 1 --silent http://127.0.0.1:9000/ >/dev/null
+          docker compose up --build --detach --wait
+          python3 scripts/test_gui_stack.py
+
+      - name: Show stack logs on failure
+        if: failure()
+        run: docker compose logs
