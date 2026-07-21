@@ -123,7 +123,8 @@ docs/
 
 - [x] Record a complete tracked, ignored, and untracked documentation manifest
   in `docs/plans/documentation-inventory-manifest.md`.
-- [ ] Record SHA-256 hashes for files being merged or considered duplicates.
+- [x] Record SHA-256 hashes for files being merged or considered duplicates in
+  `docs/plans/documentation-inventory-manifest.md`.
 - [ ] Identify every code, CI, and Markdown reference to each source path.
 - [ ] Confirm the worktree contains no unrelated staged changes.
 - [ ] Create one migration branch/commit series; do not mix product behavior
