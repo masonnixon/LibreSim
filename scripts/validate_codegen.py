@@ -500,7 +500,7 @@ def main():
 
     # Generate report
     report = generate_report(all_results)
-    report_path = OUTPUT_DIR / "codegen-validation-report.md"
+    report_path = OUTPUT_DIR / "reports" / "codegen-validation-report.md"
     with open(report_path, "w") as f:
         f.write(report)
 

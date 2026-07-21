@@ -100,6 +100,9 @@ LibreSim/
 └── docs/               # Documentation
 ```
 
+See the [documentation index](docs/README.md) for maintained guides, plans,
+audits, and validation reports.
+
 ---
 
 ## Block Library

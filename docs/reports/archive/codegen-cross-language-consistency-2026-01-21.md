@@ -65,6 +65,16 @@ results['Split_XYZ_2'] = []
 | SKIPPED | 1 | 2.6% |
 | **Total** | **39** | 100% |
 
+## Archived improvement-plan outcomes
+
+The former `codegen_verification/IMPROVEMENT_PLAN.md` is consolidated here.
+Its three phases are complete: the Python emitter now suffixes duplicate scope
+names to preserve all output columns; C/C++ numerical drift was traced to
+different random-number implementations and requires no algorithmic fix; and
+the distinction between strict cross-language time-series comparison and the
+official headless validation was documented. Official validation remains the
+release gate at 100%; cross-language comparison is informational.
+
 ## Passing Examples (18)
 
 These examples produce consistent results across all 4 languages (C, C++, Python, Rust):

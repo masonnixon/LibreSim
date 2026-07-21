@@ -85,7 +85,7 @@ jobs:
       - name: Run codegen validation
         run: |
           python scripts/validate_codegen.py
-          cat docs/codegen-validation-report.md
+          cat docs/reports/codegen-validation-report.md
 
   frontend-tests:
     name: Frontend Tests (TypeScript)

@@ -7,7 +7,7 @@
 > (whose LS-1…LS-10 and FAC-9 SimContext migration are complete — see §2.4 for the
 > resulting test-writing guidance).
 >
-> Companion docs: `docs/refs/testing.md` (current commands and final coverage status),
+> Companion docs: `docs/guides/testing.md` (current commands and final coverage status),
 > `docs/plans/refactoring-recommendations.md` (component splits that gate the frontend
 > phases).
 
@@ -304,7 +304,7 @@ behavior-preservation is asserted by the existing Toolbar/BlockNode tests plus n
 unit tests on the extracted modules.
 
 ### Phase F4 — Component tests: modals, sidebar, nodes (T2-mid, parallelizable per component)
-Testing-library + the established mock patterns (`docs/refs/testing.md` §React
+Testing-library + the established mock patterns (`docs/guides/testing.md` §React
 Component Testing Patterns — Zustand mocking, stable `useSyncExternalStore` references,
 dataTransfer mocks). Targets to 100%: `HelpModal`, `ExamplesModal` (mock `api/client`),
 `CodeGenModal` (mock client; assert request payload per language/option),
@@ -326,7 +326,7 @@ thresholds (~80%+ expected).
 
 ### Phase F6 — Frontend ratchet finalization (T1-any)
 `thresholds: { statements: 100, branches: 100, functions: 100, lines: 100 }`, CI both
-files verified mirrored, `docs/refs/testing.md` coverage tables updated to final state
+files verified mirrored, `docs/guides/testing.md` coverage tables updated to final state
 (and its stale Windows-anaconda commands replaced with the §0 Docker commands).
 
 ---
@@ -365,3 +365,20 @@ files verified mirrored, `docs/refs/testing.md` coverage tables updated to final
 | F4 | complete | `d00145c`, `438228a`, `4bfa6d7`, `33dedf2`, `dc8eee4`, `b205e33`, `924af9e`, `1eda4ad`, this commit | F: 79.61% stmts / 77.11% branches / 77.18% funcs / 79.31% lines | 886 passed, 0 failed; all nine F4 targets at 100%; fixed failed-export naming, documentation retry loops, node category styling, and memoization regressions |
 | F5 | complete | `b50ebc5`, `de5080f`, `c5b71ce`, `8dd61df`, `dea9ef2`, `7cf546a` | F: 100% statements / branches / functions / lines | Plot windows, editor shell, custom edge, and toolbar covered |
 | F6 | complete | `2934032` | F: 100% statements / branches / functions / lines | Final 100% thresholds and testing documentation updated |
+
+## Closeout appendix
+
+The final checklist closeout recorded the following authoritative evidence:
+
+- Backend: 3,769 passed, 1 skipped, 0 failed; `coverage.json` reports
+  15,901/15,901 statements and 4,542/4,542 branches.
+- Frontend: 962 passed across 42 test files; 62 measured source files remain
+  at 100% for 4,892 statements, 3,378 branches, 1,011 functions, and 4,355
+  lines. Lint and typecheck passed.
+- Permanent gates are 100% in `backend/pyproject.toml` and
+  `frontend/vite.config.ts`; CI invokes the coverage commands in both
+  `.github/workflows/ci.yml` and `.gitlab-ci.yml`.
+- The final verification and documentation commits are `6cf71c5`, `2934032`,
+  and `238aa4a`; local Docker host configuration is isolated in `9f7071e`.
+- The only backend skip is the documented external MDL fixture skip; no test
+  failures or warnings remained at closeout.

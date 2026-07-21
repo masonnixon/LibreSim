@@ -1,7 +1,7 @@
 # LibreSim — Simulation Correctness Remediation Plan
 
 > Produced 2026-07-09 on branch `uimods` by a deep-dive audit (Claude Fable 5).
-> Supersedes the findings analysis in `.claude/docs/fable-audit-2026-07-07.md` where they
+> Supersedes the findings analysis in `docs/audits/fable-2026-07-07.md` where they
 > disagree (that audit analyzed the wrong execution path for finding #1 — see §1.2).
 > Code-quality / dead-code refactors live in `docs/plans/refactoring-recommendations.md`;
 > this plan covers **correctness, concurrency, verification gates, and hardening** only.
@@ -231,7 +231,7 @@ cross-checked against each other by `test_codegen_accuracy.py` and
 **Acceptance:** driven and autonomous convergence tests pass at proper orders on both
 loop A and loop B; `test_codegen_accuracy.py` passes with the existing tolerances
 (tighten `MAX_RMS` if it passes easily); full backend suite green in Docker;
-`validate_codegen.py` pass rate ≥ previous report (`docs/codegen-validation-report.md`).
+`validate_codegen.py` pass rate ≥ previous report (`docs/reports/codegen-validation-report.md`).
 
 **Pitfalls:**
 - Discrete blocks (unit_delay, discrete transfer functions, zero_order_hold) sample
@@ -322,7 +322,7 @@ stop-old/create-new. The background task itself must run unlocked.
    After LS-1/LS-2 the two loops should agree — if you land this before LS-2, keep the
    tolerance as-is and tighten after.
 3. `validate_codegen.py`: make the pass-rate a hard threshold (exit nonzero below the
-   current report's rate, read from `docs/codegen-validation-report.md` history), and
+   current report's rate, read from `docs/reports/codegen-validation-report.md` history), and
    fail both CI jobs on regression.
 
 **Acceptance:** CI configs contain no soft-fail on tests; accuracy tests reference the

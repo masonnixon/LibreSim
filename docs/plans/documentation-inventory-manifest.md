@@ -35,6 +35,25 @@ rewrite must produce a new hash and an explicit diff review.
 | `7870a2f35fe3a8f79d2d9d5b76f71b0b0e64ca290cde5524db0037dc4f3d00c8` | `docs/refs/testing.md` |
 | `d19fddc94926e1462374d9c502f09ea5943d197e2d700b347af134be874d7186` | `.claude/context.md` |
 
+## Reference map — checklist item 1.3
+
+The pre-migration `rg` scan covered tracked and ignored workspace files while
+excluding Git internals, dependency trees, and generated build output. It
+found 67 matches. References in the consolidation plan and this inventory are
+intentional disposition records; all other consumers are listed here.
+
+| Source family | Consumers identified |
+|---|---|
+| `docs/codegen-validation-report.md` | `.github/workflows/ci.yml`, `.gitlab-ci.yml`, `docs/refs/testing.md`, `docs/plans/refactoring-recommendations.md`, `docs/plans/completed/codegen-validation-report.md`, `docs/plans/completed/fable-audit-completion.md`, `docs/plans/completed/simulation-correctness-remediation.md` |
+| `codegen_verification/VERIFICATION_REPORT.md`, `IMPROVEMENT_PLAN.md` | `docs/refs/testing.md`, `docs/plans/refactoring-recommendations.md` |
+| `docs/refs/` | the six guides in that directory plus inventory/plan path records; links move with the directory |
+| `.claude/docs/fable-audit*.md` | `docs/plans/completed/fable-audit-completion.md`, `docs/plans/completed/simulation-correctness-remediation.md` |
+| `.claude/docs/coverage-100*.md` | inventory/plan records only; checklist facts will be merged into the completed coverage plan |
+| `docs/plans/completed/SQA.md` | no external consumer beyond inventory/plan records; content overlaps `docs/refs/testing.md` |
+| `docs/kf_eg_screenshot.PNG`, `.claude/docs/hermes-codex-config-with-docker.toml` | no code, CI, or Markdown consumers |
+
+The transient scan output is intentionally not a project artifact.
+
 ## Pre-manifest tracked durable documentation — 26 files
 
 ### Repository and special-location documents — 4

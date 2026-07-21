@@ -73,11 +73,11 @@ codegen-validation:
     - python scripts/regenerate_all_examples.py
     # Run validation
     - python scripts/validate_codegen.py
-    - cat docs/codegen-validation-report.md
+    - cat docs/reports/codegen-validation-report.md
   artifacts:
     when: always
     paths:
-      - docs/codegen-validation-report.md
+      - docs/reports/codegen-validation-report.md
 
 # =============================================================================
 # FRONTEND TESTS

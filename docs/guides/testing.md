@@ -343,9 +343,8 @@ python compare_languages.py --tolerance 0.03
 ```
 
 ### Validation Reports
-- `docs/codegen-validation-report.md` - Official validation results
-- `codegen_verification/VERIFICATION_REPORT.md` - Cross-language comparison
-- `codegen_verification/IMPROVEMENT_PLAN.md` - Plan to address discrepancies
+- `docs/reports/codegen-validation-report.md` - Official validation results
+- `docs/reports/archive/codegen-cross-language-consistency-2026-01-21.md` - Cross-language comparison
 
 ## Continuous Integration
 
