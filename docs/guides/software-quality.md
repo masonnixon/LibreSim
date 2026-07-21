@@ -27,19 +27,19 @@ below.
 ```bash
 # Backend lint
 DOCKER_HOST=unix:///run/docker.sock docker compose run --rm --no-deps backend \
-  ruff check src/ tests/
+  sh -c "pip install -q -e '.[dev]' && ruff check src/ tests/"
 
 # Backend format check
 DOCKER_HOST=unix:///run/docker.sock docker compose run --rm --no-deps backend \
-  ruff format --check src/ tests/
+  sh -c "pip install -q -e '.[dev]' && ruff format --check src/ tests/"
 
 # Backend type check
 DOCKER_HOST=unix:///run/docker.sock docker compose run --rm --no-deps backend \
-  mypy src/ --config-file=pyproject.toml
+  sh -c "pip install -q -e '.[dev]' && mypy src/ --config-file=pyproject.toml"
 
 # Backend security scan
 DOCKER_HOST=unix:///run/docker.sock docker compose run --rm --no-deps backend \
-  bandit -c pyproject.toml -r src/
+  sh -c "pip install -q -e '.[dev]' && bandit -c pyproject.toml -r src/"
 
 # Frontend lint
 DOCKER_HOST=unix:///run/docker.sock docker compose run --rm --no-deps frontend \

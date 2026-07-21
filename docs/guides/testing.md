@@ -85,15 +85,15 @@ All frontend commands run inside the Docker container.
 ```bash
 # Linting
 DOCKER_HOST=unix:///run/docker.sock docker compose run --rm --no-deps backend \
-  ruff check src/ tests/
+  sh -c "pip install -q -e '.[dev]' && ruff check src/ tests/"
 
 # Type checking
 DOCKER_HOST=unix:///run/docker.sock docker compose run --rm --no-deps backend \
-  mypy src/ --config-file=pyproject.toml
+  sh -c "pip install -q -e '.[dev]' && mypy src/ --config-file=pyproject.toml"
 
 # Security scanning
 DOCKER_HOST=unix:///run/docker.sock docker compose run --rm --no-deps backend \
-  bandit -r src/ -c pyproject.toml
+  sh -c "pip install -q -e '.[dev]' && bandit -r src/ -c pyproject.toml"
 ```
 
 **Frontend:**

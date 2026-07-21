@@ -22,7 +22,10 @@ runtime behavior depend on their locations:
   tests.
 - Dependency manifests such as `backend/requirements.txt`: not documentation.
 
-## Proposed structure
+## Resulting structure (abbreviated)
+
+The canonical [documentation index](../README.md) is the exhaustive
+file-level inventory. This tree shows the lifecycle categories.
 
 ```text
 docs/
@@ -32,11 +35,13 @@ docs/
 │   ├── blockset-development-guide.md
 │   ├── libresim-coder.md
 │   ├── mdl-format-reference.md
+│   ├── project-context.md
 │   ├── running-headless.md
 │   ├── software-quality.md
 │   └── testing.md
 ├── plans/
 │   ├── documentation-consolidation-and-purge.md
+│   ├── documentation-inventory-manifest.md
 │   ├── refactoring-recommendations.md
 │   ├── sim-state-compatibility-facade-deprecation.md
 │   └── completed/
@@ -54,7 +59,8 @@ docs/
 │   └── archive/
 │       ├── codegen-validation-2026-01-21.md
 │       └── codegen-cross-language-consistency-2026-01-21.md
-├── assets/
+└── assets/
+    └── README.md
 ```
 
 ## Disposition inventory
@@ -81,7 +87,7 @@ docs/
 | Backend `coverage*.json`, frontend coverage directories | Purge generated workspace artifacts | Add appropriately scoped ignore patterns after confirming no consumer |
 | Cache/build documentation inside ignored output directories | Purge with generated output | Never treat generated README files as project docs |
 
-## Known reference and tooling dependencies
+## Pre-migration reference and tooling dependencies
 
 - Completed Fable/remediation plans currently reference ignored
   `.claude/docs` audit files. Moving those audits into tracked `docs/audits/`
@@ -190,6 +196,11 @@ resolve within `docs/`.
 Acceptance: one authoritative location documents each quality command and the
 obsolete SQA file is gone.
 
+Completion evidence: `74698d5` replaced the unchanged legacy SQA copy with a
+Docker-only guide focused on static analysis, security, hook behavior, and
+both CI pipelines. Testing and coverage commands remain authoritative in
+`docs/guides/testing.md`.
+
 ### 6. Consolidate code-generation reports
 
 - [x] Compare the canonical generated validation report, historical completed
@@ -222,6 +233,11 @@ Acceptance: `.claude/` contains only active agent configuration/context that
 must live there; historical documentation is in `docs/` or deliberately
 purged.
 
+Completion evidence: the durable OSK naming, engineering-symbol, state-storage,
+and Pydantic-alias decisions were restored in `docs/guides/project-context.md`.
+The three ignored legacy Fable copies were recoverably quarantined; only
+`.claude/settings.local.json` remains in the local `.claude/` tree.
+
 ### 8. Purge generated workspace artifacts and prevent recurrence
 
 - [x] Confirm no scripts or tests consume the ad hoc backend coverage JSON
@@ -234,6 +250,11 @@ purged.
 
 Acceptance: `git status --short --ignored` is free of obsolete documentation
 and coverage clutter, while reproducible outputs remain excluded from commits.
+
+Completion evidence: after the final tests, coverage output, generated codegen
+builds, pytest/mypy/Ruff caches, and Python bytecode caches were recoverably
+quarantined. `git status --short --ignored` reports only the active ignored
+`.claude/settings.local.json` configuration family.
 
 ### 9. Rewrite and validate references
 
@@ -260,23 +281,31 @@ or references to purged files.
 Acceptance: all affected tests and tooling pass, and the diff is predominantly
 renames, link updates, merges, and reviewed removals.
 
-Verification note: the focused API suite passed 30/30 with coverage disabled
-for the narrow run. The report-path validator invocation reached the producer
-and wrote the new location, but the backend image has no C/C++/Rust toolchains,
-so its generated-language matrix could not build; the committed canonical
-156/156 report and prior Docker validation remain the authoritative result.
+Verification evidence: the focused API suite passed 30/30 with coverage
+disabled for the narrow run. The CI-equivalent codegen workflow mounted the
+Docker socket and CLI into the backend image, regenerated 156/156 targets, and
+validated 156/156 with zero simulation, build, run, or output-validation
+failures. The report was written to the new path and remained byte-identical
+to the committed canonical report (SHA-256 `a94835a7ed048a4fc8177613b355ef07c314fc8a13cc5382eaef07ecd022a28c`).
+The final local checker resolved 39 Markdown links with zero missing targets or
+anchors, and `git diff --check 6d8c607^` passed.
 
 ### 11. Commit in reviewable units
 
-- [x] Commit the documentation index and directory skeleton.
-- [x] Commit coverage/Fable audit migrations and link updates.
-- [x] Commit SQA consolidation.
-- [x] Commit codegen report consolidation and any atomic tooling changes.
-- [x] Commit approved legacy/generated-file purges and ignore rules.
-- [x] Review final status and the complete commit series before pushing.
+- [x] Commit planning, decisions, inventory, and hash records separately in
+  `3efac3e`, `d9d9771`, `a15ffdd`, and `b55b5d8`.
+- [x] Record the initial combined migration, consumer updates, and tracked
+  purges in `6d8c607`.
+- [x] Record the first verification follow-up in `aef3e7b`.
+- [x] Isolate content remediation in `74698d5`.
+- [x] Isolate final workspace-cleanup and verification evidence in this commit.
+- [x] Review final status and the complete commit series without pushing.
 
-Acceptance: each commit is independently understandable, no unrelated file is
-included, and purges are isolated for easy review or reversal.
+Historical exception: the planned per-category split and separately revertible
+tracked-purge commit were not achieved in `6d8c607`. History is not rewritten;
+that commit must be reviewed or reverted as one implementation unit. The
+corrective content and final cleanup/evidence are isolated in later commits,
+and no unrelated product behavior is included.
 
 ## Definition of done
 
@@ -288,4 +317,5 @@ included, and purges are isolated for easy review or reversal.
 - All local documentation links and documentation-producing tooling resolve to
   the final paths.
 - Generated/cache artifacts are reproducible, ignored, and absent from commits.
-- The approved purge list is committed separately from content moves and merges.
+- The combined initial migration is documented explicitly; subsequent content
+  remediation and final cleanup evidence are isolated for review.
