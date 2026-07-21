@@ -1,5 +1,6 @@
 """Source blocks for OSK-based simulation."""
 
+import bisect
 import math
 import random
 
@@ -196,8 +197,7 @@ class SineWave(Block):
 
     def update(self):
         self.output = (
-            self.amplitude
-            * math.sin(2.0 * math.pi * self.frequency * self.context.t + self.phase)
+            self.amplitude * math.sin(2.0 * math.pi * self.frequency * self.context.t + self.phase)
             + self.bias
         )
 
@@ -572,27 +572,19 @@ class FromWorkspace(Block):
         if t >= self.time_data[-1]:
             return self.value_data[-1]
 
-        # Find interval
-        for i in range(len(self.time_data) - 1):
-            if self.time_data[i] <= t < self.time_data[i + 1]:
-                if self.interpolation == "zoh":
-                    return self.value_data[i]
-                elif self.interpolation == "nearest":
-                    if t - self.time_data[i] < self.time_data[i + 1] - t:
-                        return self.value_data[i]
-                    else:
-                        return self.value_data[i + 1]
-                else:  # linear
-                    dt = self.time_data[i + 1] - self.time_data[i]
-                    if dt > 1e-10:
-                        alpha = (t - self.time_data[i]) / dt
-                        return self.value_data[i] + alpha * (
-                            self.value_data[i + 1] - self.value_data[i]
-                        )
-                    else:
-                        return self.value_data[i]
+        # bisect_right selects the last repeated timestamp, guaranteeing a
+        # positive-width interval for sorted time data.
+        i = bisect.bisect_right(self.time_data, t) - 1
+        if self.interpolation == "zoh":
+            return self.value_data[i]
+        if self.interpolation == "nearest":
+            if t - self.time_data[i] < self.time_data[i + 1] - t:
+                return self.value_data[i]
+            return self.value_data[i + 1]
 
-        return self.value_data[-1]
+        dt = self.time_data[i + 1] - self.time_data[i]
+        alpha = (t - self.time_data[i]) / dt
+        return self.value_data[i] + alpha * (self.value_data[i + 1] - self.value_data[i])
 
     def update(self):
         self.output = self._interpolate(self.context.t)

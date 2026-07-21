@@ -372,10 +372,8 @@ def _chebyshev2_poles(n: int, stopband_db: float) -> list[complex]:
         omega = cosh_v0 * math.cos(theta)
         # Invert to get Type II poles
         denom = sigma**2 + omega**2
-        if abs(denom) > 1e-10:
-            poles.append(complex(sigma / denom, -omega / denom))
-        else:
-            poles.append(complex(-1, 0))
+        # sinh/cosh cannot both be zero, so this prototype denominator is positive.
+        poles.append(complex(sigma / denom, -omega / denom))
     return poles
 
 
@@ -514,21 +512,20 @@ class AnalogFilter(Block):
                 b0 = -p_scaled if self.response == "lowpass" else k
                 b1 = -p_scaled if self.response == "lowpass" else -k
 
-                # Normalize
-                if abs(a0) > 1e-10:
-                    self._biquads.append(
-                        {
-                            "b0": b0 / a0,
-                            "b1": b1 / a0,
-                            "b2": 0.0,
-                            "a1": a1 / a0,
-                            "a2": 0.0,
-                            "x1": 0.0,
-                            "x2": 0.0,
-                            "y1": 0.0,
-                            "y2": 0.0,
-                        }
-                    )
+                # Stable prototype poles and positive dt make a0 nonzero.
+                self._biquads.append(
+                    {
+                        "b0": b0 / a0,
+                        "b1": b1 / a0,
+                        "b2": 0.0,
+                        "a1": a1 / a0,
+                        "a2": 0.0,
+                        "x1": 0.0,
+                        "x2": 0.0,
+                        "y1": 0.0,
+                        "y2": 0.0,
+                    }
+                )
                 i += 1
             else:
                 # Complex conjugate pair - second order section
@@ -558,38 +555,21 @@ class AnalogFilter(Block):
                     b1 = 0.0
                     b2 = -bw * k
 
-                # Normalize
-                if abs(a0) > 1e-10:
-                    self._biquads.append(
-                        {
-                            "b0": b0 / a0,
-                            "b1": b1 / a0,
-                            "b2": b2 / a0,
-                            "a1": a1 / a0,
-                            "a2": a2 / a0,
-                            "x1": 0.0,
-                            "x2": 0.0,
-                            "y1": 0.0,
-                            "y2": 0.0,
-                        }
-                    )
+                # Stable prototype poles and positive dt make a0 nonzero.
+                self._biquads.append(
+                    {
+                        "b0": b0 / a0,
+                        "b1": b1 / a0,
+                        "b2": b2 / a0,
+                        "a1": a1 / a0,
+                        "a2": a2 / a0,
+                        "x1": 0.0,
+                        "x2": 0.0,
+                        "y1": 0.0,
+                        "y2": 0.0,
+                    }
+                )
                 i += 2  # Skip conjugate
-
-        # If no biquads were created, create a simple passthrough
-        if not self._biquads:
-            self._biquads.append(
-                {
-                    "b0": 1.0,
-                    "b1": 0.0,
-                    "b2": 0.0,
-                    "a1": 0.0,
-                    "a2": 0.0,
-                    "x1": 0.0,
-                    "x2": 0.0,
-                    "y1": 0.0,
-                    "y2": 0.0,
-                }
-            )
 
         self._initialized = True
 
