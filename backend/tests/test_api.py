@@ -82,7 +82,6 @@ class TestModelsEndpoint:
         model = response.json()
         assert model["metadata"]["name"] == "Test Model"
         assert "id" in model
-        return model["id"]
 
     def test_get_model(self, test_client: TestClient):
         """Test retrieving a model by ID."""

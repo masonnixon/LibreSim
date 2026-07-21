@@ -265,17 +265,6 @@ def template_state_space(block: BlockInfo, struct_name: str) -> str:
     n_inputs = len(B[0]) if B else 1
     n_outputs = len(C) if C else 1
 
-    # Format matrices as C arrays
-    def format_matrix(mat, name, rows, cols):
-        lines = []
-        for i in range(rows):
-            row_vals = []
-            for j in range(cols):
-                val = mat[i][j] if i < len(mat) and j < len(mat[i]) else 0.0
-                row_vals.append(str(val))
-            lines.append(f"    {{ {', '.join(row_vals)} }}")
-        return f"double {name}[{rows}][{cols}] = {{\n" + ",\n".join(lines) + "\n    };"
-
     return f"""
 // {block.name} - State Space (n={n_states}, m={n_inputs}, p={n_outputs})
 typedef struct {{

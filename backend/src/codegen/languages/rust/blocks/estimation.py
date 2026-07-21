@@ -6,10 +6,7 @@ from ....models import BlockInfo
 def _format_f64(value) -> str:
     """Format a numeric value as a Rust f64 literal."""
     if isinstance(value, (int, float)):
-        s = str(float(value))
-        if "." not in s and "e" not in s.lower():
-            return s + ".0"
-        return s
+        return str(float(value))
     return str(value)
 
 
