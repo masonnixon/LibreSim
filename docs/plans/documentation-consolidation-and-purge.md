@@ -121,7 +121,8 @@ docs/
 
 ### 1. Freeze the inventory and establish safety
 
-- [ ] Record a complete tracked, ignored, and untracked documentation manifest.
+- [x] Record a complete tracked, ignored, and untracked documentation manifest
+  in `docs/plans/documentation-inventory-manifest.md`.
 - [ ] Record SHA-256 hashes for files being merged or considered duplicates.
 - [ ] Identify every code, CI, and Markdown reference to each source path.
 - [ ] Confirm the worktree contains no unrelated staged changes.
