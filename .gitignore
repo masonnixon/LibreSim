@@ -53,6 +53,8 @@ pnpm-debug.log*
 coverage/
 .coverage.json
 coverage.json
+backend/coverage-*.json
+frontend/coverage-*/
 .coverage
 htmlcov/
 .pytest_cache/

@@ -27,13 +27,13 @@ runtime behavior depend on their locations:
 ```text
 docs/
 ├── README.md
-├── refs/
+├── guides/
 │   ├── adding-new-plot-types.md
 │   ├── blockset-development-guide.md
 │   ├── libresim-coder.md
 │   ├── mdl-format-reference.md
 │   ├── running-headless.md
-│   ├── software-quality.md          # decision: merge into testing instead
+│   ├── software-quality.md
 │   └── testing.md
 ├── plans/
 │   ├── documentation-consolidation-and-purge.md
@@ -50,13 +50,11 @@ docs/
 │   ├── fable-remediation-checkpoint-2026-07-10.md
 │   └── fable-remediation-final-2026-07-16.md
 ├── reports/
-│   ├── codegen-validation-report.md # generated canonical report, if tracked
+│   ├── codegen-validation-report.md # generated canonical report
 │   └── archive/
 │       ├── codegen-validation-2026-01-21.md
 │       └── codegen-cross-language-consistency-2026-01-21.md
 ├── assets/
-└── archive/
-    └── legacy-project-context-2026-01.md  # only if retained
 ```
 
 ## Disposition inventory
@@ -69,14 +67,14 @@ docs/
 | `.claude/docs/fable-audit-remediation-status-2026-07-10.md` | Move and begin tracking | `docs/audits/fable-remediation-checkpoint-2026-07-10.md` |
 | `.claude/docs/fable-audit-remediation-status-2026-07-16.md` | Move and begin tracking | `docs/audits/fable-remediation-final-2026-07-16.md` |
 | `.claude/docs/hermes-codex-config-with-docker.toml` | Purge from repository workspace | Machine-specific Codex/Hermes configuration; retain privately if needed |
-| `.claude/context.md` | Decision: archive or purge | Audit unique durable decisions before acting |
+| `.claude/context.md` | Extract, then purge | Move unique durable decisions into current guides first |
 | `codegen_verification/VERIFICATION_REPORT.md` | Move/archive | `docs/reports/archive/codegen-cross-language-consistency-2026-01-21.md` |
 | `codegen_verification/IMPROVEMENT_PLAN.md` | Merge, then purge | Preserve unique outcomes in the archived consistency report |
 | `docs/plans/completed/codegen-validation-report.md` | Move/archive | It is a historical report, not a completed plan |
-| `docs/codegen-validation-report.md` | Decision: keep tracked or make CI artifact | Producer and all references must change atomically if moved/untracked |
-| `docs/plans/completed/SQA.md` | Merge or rename | Merge nonduplicated material into `testing.md`, or create `software-quality.md` |
-| `docs/kf_eg_screenshot.PNG` | Decision: retain under assets or purge | It currently appears unreferenced; visually inspect before deciding |
-| `docs/refs/*.md` | Keep, then freshness-audit | Durable user/developer guidance |
+| `docs/codegen-validation-report.md` | Move | `docs/reports/codegen-validation-report.md`; update producer and references atomically |
+| `docs/plans/completed/SQA.md` | Merge, then purge | Move nonduplicated material into `docs/guides/software-quality.md` |
+| `docs/kf_eg_screenshot.PNG` | Purge | Unreferenced orphan; record the deletion explicitly |
+| `docs/refs/*.md` | Move, then freshness-audit | Rename directory to `docs/guides/` |
 | `docs/plans/refactoring-recommendations.md` | Keep active | Repair stale `docs/SQA.md` and `docs/testing.md` links |
 | `docs/plans/sim-state-compatibility-facade-deprecation.md` | Keep active | Reassess completion separately from this reorganization |
 | `docs/plans/completed/*.md` remediation/design files | Keep | Historical implementation and acceptance evidence |
@@ -89,8 +87,8 @@ docs/
   `.claude/docs` audit files. Moving those audits into tracked `docs/audits/`
   fixes a portability defect, but all references must be updated together.
 - `docs/plans/refactoring-recommendations.md` names nonexistent
-  `docs/SQA.md` and `docs/testing.md`; the actual files are currently under
-  `docs/plans/completed/` and `docs/refs/`.
+  `docs/SQA.md` and `docs/testing.md`; the final authoritative files will be
+  under `docs/guides/`.
 - `scripts/validate_codegen.py` writes
   `docs/codegen-validation-report.md`. Moving that generated report requires
   coordinated changes to the script, both CI pipelines, testing guidance, and
@@ -102,23 +100,22 @@ docs/
 - The three ignored Fable audit/status files are absent from normal clones;
   moving them under `docs/` should use explicit adds so they become tracked.
 
-## Decisions to settle before execution
+## Settled decisions
 
-- [ ] **D1 — Legacy context:** archive `.claude/context.md` under
-  `docs/archive/`, or purge it after extracting any unique decisions?
-- [ ] **D2 — SQA material:** merge `SQA.md` into `docs/refs/testing.md`, or
-  retain a separate `docs/refs/software-quality.md`?
-- [ ] **D3 — Generated validation report:** keep
-  `docs/codegen-validation-report.md` tracked at its current stable path, move
-  it to `docs/reports/`, or stop tracking it and publish it only as a CI
-  artifact?
-- [ ] **D4 — Historical checkpoint depth:** retain both the 2026-07-10
-  checkpoint and 2026-07-16 final Fable status, or merge the checkpoint's
-  unique evidence into the final status and purge it?
-- [ ] **D5 — Screenshot:** retain `docs/kf_eg_screenshot.PNG` under
-  `docs/assets/` with a documented consumer, or purge it as orphaned?
-- [ ] **D6 — Directory naming:** keep the established `docs/refs/` name, or
-  rename it to `docs/guides/` and accept the larger link migration?
+- [x] **D1 — Legacy context:** extract any unique durable decisions from
+  `.claude/context.md`, then purge the legacy session diary.
+- [x] **D2 — SQA material:** create a separate
+  `docs/guides/software-quality.md`; merge unique SQA content into it, then
+  purge the completed-plan copy.
+- [x] **D3 — Generated validation report:** move the tracked canonical report
+  to `docs/reports/codegen-validation-report.md` and update its producer, CI,
+  and references atomically.
+- [x] **D4 — Historical checkpoint depth:** retain both the 2026-07-10
+  checkpoint and the 2026-07-16 final Fable remediation status.
+- [x] **D5 — Screenshot:** purge `docs/kf_eg_screenshot.PNG` as an unreferenced
+  orphan.
+- [x] **D6 — Directory naming:** rename `docs/refs/` to `docs/guides/` and
+  update all references.
 
 ## Execution checklist
 
@@ -137,7 +134,7 @@ list before any move or purge.
 ### 2. Create the documentation spine
 
 - [ ] Add `docs/README.md` as the documentation index.
-- [ ] Explain the roles of `refs/`, active `plans/`, `plans/completed/`,
+- [ ] Explain the roles of `guides/`, active `plans/`, `plans/completed/`,
   `audits/`, `reports/`, `assets/`, and `archive/`.
 - [ ] Link the root `README.md` to `docs/README.md` without duplicating its
   quick-start content.
@@ -168,7 +165,8 @@ tracked coverage documentation remains under `.claude/docs/`.
   `docs/audits/` using the agreed names.
 - [ ] Ensure the previously ignored files become tracked.
 - [ ] Add clear `original`, `historical checkpoint`, and `final` labels.
-- [ ] Apply decision D4 without discarding unique acceptance evidence.
+- [ ] Retain both agreed status documents without discarding unique acceptance
+  evidence.
 - [ ] Update links in `simulation-correctness-remediation.md`,
   `fable-audit-completion.md`, and any other referring documents.
 
@@ -180,8 +178,8 @@ resolve within `docs/`.
 - [ ] Compare `docs/plans/completed/SQA.md` section-by-section with
   `docs/refs/testing.md`.
 - [ ] Extract unique lint, type-check, security, pre-commit, and CI guidance.
-- [ ] Apply decision D2: merge into `testing.md` or create
-  `software-quality.md`.
+- [ ] Create `docs/guides/software-quality.md` and merge the unique material
+  into it.
 - [ ] Remove duplicated setup and stale host-specific commands.
 - [ ] Remove `SQA.md` from completed plans only after all unique material is
   retained.
@@ -198,7 +196,8 @@ obsolete SQA file is gone.
 - [ ] Merge unique completion notes from `IMPROVEMENT_PLAN.md` into the archived
   cross-language report, then remove the redundant plan.
 - [ ] Move the historical completed-plan report into `docs/reports/archive/`.
-- [ ] Apply decision D3 atomically across `scripts/validate_codegen.py`, GitHub
+- [ ] Move the canonical report to `docs/reports/codegen-validation-report.md`
+  atomically across `scripts/validate_codegen.py`, GitHub
   Actions, GitLab CI, testing guidance, and completed-plan links.
 - [ ] Preserve the generated report's reproducibility and CI visibility.
 
@@ -209,9 +208,9 @@ still writes and publishes the expected report.
 ### 7. Resolve legacy context, assets, and machine-specific files
 
 - [ ] Audit `.claude/context.md` for decisions not present in current docs.
-- [ ] Apply decision D1: extract and archive, or extract and purge.
-- [ ] Visually inspect `docs/kf_eg_screenshot.PNG`, find its origin, and apply
-  decision D5.
+- [ ] Extract unique durable decisions from `.claude/context.md`, then purge it.
+- [ ] Purge the agreed orphan `docs/kf_eg_screenshot.PNG` and record the
+  deletion.
 - [ ] Remove `.claude/docs/hermes-codex-config-with-docker.toml` from the
   repository workspace after confirming a private copy exists if needed.
 - [ ] Ensure no secrets, personal paths, or machine-specific settings are moved
