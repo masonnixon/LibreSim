@@ -382,3 +382,17 @@ The final checklist closeout recorded the following authoritative evidence:
   and `238aa4a`; local Docker host configuration is isolated in `9f7071e`.
 - The only backend skip is the documented external MDL fixture skip; no test
   failures or warnings remained at closeout.
+
+The closeout gates were run from the repository root with these commands:
+
+```bash
+DOCKER_HOST=unix:///run/docker.sock docker compose run --rm --no-deps \
+  -v "$PWD/examples:/examples:ro" backend sh -c \
+  "pip install -q -e '.[dev]' && pytest tests/ -q"
+DOCKER_HOST=unix:///run/docker.sock docker compose run --rm --no-deps frontend \
+  npm run test:coverage
+DOCKER_HOST=unix:///run/docker.sock docker compose run --rm --no-deps frontend \
+  npm run lint
+DOCKER_HOST=unix:///run/docker.sock docker compose run --rm --no-deps frontend \
+  npm run typecheck
+```

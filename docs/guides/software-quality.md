@@ -1,317 +1,96 @@
-# Software Quality Assurance (SQA) Guide
+# Software Quality Guide
 
-This document describes the SQA tools and practices used in the LibreSim project.
+This guide documents LibreSim's static-analysis, security, pre-commit, and CI
+quality gates. Test execution and coverage policy are maintained separately in
+the [testing guide](testing.md).
 
-## Overview
+## Quality gates
 
-LibreSim uses a comprehensive suite of SQA tools to maintain code quality:
+| Tool | Scope | Configuration | Required stage |
+|---|---|---|---|
+| Ruff | Backend linting and formatting | `backend/pyproject.toml` | Pre-commit and CI |
+| mypy | Backend static typing | `backend/pyproject.toml` | CI |
+| Bandit | Backend security scanning | `backend/pyproject.toml` | Pre-commit and CI |
+| ESLint | Frontend linting | `frontend/.eslintrc.cjs` | Pre-commit and CI |
+| TypeScript | Frontend static typing | `frontend/tsconfig.json` | Pre-commit and CI |
+| detect-secrets | Repository secret scanning | `.secrets.baseline` | Pre-commit |
 
-| Tool | Purpose | Stage |
-|------|---------|-------|
-| **Ruff** | Python linting & formatting | Pre-commit, CI |
-| **MyPy** | Python type checking | Pre-commit, CI |
-| **Bandit** | Python security scanning | Pre-commit, CI |
-| **ESLint** | TypeScript/JavaScript linting | Pre-commit, CI |
-| **TypeScript** | Type checking | Pre-commit, CI |
-| **Pytest** | Python testing with coverage | CI |
-| **detect-secrets** | Secret detection | Pre-commit |
+The backend and frontend test suites enforce permanent 100% coverage gates.
+See [testing.md](testing.md) for their commands and current measurements.
 
-## Quick Start
+## Canonical commands
 
-### 1. Install Development Dependencies
+Run project quality commands from the repository root in Docker. When the
+sandbox socket exists, every Docker invocation uses the explicit host shown
+below.
 
 ```bash
-# Backend (Python)
-cd backend
-pip install -e ".[dev]"
+# Backend lint
+DOCKER_HOST=unix:///run/docker.sock docker compose run --rm --no-deps backend \
+  ruff check src/ tests/
 
-# Frontend (Node.js)
-cd frontend
-npm install
+# Backend format check
+DOCKER_HOST=unix:///run/docker.sock docker compose run --rm --no-deps backend \
+  ruff format --check src/ tests/
+
+# Backend type check
+DOCKER_HOST=unix:///run/docker.sock docker compose run --rm --no-deps backend \
+  mypy src/ --config-file=pyproject.toml
+
+# Backend security scan
+DOCKER_HOST=unix:///run/docker.sock docker compose run --rm --no-deps backend \
+  bandit -c pyproject.toml -r src/
+
+# Frontend lint
+DOCKER_HOST=unix:///run/docker.sock docker compose run --rm --no-deps frontend \
+  npm run lint
+
+# Frontend type check
+DOCKER_HOST=unix:///run/docker.sock docker compose run --rm --no-deps frontend \
+  npm run typecheck
 ```
 
-### 2. Install Pre-commit Hooks
+Ruff's configured rule families include Pyflakes/pycodestyle errors, import
+sorting, bugbear checks, Python-upgrade checks, simplification, naming, and
+warnings. mypy checks untyped function bodies and uses the Pydantic plugin;
+module-specific compatibility overrides are documented in
+`backend/pyproject.toml`. Bandit excludes test-only paths through its project
+configuration.
+
+## Pre-commit behavior
+
+`.pre-commit-config.yaml` currently runs Ruff, Ruff formatting, Bandit,
+repository hygiene checks, and detect-secrets. Frontend ESLint and TypeScript
+hooks call the running frontend container. The backend pytest hook is a
+pre-push hook. mypy runs in GitHub Actions and GitLab CI rather than as an
+active pre-commit hook.
+
+Pre-commit itself is a host Git integration, so installing or invoking it is
+the sole exception to the Docker-only project-command rule:
 
 ```bash
-# From project root
-pip install pre-commit
 pre-commit install
-```
-
-This installs git hooks that automatically run checks before each commit.
-
-### 3. Run Checks Manually
-
-```bash
-# Run all pre-commit hooks on all files
+pre-commit install --hook-type pre-push
 pre-commit run --all-files
-
-# Run specific hooks
-pre-commit run ruff --all-files
-pre-commit run mypy --all-files
-pre-commit run bandit --all-files
 ```
 
-## Tool Details
+Do not treat a skipped container-backed hook as a successful quality run; use
+the canonical Docker commands above before merging.
 
-### Ruff (Python Linting & Formatting)
+## Continuous integration
 
-Ruff is an extremely fast Python linter and formatter that replaces multiple tools (flake8, isort, black).
+`.github/workflows/ci.yml` and `.gitlab-ci.yml` both require backend Ruff,
+mypy, Bandit, pytest coverage, code-generation validation, frontend ESLint,
+TypeScript, and Vitest coverage. The workflows install C/C++ and Rust
+toolchains before code-generation validation and publish the canonical report
+at `docs/reports/codegen-validation-report.md`.
 
-**Configuration:** `backend/pyproject.toml`
+When adding or changing a quality rule:
 
-```bash
-# Check for issues
-cd backend
-ruff check src/
+1. Change the owning configuration file.
+2. Run the relevant canonical Docker command.
+3. Update both CI pipelines if the command or artifact contract changes.
+4. Update this guide only when the workflow or responsibility changes.
 
-# Auto-fix issues
-ruff check src/ --fix
-
-# Format code
-ruff format src/
-```
-
-**Rule sets enabled:**
-- `E`, `F`: PyFlakes and pycodestyle errors
-- `I`: isort (import sorting)
-- `B`: flake8-bugbear (common bugs)
-- `UP`: pyupgrade (Python upgrade suggestions)
-- `SIM`: flake8-simplify (code simplification)
-- `N`, `W`: Naming and warnings
-
-### MyPy (Type Checking)
-
-MyPy performs static type analysis to catch type-related bugs.
-
-**Configuration:** `backend/pyproject.toml`
-
-```bash
-cd backend
-mypy src/
-```
-
-**Key settings:**
-- `ignore_missing_imports = true`: Allows untyped third-party libraries
-- `check_untyped_defs = true`: Checks inside untyped functions
-- `strict_optional = true`: Enforces Optional type annotations
-
-### Bandit (Security Scanning)
-
-Bandit finds common security issues in Python code.
-
-**Configuration:** `backend/pyproject.toml`
-
-```bash
-cd backend
-bandit -r src/ -c pyproject.toml
-```
-
-**Excluded checks:**
-- `B101`: assert_used (commonly used in tests)
-
-### Pytest (Testing)
-
-Pytest runs the test suite with coverage reporting.
-
-**Configuration:** `backend/pyproject.toml`
-
-```bash
-cd backend
-
-# Run all tests
-pytest
-
-# Run with coverage
-pytest --cov=src --cov-report=html
-
-# Run specific test file
-pytest tests/test_blocks.py
-
-# Run tests in parallel
-pytest -n auto
-```
-
-**Coverage reports:**
-- Terminal: Shows missing lines
-- HTML: `backend/htmlcov/index.html`
-- XML: `backend/coverage.xml` (for CI)
-
-### ESLint (Frontend)
-
-ESLint checks TypeScript/JavaScript code quality.
-
-```bash
-cd frontend
-npm run lint
-```
-
-### TypeScript Compiler
-
-TypeScript checks type correctness without emitting files.
-
-```bash
-cd frontend
-npx tsc --noEmit
-```
-
-## GitLab CI Pipeline
-
-The `.gitlab-ci.yml` file defines the CI/CD pipeline with these stages:
-
-### Lint Stage
-- `ruff-lint`: Python linting
-- `ruff-format`: Python formatting check
-- `eslint`: Frontend linting
-- `typescript-check`: TypeScript type checking
-
-### Test Stage
-- `mypy`: Python type checking
-- `pytest`: Python tests with coverage
-- `frontend-test`: Frontend tests (when configured)
-
-### Security Stage
-- `bandit`: Security vulnerability scanning
-- `dependency-check`: Python dependency audit
-- `npm-audit`: Node.js dependency audit
-
-### Build Stage
-- `build-frontend`: Production frontend build
-- `build-docker`: Docker image build (manual)
-
-## Pre-commit Hooks
-
-The `.pre-commit-config.yaml` configures hooks that run before each commit:
-
-1. **Ruff lint & format** - Python code quality
-2. **MyPy** - Python type checking
-3. **Bandit** - Security scanning
-4. **ESLint** - Frontend linting
-5. **TSC** - TypeScript checking
-6. **General checks**:
-   - Large file detection
-   - Merge conflict markers
-   - YAML/JSON syntax
-   - Trailing whitespace
-   - End-of-file newlines
-   - Debug statements
-7. **detect-secrets** - Secret detection
-
-### Bypassing Hooks (Use Sparingly)
-
-```bash
-# Skip all hooks for a single commit
-git commit --no-verify -m "emergency fix"
-
-# Skip specific hooks
-SKIP=mypy git commit -m "message"
-```
-
-## Writing Tests
-
-### Test File Structure
-
-```
-backend/tests/
-├── __init__.py
-├── conftest.py      # Shared fixtures
-├── test_blocks.py   # Block tests
-├── test_compiler.py # Compiler tests
-└── test_api.py      # API endpoint tests
-```
-
-### Test Conventions
-
-```python
-# Use classes to group related tests
-class TestConstantBlock:
-    """Tests for the Constant block."""
-
-    def test_constant_output(self):
-        """Test that Constant block outputs the configured value."""
-        const = Constant(value=5.0)
-        assert const.getOutput() == 5.0
-
-    def test_constant_string_value(self):
-        """Test that Constant block parses string values."""
-        const = Constant(value="3.14")
-        assert const.getOutput() == pytest.approx(3.14)
-```
-
-### Using Fixtures
-
-```python
-# In conftest.py
-@pytest.fixture
-def sample_model():
-    return {"id": "test", "blocks": [...]}
-
-# In test file
-def test_compile_model(sample_model):
-    result = compiler.compile(sample_model)
-    assert result.success
-```
-
-## Continuous Improvement
-
-### Adding New Rules
-
-To enable additional Ruff rules, edit `backend/pyproject.toml`:
-
-```toml
-[tool.ruff.lint]
-select = ["E", "F", "I", "B", "UP", "SIM", "N", "W", "NEW_RULE"]
-```
-
-### Increasing Coverage Threshold
-
-Once test coverage improves, update the threshold:
-
-```toml
-[tool.coverage.report]
-fail_under = 80  # Fail if coverage drops below 80%
-```
-
-### Adding Type Hints
-
-Gradually add type hints to improve MyPy effectiveness:
-
-```python
-# Before
-def process_block(block, config):
-    ...
-
-# After
-def process_block(block: Block, config: SimulationConfig) -> ProcessResult:
-    ...
-```
-
-## Troubleshooting
-
-### Pre-commit hooks failing
-
-```bash
-# Update hooks to latest versions
-pre-commit autoupdate
-
-# Clear cache and reinstall
-pre-commit clean
-pre-commit install
-```
-
-### MyPy errors with third-party libraries
-
-Add to `pyproject.toml`:
-```toml
-[[tool.mypy.overrides]]
-module = "problematic_library.*"
-ignore_missing_imports = true
-```
-
-### Tests not finding modules
-
-Ensure the package is installed in development mode:
-```bash
-cd backend
-pip install -e ".[dev]"
-```
+Never lower a quality or coverage threshold merely to make a failing gate
+pass. Fix the violation or document an intentional, narrowly scoped exception.

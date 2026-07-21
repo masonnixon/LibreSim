@@ -1,13 +1,13 @@
 # Fable Audit Remediation Status
 
-**Date:** 2026-07-10  
-**Branch:** `fable-audit-plan`  
-**HEAD:** `d0d3382989332d371d560d39a155f4023cd47a8f`  
-**Plan:** `docs/plans/simulation-correctness-remediation.md`
+**Date:** 2026-07-10
+**Branch:** `fable-audit-plan`
+**HEAD:** `d0d3382989332d371d560d39a155f4023cd47a8f`
+**Plan:** `docs/plans/completed/simulation-correctness-remediation.md`
 
 > **Historical checkpoint — not current project status.** This document intentionally
 > preserves the branch state observed on 2026-07-10 at `d0d3382`. Active execution and
-> current results are tracked in `docs/plans/fable-audit-completion.md`.
+> current results are tracked in `docs/plans/completed/fable-audit-completion.md`.
 >
 > Since this checkpoint, the missing LS-3, LS-5, LS-6, LS-7, and LS-9 acceptance
 > coverage was completed; frontend and backend quality gates were restored; and FAC-8

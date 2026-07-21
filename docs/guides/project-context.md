@@ -15,3 +15,22 @@ in [`testing.md`](testing.md) and [`software-quality.md`](software-quality.md).
 
 The repository uses the LibreSim Source Available Commercial License; the
 authoritative terms remain in the root [`LICENSE`](../../LICENSE).
+
+## Durable design decisions
+
+These conventions were retained from the former `.claude/context.md` session
+record before it was removed:
+
+- OSK's public camelCase methods, such as `getOutput` and `setInput`, are
+  intentional because they follow the Simulink/MATLAB-inspired API vocabulary.
+- Standard engineering symbols such as `Kp`, `Ki`, `Kd`, `A`, `B`, `C`, and
+  `D` retain their conventional capitalization even when a general naming rule
+  would prefer lowercase identifiers.
+- `Block.state()` remains the base-class method name. Subclass state storage
+  uses `_x_state` where necessary to avoid shadowing that method.
+- Pydantic models use aliases and `populate_by_name=True` to preserve the JSON
+  contract shared with the frontend while allowing Python-facing field names.
+
+The deleted context also contained dated implementation diaries. Their durable
+outcomes are represented by the current source, tests, completed plans, and
+audit records rather than being copied into this maintained guide.

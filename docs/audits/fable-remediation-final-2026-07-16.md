@@ -1,9 +1,9 @@
 # LibreSim Fable Audit — Final Remediation Status
 
-**Date:** 2026-07-16  
-**Branch:** `fable-audit-plan`  
-**Clean validation commit:** `6e7f690e60acea827398887c73197219690082cc`  
-**FAC-9 closeout commit:** `15b54a9`  
+**Date:** 2026-07-16
+**Branch:** `fable-audit-plan`
+**Clean validation commit:** `6e7f690e60acea827398887c73197219690082cc`
+**FAC-9 closeout commit:** `15b54a9`
 **FAC-10 archive commit:** `1b97a8b`
 
 ## Outcome

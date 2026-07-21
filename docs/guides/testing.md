@@ -107,7 +107,10 @@ DOCKER_HOST=unix:///run/docker.sock docker compose run --rm --no-deps frontend n
 
 ### Pre-commit Hooks
 
-All SQA checks run automatically before each commit via pre-commit hooks:
+Pre-commit runs repository hygiene, Ruff, Bandit, and container-backed
+frontend checks. Backend pytest is a pre-push hook, and mypy runs in CI rather
+than in pre-commit. See [software-quality.md](software-quality.md) for the
+authoritative hook behavior and quality commands.
 
 ```bash
 # Install hooks (one-time setup)
@@ -116,8 +119,8 @@ pre-commit install
 # Run all hooks manually
 pre-commit run --all-files
 
-# Run specific hook
-pre-commit run ruff --all-files
+# Install the pre-push test hook too
+pre-commit install --hook-type pre-push
 ```
 
 ## Test Configuration

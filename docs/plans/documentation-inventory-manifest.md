@@ -11,8 +11,12 @@ assets by Git state before the consolidation begins. Third-party dependency
 documentation and generated cache/build documentation are not listed file by
 file; those complete generated families are counted separately below.
 
-The path inventory was recorded first. Path-reference mapping remains reserved
-for checklist item 1.3 and has intentionally not been collected here.
+The path inventory was recorded first. The reference map added during
+checklist item 1.3 appears below the hash register.
+
+Documentation ownership is shared by the LibreSim maintainers. Generated
+codegen-report ownership additionally belongs to `scripts/validate_codegen.py`
+and the two CI pipelines that publish its output.
 
 ## SHA-256 hash register — checklist item 1.2
 
@@ -44,7 +48,7 @@ intentional disposition records; all other consumers are listed here.
 
 | Source family | Consumers identified |
 |---|---|
-| `docs/codegen-validation-report.md` | `.github/workflows/ci.yml`, `.gitlab-ci.yml`, `docs/refs/testing.md`, `docs/plans/refactoring-recommendations.md`, `docs/plans/completed/codegen-validation-report.md`, `docs/plans/completed/fable-audit-completion.md`, `docs/plans/completed/simulation-correctness-remediation.md` |
+| `docs/codegen-validation-report.md` | `scripts/validate_codegen.py`, `.github/workflows/ci.yml`, `.gitlab-ci.yml`, `docs/refs/testing.md`, `docs/plans/refactoring-recommendations.md`, `docs/plans/completed/codegen-validation-report.md`, `docs/plans/completed/fable-audit-completion.md`, `docs/plans/completed/simulation-correctness-remediation.md` |
 | `codegen_verification/VERIFICATION_REPORT.md`, `IMPROVEMENT_PLAN.md` | `docs/refs/testing.md`, `docs/plans/refactoring-recommendations.md` |
 | `docs/refs/` | the six guides in that directory plus inventory/plan path records; links move with the directory |
 | `.claude/docs/fable-audit*.md` | `docs/plans/completed/fable-audit-completion.md`, `docs/plans/completed/simulation-correctness-remediation.md` |
