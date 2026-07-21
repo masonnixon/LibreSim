@@ -227,13 +227,11 @@ class DiscreteTransferFunction(Block):
 
             # Add numerator terms
             for i, b in enumerate(self.numerator):
-                if i < len(self.input_buffer):
-                    result += b * self.input_buffer[i]
+                result += b * self.input_buffer[i]
 
             # Subtract denominator terms (except a0)
             for i in range(1, len(self.denominator)):
-                if i < len(self.output_buffer):
-                    result -= self.denominator[i] * self.output_buffer[i]
+                result -= self.denominator[i] * self.output_buffer[i]
 
             self.output = result / a0
             self.output_buffer[0] = self.output

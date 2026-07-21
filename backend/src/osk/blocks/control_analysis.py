@@ -616,10 +616,8 @@ class StepInfo(Block):
         self.peak_time = self.times[peak_idx]
 
         # Overshoot percentage
-        if final != 0:
-            self.overshoot_percent = max(0, (self.peak_value - final) / abs(final) * 100)
-        else:
-            self.overshoot_percent = 0
+        # The near-zero guard above guarantees a nonzero normalization value.
+        self.overshoot_percent = max(0, (self.peak_value - final) / abs(final) * 100)
 
         # Rise time (10% to 90% of final value)
         target_10 = 0.1 * final

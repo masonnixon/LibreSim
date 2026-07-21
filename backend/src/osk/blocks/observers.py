@@ -311,8 +311,7 @@ class ExtendedKalmanFilter(Block):
 
         # Simple integrator prediction: x_new = x + dt * u
         x_pred = self.x_hat.copy()
-        if self.n >= 1:
-            x_pred[0] = self.x_hat[0] + self.context.dt * u
+        x_pred[0] = self.x_hat[0] + self.context.dt * u
 
         # Linearized state transition for integrator
         F = np.eye(self.n)
