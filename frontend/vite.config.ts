@@ -16,7 +16,7 @@ export default defineConfig({
   server: {
     port: 4200,
     host: true,
-    allowedHosts: ['irongiant.tail7d452.ts.net'],
+    allowedHosts: ['butterbot.tail7d452.ts.net'],
     watch: {
       // Use polling for Docker on Windows (file system events don't propagate reliably)
       usePolling: true,
