@@ -208,6 +208,8 @@ class SessionRegistry:
                 except BaseException:
                     async with self._lock:
                         retained = self._sessions.get(replaced.runner.session_id)
+                        # coverage.py reports the lock exit as the false edge;
+                        # retained and replaced mappings are both tested.
                         if retained is replaced:  # pragma: no branch
                             replaced.lifecycle = SessionLifecycle.ACTIVE
                     raise
@@ -225,6 +227,8 @@ class SessionRegistry:
                 if replaced is not None:
                     async with self._lock:
                         retained = self._sessions.get(replaced.runner.session_id)
+                        # This is the same synthetic async-with exit described
+                        # above; both rollback mapping outcomes are tested.
                         if retained is replaced:  # pragma: no branch
                             replaced.lifecycle = SessionLifecycle.ACTIVE
                 raise

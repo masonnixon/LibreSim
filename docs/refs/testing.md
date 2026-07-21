@@ -19,12 +19,14 @@ LibreSim employs three types of tests:
 | Metric | Value |
 |--------|-------|
 | **Tests Passing** | 3,769 |
-| **Skipped** | 1 (documented external MDL fixture) |
+| **Skipped** | 1 (`TestMDLImportCrosstalk.test_cube_euler_mdl_import`) |
 | **Overall Coverage** | 100% statements / 100% branches |
 | **Test Framework** | pytest |
 
 All backend modules, including API routes, application entry points, codegen,
-OSK blocks, and simulation services, are fully covered.
+OSK blocks, and simulation services, are fully covered. The skipped test is in
+`backend/tests/test_crosstalk_bug.py`; its `skipif` explains that it requires
+the external `cube_closed_loop_euler.mdl` regression fixture.
 
 ### Frontend (TypeScript/React)
 
@@ -36,44 +38,10 @@ OSK blocks, and simulation services, are fully covered.
 | **Test Files** | 42 |
 | **Measured Source Files** | 62 |
 
-**Representative fully covered modules:**
-- `src/blocks/` - Block definitions and registry (100%)
-- `src/store/simulationStore.ts` - Simulation state management (100%)
-- `src/store/uiStore.ts` - UI state management (100%)
-- `src/types/` - TypeScript type definitions (100%)
-- `src/utils/nanoid.ts` - ID generation (100%)
-- `src/utils/mdlExporter.ts` - MDL export (100%)
-- `src/components/Toast/Toast.tsx` - Toast notifications (100%)
-- `src/api/client.ts` - API client (98%)
-- `src/store/libraryStore.ts` - Library state management (92%)
-- `src/store/modelStore.ts` - Model state management (88%)
-
-**Additional fully covered modules:**
-- `src/components/Editor/BlockNode.tsx` - Block node component (100%)
-- `src/utils/mdlImporter.ts` - MDL import (100%)
-- `src/components/Sidebar/Sidebar.tsx` - Block library sidebar (100%)
-
-**No lower-coverage modules remain:**
-- `src/components/Toolbar/Toolbar.tsx` - Toolbar (100%)
-- `src/components/Editor/Editor.tsx` - Main editor (100%)
-- `src/components/Editor/CustomEdge.tsx` - Edge routing (100%)
-- `src/components/*/` - Modal components (100%)
-
-**Test files:**
-- `src/api/client.test.ts` - API client tests (36 tests)
-- `src/blocks/index.test.ts` - Block registry tests
-- `src/store/libraryStore.test.ts` - Library store tests
-- `src/store/modelStore.test.ts` - Model store tests (156 tests)
-- `src/store/simulationStore.test.ts` - Simulation store tests
-- `src/store/uiStore.test.ts` - UI store tests
-- `src/types/library.test.ts` - Type tests
-- `src/utils/mdlExporter.test.ts` - MDL export tests
-- `src/utils/mdlImporter.test.ts` - MDL import tests
-- `src/utils/nanoid.test.ts` - ID generation tests
-- `src/components/Editor/BlockNode.test.tsx` - Block node component tests (45 tests)
-- `src/components/Toast/Toast.test.tsx` - Toast notification tests (14 tests)
-- `src/components/Sidebar/Sidebar.test.tsx` - Sidebar component tests (16 tests)
-- `src/components/Toolbar/Toolbar.test.tsx` - Toolbar component tests (27 tests)
+All 62 measured frontend source files are fully covered, including stores,
+utilities, the editor, custom edge, toolbar, modals, sidebar, nodes, hooks, and
+plot windows. Individual test counts are intentionally omitted because Vitest's
+authoritative suite summary is less likely to become stale.
 
 ## Running Tests
 
@@ -171,6 +139,9 @@ asyncio_mode = "auto"
 source = ["src"]
 branch = true
 omit = ["*/tests/*", "*/__pycache__/*"]
+
+[tool.coverage.report]
+fail_under = 100
 ```
 
 ### Frontend (Vitest)
@@ -189,6 +160,7 @@ test: {
     exclude: [
       'node_modules/',
       'src/test/',
+      '.eslintrc.cjs',
       '**/*.d.ts',
       'src/main.tsx',
       'src/vite-env.d.ts',
@@ -243,7 +215,7 @@ frontend/src/
 ├── api/
 │   └── client.test.ts        # API client tests
 ├── store/
-│   ├── modelStore.test.ts    # Store tests (156 tests)
+│   ├── modelStore.test.ts    # Store tests
 │   ├── libraryStore.test.ts  # Library store tests
 │   ├── simulationStore.test.ts
 │   └── uiStore.test.ts
@@ -253,13 +225,13 @@ frontend/src/
 │   └── nanoid.test.ts
 └── components/
     ├── Editor/
-    │   └── BlockNode.test.tsx    # Block node tests (45 tests)
+    │   └── BlockNode.test.tsx    # Block node tests
     ├── Toast/
-    │   └── Toast.test.tsx        # Toast tests (14 tests)
+    │   └── Toast.test.tsx        # Toast tests
     ├── Sidebar/
-    │   └── Sidebar.test.tsx      # Sidebar tests (16 tests)
+    │   └── Sidebar.test.tsx      # Sidebar tests
     └── Toolbar/
-        └── Toolbar.test.tsx      # Toolbar tests (27 tests)
+        └── Toolbar.test.tsx      # Toolbar tests
 ```
 
 **Example store test:**
@@ -353,6 +325,10 @@ is expected due to floating-point precision differences, but significant structu
 (like missing outputs) indicate bugs.
 
 ### Running Validation
+
+These standalone validators are host-side engineering utilities rather than
+unit/coverage gates. They require the local Python and language toolchains;
+the Docker-only rule above applies to pytest, Vitest, lint, and type checking.
 
 ```bash
 # Official validation (must pass 100%)

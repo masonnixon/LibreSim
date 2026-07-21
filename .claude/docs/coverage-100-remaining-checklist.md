@@ -14,8 +14,8 @@ This checklist tracks the work still required to complete
 - Prefix every Docker command with
   `DOCKER_HOST=unix:///run/docker.sock`.
 - Do not commit generated coverage reports or `frontend/coverage-editor/`.
-- Preserve the unrelated user changes in `docker-compose.yml`, the
-  `allowedHosts` edit in `frontend/vite.config.ts`, and untracked `AGENTS.md`.
+- Keep the local Docker host configuration and `AGENTS.md` separate from the
+  coverage commits.
 - Do not lower a coverage threshold or add a coverage exclusion merely to hide
   reachable behavior.
 
@@ -45,6 +45,9 @@ This checklist tracks the work still required to complete
   - Completed: 3,769 passed, 1 skipped, 0 failed; pytest emitted no test
     warnings; `coverage.json` reports 15,901/15,901 statements and 4,542/4,542
     branches covered.
+  - Audit note: `6cf71c5` also removes an unused local C formatter and
+    simplifies an equivalent Rust numeric-formatting branch; emitter-output
+    tests verify the resulting behavior.
 
 - [x] **3. Raise both permanent coverage gates to 100%.**
   - Set `[tool.coverage.report].fail_under = 100` in
@@ -76,19 +79,23 @@ This checklist tracks the work still required to complete
   - Backend: run the complete pytest suite with the permanent 100% gate.
   - Frontend: run `npm run test:coverage`, `npm run lint`, and
     `npm run typecheck` in Docker.
-  - Inspect exact frontend JSON totals and confirm all 42 files remain at 100%.
+  - Inspect exact frontend JSON totals and confirm all 62 measured source files
+    remain at 100% across the 42 passing test files.
   - Acceptance: every command exits successfully; backend and frontend have
     zero failed tests and both coverage gates pass at 100%.
   - Completed: backend permanent-gate run passed (3,769 passed, 1 skipped);
     frontend coverage passed with 4,892/4,892 statements, 3,378/3,378 branch
-    arms, and 1,011/1,011 functions; lint and typecheck both passed.
+    arms, 1,011/1,011 functions, and 4,355/4,355 lines; lint and typecheck both
+    passed.
 
 - [x] **6. Commit and audit only the completed plan work.**
   - Commit the remaining backend source/test coverage work in a focused commit.
   - Commit the threshold and documentation finalization separately.
-  - Exclude generated coverage artifacts and all unrelated user changes.
+  - Exclude generated coverage artifacts and keep local host changes in a
+    separate commit.
   - Review `git status`, staged diffs, and recent commits after committing.
-  - Acceptance: all plan work is committed, unrelated changes remain intact
-    and uncommitted, and the worktree contains no accidentally staged reports.
+  - Acceptance: all plan work is committed, local host changes remain separate,
+    and the worktree contains no accidentally staged reports.
   - Completed: `6cf71c5` contains the backend coverage work; `2934032`
-    contains the thresholds, ledger, checklist, and testing-guide updates.
+    contains the thresholds, ledger, checklist, and testing-guide updates;
+    `9f7071e` separately records the authorized local host configuration.
