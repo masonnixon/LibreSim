@@ -293,6 +293,20 @@ describe('Toolbar', () => {
       render(<Toolbar />)
       expect(screen.getByText('idle')).toBeInTheDocument()
     })
+
+    it('keeps embed chrome compact without restoring or saving browser state', () => {
+      render(<Toolbar embed restoreLastModel={false} />)
+
+      expect(screen.getAllByRole('button').map((button) => button.textContent)).toEqual([
+        'Run',
+        'Stop',
+        'Scopes',
+      ])
+      expect(screen.queryByText('New')).not.toBeInTheDocument()
+      expect(localStorage.getItem).not.toHaveBeenCalled()
+      expect(localStorage.setItem).not.toHaveBeenCalled()
+      expect(mockModelStore.createNewModel).not.toHaveBeenCalled()
+    })
   })
 
   describe('simulation status display', () => {

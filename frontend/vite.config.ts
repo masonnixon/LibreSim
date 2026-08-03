@@ -17,6 +17,9 @@ export default defineConfig({
     port: 4200,
     host: true,
     allowedHosts: ['butterbot.tail7d452.ts.net'],
+    headers: {
+      'Content-Security-Policy': "frame-ancestors https://butterbot.tail7d452.ts.net:8934",
+    },
     watch: {
       // Use polling for Docker on Windows (file system events don't propagate reliably)
       usePolling: true,

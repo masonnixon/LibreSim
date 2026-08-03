@@ -17,7 +17,12 @@ import { useSimulationControls } from '../../hooks/useSimulationControls'
 
 const STORAGE_KEY = 'libresim_last_model'
 
-export function Toolbar() {
+interface ToolbarProps {
+  embed?: boolean
+  restoreLastModel?: boolean
+}
+
+export function Toolbar({ embed = false, restoreLastModel = true }: ToolbarProps) {
   const { model, isDirty, createNewModel, saveModel, loadModel, undo, redo, canUndo, canRedo } = useModelStore()
   const {
     toggleProperties,
@@ -76,6 +81,8 @@ export function Toolbar() {
 
   // Load last model from localStorage on startup
   useEffect(() => {
+    if (!restoreLastModel) return
+
     const savedModel = localStorage.getItem(STORAGE_KEY)
     if (savedModel) {
       try {
@@ -94,14 +101,14 @@ export function Toolbar() {
       createNewModel('Untitled')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- Intentionally run only on mount; store functions are stable
-  }, [])
+  }, [restoreLastModel])
 
   // Save model to localStorage whenever it changes
   useEffect(() => {
-    if (model) {
+    if (model && restoreLastModel) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(model))
     }
-  }, [model])
+  }, [model, restoreLastModel])
 
   // Close menus when clicking outside
   useEffect(() => {
@@ -404,6 +411,41 @@ export function Toolbar() {
         openPlotWindow(id, { x: 20 + index * 40, y: 100 + index * 40 })
       })
     }
+  }
+
+  if (embed) {
+    return (
+      <div className="h-10 bg-editor-surface border-b border-editor-border flex items-center px-3 gap-2">
+        <span className="font-bold text-blue-400">LibreSim</span>
+        <span className="text-gray-500">|</span>
+        <span className="text-gray-300 text-sm truncate min-w-0" title={model?.metadata?.name || 'Untitled'}>
+          {model?.metadata?.name || 'Untitled'}
+        </span>
+        <div className="flex-1" />
+        <button
+          onClick={handleRun}
+          disabled={!model || isRunning}
+          className="px-3 py-1 text-sm bg-green-600 hover:bg-green-700 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Run
+        </button>
+        <button
+          onClick={handleStop}
+          disabled={!isRunning && !isPaused && !stepModeActive}
+          className="px-3 py-1 text-sm bg-red-600 hover:bg-red-700 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Stop
+        </button>
+        <button
+          onClick={handleTogglePlotWindows}
+          disabled={scopeBlockIds.length === 0}
+          className="px-3 py-1 text-sm hover:bg-editor-border rounded disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {hasOpenPlotWindows ? 'Hide Scopes' : 'Scopes'}
+        </button>
+        <span className="text-xs text-gray-400 capitalize w-16 text-right">{simState.status}</span>
+      </div>
+    )
   }
 
 
