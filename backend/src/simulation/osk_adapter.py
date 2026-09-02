@@ -7,6 +7,8 @@ simulation engine. It creates OSK block instances and manages simulation executi
 import inspect
 from typing import Any
 
+import numpy as np
+
 from ..models.simulation import SimulationConfig, SolverType
 
 # Import OSK components
@@ -228,7 +230,7 @@ from ..osk.blocks.sources import (
     WhiteNoise,
 )
 from ..osk.context import EPS
-from .compiler import CompiledBlock, CompiledModel
+from .compiler import CompiledBlock, CompiledModel, _signal_shape_violation
 from .snapshot import (
     SNAPSHOT_SCHEMA_VERSION,
     AdapterSnapshot,
@@ -1041,16 +1043,35 @@ PARAM_MAP: dict[str, dict[str, str]] = {
 
 
 class _OutputPortView:
-    """Expose one source port with its declared scalar or vector semantics."""
+    """Expose one source port with its declared scalar, vector, or matrix
+    semantics.
+
+    A 1-D [n] port exposes the legacy flat-list vector path. A 2-D [m, n]
+    port exposes the same flat storage for the legacy path and a shaped
+    ndarray via getOutputArray(). Matrices are never flattened or degraded
+    silently: a 2-D signal reaching a consumer that only understands flat
+    lists is rejected at model build time (see _setup_connections).
+    """
 
     def __init__(self, block: Block, source_port: int, dimensions: list[int]):
         self._block = block
         self._source_port = source_port
-        self._dimensions = dimensions
+        self._dimensions = list(dimensions) if dimensions else [1]
 
     @property
     def _is_vector(self) -> bool:
         return len(self._dimensions) == 1 and self._dimensions[0] > 1
+
+    @property
+    def _is_matrix(self) -> bool:
+        return len(self._dimensions) >= 2
+
+    @property
+    def _numel(self) -> int:
+        count = 1
+        for dim in self._dimensions:
+            count *= dim
+        return count
 
     def getOutput(self, port: int = 0):
         """Read the fixed scalar port or an element of its vector value."""
@@ -1059,14 +1080,47 @@ class _OutputPortView:
         return self._block.getOutput(self._source_port)
 
     def getOutputVector(self):
-        """Return vector data only when this specific port is vector-valued."""
-        if not self._is_vector:
+        """Return the flat list value when this port is vector- or
+        matrix-valued. A [m, n] matrix is exposed flat, row-major."""
+        if not (self._is_vector or self._is_matrix):
             return None
         if hasattr(self._block, "getOutputPortVector"):
             return self._block.getOutputPortVector(self._source_port)
         if not hasattr(self._block, "getOutputVector"):
             return None
         return self._block.getOutputVector()
+
+    def getOutputArray(self):
+        """Return this port's value as a numpy ndarray with the declared
+        shape.
+
+        Matrix ports are reshaped to their declared 2-D shape, vector ports
+        are returned as 1-D, and scalar ports as 0-D. Raises instead of
+        silently degrading the signal when the upstream block cannot supply
+        the declared number of elements.
+        """
+        if self._is_matrix:
+            flat = self.getOutputVector()
+            if flat is None or len(flat) != self._numel:
+                provided = 0 if flat is None else len(flat)
+                raise ValueError(
+                    f"Block '{getattr(self._block, 'block_id', '?')}' output "
+                    f"port {self._source_port} declares shape "
+                    f"{self._dimensions} ({self._numel} elements) but "
+                    f"provides {provided}; matrix signals must not "
+                    "degrade to scalars"
+                )
+            return np.asarray(flat, dtype=float).reshape(self._dimensions)
+        if self._is_vector:
+            vec = self.getOutputVector()
+            if vec is None:
+                raise ValueError(
+                    f"Block '{getattr(self._block, 'block_id', '?')}' output "
+                    f"port {self._source_port} is declared as vector "
+                    f"{self._dimensions} but provides no vector value"
+                )
+            return np.asarray(vec, dtype=float)
+        return np.asarray(self.getOutput(self._source_port), dtype=float)
 
     def __getattr__(self, name: str):
         return getattr(self._block, name)
@@ -1360,6 +1414,10 @@ class OSKAdapter:
                         source_port_index,
                         source_dimensions,
                     )
+                    self._reject_matrix_into_flat_consumer(
+                        block, target_port_index, source_dimensions,
+                        source_block_id, source_port,
+                    )
                     # Use connectInput if available, otherwise we'll handle in step()
                     if hasattr(osk_block, "connectInput"):
                         # Pass source_port_index to all blocks that accept it
@@ -1399,6 +1457,42 @@ class OSKAdapter:
                     # Also set the input name on the scope block itself for legend display
                     if hasattr(osk_block, "setInputName"):
                         osk_block.setInputName(source_compiled_block.name, target_port_index)
+
+    def _reject_matrix_into_flat_consumer(
+        self,
+        target_block: CompiledBlock,
+        target_port_index: int,
+        source_dimensions: list[int],
+        source_block_id: str,
+        source_port_id: str,
+    ) -> None:
+        """Tripwire: raise at model build when a 2-D signal is wired into a
+        consumer whose input port is not a 2-D port of the same shape.
+
+        Matrices must never be flattened or degraded to a scalar for a
+        flat-list-only consumer; the error names the block, the port, and the
+        offending shape.
+        """
+        if len(source_dimensions) < 2:
+            return
+        target_dimensions = None
+        if target_port_index < len(target_block.input_dimensions):
+            target_dimensions = target_block.input_dimensions[target_port_index]
+        violation = _signal_shape_violation(source_dimensions, target_dimensions)
+        if violation is None:
+            return
+        port_name = (
+            target_block.input_port_ids[target_port_index]
+            if target_port_index < len(target_block.input_port_ids)
+            else str(target_port_index)
+        )
+        declared = target_dimensions if target_dimensions is not None else [1]
+        raise ValueError(
+            f"Signal shape error: block '{target_block.id}' "
+            f"({target_block.name}) input port '{port_name}' "
+            f"(declared {declared}) {violation}, fed by block "
+            f"'{source_block_id}' output port '{source_port_id}'"
+        )
 
     def _record_outputs(self) -> dict[str, float]:
         """Record outputs from all sink blocks.

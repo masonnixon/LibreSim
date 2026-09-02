@@ -7,6 +7,8 @@ init(), update(), and rpt() methods.
 
 from threading import RLock
 
+import numpy as np
+
 from .context import SimContext, get_active_context
 from .state import State
 
@@ -160,3 +162,26 @@ class Block:
             port: Input port index
         """
         pass
+
+    def getOutputArray(self, port=0):
+        """Get this block's output as a numpy ndarray.
+
+        Base-class bridge over the legacy flat-list signal path: blocks that
+        expose a vector output return it as a one-dimensional array, and
+        everything else falls back to the scalar port value. Matrix-capable
+        blocks override this to return an array with their declared 2-D
+        shape.
+        """
+        if hasattr(self, "getOutputVector"):
+            vec = self.getOutputVector()
+            if vec is not None:
+                return np.asarray(vec, dtype=float)
+        return np.asarray(self.getOutput(port), dtype=float)
+
+    def setInputArray(self, value, port=0):
+        """Set a vector/matrix input, bridging to the legacy flat-list path.
+
+        Matrix-capable blocks override this; the default delegates to
+        setInput() so existing list/tuple input handling is preserved.
+        """
+        self.setInput(value, port)

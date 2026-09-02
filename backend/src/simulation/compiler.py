@@ -21,6 +21,7 @@ class CompiledBlock:
     input_port_ids: list[str] = field(default_factory=list)
     output_port_ids: list[str] = field(default_factory=list)
     output_dimensions: list[list[int]] = field(default_factory=list)
+    input_dimensions: list[list[int]] = field(default_factory=list)
 
 
 @dataclass
@@ -32,6 +33,49 @@ class CompiledModel:
     blocks: list[CompiledBlock] = field(default_factory=list)
     execution_order: list[str] = field(default_factory=list)  # Block IDs in execution order
     errors: list[str] = field(default_factory=list)
+
+
+def _signal_shape_violation(
+    source_dimensions: list[int], target_dimensions: list[int] | None
+) -> str | None:
+    """Describe why a source shape may not feed a port with a declared shape.
+
+    Returns a human-readable violation fragment (suitable for embedding after
+    the target port description) or None when the pairing is legal:
+
+    - A matrix (2-D) source may only feed a port declared with the same
+      2-D shape; matrices are never flattened or degraded to scalars.
+    - A rank-1 source with a declared element count may feed a matrix port
+      only when the counts match; a [1] declaration carries no count
+      information and is left to the legacy flat-list path.
+    """
+    if len(source_dimensions) >= 2:
+        if target_dimensions is not None and (
+            len(target_dimensions) == len(source_dimensions)
+            and target_dimensions == source_dimensions
+        ):
+            return None
+        return (
+            f"receives a {len(source_dimensions)}-D signal of shape "
+            f"{source_dimensions}; a 2-D matrix may only feed an input port "
+            "declared with the same 2-D shape"
+        )
+    if (
+        target_dimensions is not None
+        and len(target_dimensions) >= 2
+        and len(source_dimensions) == 1
+        and source_dimensions[0] > 1
+    ):
+        elements = 1
+        for dim in target_dimensions:
+            elements *= dim
+        if source_dimensions[0] != elements:
+            return (
+                f"receives a rank-1 vector of {source_dimensions[0]} elements "
+                f"but the port declares a {len(target_dimensions)}-D shape "
+                f"{target_dimensions} with {elements} elements"
+            )
+    return None
 
 
 class ModelCompiler:
@@ -59,6 +103,20 @@ class ModelCompiler:
             flattened_blocks, flattened_connections = self._flatten_subsystems(
                 model.blocks, model.connections
             )
+
+            # Validate declared signal shapes on every connection before the
+            # model is consumed. A 2-D (matrix) signal feeding a flat-list
+            # only port is a model-build error.
+            shape_errors = self._validate_signal_shapes(
+                flattened_blocks, flattened_connections
+            )
+            if shape_errors:
+                return CompiledModel(
+                    success=False,
+                    message="Signal shape validation failed: "
+                    + "; ".join(shape_errors),
+                    errors=shape_errors,
+                )
 
             # Build connection maps
             block_map = {b.id: b for b in flattened_blocks}
@@ -105,6 +163,7 @@ class ModelCompiler:
                     input_port_ids=[port.id for port in block.input_ports],
                     output_port_ids=[port.id for port in block.output_ports],
                     output_dimensions=[port.dimensions for port in block.output_ports],
+                    input_dimensions=[port.dimensions for port in block.input_ports],
                 )
                 compiled_blocks.append(compiled)
 
@@ -265,6 +324,41 @@ class ModelCompiler:
                         queue.append(block_id)
 
         return result
+
+    def _validate_signal_shapes(
+        self, blocks: list[Block], connections: list[Connection]
+    ) -> list[str]:
+        """Validate declared signal shapes across every flattened connection.
+
+        Returns one error string per offending connection. Connections whose
+        port ids do not resolve to a declared shape are left to the runtime.
+        """
+        names: dict[str, str] = {}
+        output_dims: dict[tuple[str, str], list[int]] = {}
+        input_dims: dict[tuple[str, str], list[int]] = {}
+        for block in blocks:
+            names[block.id] = block.name
+            for port in block.output_ports:
+                output_dims[(block.id, port.id)] = list(port.dimensions or [1])
+            for port in block.input_ports:
+                input_dims[(block.id, port.id)] = list(port.dimensions or [1])
+
+        errors: list[str] = []
+        for conn in connections:
+            source = output_dims.get((conn.source_block_id, conn.source_port_id))
+            target = input_dims.get((conn.target_block_id, conn.target_port_id))
+            if source is None or target is None:
+                continue
+            violation = _signal_shape_violation(source, target)
+            if violation is not None:
+                errors.append(
+                    f"block '{conn.target_block_id}' "
+                    f"({names.get(conn.target_block_id, conn.target_block_id)}) "
+                    f"input port '{conn.target_port_id}' (declared {target}) "
+                    f"{violation}, fed by block '{conn.source_block_id}' "
+                    f"output port '{conn.source_port_id}'"
+                )
+        return errors
 
     def _flatten_subsystems(
         self, blocks: list[Block], connections: list[Connection]
