@@ -108,6 +108,7 @@ const FALLBACK_EXAMPLE_LIST: ExampleInfo[] = [
   { id: '46_sensor_fusion_tracking', name: 'Alpha-Beta-Gamma Tracking', description: 'Position/velocity/acceleration tracking filter comparison', category: 'sensor_fusion' },
   // 3D Visualization
   { id: '50_lorenz_attractor_3d', name: 'Lorenz Attractor (3D)', description: 'Classic chaotic attractor visualized with 3D Scope', category: 'advanced' },
+  { id: '51_linear_solve_acceptance', name: 'Linear Solve Acceptance', description: 'Native LU linear solver: A and b built from native signals, exposing solution, residual, condition, and status', category: 'advanced' },
 ]
 
 // For backwards compatibility - sync access to the example list

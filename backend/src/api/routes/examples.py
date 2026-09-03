@@ -270,6 +270,13 @@ EXAMPLE_MANIFEST: list[dict[str, str]] = [
         "description": "Classic chaotic attractor visualized with 3D Scope",
         "category": "advanced",
     },
+    # Numerical Linear Algebra
+    {
+        "id": "51_linear_solve_acceptance",
+        "name": "Linear Solve Acceptance",
+        "description": "Native LU linear solver: A and b built from native signals, exposing solution, residual, condition, and status",
+        "category": "advanced",
+    },
 ]
 
 

@@ -379,25 +379,43 @@ class ReflectiveBlockCodec:
     ) -> None:
         if not lengths:
             return
-        expected = len(fields)
-        if self.block_type == "scope":
-            expected += len(block.__dict__["values"])
-        if len(lengths) != expected:
+        if not all(
+            isinstance(entry, int) and not isinstance(entry, bool) and entry >= 0
+            for entry in lengths
+        ):
             raise SnapshotValidationError("Invalid compact sink length metadata")
+        is_scope = self.block_type == "scope"
+        if is_scope:
+            # Metadata layout: [len(times), trace_count, *per-trace lengths].
+            # The channel count must be parsed from the snapshot's own
+            # recorded metadata, not from the live block: channels are
+            # allocated lazily on the live scope's first update, so a
+            # snapshot taken before any update records fewer channels than
+            # the live block holds at restore time, and sizing the expected
+            # metadata from the live block would reject valid snapshots.
+            if len(lengths) < 2:
+                raise SnapshotValidationError("Invalid compact sink length metadata")
+            trace_count = lengths[1]
+            if len(lengths) != 2 + trace_count:
+                raise SnapshotValidationError("Scope trace count metadata is inconsistent")
+            if trace_count > len(block.__dict__["values"]):
+                raise SnapshotValidationError("Compact sink length exceeds live history")
+        else:
+            trace_count = 0
+            if len(lengths) != len(fields):
+                raise SnapshotValidationError("Invalid compact sink length metadata")
         index = 0
         for name in fields:
             collection = getattr(block, name)
             length = lengths[index]
             index += 1
-            if length < 0 or length > len(collection):
+            if length > len(collection):
                 raise SnapshotValidationError("Compact sink length exceeds live history")
-            if name == "values" and self.block_type == "scope":
-                if length != len(collection):
-                    raise SnapshotValidationError("Scope trace count does not match snapshot")
-                for trace in collection:
+            if name == "values" and is_scope:
+                for trace in collection[:trace_count]:
                     trace_length = lengths[index]
                     index += 1
-                    if trace_length < 0 or trace_length > len(trace):
+                    if trace_length > len(trace):
                         raise SnapshotValidationError(
                             "Compact Scope trace length exceeds live history"
                         )
@@ -411,9 +429,15 @@ class ReflectiveBlockCodec:
             length = prepared.compact_sink_lengths[index]
             index += 1
             if name == "values" and self.block_type == "scope":
-                for trace in collection:
+                # `length` is the channel count recorded in the snapshot.
+                # Channels are allocated lazily, so the live block may hold
+                # more channels than the snapshot recorded: truncate each
+                # recorded trace, then drop the unrecorded trailing ones.
+                for trace_index in range(length):
+                    trace = collection[trace_index]
                     trace_length = prepared.compact_sink_lengths[index]
                     index += 1
                     del trace[trace_length:]
+                del collection[length:]
             else:
                 del collection[length:]

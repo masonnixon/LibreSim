@@ -75,17 +75,19 @@ class LinearSolve(Block):
         port 1 -- ``b``: a right-hand side, either a vector ``[n]`` or a
             matrix of right-hand sides ``[n, m]``.
 
-    Solution output (port 0):
-        A vector ``[n]`` when ``b`` is a vector, or a matrix ``[n, m]`` when
-        ``b`` is a matrix, exposed flat row-major (``getOutputVector``) and as
-        a shaped ndarray (``getOutputArray``).
+    Output ports (declared on the block in the model):
+        port 0 -- the solution: a vector ``[n]`` when ``b`` is a vector, or a
+            matrix ``[n, m]`` when ``b`` is a matrix, exposed flat row-major
+            (``getOutputVector``) and as a shaped ndarray (``getOutputArray``).
+        port 1 -- ``residual``: ``||A x - b||`` of the published solution
+            (``inf`` on failure).
+        port 2 -- ``condition``: the ``np.linalg.cond(A)`` estimate
+            (``inf`` when not computable).
+        port 3 -- ``status``: ``1.0`` on success, ``0.0`` on failure.
 
-    Status outputs (never alter the numeric solution):
-        ``status``    -- 1.0 on success, 0.0 on failure.
-        ``residual``  -- ``||A x - b||`` of the published solution (inf on failure).
-        ``condition`` -- ``np.linalg.cond(A)`` estimate (inf when not computable).
-        ``dimension`` -- active problem size ``n`` on success, 0 on failure.
-        ``get_status()`` -- all of the above plus a human-readable ``reason``.
+    The status ports never alter the numeric solution.  The active problem
+    size (``dimension``) and a human-readable ``reason`` are reported through
+    ``get_status()`` rather than as signals.
     """
 
     # -- construction -----------------------------------------------------
@@ -172,8 +174,19 @@ class LinearSolve(Block):
     # -- solution output accessors ---------------------------------------
 
     def getOutput(self, port=0):
-        if 0 <= port < len(self.output):
-            return self.output[port]
+        """Scalar read of one output port.
+
+        Port 0 carries the solution (its first element for a scalar read of a
+        vector solution); ports 1-3 carry the scalar status quantities.
+        """
+        if port == 0:
+            return self.output[0] if self.output else 0.0
+        if port == 1:
+            return self.residual
+        if port == 2:
+            return self.condition
+        if port == 3:
+            return self.status
         return 0.0
 
     def getOutputVector(self):

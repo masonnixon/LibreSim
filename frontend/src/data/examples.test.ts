@@ -72,7 +72,7 @@ caseFn('keeps the fallback catalog complete and internally consistent', function
     'control_design', 'dsp', 'rf', 'navigation', 'sensor_fusion',
   ])
 
-  expect(exampleList).toHaveLength(39)
+  expect(exampleList).toHaveLength(40)
   expect(new Set(ids).size).toBe(ids.length)
   for (const example of exampleList) {
     expect(example.id).not.toBe('')

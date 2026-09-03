@@ -1,0 +1,130 @@
+{
+  "id": "51_linear_solve_acceptance",
+  "metadata": {
+    "name": "Linear Solve Acceptance",
+    "description": "Domain-neutral acceptance model for the native linear_solve block. A 3x3 system A and a 3-vector b are constructed at runtime from native signal blocks: a flat constant vector is reshaped into the matrix A, and a constant vector provides b. The system A x = b is solved by LU factorization with partial pivoting, exposing the solution x, the residual ||A x - b||, the condition estimate, and the success status to scopes. A = [[2,1,-1],[-3,-1,2],[-2,1,2]], b = [8,-11,-3], so x = [2,3,-1].",
+    "author": "LibreSim Examples",
+    "createdAt": "2026-09-02T00:00:00Z",
+    "modifiedAt": "2026-09-02T00:00:00Z",
+    "version": "1.0.0"
+  },
+  "blocks": [
+    {
+      "id": "a_flat",
+      "type": "constant",
+      "name": "A flat (row-major)",
+      "position": {"x": 60, "y": 60},
+      "parameters": {"value": [2, 1, -1, -3, -1, 2, -2, 1, 2]},
+      "inputPorts": [],
+      "outputPorts": [
+        {"id": "a_flat-out", "name": "out", "dataType": "double", "dimensions": [9]}
+      ]
+    },
+    {
+      "id": "a_reshape",
+      "type": "matrix_reshape",
+      "name": "Reshape A (3x3)",
+      "position": {"x": 260, "y": 60},
+      "parameters": {"rows": 3, "cols": 3},
+      "inputPorts": [
+        {"id": "a_reshape-in", "name": "in", "dataType": "double", "dimensions": [9]}
+      ],
+      "outputPorts": [
+        {"id": "a_reshape-out", "name": "out", "dataType": "double", "dimensions": [3, 3]}
+      ]
+    },
+    {
+      "id": "b_vec",
+      "type": "constant",
+      "name": "b (3-vector)",
+      "position": {"x": 60, "y": 220},
+      "parameters": {"value": [8, -11, -3]},
+      "inputPorts": [],
+      "outputPorts": [
+        {"id": "b_vec-out", "name": "out", "dataType": "double", "dimensions": [3]}
+      ]
+    },
+    {
+      "id": "linear_solve",
+      "type": "linear_solve",
+      "name": "Solve A x = b",
+      "position": {"x": 480, "y": 140},
+      "parameters": {
+        "method": "lu",
+        "pivoting": "partial",
+        "singularityTolerance": 1e-12,
+        "conditionLimit": 4.5e15,
+        "failurePolicy": "status"
+      },
+      "inputPorts": [
+        {"id": "linear_solve-A", "name": "A", "dataType": "double", "dimensions": [3, 3]},
+        {"id": "linear_solve-b", "name": "b", "dataType": "double", "dimensions": [3]}
+      ],
+      "outputPorts": [
+        {"id": "linear_solve-x", "name": "x", "dataType": "double", "dimensions": [3]},
+        {"id": "linear_solve-residual", "name": "residual", "dataType": "double", "dimensions": [1]},
+        {"id": "linear_solve-condition", "name": "condition", "dataType": "double", "dimensions": [1]},
+        {"id": "linear_solve-status", "name": "status", "dataType": "double", "dimensions": [1]}
+      ]
+    },
+    {
+      "id": "scope_x",
+      "type": "scope",
+      "name": "Solution x",
+      "position": {"x": 720, "y": 40},
+      "parameters": {"numInputs": 1},
+      "inputPorts": [
+        {"id": "scope_x-in", "name": "in", "dataType": "double", "dimensions": [3]}
+      ],
+      "outputPorts": []
+    },
+    {
+      "id": "scope_residual",
+      "type": "scope",
+      "name": "Residual",
+      "position": {"x": 720, "y": 160},
+      "parameters": {"numInputs": 1},
+      "inputPorts": [
+        {"id": "scope_residual-in", "name": "in", "dataType": "double", "dimensions": [1]}
+      ],
+      "outputPorts": []
+    },
+    {
+      "id": "scope_condition",
+      "type": "scope",
+      "name": "Condition",
+      "position": {"x": 720, "y": 280},
+      "parameters": {"numInputs": 1},
+      "inputPorts": [
+        {"id": "scope_condition-in", "name": "in", "dataType": "double", "dimensions": [1]}
+      ],
+      "outputPorts": []
+    },
+    {
+      "id": "scope_status",
+      "type": "scope",
+      "name": "Status",
+      "position": {"x": 720, "y": 400},
+      "parameters": {"numInputs": 1},
+      "inputPorts": [
+        {"id": "scope_status-in", "name": "in", "dataType": "double", "dimensions": [1]}
+      ],
+      "outputPorts": []
+    }
+  ],
+  "connections": [
+    {"id": "c-a-flat", "sourceBlockId": "a_flat", "sourcePortId": "a_flat-out", "targetBlockId": "a_reshape", "targetPortId": "a_reshape-in"},
+    {"id": "c-a", "sourceBlockId": "a_reshape", "sourcePortId": "a_reshape-out", "targetBlockId": "linear_solve", "targetPortId": "linear_solve-A"},
+    {"id": "c-b", "sourceBlockId": "b_vec", "sourcePortId": "b_vec-out", "targetBlockId": "linear_solve", "targetPortId": "linear_solve-b"},
+    {"id": "c-x", "sourceBlockId": "linear_solve", "sourcePortId": "linear_solve-x", "targetBlockId": "scope_x", "targetPortId": "scope_x-in"},
+    {"id": "c-residual", "sourceBlockId": "linear_solve", "sourcePortId": "linear_solve-residual", "targetBlockId": "scope_residual", "targetPortId": "scope_residual-in"},
+    {"id": "c-condition", "sourceBlockId": "linear_solve", "sourcePortId": "linear_solve-condition", "targetBlockId": "scope_condition", "targetPortId": "scope_condition-in"},
+    {"id": "c-status", "sourceBlockId": "linear_solve", "sourcePortId": "linear_solve-status", "targetBlockId": "scope_status", "targetPortId": "scope_status-in"}
+  ],
+  "simulationConfig": {
+    "solver": "rk4",
+    "startTime": 0,
+    "stopTime": 1,
+    "stepSize": 0.1
+  }
+}
