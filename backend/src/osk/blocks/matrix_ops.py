@@ -2,187 +2,299 @@
 
 These blocks handle matrix and vector operations similar to Simulink's
 Matrix Operations blocks.
+
+Since Phase 1 of docs/plans/as2-nonlinear-parity-implementation.md the
+matrix-capable blocks operate on the shaped signal path: wired inputs are
+read through the port view's getOutputArray() (declared 1-D/2-D shape),
+computed with numpy, and published back as a flat row-major list plus an
+explicit output shape.  Matrices are never silently flattened or degraded
+to scalars; shape mismatches raise an error naming the block, the port, and
+the expected and actual shapes.
 """
 
 import math
 from typing import Any
 
+import numpy as np
+
 from ..block import Block
 
 
-class MatrixMultiply(Block):
-    """Multiply matrices or matrix-vector products.
+def _stored_to_array(value):
+    """Convert a stored (pushed) input value into an ndarray.
 
-    Performs matrix multiplication of two inputs.
-    For vectors, treats first as row vector, second as column vector.
+    A single-element list is treated as a 0-D scalar, matching how a
+    declared [1] port (a scalar) is exposed on the signal path.  Longer
+    lists are 1-D vectors.
+    """
+    if isinstance(value, (list, tuple)):
+        if len(value) == 0:
+            return np.asarray(0.0)
+        if len(value) == 1:
+            return np.asarray(float(value[0]))
+        return np.asarray([float(element) for element in value])
+    return np.asarray(float(value))
+
+
+def _reference_to_array(reference):
+    """Read a wired input reference as an ndarray with its declared shape.
+
+    Wired references are _OutputPortView objects shaped by the declared
+    port dimensions, or (in direct use) raw blocks.  Both expose
+    getOutputArray(); the legacy getOutputVector()/getOutput() pair is the
+    fallback for minimal stand-ins.
+    """
+    if hasattr(reference, "getOutputArray"):
+        return np.asarray(reference.getOutputArray())
+    vector = reference.getOutputVector()
+    if vector is not None:
+        return np.asarray([float(element) for element in vector])
+    return np.asarray(float(reference.getOutput()))
+
+
+class _MatrixBlock(Block):
+    """Flat row-major output storage shared by the matrix-capable blocks.
+
+    A block publishes its result as a flat row-major list (the legacy
+    signal path) plus an explicit output shape.  The base class array
+    bridge and the port views use that shape to expose the shaped ndarray
+    downstream.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.output = []
+        self._output_shape = ()
+        self._is_vector = False
+
+    def init(self):
+        self.output = []
+        self._output_shape = ()
+        self._is_vector = False
+
+    def _store_result(self, result):
+        array = np.asarray(result, dtype=float)
+        self.output = [float(element) for element in array.reshape(-1)]
+        self._output_shape = tuple(int(dim) for dim in array.shape)
+        self._is_vector = self._output_shape != ()
+
+    def getOutput(self, port=0):
+        if 0 <= port < len(self.output):
+            return self.output[port]
+        return 0.0
+
+    def getOutputVector(self):
+        """Flat row-major elements, or None for a scalar (0-D) result."""
+        if self._output_shape == ():
+            return None
+        return list(self.output)
+
+    def getOutputArray(self, port=0):
+        """This block's output as an ndarray with its computed shape."""
+        if self._output_shape == () or not self.output:
+            value = float(self.output[0]) if self.output else 0.0
+            return np.asarray(value)
+        return np.asarray(self.output, dtype=float).reshape(self._output_shape)
+
+    def _shape_error(self, label, expected, actual, port=None):
+        name = getattr(self, "block_id", None) or label
+        port_text = f" input port {port}" if port is not None else ""
+        return ValueError(
+            f"{label} block '{name}':{port_text} shape mismatch - "
+            f"expected {expected}, actual {actual}"
+        )
+
+
+class MatrixMultiply(_MatrixBlock):
+    """True matrix multiplication.
+
+    Supported products (no broadcasting, exact shapes only):
+
+    - [m, k] x [k, n] -> [m, n]
+    - [m, n] x [n]    -> [m]
+    - [k] x [k, n]    -> [n]
+    - [k] x [k]       -> scalar (the defined row-by-column vector product)
+    - scalar x scalar -> scalar; scalar x [n] -> [n]
+
+    A single-element list is a scalar, matching a declared [1] port.
+    Anything else is a dimension error naming the block, the port, and the
+    expected and actual shapes.
     """
 
     def __init__(self):
         super().__init__()
         self.input_a = []
         self.input_b = []
-        self.output = []
         self.input_blocks = [None, None]
-        self._is_vector = False
-
-    def init(self):
-        self.output = []
 
     def setInput(self, value, port=0):
         if port == 0:
-            self.input_a = value if isinstance(value, list) else [value]
+            self.input_a = value
         elif port == 1:
-            self.input_b = value if isinstance(value, list) else [value]
+            self.input_b = value
 
     def connectInput(self, block, port=0, source_port=0):
         if port < 2:
             self.input_blocks[port] = block
 
     def update(self):
-        for i, block in enumerate(self.input_blocks):
-            if block is not None:
-                vec = block.getOutputVector()
-                if vec is not None:
-                    if i == 0:
-                        self.input_a = vec
-                    else:
-                        self.input_b = vec
-                else:
-                    val = block.getOutput()
-                    if i == 0:
-                        self.input_a = [val]
-                    else:
-                        self.input_b = [val]
+        a = self._read_input(0)
+        b = self._read_input(1)
+        self._store_result(self._multiply(a, b))
 
-        # For 1D vectors, compute dot product
-        if len(self.input_a) == len(self.input_b):
-            result = sum(a * b for a, b in zip(self.input_a, self.input_b, strict=False))
-            self.output = [result]
-            self._is_vector = False
-        else:
-            # Treat as scalars
-            self.output = [
-                self.input_a[0] * self.input_b[0] if self.input_a and self.input_b else 0.0
-            ]
-            self._is_vector = False
+    def _read_input(self, port):
+        reference = self.input_blocks[port]
+        if reference is not None:
+            return _reference_to_array(reference)
+        stored = self.input_a if port == 0 else self.input_b
+        return _stored_to_array(stored)
 
-    def getOutput(self, port=0):
-        if self.output:
-            return self.output[0] if port < len(self.output) else 0.0
-        return 0.0
+    def _multiply(self, a, b):
+        if a.ndim == 0 and b.ndim == 0:
+            return a * b
+        if a.ndim == 2 and b.ndim == 2:
+            if a.shape[1] == b.shape[0]:
+                return a @ b
+            raise self._shape_error(
+                "MatrixMultiply",
+                f"[{a.shape[1]}, n] (inner dimension {a.shape[1]})",
+                f"[{b.shape[0]}, {b.shape[1]}]",
+                port=1,
+            )
+        if a.ndim == 2 and b.ndim == 1:
+            if b.shape[0] == a.shape[1]:
+                return a @ b
+            raise self._shape_error(
+                "MatrixMultiply",
+                f"[{a.shape[1]}] (columns of A)",
+                f"[{b.shape[0]}]",
+                port=1,
+            )
+        if a.ndim == 1 and b.ndim == 2:
+            if a.shape[0] == b.shape[0]:
+                return a @ b
+            raise self._shape_error(
+                "MatrixMultiply",
+                f"[{b.shape[0]}] (rows of B)",
+                f"[{a.shape[0]}]",
+                port=0,
+            )
+        if a.ndim == 1 and b.ndim == 1:
+            if a.shape[0] == b.shape[0]:
+                return a @ b
+            raise self._shape_error(
+                "MatrixMultiply",
+                f"[{b.shape[0]}] (equal length to B)",
+                f"[{a.shape[0]}]",
+                port=0,
+            )
+        if a.ndim == 0 and b.ndim == 1:
+            return a * b
+        if a.ndim == 1 and b.ndim == 0:
+            return a * b
+        raise self._shape_error(
+            "MatrixMultiply",
+            "a matching vector or matrix",
+            "a scalar combined with a 2-D matrix",
+            port=0 if a.ndim == 0 else 1,
+        )
 
-    def getOutputVector(self):
-        return self.output if len(self.output) > 1 else None
 
+class MatrixTranspose(_MatrixBlock):
+    """Transpose a matrix.
 
-class MatrixTranspose(Block):
-    """Transpose a matrix or vector.
-
-    For vectors, converts row to column and vice versa.
-    Since we work with 1D arrays, this is essentially a pass-through.
+    [m, n] -> [n, m]; 1-D vectors and scalars are unchanged.
     """
 
     def __init__(self):
         super().__init__()
         self.input = []
-        self.output = []
         self.input_block = None
-        self._is_vector = False
-
-    def init(self):
-        self.output = []
 
     def setInput(self, value, port=0):
-        self.input = value if isinstance(value, list) else [value]
+        self.input = value
 
     def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
 
     def update(self):
         if self.input_block is not None:
-            vec = self.input_block.getOutputVector()
-            if vec is not None:
-                self.input = vec
-                self._is_vector = True
-            else:
-                self.input = [self.input_block.getOutput()]
-                self._is_vector = False
-
-        # For 1D representation, transpose is identity
-        self.output = self.input.copy()
-
-    def getOutput(self, port=0):
-        if port < len(self.output):
-            return self.output[port]
-        return 0.0
-
-    def getOutputVector(self):
-        return self.output if self._is_vector else None
+            array = _reference_to_array(self.input_block)
+        else:
+            array = _stored_to_array(self.input)
+        self._store_result(array.T)
 
 
-class MatrixInverse(Block):
-    """Compute inverse of a matrix.
+class MatrixInverse(_MatrixBlock):
+    """Inverse of a 2-D square matrix.
 
-    For scalars, returns 1/x.
-    For 2x2 matrices (4-element vector), computes actual inverse.
+    A declared [n, n] input is inverted with numpy.  A flat 4-element input
+    is interpreted as a row-major 2x2 matrix (legacy convention); any other
+    flat vector passes through unchanged; a scalar inverts as 1/x (zero
+    inverts to inf, never an exception).  A non-square 2-D input is a
+    dimension error.
     """
 
     def __init__(self):
         super().__init__()
         self.input = []
-        self.output = []
         self.input_block = None
-        self._is_vector = False
-
-    def init(self):
-        self.output = []
 
     def setInput(self, value, port=0):
-        self.input = value if isinstance(value, list) else [value]
+        self.input = value
 
     def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
 
     def update(self):
         if self.input_block is not None:
-            vec = self.input_block.getOutputVector()
-            if vec is not None:
-                self.input = vec
-                self._is_vector = True
-            else:
-                self.input = [self.input_block.getOutput()]
-                self._is_vector = False
-
-        n = len(self.input)
-
-        if n == 1:
-            # Scalar inverse
-            self.output = [1.0 / self.input[0]] if self.input[0] != 0 else [float("inf")]
-        elif n == 4:
-            # 2x2 matrix inverse: [[a,b],[c,d]] stored as [a,b,c,d]
-            a, b, c, d = self.input
-            det = a * d - b * c
-            if abs(det) > 1e-15:
-                self.output = [d / det, -b / det, -c / det, a / det]
-            else:
-                self.output = [float("inf")] * 4
+            array = _reference_to_array(self.input_block)
         else:
-            # Pass through for unsupported sizes
-            self.output = self.input.copy()
+            array = _stored_to_array(self.input)
+        self._invert(array)
 
-    def getOutput(self, port=0):
-        if port < len(self.output):
-            return self.output[port]
-        return 0.0
+    def _invert(self, array):
+        if array.ndim == 0:
+            value = float(array)
+            self.output = [1.0 / value if value != 0.0 else float("inf")]
+            self._output_shape = ()
+            self._is_vector = False
+            return
+        if array.ndim == 1:
+            if array.shape[0] == 4:
+                matrix = array.reshape(2, 2)
+            else:
+                # Legacy flat pass-through for non-matrix vectors.
+                self.output = [float(element) for element in array]
+                self._output_shape = (int(array.shape[0]),)
+                self._is_vector = True
+                return
+        else:
+            if array.shape[0] != array.shape[1]:
+                raise self._shape_error(
+                    "MatrixInverse",
+                    "a square matrix",
+                    f"[{array.shape[0]}, {array.shape[1]}]",
+                    port=0,
+                )
+            matrix = array
+        try:
+            inverted = np.linalg.inv(matrix)
+        except np.linalg.LinAlgError:
+            self.output = [float("inf")] * int(matrix.size)
+            self._output_shape = (int(matrix.shape[0]), int(matrix.shape[1]))
+            self._is_vector = True
+            return
+        self._store_result(inverted)
 
-    def getOutputVector(self):
-        return self.output if self._is_vector else None
 
-
-class Selector(Block):
+class Selector(_MatrixBlock):
     """Select elements from a vector or matrix.
 
-    Selects specific elements or ranges from the input signal.
+    Indices address elements in row-major order, so a 2-D input can be
+    sliced by rows, columns, or individual cells.  Out-of-range (including
+    negative) indices select 0.0.  A single index produces a scalar output;
+    multiple indices produce a 1-D vector.
     """
 
     def __init__(self, indices=None, output_size=1):
@@ -190,50 +302,42 @@ class Selector(Block):
         self.indices = indices if indices else [0]
         self.output_size = output_size
         self.input = []
-        self.output = []
         self.input_block = None
-        self._is_vector = False
 
     def init(self):
-        self.output = [0.0] * self.output_size
+        self.output = [0.0] * len(self.indices)
+        self._output_shape = () if len(self.indices) == 1 else (len(self.indices),)
+        self._is_vector = len(self.indices) > 1
 
     def setInput(self, value, port=0):
-        self.input = value if isinstance(value, list) else [value]
+        self.input = value
 
     def connectInput(self, block, port=0, source_port=0):
         self.input_block = block
 
     def update(self):
         if self.input_block is not None:
-            vec = self.input_block.getOutputVector()
-            if vec is not None:
-                self.input = vec
+            array = _reference_to_array(self.input_block)
+        else:
+            array = _stored_to_array(self.input)
+        flat = [float(element) for element in array.reshape(-1)]
+        selected = []
+        for index in self.indices:
+            if 0 <= index < len(flat):
+                selected.append(flat[index])
             else:
-                self.input = [self.input_block.getOutput()]
-
-        self.output = []
-        for idx in self.indices:
-            if 0 <= idx < len(self.input):
-                self.output.append(self.input[idx])
-            else:
-                self.output.append(0.0)
-
-        self._is_vector = len(self.output) > 1
-
-    def getOutput(self, port=0):
-        if port < len(self.output):
-            return self.output[port]
-        return 0.0
-
-    def getOutputVector(self):
-        return self.output if self._is_vector else None
+                selected.append(0.0)
+        self.output = selected
+        self._output_shape = () if len(self.indices) == 1 else (len(selected),)
+        self._is_vector = len(self.indices) > 1
 
 
-class Assignment(Block):
-    """Assign values to specific elements of a vector.
+class Assignment(_MatrixBlock):
+    """Assign values to elements of a vector or matrix.
 
-    Takes an input vector and replaces elements at specified indices
-    with values from a second input.
+    Indices address the base signal in row-major order, so a 2-D base can
+    have rows, columns, or individual cells replaced.  Out-of-range indices
+    are skipped.  The output keeps the base signal's shape.
     """
 
     def __init__(self, indices=None):
@@ -241,105 +345,237 @@ class Assignment(Block):
         self.indices = indices if indices else [0]
         self.input_base = []
         self.input_values = []
-        self.output = []
         self.input_blocks = [None, None]
-        self._is_vector = True
-
-    def init(self):
-        self.output = []
 
     def setInput(self, value, port=0):
         if port == 0:
-            self.input_base = value if isinstance(value, list) else [value]
+            self.input_base = value
         elif port == 1:
-            self.input_values = value if isinstance(value, list) else [value]
+            self.input_values = value
 
     def connectInput(self, block, port=0, source_port=0):
         if port < 2:
             self.input_blocks[port] = block
 
     def update(self):
-        for i, block in enumerate(self.input_blocks):
-            if block is not None:
-                vec = block.getOutputVector()
-                if vec is not None:
-                    if i == 0:
-                        self.input_base = vec
-                    else:
-                        self.input_values = vec
-                else:
-                    val = block.getOutput()
-                    if i == 0:
-                        self.input_base = [val]
-                    else:
-                        self.input_values = [val]
+        if self.input_blocks[0] is not None:
+            base = _reference_to_array(self.input_blocks[0])
+        else:
+            base = _stored_to_array(self.input_base)
+        if self.input_blocks[1] is not None:
+            values = _reference_to_array(self.input_blocks[1])
+        else:
+            values = _stored_to_array(self.input_values)
 
-        # Copy base input
-        self.output = self.input_base.copy()
-
-        # Assign values at specified indices
-        for i, idx in enumerate(self.indices):
-            if 0 <= idx < len(self.output) and i < len(self.input_values):
-                self.output[idx] = self.input_values[i]
-
-    def getOutput(self, port=0):
-        if port < len(self.output):
-            return self.output[port]
-        return 0.0
-
-    def getOutputVector(self):
-        return self.output if len(self.output) > 1 else None
+        out = [float(element) for element in base.reshape(-1)]
+        value_elements = [float(element) for element in values.reshape(-1)]
+        for i, index in enumerate(self.indices):
+            if 0 <= index < len(out) and i < len(value_elements):
+                out[index] = value_elements[i]
+        self.output = out
+        self._output_shape = tuple(int(dim) for dim in base.shape)
+        self._is_vector = base.ndim > 0
 
 
-class Concatenate(Block):
-    """Concatenate vectors into a single vector.
+class Concatenate(_MatrixBlock):
+    """Concatenate vectors or matrices.
 
-    Combines multiple input vectors into one output vector.
+    1-D and scalar inputs concatenate flat (legacy behavior).  2-D inputs
+    require every input to be 2-D: mode "horizontal" stacks columns
+    ([A B], rows must match), any other mode stacks rows ([A; B], columns
+    must match).  Mixing 2-D and lower-rank inputs is an error.
     """
 
     def __init__(self, num_inputs=2, mode="vector"):
         super().__init__()
         self.num_inputs = num_inputs
-        self.mode = mode  # 'vector' or 'matrix'
+        self.mode = mode
         self.inputs: list[Any] = [[] for _ in range(num_inputs)]
-        self.output: list[Any] = []
         self.input_blocks: list[Any] = [None] * num_inputs
-
-    def init(self):
-        self.output = []
 
     def setInput(self, value, port=0):
         if port < self.num_inputs:
-            self.inputs[port] = value if isinstance(value, list) else [value]
+            self.inputs[port] = value
 
     def connectInput(self, block, port=0, source_port=0):
         if port < self.num_inputs:
             self.input_blocks[port] = block
 
     def update(self):
-        for i, block in enumerate(self.input_blocks):
-            if block is not None:
-                vec = block.getOutputVector()
-                if vec is not None:
-                    self.inputs[i] = vec
-                else:
-                    self.inputs[i] = [block.getOutput()]
+        arrays = []
+        for i, reference in enumerate(self.input_blocks):
+            if reference is not None:
+                arrays.append(_reference_to_array(reference))
+            else:
+                arrays.append(_stored_to_array(self.inputs[i]))
 
-        # Concatenate all inputs
-        self.output = []
-        for inp in self.inputs:
-            self.output.extend(inp)
+        if any(array.ndim == 2 for array in arrays):
+            if any(array.ndim != 2 for array in arrays):
+                ranks = sorted({array.ndim for array in arrays})
+                raise self._shape_error(
+                    "Concatenate",
+                    "all inputs to be 2-D matrices",
+                    f"mixed ranks {ranks}",
+                )
+            if self.mode == "horizontal":
+                rows = arrays[0].shape[0]
+                for i, array in enumerate(arrays):
+                    if array.shape[0] != rows:
+                        raise self._shape_error(
+                            "Concatenate",
+                            f"{rows} rows (horizontal concatenation)",
+                            f"[{array.shape[0]}, {array.shape[1]}]",
+                            port=i,
+                        )
+                combined = np.concatenate(arrays, axis=1)
+            else:
+                columns = arrays[0].shape[1]
+                for i, array in enumerate(arrays):
+                    if array.shape[1] != columns:
+                        raise self._shape_error(
+                            "Concatenate",
+                            f"{columns} columns (vertical concatenation)",
+                            f"[{array.shape[0]}, {array.shape[1]}]",
+                            port=i,
+                        )
+                combined = np.concatenate(arrays, axis=0)
+            self._store_result(combined)
+            return
 
-    def getOutput(self, port=0):
-        if port < len(self.output):
-            return self.output[port]
-        return 0.0
-
-    def getOutputVector(self):
-        return self.output if len(self.output) > 1 else None
+        flat = []
+        for array in arrays:
+            flat.extend(float(element) for element in array.reshape(-1))
+        self.output = flat
+        self._output_shape = (len(flat),) if len(flat) > 1 else ()
+        self._is_vector = len(flat) > 1
 
     def getNumOutputs(self):
         return len(self.output) if self.output else 1
+
+
+class MatrixIdentity(_MatrixBlock):
+    """Constant n x n identity matrix source (no inputs)."""
+
+    def __init__(self, n=1):
+        super().__init__()
+        self.n = int(n)
+        if self.n < 1:
+            raise ValueError(
+                f"MatrixIdentity block: size must be a positive integer, got {n!r}"
+            )
+        self._recompute()
+
+    def update(self):
+        self._recompute()
+
+    def _recompute(self):
+        self.output = [1.0 if i == j else 0.0 for i in range(self.n) for j in range(self.n)]
+        self._output_shape = (self.n, self.n)
+        self._is_vector = True
+
+
+class MatrixZeros(_MatrixBlock):
+    """Constant rows x cols matrix of zeros (no inputs)."""
+
+    def __init__(self, rows=1, cols=1):
+        super().__init__()
+        self.rows = int(rows)
+        self.cols = int(cols)
+        if self.rows < 1 or self.cols < 1:
+            raise ValueError(
+                f"MatrixZeros block: rows and cols must be positive integers, "
+                f"got {rows!r} x {cols!r}"
+            )
+        self._recompute()
+
+    def update(self):
+        self._recompute()
+
+    def _recompute(self):
+        self.output = [0.0] * (self.rows * self.cols)
+        self._output_shape = (self.rows, self.cols)
+        self._is_vector = True
+
+
+def _parse_vector(values):
+    """Coerce a constant vector parameter into a list of numbers."""
+    if values is None:
+        return []
+    if isinstance(values, (list, tuple)):
+        return [float(element) for element in values]
+    return [float(values)]
+
+
+class MatrixDiagonal(_MatrixBlock):
+    """Constant diagonal matrix built from a vector (no inputs)."""
+
+    def __init__(self, values=None):
+        super().__init__()
+        self.values = _parse_vector(values)
+        if not self.values:
+            raise ValueError("MatrixDiagonal block: values must be a non-empty list")
+        self._recompute()
+
+    def update(self):
+        self._recompute()
+
+    def _recompute(self):
+        size = len(self.values)
+        flat = [0.0] * (size * size)
+        for i, value in enumerate(self.values):
+            flat[i * size + i] = value
+        self.output = flat
+        self._output_shape = (size, size)
+        self._is_vector = True
+
+
+class MatrixReshape(_MatrixBlock):
+    """Reshape a flat vector or matrix into a constant rows x cols shape.
+
+    The input's row-major elements are reinterpreted as a [rows, cols]
+    matrix; the element count must match rows * cols exactly.
+    """
+
+    def __init__(self, rows=1, cols=1):
+        super().__init__()
+        self.rows = int(rows)
+        self.cols = int(cols)
+        if self.rows < 1 or self.cols < 1:
+            raise ValueError(
+                f"MatrixReshape block: rows and cols must be positive integers, "
+                f"got {rows!r} x {cols!r}"
+            )
+        self.input = []
+        self.input_block = None
+
+    def init(self):
+        super().init()
+        self._output_shape = (self.rows, self.cols)
+        self._is_vector = True
+
+    def setInput(self, value, port=0):
+        self.input = value
+
+    def connectInput(self, block, port=0, source_port=0):
+        self.input_block = block
+
+    def update(self):
+        if self.input_block is not None:
+            array = _reference_to_array(self.input_block)
+        else:
+            array = _stored_to_array(self.input)
+        flat = array.reshape(-1)
+        expected = self.rows * self.cols
+        if flat.size != expected:
+            raise self._shape_error(
+                "MatrixReshape",
+                f"{expected} elements to fill shape [{self.rows}, {self.cols}]",
+                f"{flat.size} elements (input shape {list(array.shape)})",
+                port=0,
+            )
+        self.output = [float(element) for element in flat]
+        self._output_shape = (self.rows, self.cols)
+        self._is_vector = True
 
 
 class MatrixSum(Block):
