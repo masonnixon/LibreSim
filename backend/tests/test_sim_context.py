@@ -239,7 +239,7 @@ def _builtin_reference(
 
 def test_every_registered_builtin_has_an_explicit_versioned_snapshot_codec():
     assert set(BLOCK_SNAPSHOT_CODECS) == set(BLOCK_TYPE_MAP)
-    assert len(BLOCK_TYPE_MAP) == 185
+    assert len(BLOCK_TYPE_MAP) == 186
     assert all(codec.version >= 1 for codec in BLOCK_SNAPSHOT_CODECS.values())
 
 

@@ -170,6 +170,7 @@ from ..osk.blocks.math_ops import (
     UnaryMinus,
     WeightedSum,
 )
+from ..osk.blocks.linear_algebra import LinearSolve
 from ..osk.blocks.matrix_ops import (
     Assignment,
     Concatenate,
@@ -382,6 +383,7 @@ BLOCK_TYPE_MAP: dict[str, type[Block]] = {
     "concatenate": Concatenate,
     "matrix_sum": MatrixSum,
     "vector_norm": VectorNorm,
+    "linear_solve": LinearSolve,
     # Control Design
     "lqr_controller": LQRController,
     "pole_placement": PolePlacement,
@@ -580,6 +582,7 @@ SNAPSHOT_BLOCK_TYPES = frozenset(
         "concatenate",
         "matrix_sum",
         "vector_norm",
+        "linear_solve",
         "lqr_controller",
         "pole_placement",
         "lead_lag_compensator",
@@ -909,6 +912,13 @@ PARAM_MAP: dict[str, dict[str, str]] = {
     "concatenate": {"numInputs": "num_inputs", "mode": "mode"},
     "matrix_sum": {},
     "vector_norm": {"normType": "norm_type"},
+    "linear_solve": {
+        "method": "method",
+        "pivoting": "pivoting",
+        "singularityTolerance": "singularity_tolerance",
+        "conditionLimit": "condition_limit",
+        "failurePolicy": "failure_policy",
+    },
     # Control Design
     "lqr_controller": {"K": "K"},
     "pole_placement": {"K": "K"},

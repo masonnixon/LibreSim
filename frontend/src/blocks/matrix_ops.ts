@@ -224,4 +224,54 @@ export const matrixOpsBlocks: BlockDefinition[] = [
     ],
     icon: 'reshape',
   },
+  {
+    type: 'linear_solve',
+    category: 'matrix_ops',
+    name: 'Linear Solve',
+    description: 'Solve A x = b by LU factorization; vector or multiple right-hand sides',
+    inputs: [
+      { name: 'A', dataType: 'double', dimensions: [1] },
+      { name: 'b', dataType: 'double', dimensions: [1] },
+    ],
+    outputs: [{ name: 'x', dataType: 'double', dimensions: [1] }],
+    parameters: [
+      {
+        name: 'method',
+        type: 'select',
+        default: 'lu',
+        label: 'Method',
+        options: [{ value: 'lu', label: 'LU (partial pivoting)' }],
+      },
+      {
+        name: 'pivoting',
+        type: 'select',
+        default: 'partial',
+        label: 'Pivoting',
+        options: [{ value: 'partial', label: 'Partial' }],
+      },
+      {
+        name: 'singularityTolerance',
+        type: 'number',
+        default: 1e-12,
+        label: 'Singularity Tolerance',
+      },
+      {
+        name: 'conditionLimit',
+        type: 'number',
+        default: 4.5e15,
+        label: 'Condition Limit',
+      },
+      {
+        name: 'failurePolicy',
+        type: 'select',
+        default: 'status',
+        label: 'Failure Policy',
+        options: [
+          { value: 'status', label: 'Report status (no throw)' },
+          { value: 'raise', label: 'Raise on failure' },
+        ],
+      },
+    ],
+    icon: 'solve',
+  },
 ]
