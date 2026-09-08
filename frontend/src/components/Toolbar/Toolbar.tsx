@@ -55,7 +55,7 @@ export function Toolbar({ embed = false, restoreLastModel = true }: ToolbarProps
   // 'narrow' (<768): only core sim buttons visible, everything else in menu
   const [tier, setTier] = useState<'full' | 'medium' | 'narrow'>(() => {
     const w = window.innerWidth
-    return w >= 1024 ? 'full' : w >= 768 ? 'medium' : 'narrow'
+    return w >= 1440 ? 'full' : w >= 768 ? 'medium' : 'narrow'
   })
   const {
     simState,

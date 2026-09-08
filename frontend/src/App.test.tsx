@@ -1,5 +1,5 @@
 // Behavioral coverage for the responsive application shell.
-import { act, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, expect, it, vi } from 'vitest'
 
 import App from './App'
@@ -52,5 +52,23 @@ caseFn('starts directly in the mobile layout', function () {
   // Properties panel renders as overlay on mobile when showProperties is true
   expect(screen.getByRole('heading', { name: 'Properties' })).toBeInTheDocument()
   expect(useUIStore.getState().sidebarCollapsed).toBe(true)
+  view.unmount()
+})
+
+caseFn('closes the mobile properties overlay via its backdrop', function () {
+  setViewport(500)
+  const view = render(<App />)
+
+  const heading = screen.getByRole('heading', { name: 'Properties' })
+  fireEvent.click(heading.closest('.fixed') as Element)
+  expect(useUIStore.getState().showProperties).toBe(false)
+  view.unmount()
+})
+
+caseFn('shows the startup error screen instead of the editor', function () {
+  const view = render(<App startup={{ embed: false, error: 'Failed to start' }} />)
+
+  expect(screen.getByText('Failed to start')).toBeInTheDocument()
+  expect(screen.queryByText('LibreSim')).not.toBeInTheDocument()
   view.unmount()
 })

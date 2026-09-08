@@ -30,7 +30,13 @@ const block = {
   outputPorts: [{ id: 'out', name: 'out', dataType: 'double', dimensions: [1] }],
 }
 
-function setup(options: { model?: unknown; selected?: string[]; blocks?: unknown[] } = {}) {
+function setup(options: {
+  model?: unknown
+  selected?: string[]
+  blocks?: unknown[]
+  overlay?: boolean
+  onClose?: () => void
+} = {}) {
   const updateBlockParameters = vi.fn()
   const renameBlock = vi.fn()
   mockedModelStore.mockReturnValue({
@@ -40,7 +46,9 @@ function setup(options: { model?: unknown; selected?: string[]; blocks?: unknown
     renameBlock,
     getCurrentBlocks: vi.fn(function () { return options.blocks === undefined ? [block] : options.blocks }),
   } as never)
-  const view = render(createElement(PropertiesPanel))
+  const view = render(
+    createElement(PropertiesPanel, { overlay: options.overlay, onClose: options.onClose })
+  )
   return { view, updateBlockParameters, renameBlock }
 }
 
@@ -196,4 +204,37 @@ describe('PropertiesPanel', function () {
     expect(screen.getByText('No parameters')).toBeInTheDocument()
   })
 
+  describe('overlay mode', function () {
+    it('wraps the no-selection state in a dismissible overlay', function () {
+      const onClose = vi.fn()
+      setup({ model: null, overlay: true, onClose })
+      const message = screen.getByText('Select a block to view its properties')
+      expect(message).toBeInTheDocument()
+      // Clicking inside the panel must not bubble to the backdrop's onClose.
+      fireEvent.click(message)
+      expect(onClose).not.toHaveBeenCalled()
+      fireEvent.click(message.closest('.fixed') as Element)
+      expect(onClose).toHaveBeenCalled()
+    })
+
+    it('wraps the multi-selection state in a dismissible overlay', function () {
+      const onClose = vi.fn()
+      setup({ selected: ['one', 'two'], overlay: true, onClose })
+      const message = screen.getByText('2 blocks selected')
+      expect(message).toBeInTheDocument()
+      // Clicking inside the panel must not bubble to the backdrop's onClose.
+      fireEvent.click(message)
+      expect(onClose).not.toHaveBeenCalled()
+      fireEvent.click(message.closest('.fixed') as Element)
+      expect(onClose).toHaveBeenCalled()
+    })
+
+    it('renders the block-selected state in an overlay with a working close button', function () {
+      const onClose = vi.fn()
+      setup({ overlay: true, onClose })
+      expect(screen.getByText('Properties')).toBeInTheDocument()
+      fireEvent.click(screen.getByTitle('Close'))
+      expect(onClose).toHaveBeenCalled()
+    })
+  })
 })

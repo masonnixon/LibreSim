@@ -307,6 +307,20 @@ describe('Toolbar', () => {
       expect(localStorage.setItem).not.toHaveBeenCalled()
       expect(mockModelStore.createNewModel).not.toHaveBeenCalled()
     })
+
+    it('falls back to Untitled and shows Hide Scopes in embed mode', () => {
+      mockedUseModelStore.mockReturnValue({
+        ...mockModelStore,
+        model: { ...mockModel, metadata: {} },
+      } as unknown as ReturnType<typeof useModelStore>)
+      mockedUseUIStore.mockReturnValue({
+        ...mockUIStore,
+        plotWindows: { 'scope-1': {} },
+      } as unknown as ReturnType<typeof useUIStore>)
+      render(<Toolbar embed restoreLastModel={false} />)
+      expect(screen.getByText('Untitled')).toBeInTheDocument()
+      expect(screen.getByText('Hide Scopes')).toBeInTheDocument()
+    })
   })
 
   describe('simulation status display', () => {
@@ -464,6 +478,33 @@ describe('Toolbar', () => {
       render(<Toolbar />)
       fireEvent.click(screen.getByText('Properties'))
       expect(mockUIStore.toggleProperties).toHaveBeenCalled()
+    })
+
+    it('renders icon-only view toggles with a scope count badge at medium tier', () => {
+      Object.defineProperty(window, 'innerWidth', {
+        writable: true,
+        configurable: true,
+        value: 1000,
+      })
+      mockedUseUIStore.mockReturnValue({
+        ...mockUIStore,
+        plotWindows: { 'scope-1': { x: 0, y: 0 } },
+      } as unknown as ReturnType<typeof useUIStore>)
+      render(<Toolbar />)
+      expect(screen.queryByText('Properties')).not.toBeInTheDocument()
+      expect(screen.queryByText('Scopes')).not.toBeInTheDocument()
+      expect(screen.getByText('1')).toBeInTheDocument()
+    })
+
+    it('renders no scope badge at medium tier when no plot windows are open', () => {
+      Object.defineProperty(window, 'innerWidth', {
+        writable: true,
+        configurable: true,
+        value: 1000,
+      })
+      render(<Toolbar />)
+      expect(screen.getByTitle('Open Plot Windows')).toBeInTheDocument()
+      expect(screen.queryByText('1')).not.toBeInTheDocument()
     })
   })
 
@@ -915,6 +956,83 @@ describe('Toolbar', () => {
       expect(mockUIStore.toggleProperties).toHaveBeenCalled()
       expect(mockUIStore.openSettingsModal).toHaveBeenCalled()
       expect(mockUIStore.openHelpModal).toHaveBeenCalledWith('shortcuts')
+    })
+
+    it('runs undo/redo and paused/step-mode sim controls from the overflow menu', () => {
+      Object.defineProperty(window, 'innerWidth', {
+        writable: true,
+        configurable: true,
+        value: 500,
+      })
+      mockedUseModelStore.mockReturnValue({
+        ...mockModelStore,
+        canUndo: vi.fn().mockReturnValue(true),
+        canRedo: vi.fn().mockReturnValue(true),
+      } as unknown as ReturnType<typeof useModelStore>)
+      mockedUseSimulationStore.mockReturnValue({
+        ...mockSimulationStore,
+        state: { ...mockSimulationStore.state, status: 'paused' },
+        stepModeActive: true,
+      } as unknown as ReturnType<typeof useSimulationStore>)
+      render(<Toolbar />)
+      const choose = (label: string) => {
+        fireEvent.click(screen.getByTitle('Menu'))
+        fireEvent.click(screen.getByText(label))
+      }
+      choose('Undo')
+      choose('Redo')
+      choose('Resume')
+      choose('Step Forward')
+      choose('Step Backward')
+      choose('Reset')
+      expect(mockModelStore.undo).toHaveBeenCalled()
+      expect(mockModelStore.redo).toHaveBeenCalled()
+      expect(mockedApi.continueFromStepMode).toHaveBeenCalled()
+    })
+
+    it('shows a plain Resume title on the compact button when paused outside step mode', () => {
+      Object.defineProperty(window, 'innerWidth', {
+        writable: true,
+        configurable: true,
+        value: 500,
+      })
+      mockedUseSimulationStore.mockReturnValue({
+        ...mockSimulationStore,
+        state: { ...mockSimulationStore.state, status: 'paused' },
+      } as unknown as ReturnType<typeof useSimulationStore>)
+      render(<Toolbar />)
+      expect(screen.getByTitle('Resume')).toBeInTheDocument()
+    })
+
+    it('disables the compact resume button when a step-mode run has completed', () => {
+      Object.defineProperty(window, 'innerWidth', {
+        writable: true,
+        configurable: true,
+        value: 500,
+      })
+      mockedUseSimulationStore.mockReturnValue({
+        ...mockSimulationStore,
+        state: { ...mockSimulationStore.state, status: 'completed' },
+        stepModeActive: true,
+      } as unknown as ReturnType<typeof useSimulationStore>)
+      render(<Toolbar />)
+      expect(screen.getByTitle('Continue Running')).toBeDisabled()
+    })
+
+    it('runs the pause sim control from the overflow menu while running', () => {
+      Object.defineProperty(window, 'innerWidth', {
+        writable: true,
+        configurable: true,
+        value: 500,
+      })
+      mockedUseSimulationStore.mockReturnValue({
+        ...mockSimulationStore,
+        state: { ...mockSimulationStore.state, status: 'running' },
+      } as unknown as ReturnType<typeof useSimulationStore>)
+      render(<Toolbar />)
+      fireEvent.click(screen.getByTitle('Menu'))
+      fireEvent.click(screen.getByText('Pause'))
+      expect(mockedApi.pauseSimulation).toHaveBeenCalled()
     })
   })
 
