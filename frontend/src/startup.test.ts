@@ -47,6 +47,11 @@ describe('URL startup', () => {
     expect(useModelStore.getState().model).toBeNull()
   })
 
+  it('defaults to the current page URL when no search string is given', async () => {
+    await expect(prepareStartup()).resolves.toEqual({ embed: false })
+    expect(fetchExample).not.toHaveBeenCalled()
+  })
+
   it('does not fall back to browser state when the requested example is missing', async () => {
     vi.mocked(fetchExample).mockResolvedValue(undefined)
     await expect(prepareStartup('?example=missing')).resolves.toEqual({
