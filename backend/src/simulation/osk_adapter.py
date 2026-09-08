@@ -131,6 +131,7 @@ from ..osk.blocks.dsp import (
     WindowFunction,
     ZeroCrossingDetector,
 )
+from ..osk.blocks.linear_algebra import LinearSolve
 from ..osk.blocks.logic import (
     BitOperator,
     CompareToConstant,
@@ -170,7 +171,6 @@ from ..osk.blocks.math_ops import (
     UnaryMinus,
     WeightedSum,
 )
-from ..osk.blocks.linear_algebra import LinearSolve
 from ..osk.blocks.matrix_ops import (
     Assignment,
     Concatenate,

@@ -24,7 +24,6 @@ from src.models.model import Model
 from src.simulation.compiler import ModelCompiler
 from src.simulation.osk_adapter import OSKAdapter
 
-
 DT = 0.1
 
 
@@ -237,8 +236,6 @@ def test_solve_30x30_well_conditioned_against_numpy():
 
 def test_solve_badly_scaled_still_solved():
     """A badly scaled (but solvable) system is solved, with a large condition."""
-    a = np.array([[1e-6, 0.0], [0.0, 1e6]])
-    b = np.array([2e-6, 3e6])
     block = solve_model([1e-6, 0.0, 0.0, 1e6], [2, 2], [2e-6, 3e6], [2], [2])
     assert block.status == 1.0
     assert block.dimension == 2

@@ -17,13 +17,20 @@ OUTPUT_DIR = REPO_ROOT / "codegen_verification"
 
 LANGUAGES = [Language.PYTHON, Language.CPP, Language.C, Language.RUST]
 
+# Examples that use block features the code generator cannot handle yet.
+CODEGEN_UNSUPPORTED: set[str] = {
+    "51_linear_solve_acceptance",  # vector-valued multi-output source ports
+}
+
 
 def regenerate_all():
     """Regenerate all examples in all languages."""
     OUTPUT_DIR.mkdir(exist_ok=True)
 
-    # Get all example JSON files
-    examples = sorted(EXAMPLES_DIR.glob("*.json"))
+    # Get all example JSON files, skipping unsupported ones
+    examples = sorted(
+        p for p in EXAMPLES_DIR.glob("*.json") if p.stem not in CODEGEN_UNSUPPORTED
+    )
     print(f"Found {len(examples)} example files")
 
     results = {"success": [], "failed": []}

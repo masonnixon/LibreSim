@@ -29,7 +29,6 @@ from scipy import linalg as sla
 
 from ..block import Block
 
-
 #: Machine-precision lower bound used as the default ill-conditioning limit:
 #: a system whose condition number exceeds 1/eps has lost essentially all
 #: digits and cannot be solved reliably in double precision.

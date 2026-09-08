@@ -47,6 +47,11 @@ LANGUAGES = ["python", "cpp", "c", "rust"]
 # Keep this set for any examples that still have known RNG differences.
 STOCHASTIC_EXAMPLES: set[str] = set()  # Empty - all examples should now match
 
+# Examples that use block features the code generator cannot handle yet.
+CODEGEN_UNSUPPORTED: set[str] = {
+    "51_linear_solve_acceptance",  # vector-valued multi-output source ports
+}
+
 # Per-example tolerance overrides (default is 3%)
 # Use higher tolerance for examples with known acceptable differences
 EXAMPLE_TOLERANCES: dict[str, float] = {
@@ -475,11 +480,12 @@ def main():
     BUILDS_DIR.mkdir(parents=True, exist_ok=True)
 
     all_examples = sorted([p.stem for p in EXAMPLES_DIR.glob("*.json")])
-    # Filter out stochastic examples that can't be deterministically compared
-    examples = [e for e in all_examples if e not in STOCHASTIC_EXAMPLES]
-    skipped = [e for e in all_examples if e in STOCHASTIC_EXAMPLES]
+    # Filter out examples that can't be validated
+    skip_set = STOCHASTIC_EXAMPLES | CODEGEN_UNSUPPORTED
+    examples = [e for e in all_examples if e not in skip_set]
+    skipped = [e for e in all_examples if e in skip_set]
 
-    print(f"Found {len(all_examples)} examples, validating {len(examples)} (skipping {len(skipped)} stochastic)")
+    print(f"Found {len(all_examples)} examples, validating {len(examples)} (skipping {len(skipped)})")
     if skipped:
         print(f"  Skipped: {', '.join(skipped)}")
 
