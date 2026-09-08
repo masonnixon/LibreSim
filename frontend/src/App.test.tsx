@@ -27,7 +27,8 @@ caseFn('keeps the sidebar collapsed across repeated mobile resize events', funct
 
   setViewport(767)
   act(function () { window.dispatchEvent(new Event('resize')) })
-  expect(screen.queryByRole('heading', { name: 'Properties' })).not.toBeInTheDocument()
+  // Properties panel is now rendered as an overlay on mobile, not hidden
+  expect(screen.getByRole('heading', { name: 'Properties' })).toBeInTheDocument()
   expect(useUIStore.getState().sidebarCollapsed).toBe(true)
 
   act(function () { window.dispatchEvent(new Event('resize')) })
@@ -48,7 +49,8 @@ caseFn('starts directly in the mobile layout', function () {
   useUIStore.setState({ sidebarCollapsed: true })
   const view = render(<App />)
 
-  expect(screen.queryByRole('heading', { name: 'Properties' })).not.toBeInTheDocument()
+  // Properties panel renders as overlay on mobile when showProperties is true
+  expect(screen.getByRole('heading', { name: 'Properties' })).toBeInTheDocument()
   expect(useUIStore.getState().sidebarCollapsed).toBe(true)
   view.unmount()
 })

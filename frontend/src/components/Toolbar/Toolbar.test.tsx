@@ -226,7 +226,7 @@ describe('Toolbar', () => {
     Object.defineProperty(window, 'innerWidth', {
       writable: true,
       configurable: true,
-      value: 1024,
+      value: 1440,
     })
 
     // Mock localStorage
@@ -1111,7 +1111,7 @@ describe('Toolbar', () => {
       } as never)
       const view = render(<Toolbar />)
       expect(view.container.querySelector('.bg-blue-500')).toBeInTheDocument()
-      expect(screen.getByText('Properties')).toHaveClass('bg-blue-600')
+      expect(screen.getByText('Properties').closest('button')).toHaveClass('bg-blue-600')
     })
 
     it('runs on mobile and keeps unavailable exports inert', async () => {

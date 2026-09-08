@@ -76,30 +76,47 @@ let isPropertiesFocused = false
 // eslint-disable-next-line react-refresh/only-export-components -- Utility function needed by Editor component
 export const getIsPropertiesFocused = () => isPropertiesFocused
 
-export function PropertiesPanel() {
+interface PropertiesPanelProps {
+  overlay?: boolean
+  onClose?: () => void
+}
+
+export function PropertiesPanel({ overlay = false, onClose }: PropertiesPanelProps) {
   const { model, selectedBlockIds, updateBlockParameters, renameBlock, getCurrentBlocks } = useModelStore()
 
   // Get blocks at current path level (handles subsystem navigation)
   const currentBlocks = getCurrentBlocks()
 
+  const panelClass = 'w-72 bg-editor-surface border-l border-editor-border'
+
   if (!model || selectedBlockIds.length === 0) {
-    return (
-      <div className="w-72 bg-editor-surface border-l border-editor-border p-4">
+    const inner = (
+      <div className={`${overlay ? '' : panelClass} p-4`}>
         <h2 className="font-semibold text-sm mb-4">Properties</h2>
         <p className="text-gray-400 text-sm">Select a block to view its properties</p>
       </div>
     )
+    return overlay ? (
+      <div className="fixed inset-0 z-50 flex justify-end" onClick={onClose}>
+        <div className={panelClass + ' h-full shadow-2xl animate-slide-in-right'} onClick={(e) => e.stopPropagation()}>{inner}</div>
+      </div>
+    ) : inner
   }
 
   if (selectedBlockIds.length > 1) {
-    return (
-      <div className="w-72 bg-editor-surface border-l border-editor-border p-4">
+    const inner = (
+      <div className={`${overlay ? '' : panelClass} p-4`}>
         <h2 className="font-semibold text-sm mb-4">Properties</h2>
         <p className="text-gray-400 text-sm">
           {selectedBlockIds.length} blocks selected
         </p>
       </div>
     )
+    return overlay ? (
+      <div className="fixed inset-0 z-50 flex justify-end" onClick={onClose}>
+        <div className={panelClass + ' h-full shadow-2xl animate-slide-in-right'} onClick={(e) => e.stopPropagation()}>{inner}</div>
+      </div>
+    ) : inner
   }
 
   // Find block in current view (works inside subsystems too)
@@ -128,11 +145,21 @@ export function PropertiesPanel() {
     updateBlockParameters(block.id, { [paramName]: value })
   }
 
-  return (
-    <div className="w-72 bg-editor-surface border-l border-editor-border flex flex-col">
-      {/* Header */}
-      <div className="p-4 border-b border-editor-border">
+  const inner = (
+    <div className={`${overlay ? '' : panelClass} flex flex-col ${overlay ? 'h-full' : ''}`}>
+      <div className="p-4 border-b border-editor-border flex items-center justify-between">
         <h2 className="font-semibold text-sm mb-2">Properties</h2>
+        {overlay && (
+          <button
+            onClick={onClose}
+            className="p-1 hover:bg-editor-border rounded transition-colors text-gray-400 hover:text-white"
+            title="Close"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        )}
         <input
           type="text"
           value={block.name}
@@ -148,7 +175,6 @@ export function PropertiesPanel() {
         <p className="text-xs text-gray-400 mt-1">{definition.description}</p>
       </div>
 
-      {/* Parameters */}
       <div className="flex-1 overflow-y-auto p-4">
         <h3 className="text-xs font-semibold text-gray-400 uppercase mb-3">
           Parameters
@@ -173,7 +199,6 @@ export function PropertiesPanel() {
         )}
       </div>
 
-      {/* Ports Info */}
       <div className="p-4 border-t border-editor-border">
         <h3 className="text-xs font-semibold text-gray-400 uppercase mb-2">
           Ports
@@ -191,6 +216,12 @@ export function PropertiesPanel() {
       </div>
     </div>
   )
+
+  return overlay ? (
+    <div className="fixed inset-0 z-50 flex justify-end" onClick={onClose}>
+      <div className={panelClass + ' h-full shadow-2xl animate-slide-in-right'} onClick={(e) => e.stopPropagation()}>{inner}</div>
+    </div>
+  ) : inner
 }
 
 // Prevent keyboard events from propagating to ReactFlow (which would deselect nodes)

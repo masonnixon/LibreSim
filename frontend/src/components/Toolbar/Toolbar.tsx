@@ -49,8 +49,14 @@ export function Toolbar({ embed = false, restoreLastModel = true }: ToolbarProps
   const libraryInputRef = useRef<HTMLInputElement>(null)
   const [showExportMenu, setShowExportMenu] = useState(false)
   const [showImportMenu, setShowImportMenu] = useState(false)
-  const [showMobileMenu, setShowMobileMenu] = useState(false)
-  const [isMobile, setIsMobile] = useState(false)
+  const [showOverflowMenu, setShowOverflowMenu] = useState(false)
+  // 'full' (>1024): everything visible
+  // 'medium' (768-1024): file ops in menu, sim controls + view toggles visible
+  // 'narrow' (<768): only core sim buttons visible, everything else in menu
+  const [tier, setTier] = useState<'full' | 'medium' | 'narrow'>(() => {
+    const w = window.innerWidth
+    return w >= 1024 ? 'full' : w >= 768 ? 'medium' : 'narrow'
+  })
   const {
     simState,
     clearResults,
@@ -68,15 +74,18 @@ export function Toolbar({ embed = false, restoreLastModel = true }: ToolbarProps
     handleStepBackward,
   } = useSimulationControls({
     model,
-    onInteractionEnd: function () { setShowMobileMenu(false) },
+    onInteractionEnd: function () { setShowOverflowMenu(false) },
   })
 
-  // Check for mobile screen size
+  // Responsive breakpoint tracking
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768)
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-    return () => window.removeEventListener('resize', checkMobile)
+    const updateTier = () => {
+      const w = window.innerWidth
+      setTier(w >= 1440 ? 'full' : w >= 768 ? 'medium' : 'narrow')
+    }
+    updateTier()
+    window.addEventListener('resize', updateTier)
+    return () => window.removeEventListener('resize', updateTier)
   }, [])
 
   // Load last model from localStorage on startup
@@ -115,7 +124,7 @@ export function Toolbar({ embed = false, restoreLastModel = true }: ToolbarProps
     const handleClickOutside = () => {
       setShowExportMenu(false)
       setShowImportMenu(false)
-      setShowMobileMenu(false)
+      setShowOverflowMenu(false)
     }
     document.addEventListener('click', handleClickOutside)
     return () => document.removeEventListener('click', handleClickOutside)
@@ -130,12 +139,12 @@ export function Toolbar({ embed = false, restoreLastModel = true }: ToolbarProps
       createNewModel(name)
       toast.success('New Model', `Created new model "${name}"`)
     }
-    setShowMobileMenu(false)
+    setShowOverflowMenu(false)
   }
 
   const handleOpen = () => {
     fileInputRef.current?.click()
-    setShowMobileMenu(false)
+    setShowOverflowMenu(false)
   }
 
   const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -187,13 +196,13 @@ export function Toolbar({ embed = false, restoreLastModel = true }: ToolbarProps
   const handleImportModel = () => {
     importInputRef.current?.click()
     setShowImportMenu(false)
-    setShowMobileMenu(false)
+    setShowOverflowMenu(false)
   }
 
   const handleImportLibrary = () => {
     libraryInputRef.current?.click()
     setShowImportMenu(false)
-    setShowMobileMenu(false)
+    setShowOverflowMenu(false)
   }
 
   const handleImportChange = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -337,7 +346,7 @@ export function Toolbar({ embed = false, restoreLastModel = true }: ToolbarProps
 
     toast.success('JSON Exported', `Saved as "${model.metadata.name || 'model'}.json" to your Downloads folder`)
     setShowExportMenu(false)
-    setShowMobileMenu(false)
+    setShowOverflowMenu(false)
   }
 
   const handleExportMDL = () => {
@@ -351,7 +360,7 @@ export function Toolbar({ embed = false, restoreLastModel = true }: ToolbarProps
       toast.warning('Export Failed', `${error instanceof Error ? error.message : 'Unknown error'}`)
     }
     setShowExportMenu(false)
-    setShowMobileMenu(false)
+    setShowOverflowMenu(false)
   }
 
   const handleSave = async () => {
@@ -371,12 +380,12 @@ export function Toolbar({ embed = false, restoreLastModel = true }: ToolbarProps
         )
       }
     }
-    setShowMobileMenu(false)
+    setShowOverflowMenu(false)
   }
 
   const handleLoadExample = async (exampleId: string) => {
     closeExamplesModal()
-    setShowMobileMenu(false)
+    setShowOverflowMenu(false)
 
     // Show loading toast
     toast.info('Loading Example', 'Fetching example model...')
@@ -449,46 +458,95 @@ export function Toolbar({ embed = false, restoreLastModel = true }: ToolbarProps
   }
 
 
-  // Mobile hamburger menu
-  const MobileMenu = () => (
-    <div className="dropdown-menu right-0 left-auto" onClick={(e) => e.stopPropagation()}>
-      <div className="dropdown-item" onClick={handleNew}>New Model</div>
-      <div className="dropdown-item" onClick={handleOpen}>Open</div>
-      <div className="dropdown-item" onClick={handleSave}>Save</div>
-      <div className="dropdown-item" onClick={handleExportJSON}>Export JSON</div>
-      <div className="dropdown-item" onClick={handleExportMDL}>Export MDL (Simulink)</div>
-      <div className="dropdown-item" onClick={handleImportModel}>Import Model</div>
-      <div className="dropdown-item text-cyan-400" onClick={handleImportLibrary}>Import Library</div>
-      <div className="border-t border-editor-border my-1" />
-      <div className="dropdown-item" onClick={() => { openExamplesModal(); setShowMobileMenu(false) }}>
-        Browse Examples
-      </div>
-      <div className="dropdown-item text-purple-400" onClick={() => { openCodeGenModal(); setShowMobileMenu(false) }}>
-        Generate Code
-      </div>
-      <div className="border-t border-editor-border my-1" />
-      <div className="dropdown-item" onClick={() => { toggleSidebar(); setShowMobileMenu(false) }}>
-        {sidebarCollapsed ? 'Show Blocks' : 'Hide Blocks'}
-      </div>
-      <div className="dropdown-item" onClick={() => { toggleProperties(); setShowMobileMenu(false) }}>
-        {showProperties ? 'Hide Properties' : 'Show Properties'}
-      </div>
-      <div className="dropdown-item" onClick={() => { handleTogglePlotWindows(); setShowMobileMenu(false) }}>
-        {hasOpenPlotWindows ? 'Hide Scopes' : 'Show Scopes'}
-      </div>
-      <div className="dropdown-item" onClick={() => { openSettingsModal(); setShowMobileMenu(false) }}>
-        Settings
-      </div>
-      <div className="dropdown-item" onClick={() => { openHelpModal('shortcuts'); setShowMobileMenu(false) }}>
-        Help & Shortcuts
-      </div>
+  // Overflow menu — contains items that don't fit at the current tier.
+  // At 'full': not shown (everything fits).
+  // At 'medium': file ops, examples, generate, undo/redo.
+  // At 'narrow': all of the above plus sim controls, view toggles, settings, help.
+  const OverflowMenu = () => (
+    <div className="dropdown-menu right-0 left-auto max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      {/* File ops — hidden from toolbar at medium and narrow */}
+      {tier !== 'full' && (
+        <>
+          <div className="dropdown-item" onClick={handleNew}>New Model</div>
+          <div className="dropdown-item" onClick={handleOpen}>Open</div>
+          <div className="dropdown-item" onClick={handleSave}>Save</div>
+          <div className="dropdown-item" onClick={handleExportJSON}>Export JSON</div>
+          <div className="dropdown-item" onClick={handleExportMDL}>Export MDL (Simulink)</div>
+          <div className="dropdown-item" onClick={handleImportModel}>Import Model</div>
+          <div className="dropdown-item text-cyan-400" onClick={handleImportLibrary}>Import Library</div>
+          <div className="border-t border-editor-border my-1" />
+          <div className="dropdown-item" onClick={() => { openExamplesModal(); setShowOverflowMenu(false) }}>
+            Browse Examples
+          </div>
+          <div className="dropdown-item text-purple-400" onClick={() => { openCodeGenModal(); setShowOverflowMenu(false) }}>
+            Generate Code
+          </div>
+          <div className="border-t border-editor-border my-1" />
+          <div className="dropdown-item" onClick={() => { undo(); setShowOverflowMenu(false) }}>
+            Undo
+          </div>
+          <div className="dropdown-item" onClick={() => { redo(); setShowOverflowMenu(false) }}>
+            Redo
+          </div>
+        </>
+      )}
+
+      {/* Sim controls — hidden from toolbar at narrow */}
+      {tier === 'narrow' && (
+        <>
+          <div className="border-t border-editor-border my-1" />
+          {isPaused && (
+            <div className="dropdown-item" onClick={() => { handleResume(); setShowOverflowMenu(false) }}>
+              Resume
+            </div>
+          )}
+          {isRunning && (
+            <div className="dropdown-item" onClick={() => { handlePause(); setShowOverflowMenu(false) }}>
+              Pause
+            </div>
+          )}
+          <div className="dropdown-item" onClick={() => { handleStepForward(); setShowOverflowMenu(false) }}>
+            {stepModeActive ? 'Step Forward' : 'Enter Step Mode'}
+          </div>
+          {stepModeActive && (
+            <div className="dropdown-item" onClick={() => { handleStepBackward(); setShowOverflowMenu(false) }}>
+              Step Backward
+            </div>
+          )}
+          <div className="dropdown-item" onClick={() => { handleReset(); setShowOverflowMenu(false) }}>
+            Reset
+          </div>
+        </>
+      )}
+
+      {/* View/panel toggles — only in overflow at narrow */}
+      {tier === 'narrow' && (
+        <>
+          <div className="border-t border-editor-border my-1" />
+          <div className="dropdown-item" onClick={() => { toggleSidebar(); setShowOverflowMenu(false) }}>
+            {sidebarCollapsed ? 'Show Blocks' : 'Hide Blocks'}
+          </div>
+          <div className="dropdown-item" onClick={() => { toggleProperties(); setShowOverflowMenu(false) }}>
+            {showProperties ? 'Hide Properties' : 'Show Properties'}
+          </div>
+          <div className="dropdown-item" onClick={() => { handleTogglePlotWindows(); setShowOverflowMenu(false) }}>
+            {hasOpenPlotWindows ? 'Hide Scopes' : 'Show Scopes'}
+          </div>
+          <div className="dropdown-item" onClick={() => { openSettingsModal(); setShowOverflowMenu(false) }}>
+            Settings
+          </div>
+          <div className="dropdown-item" onClick={() => { openHelpModal('shortcuts'); setShowOverflowMenu(false) }}>
+            Help & Shortcuts
+          </div>
+        </>
+      )}
     </div>
   )
 
   return (
     <div className="h-12 bg-editor-surface border-b border-editor-border flex items-center px-2 md:px-4 gap-1 md:gap-2">
       {/* Logo/Title and Model Name */}
-      <div className="flex items-center gap-2 pr-2 md:pr-4 border-r border-editor-border">
+      <div className="flex items-center gap-2 pr-2 md:pr-4 border-r border-editor-border shrink-0">
         <span className="font-bold text-lg text-blue-400">LibreSim</span>
         <span className="text-gray-500 hidden sm:inline">|</span>
         <span
@@ -501,395 +559,188 @@ export function Toolbar({ embed = false, restoreLastModel = true }: ToolbarProps
       </div>
 
       {/* Hidden file inputs */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".json"
-        onChange={handleFileChange}
-        className="hidden"
-      />
-      <input
-        ref={importInputRef}
-        type="file"
-        accept=".json,.mdl"
-        onChange={handleImportChange}
-        className="hidden"
-      />
-      <input
-        ref={libraryInputRef}
-        type="file"
-        accept=".mdl"
-        onChange={handleLibraryImportChange}
-        className="hidden"
-      />
+      <input ref={fileInputRef} type="file" accept=".json" onChange={handleFileChange} className="hidden" />
+      <input ref={importInputRef} type="file" accept=".json,.mdl" onChange={handleImportChange} className="hidden" />
+      <input ref={libraryInputRef} type="file" accept=".mdl" onChange={handleLibraryImportChange} className="hidden" />
 
-      {/* Desktop Menu */}
-      {!isMobile && (
-        <>
-          {/* File Operations */}
-          <div className="flex items-center gap-1 pr-2 border-r border-editor-border">
-            <button
-              onClick={handleNew}
-              className="px-3 py-1.5 text-sm hover:bg-editor-border rounded transition-colors"
-              title="New Model"
-            >
-              New
+      {/* === File Operations — full tier only === */}
+      {tier === 'full' && (
+        <div className="flex items-center gap-1 pr-2 border-r border-editor-border shrink-0">
+          <button onClick={handleNew} className="px-3 py-1.5 text-sm hover:bg-editor-border rounded transition-colors" title="New Model">New</button>
+          <button onClick={handleOpen} className="px-3 py-1.5 text-sm hover:bg-editor-border rounded transition-colors" title="Open Model (JSON)">Open</button>
+          <button onClick={handleSave} disabled={!model || !isDirty} className="px-3 py-1.5 text-sm hover:bg-editor-border rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Save Model">Save{isDirty ? '*' : ''}</button>
+          <button onClick={openSaveAsModal} disabled={!model} className="px-3 py-1.5 text-sm hover:bg-editor-border rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Save As (choose filename and format)">Save As</button>
+          <div className="w-px h-5 bg-editor-border mx-1" />
+          <button onClick={undo} disabled={!canUndo()} className="p-1.5 hover:bg-editor-border rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Undo (Ctrl+Z)">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
+          </button>
+          <button onClick={redo} disabled={!canRedo()} className="p-1.5 hover:bg-editor-border rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Redo (Ctrl+Y)">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6" /></svg>
+          </button>
+          <div className="relative">
+            <button onClick={(e) => { e.stopPropagation(); setShowExportMenu(!showExportMenu) }} disabled={!model} className="px-3 py-1.5 text-sm hover:bg-editor-border rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1" title="Export Model">
+              Export
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
             </button>
-            <button
-              onClick={handleOpen}
-              className="px-3 py-1.5 text-sm hover:bg-editor-border rounded transition-colors"
-              title="Open Model (JSON)"
-            >
-              Open
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={!model || !isDirty}
-              className="px-3 py-1.5 text-sm hover:bg-editor-border rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Save Model"
-            >
-              Save{isDirty ? '*' : ''}
-            </button>
-            <button
-              onClick={openSaveAsModal}
-              disabled={!model}
-              className="px-3 py-1.5 text-sm hover:bg-editor-border rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Save As (choose filename and format)"
-            >
-              Save As
-            </button>
-            <div className="w-px h-5 bg-editor-border mx-1" />
-            <button
-              onClick={undo}
-              disabled={!canUndo()}
-              className="p-1.5 hover:bg-editor-border rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Undo (Ctrl+Z)"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-              </svg>
-            </button>
-            <button
-              onClick={redo}
-              disabled={!canRedo()}
-              className="p-1.5 hover:bg-editor-border rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Redo (Ctrl+Y)"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6" />
-              </svg>
-            </button>
-            <div className="relative">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setShowExportMenu(!showExportMenu)
-                }}
-                disabled={!model}
-                className="px-3 py-1.5 text-sm hover:bg-editor-border rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
-                title="Export Model"
-              >
-                Export
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              {showExportMenu && (
-                <div className="dropdown-menu" onClick={(e) => e.stopPropagation()}>
-                  <div
-                    className="dropdown-item"
-                    onClick={handleExportJSON}
-                  >
-                    <div className="text-sm">Export as JSON</div>
-                    <div className="text-xs text-gray-500">LibreSim native format</div>
-                  </div>
-                  <div
-                    className="dropdown-item"
-                    onClick={handleExportMDL}
-                  >
-                    <div className="text-sm">Export as MDL</div>
-                    <div className="text-xs text-gray-500">Simulink compatible</div>
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="relative">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setShowImportMenu(!showImportMenu)
-                }}
-                className="px-3 py-1.5 text-sm hover:bg-editor-border rounded transition-colors flex items-center gap-1"
-                title="Import Model or Library"
-              >
-                Import
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              {showImportMenu && (
-                <div className="dropdown-menu" onClick={(e) => e.stopPropagation()}>
-                  <div
-                    className="dropdown-item"
-                    onClick={handleImportModel}
-                  >
-                    <div className="text-sm">Import Model</div>
-                    <div className="text-xs text-gray-500">JSON or Simulink MDL file</div>
-                  </div>
-                  <div
-                    className="dropdown-item"
-                    onClick={handleImportLibrary}
-                  >
-                    <div className="text-sm">Import Library</div>
-                    <div className="text-xs text-cyan-400">Reusable MDL subsystems</div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Examples Button */}
-          <div className="pr-2 border-r border-editor-border">
-            <button
-              onClick={openExamplesModal}
-              className="px-3 py-1.5 text-sm hover:bg-editor-border rounded transition-colors"
-              title="Load Example Models"
-            >
-              Examples
-            </button>
-          </div>
-
-          {/* Generate Code Button */}
-          <div className="pr-2 border-r border-editor-border">
-            <button
-              onClick={openCodeGenModal}
-              disabled={!model}
-              className="px-3 py-1.5 text-sm hover:bg-editor-border rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 text-purple-400 hover:text-purple-300"
-              title="Generate Simulation Code (Python, C, C++, Rust)"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-              </svg>
-              Generate
-            </button>
-          </div>
-
-          {/* Simulation Controls */}
-          <div className="flex items-center gap-1 pr-2 border-r border-editor-border">
-            {/* Run button - shows when not running and not in step mode, OR when paused/step mode */}
-            {(!isRunning && !isPaused && !stepModeActive) ? (
-              <button
-                onClick={handleRun}
-                disabled={!model}
-                className="px-3 py-1.5 text-sm bg-green-600 hover:bg-green-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
-                title="Run Simulation"
-              >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
-                </svg>
-                Run
-              </button>
-            ) : (isPaused || stepModeActive) ? (
-              /* Resume/Play button - shows when paused or in step mode */
-              <button
-                onClick={handleResume}
-                disabled={!model || isCompleted}
-                className="w-[72px] py-1.5 text-sm bg-green-600 hover:bg-green-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
-                title={stepModeActive ? "Continue Running from Current Position" : "Resume Simulation"}
-              >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
-                </svg>
-                {stepModeActive ? 'Play' : 'Resume'}
-              </button>
-            ) : null}
-            {/* Pause button - shows when running */}
-            {isRunning && (
-              <button
-                onClick={handlePause}
-                className="px-3 py-1.5 text-sm bg-yellow-600 hover:bg-yellow-700 rounded transition-colors flex items-center gap-1"
-                title="Pause Simulation"
-              >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M5.5 3A1.5 1.5 0 004 4.5v11A1.5 1.5 0 005.5 17h2A1.5 1.5 0 009 15.5v-11A1.5 1.5 0 007.5 3h-2zm7 0A1.5 1.5 0 0011 4.5v11a1.5 1.5 0 001.5 1.5h2a1.5 1.5 0 001.5-1.5v-11A1.5 1.5 0 0014.5 3h-2z" clipRule="evenodd" />
-                </svg>
-                Pause
-              </button>
+            {showExportMenu && (
+              <div className="dropdown-menu" onClick={(e) => e.stopPropagation()}>
+                <div className="dropdown-item" onClick={handleExportJSON}><div className="text-sm">Export as JSON</div><div className="text-xs text-gray-500">LibreSim native format</div></div>
+                <div className="dropdown-item" onClick={handleExportMDL}><div className="text-sm">Export as MDL</div><div className="text-xs text-gray-500">Simulink compatible</div></div>
+              </div>
             )}
-            <button
-              onClick={handleStop}
-              disabled={!isRunning && !stepModeActive && !isPaused}
-              className="px-3 py-1.5 text-sm bg-red-600 hover:bg-red-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
-              title="Stop Simulation"
-            >
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M5.75 3A1.75 1.75 0 004 4.75v10.5c0 .966.784 1.75 1.75 1.75h8.5A1.75 1.75 0 0016 15.25V4.75A1.75 1.75 0 0014.25 3h-8.5z" />
-              </svg>
-              Stop
-            </button>
-            {/* Step Controls */}
-            <div className="w-px h-5 bg-editor-border mx-1" />
-            <button
-              onClick={handleStepBackward}
-              disabled={!model || isRunning || !stepModeActive || stepHistorySize <= 1}
-              className="p-1.5 text-sm hover:bg-editor-border rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Step Backward"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-              </svg>
-            </button>
-            <button
-              onClick={handleStepForward}
-              disabled={!model || isRunning || isCompleted}
-              className={`p-1.5 text-sm rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                stepModeActive ? 'bg-blue-600 hover:bg-blue-700' : 'hover:bg-editor-border'
-              }`}
-              title={stepModeActive ? 'Step Forward' : 'Enter Step Mode'}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-              </svg>
-            </button>
-            <button
-              onClick={handleReset}
-              disabled={!model || isRunning || (simState.status === 'idle' && !stepModeActive && !isPaused && !isCompleted)}
-              className="p-1.5 text-sm hover:bg-editor-border rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Reset Simulation"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </button>
           </div>
-
-          {/* Simulation Status */}
-          {model && (
-            <div className="flex items-center gap-2 text-sm text-gray-400">
-              <span
-                className={`w-2 h-2 rounded-full ${
-                  simState.status === 'running'
-                    ? 'bg-green-500 animate-pulse'
-                    : simState.status === 'paused'
-                    ? 'bg-yellow-500'
-                    : simState.status === 'completed'
-                    ? 'bg-blue-500'
-                    : simState.status === 'error'
-                    ? 'bg-red-500'
-                    : 'bg-gray-500'
-                }`}
-              />
-              <span className="capitalize">{simState.status}{stepModeActive ? ' (Step)' : ''}</span>
-              {(isRunning || isPaused || stepModeActive) && (
-                <span>
-                  | t = {simState.currentTime.toFixed(3)}s ({Math.round(simState.progress * 100)}%)
-                </span>
-              )}
-              {simState.status === 'error' && simState.error && (
-                <span className="text-red-400 max-w-xs truncate" title={simState.error}>
-                  : {simState.error}
-                </span>
-              )}
-            </div>
-          )}
-
-          {/* Spacer */}
-          <div className="flex-1" />
-
-          {/* View Toggles */}
-          <div className="flex items-center gap-1">
-            <button
-              onClick={toggleProperties}
-              className={`px-3 py-1.5 text-sm rounded transition-colors ${
-                showProperties ? 'bg-blue-600' : 'hover:bg-editor-border'
-              }`}
-              title="Toggle Properties Panel"
-            >
-              Properties
+          <div className="relative">
+            <button onClick={(e) => { e.stopPropagation(); setShowImportMenu(!showImportMenu) }} className="px-3 py-1.5 text-sm hover:bg-editor-border rounded transition-colors flex items-center gap-1" title="Import Model or Library">
+              Import
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
             </button>
-            <button
-              onClick={handleTogglePlotWindows}
-              className={`px-3 py-1.5 text-sm rounded transition-colors ${
-                hasOpenPlotWindows ? 'bg-blue-600' : 'hover:bg-editor-border'
-              }`}
-              title={hasOpenPlotWindows ? 'Close All Plot Windows' : 'Open Plot Windows'}
-            >
-              Scopes {hasOpenPlotWindows ? `(${Object.keys(plotWindows).length})` : ''}
-            </button>
-            <button
-              onClick={openSettingsModal}
-              className="px-3 py-1.5 text-sm rounded transition-colors hover:bg-editor-border flex items-center gap-1"
-              title="Settings"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </button>
-            <button
-              onClick={() => openHelpModal('shortcuts')}
-              className="px-3 py-1.5 text-sm rounded transition-colors hover:bg-editor-border flex items-center gap-1"
-              title="Help & Keyboard Shortcuts"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+            {showImportMenu && (
+              <div className="dropdown-menu" onClick={(e) => e.stopPropagation()}>
+                <div className="dropdown-item" onClick={handleImportModel}><div className="text-sm">Import Model</div><div className="text-xs text-gray-500">JSON or Simulink MDL file</div></div>
+                <div className="dropdown-item" onClick={handleImportLibrary}><div className="text-sm">Import Library</div><div className="text-xs text-cyan-400">Reusable MDL subsystems</div></div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* === Examples & Generate — full tier only === */}
+      {tier === 'full' && (
+        <>
+          <div className="pr-2 border-r border-editor-border shrink-0">
+            <button onClick={openExamplesModal} className="px-3 py-1.5 text-sm hover:bg-editor-border rounded transition-colors" title="Load Example Models">Examples</button>
+          </div>
+          <div className="pr-2 border-r border-editor-border shrink-0">
+            <button onClick={openCodeGenModal} disabled={!model} className="px-3 py-1.5 text-sm hover:bg-editor-border rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 text-purple-400 hover:text-purple-300" title="Generate Simulation Code (Python, C, C++, Rust)">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
+              Generate
             </button>
           </div>
         </>
       )}
 
-      {/* Mobile Menu */}
-      {isMobile && (
-        <>
-          {/* Mobile Run/Stop Buttons */}
-          <div className="flex items-center gap-1 flex-1">
-            <button
-              onClick={handleRun}
-              disabled={!model || isRunning}
-              className="p-2 text-sm bg-green-600 hover:bg-green-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Run Simulation"
-            >
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
-              </svg>
+      {/* === Simulation Controls — full and medium tiers show inline === */}
+      {tier !== 'narrow' && (
+        <div className="flex items-center gap-1 pr-2 border-r border-editor-border shrink-0">
+          {(!isRunning && !isPaused && !stepModeActive) ? (
+            <button onClick={handleRun} disabled={!model} className="px-3 py-1.5 text-sm bg-green-600 hover:bg-green-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1" title="Run Simulation">
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" /></svg>
+              Run
             </button>
-            <button
-              onClick={handleStop}
-              disabled={!isRunning}
-              className="p-2 text-sm bg-red-600 hover:bg-red-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Stop Simulation"
-            >
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M5.75 3A1.75 1.75 0 004 4.75v10.5c0 .966.784 1.75 1.75 1.75h8.5A1.75 1.75 0 0016 15.25V4.75A1.75 1.75 0 0014.25 3h-8.5z" />
-              </svg>
+          ) : (isPaused || stepModeActive) ? (
+            <button onClick={handleResume} disabled={!model || isCompleted} className="w-[72px] py-1.5 text-sm bg-green-600 hover:bg-green-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1" title={stepModeActive ? "Continue Running from Current Position" : "Resume Simulation"}>
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" /></svg>
+              {stepModeActive ? 'Play' : 'Resume'}
             </button>
+          ) : null}
+          {isRunning && (
+            <button onClick={handlePause} className="px-3 py-1.5 text-sm bg-yellow-600 hover:bg-yellow-700 rounded transition-colors flex items-center gap-1" title="Pause Simulation">
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.5 3A1.5 1.5 0 004 4.5v11A1.5 1.5 0 005.5 17h2A1.5 1.5 0 009 15.5v-11A1.5 1.5 0 007.5 3h-2zm7 0A1.5 1.5 0 0011 4.5v11a1.5 1.5 0 001.5 1.5h2a1.5 1.5 0 001.5-1.5v-11A1.5 1.5 0 0014.5 3h-2z" clipRule="evenodd" /></svg>
+              Pause
+            </button>
+          )}
+          <button onClick={handleStop} disabled={!isRunning && !stepModeActive && !isPaused} className="px-3 py-1.5 text-sm bg-red-600 hover:bg-red-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1" title="Stop Simulation">
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M5.75 3A1.75 1.75 0 004 4.75v10.5c0 .966.784 1.75 1.75 1.75h8.5A1.75 1.75 0 0016 15.25V4.75A1.75 1.75 0 0014.25 3h-8.5z" /></svg>
+            Stop
+          </button>
+          <div className="w-px h-5 bg-editor-border mx-1" />
+          <button onClick={handleStepBackward} disabled={!model || isRunning || !stepModeActive || stepHistorySize <= 1} className="p-1.5 text-sm hover:bg-editor-border rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Step Backward">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" /></svg>
+          </button>
+          <button onClick={handleStepForward} disabled={!model || isRunning || isCompleted} className={`p-1.5 text-sm rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${stepModeActive ? 'bg-blue-600 hover:bg-blue-700' : 'hover:bg-editor-border'}`} title={stepModeActive ? 'Step Forward' : 'Enter Step Mode'}>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" /></svg>
+          </button>
+          <button onClick={handleReset} disabled={!model || isRunning || (simState.status === 'idle' && !stepModeActive && !isPaused && !isCompleted)} className="p-1.5 text-sm hover:bg-editor-border rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Reset Simulation">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+          </button>
+        </div>
+      )}
 
-            {/* Status indicator */}
-            {isRunning && (
-              <span className="text-xs text-gray-400 ml-2">
-                {Math.round(simState.progress * 100)}%
-              </span>
-            )}
-          </div>
-
-          {/* Hamburger Menu Button */}
-          <div className="relative">
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                setShowMobileMenu(!showMobileMenu)
-              }}
-              className="p-2 hover:bg-editor-border rounded transition-colors"
-              title="Menu"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
+      {/* === Narrow tier: compact sim buttons inline === */}
+      {tier === 'narrow' && (
+        <div className="flex items-center gap-1 shrink-0">
+          {(!isRunning && !isPaused && !stepModeActive) ? (
+            <button onClick={handleRun} disabled={!model} className="p-2 text-sm bg-green-600 hover:bg-green-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Run Simulation">
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" /></svg>
             </button>
-            {showMobileMenu && <MobileMenu />}
-          </div>
-        </>
+          ) : (isPaused || stepModeActive) ? (
+            <button onClick={handleResume} disabled={!model || isCompleted} className="p-2 text-sm bg-green-600 hover:bg-green-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title={stepModeActive ? 'Continue Running' : 'Resume'}>
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" /></svg>
+            </button>
+          ) : null}
+          {isRunning && (
+            <button onClick={handlePause} className="p-2 text-sm bg-yellow-600 hover:bg-yellow-700 rounded transition-colors" title="Pause">
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.5 3A1.5 1.5 0 004 4.5v11A1.5 1.5 0 005.5 17h2A1.5 1.5 0 009 15.5v-11A1.5 1.5 0 007.5 3h-2zm7 0A1.5 1.5 0 0011 4.5v11a1.5 1.5 0 001.5 1.5h2a1.5 1.5 0 001.5-1.5v-11A1.5 1.5 0 0014.5 3h-2z" clipRule="evenodd" /></svg>
+            </button>
+          )}
+          <button onClick={handleStop} disabled={!isRunning && !stepModeActive && !isPaused} className="p-2 text-sm bg-red-600 hover:bg-red-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Stop Simulation">
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M5.75 3A1.75 1.75 0 004 4.75v10.5c0 .966.784 1.75 1.75 1.75h8.5A1.75 1.75 0 0016 15.25V4.75A1.75 1.75 0 0014.25 3h-8.5z" /></svg>
+          </button>
+        </div>
+      )}
+
+      {/* === Simulation Status === */}
+      {model && (
+        <div className="flex items-center gap-2 text-sm text-gray-400 min-w-0 shrink">
+          <span className={`w-2 h-2 rounded-full shrink-0 ${
+            simState.status === 'running' ? 'bg-green-500 animate-pulse'
+            : simState.status === 'paused' ? 'bg-yellow-500'
+            : simState.status === 'completed' ? 'bg-blue-500'
+            : simState.status === 'error' ? 'bg-red-500'
+            : 'bg-gray-500'
+          }`} />
+          <span className="capitalize truncate">{simState.status}{stepModeActive ? ' (Step)' : ''}</span>
+          {tier !== 'narrow' && (isRunning || isPaused || stepModeActive) && (
+            <span className="truncate">
+              | t = {simState.currentTime.toFixed(3)}s ({Math.round(simState.progress * 100)}%)
+            </span>
+          )}
+          {tier === 'narrow' && (isRunning || isPaused || stepModeActive) && (
+            <span className="text-xs">{Math.round(simState.progress * 100)}%</span>
+          )}
+          {simState.status === 'error' && simState.error && (
+            <span className="text-red-400 max-w-xs truncate" title={simState.error}>: {simState.error}</span>
+          )}
+        </div>
+      )}
+
+      {/* Spacer */}
+      <div className="flex-1" />
+
+      {/* === View Toggles — full and medium tiers (narrow uses overflow menu) === */}
+      {tier !== 'narrow' && (
+        <div className="flex items-center gap-1 shrink-0">
+          <button onClick={toggleProperties} className={`p-1.5 text-sm rounded transition-colors flex items-center gap-1 ${showProperties ? 'bg-blue-600' : 'hover:bg-editor-border'}`} title="Toggle Properties Panel">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+            {tier === 'full' && <span>Properties</span>}
+          </button>
+          <button onClick={handleTogglePlotWindows} className={`p-1.5 text-sm rounded transition-colors flex items-center gap-1 ${hasOpenPlotWindows ? 'bg-blue-600' : 'hover:bg-editor-border'}`} title={hasOpenPlotWindows ? 'Close All Plot Windows' : 'Open Plot Windows'}>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+            {tier === 'full' ? <>Scopes {hasOpenPlotWindows ? `(${Object.keys(plotWindows).length})` : ''}</> : hasOpenPlotWindows ? <span className="text-xs">{Object.keys(plotWindows).length}</span> : null}
+          </button>
+          <button onClick={openSettingsModal} className="p-1.5 text-sm rounded transition-colors hover:bg-editor-border" title="Settings">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+          </button>
+          <button onClick={() => openHelpModal('shortcuts')} className="p-1.5 text-sm rounded transition-colors hover:bg-editor-border" title="Help & Keyboard Shortcuts">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          </button>
+        </div>
+      )}
+
+      {/* === Overflow menu button — medium and narrow tiers === */}
+      {tier !== 'full' && (
+        <div className="relative shrink-0">
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowOverflowMenu(!showOverflowMenu) }}
+            className="p-2 hover:bg-editor-border rounded transition-colors"
+            title="Menu"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          {showOverflowMenu && <OverflowMenu />}
+        </div>
       )}
 
       {/* Examples Modal */}

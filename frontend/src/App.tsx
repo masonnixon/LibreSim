@@ -65,8 +65,11 @@ function App({ startup = { embed: false } }: AppProps) {
             <Editor />
           </div>
 
-          {/* Right Panel - Properties (collapsible) - hidden on mobile by default */}
+          {/* Right Panel - Properties (collapsible) — overlay on narrow screens */}
           {!startup.embed && showProperties && !isMobile && <PropertiesPanel />}
+          {!startup.embed && showProperties && isMobile && (
+            <PropertiesPanel overlay onClose={() => useUIStore.setState({ showProperties: false })} />
+          )}
         </div>
 
         {/* Floating Plot Windows - one per scope block */}
