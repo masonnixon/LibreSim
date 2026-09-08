@@ -335,6 +335,7 @@ class LinearSolve(Block):
 
         # Publish the fresh solution (never a previous step's value).
         flat = [float(element) for element in x.reshape(-1)]
+        shape: tuple[int, ...]
         if b_matrix.shape[1] == 1:
             shape = (int(n_cols),)
         else:

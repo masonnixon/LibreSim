@@ -64,7 +64,7 @@ class _MatrixBlock(Block):
     def __init__(self):
         super().__init__()
         self.output = []
-        self._output_shape = ()
+        self._output_shape: tuple[int, ...] = ()
         self._is_vector = False
 
     def init(self):
@@ -442,7 +442,7 @@ class Concatenate(_MatrixBlock):
             self._store_result(combined)
             return
 
-        flat = []
+        flat: list[float] = []
         for array in arrays:
             flat.extend(float(element) for element in array.reshape(-1))
         self.output = flat
