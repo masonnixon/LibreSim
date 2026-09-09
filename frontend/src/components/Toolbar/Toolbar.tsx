@@ -519,24 +519,13 @@ export function Toolbar({ embed = false, restoreLastModel = true }: ToolbarProps
         </>
       )}
 
-      {/* View/panel toggles — only in overflow at narrow */}
+      {/* Sidebar toggle — only in overflow at narrow (Properties/Scopes/Settings/Help
+          are icon buttons in the toolbar itself at every tier, see below) */}
       {tier === 'narrow' && (
         <>
           <div className="border-t border-editor-border my-1" />
           <div className="dropdown-item" onClick={() => { toggleSidebar(); setShowOverflowMenu(false) }}>
             {sidebarCollapsed ? 'Show Blocks' : 'Hide Blocks'}
-          </div>
-          <div className="dropdown-item" onClick={() => { toggleProperties(); setShowOverflowMenu(false) }}>
-            {showProperties ? 'Hide Properties' : 'Show Properties'}
-          </div>
-          <div className="dropdown-item" onClick={() => { handleTogglePlotWindows(); setShowOverflowMenu(false) }}>
-            {hasOpenPlotWindows ? 'Hide Scopes' : 'Show Scopes'}
-          </div>
-          <div className="dropdown-item" onClick={() => { openSettingsModal(); setShowOverflowMenu(false) }}>
-            Settings
-          </div>
-          <div className="dropdown-item" onClick={() => { openHelpModal('shortcuts'); setShowOverflowMenu(false) }}>
-            Help & Shortcuts
           </div>
         </>
       )}
@@ -544,18 +533,23 @@ export function Toolbar({ embed = false, restoreLastModel = true }: ToolbarProps
   )
 
   return (
-    <div className="h-12 bg-editor-surface border-b border-editor-border flex items-center px-2 md:px-4 gap-1 md:gap-2">
-      {/* Logo/Title and Model Name */}
-      <div className="flex items-center gap-2 pr-2 md:pr-4 border-r border-editor-border shrink-0">
-        <span className="font-bold text-lg text-blue-400">LibreSim</span>
-        <span className="text-gray-500 hidden sm:inline">|</span>
-        <span
-          className="text-gray-300 text-sm hidden sm:inline truncate max-w-[200px]"
-          title={model?.metadata?.sourceFile || model?.metadata?.name || 'Untitled'}
-        >
-          {model?.metadata?.name || 'Untitled'}
-          {isDirty && <span className="text-yellow-400 ml-1">*</span>}
-        </span>
+    <div className="h-12 bg-editor-surface border-b border-editor-border flex items-center px-2 md:px-4 gap-1 md:gap-2 overflow-x-auto">
+      {/* Logo/Title and Model Name — trimmed at narrow to make room for the
+          always-visible Properties/Scopes/Settings/Help icons */}
+      <div className={`flex items-center gap-2 border-r border-editor-border shrink-0 ${tier === 'narrow' ? 'pr-1' : 'pr-2 md:pr-4'}`}>
+        <span className={`font-bold text-blue-400 ${tier === 'narrow' ? 'text-sm' : 'text-lg'}`}>LibreSim</span>
+        {tier !== 'narrow' && (
+          <>
+            <span className="text-gray-500 hidden sm:inline">|</span>
+            <span
+              className="text-gray-300 text-sm hidden sm:inline truncate max-w-[200px]"
+              title={model?.metadata?.sourceFile || model?.metadata?.name || 'Untitled'}
+            >
+              {model?.metadata?.name || 'Untitled'}
+              {isDirty && <span className="text-yellow-400 ml-1">*</span>}
+            </span>
+          </>
+        )}
       </div>
 
       {/* Hidden file inputs */}
@@ -707,25 +701,23 @@ export function Toolbar({ embed = false, restoreLastModel = true }: ToolbarProps
       {/* Spacer */}
       <div className="flex-1" />
 
-      {/* === View Toggles — full and medium tiers (narrow uses overflow menu) === */}
-      {tier !== 'narrow' && (
-        <div className="flex items-center gap-1 shrink-0">
-          <button onClick={toggleProperties} className={`p-1.5 text-sm rounded transition-colors flex items-center gap-1 ${showProperties ? 'bg-blue-600' : 'hover:bg-editor-border'}`} title="Toggle Properties Panel">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
-            {tier === 'full' && <span>Properties</span>}
-          </button>
-          <button onClick={handleTogglePlotWindows} className={`p-1.5 text-sm rounded transition-colors flex items-center gap-1 ${hasOpenPlotWindows ? 'bg-blue-600' : 'hover:bg-editor-border'}`} title={hasOpenPlotWindows ? 'Close All Plot Windows' : 'Open Plot Windows'}>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-            {tier === 'full' ? <>Scopes {hasOpenPlotWindows ? `(${Object.keys(plotWindows).length})` : ''}</> : hasOpenPlotWindows ? <span className="text-xs">{Object.keys(plotWindows).length}</span> : null}
-          </button>
-          <button onClick={openSettingsModal} className="p-1.5 text-sm rounded transition-colors hover:bg-editor-border" title="Settings">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-          </button>
-          <button onClick={() => openHelpModal('shortcuts')} className="p-1.5 text-sm rounded transition-colors hover:bg-editor-border" title="Help & Keyboard Shortcuts">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-          </button>
-        </div>
-      )}
+      {/* === View Toggles — icon buttons at every tier; labeled at full === */}
+      <div className="flex items-center gap-0.5 md:gap-1 shrink-0">
+        <button onClick={toggleProperties} className={`p-1.5 text-sm rounded transition-colors flex items-center gap-1 ${showProperties ? 'bg-blue-600' : 'hover:bg-editor-border'}`} title="Toggle Properties Panel">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+          {tier === 'full' && <span>Properties</span>}
+        </button>
+        <button onClick={handleTogglePlotWindows} className={`p-1.5 text-sm rounded transition-colors flex items-center gap-1 ${hasOpenPlotWindows ? 'bg-blue-600' : 'hover:bg-editor-border'}`} title={hasOpenPlotWindows ? 'Close All Plot Windows' : 'Open Plot Windows'}>
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+          {tier === 'full' ? <>Scopes {hasOpenPlotWindows ? `(${Object.keys(plotWindows).length})` : ''}</> : hasOpenPlotWindows ? <span className="text-xs">{Object.keys(plotWindows).length}</span> : null}
+        </button>
+        <button onClick={openSettingsModal} className="p-1.5 text-sm rounded transition-colors hover:bg-editor-border" title="Settings">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+        </button>
+        <button onClick={() => openHelpModal('shortcuts')} className="p-1.5 text-sm rounded transition-colors hover:bg-editor-border" title="Help & Keyboard Shortcuts">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+        </button>
+      </div>
 
       {/* === Overflow menu button — medium and narrow tiers === */}
       {tier !== 'full' && (

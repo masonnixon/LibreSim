@@ -946,10 +946,12 @@ describe('Toolbar', () => {
       choose('Browse Examples')
       choose('Generate Code')
       choose('Hide Blocks')
-      choose('Show Properties')
-      choose('Show Scopes')
-      choose('Settings')
-      choose('Help & Shortcuts')
+      // Properties/Scopes/Settings/Help are icon buttons in the toolbar
+      // itself at every tier, not overflow-menu items, at narrow width too.
+      fireEvent.click(screen.getByTitle('Toggle Properties Panel'))
+      fireEvent.click(screen.getByTitle('Open Plot Windows'))
+      fireEvent.click(screen.getByTitle('Settings'))
+      fireEvent.click(screen.getByTitle('Help & Keyboard Shortcuts'))
       expect(mockUIStore.openExamplesModal).toHaveBeenCalled()
       expect(mockUIStore.openCodeGenModal).toHaveBeenCalled()
       expect(mockUIStore.toggleSidebar).toHaveBeenCalled()
@@ -1349,8 +1351,9 @@ describe('Toolbar', () => {
       render(<Toolbar />)
       fireEvent.click(screen.getByTitle('Menu'))
       expect(screen.getByText('Show Blocks')).toBeInTheDocument()
-      expect(screen.getByText('Hide Properties')).toBeInTheDocument()
-      expect(screen.getByText('Hide Scopes')).toBeInTheDocument()
+      // Properties/Scopes are active icon buttons in the toolbar, not overflow-menu items.
+      expect(screen.getByTitle('Toggle Properties Panel')).toHaveClass('bg-blue-600')
+      expect(screen.getByTitle('Close All Plot Windows')).toHaveClass('bg-blue-600')
     })
   })
 })
