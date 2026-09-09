@@ -117,6 +117,48 @@ describe('useUIStore', () => {
       expect(state.plotWindows['block-2'].position).toEqual({ x: 50, y: 130 })
     })
 
+    it('shrinks and repositions a new window to fit a narrow mobile viewport', () => {
+      const originalWidth = window.innerWidth
+      const originalHeight = window.innerHeight
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 })
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: 700 })
+
+      try {
+        const { openPlotWindow } = useUIStore.getState()
+        openPlotWindow('block-1')
+
+        const { position, size } = useUIStore.getState().plotWindows['block-1']
+        expect(position.x + size.width).toBeLessThanOrEqual(390)
+        expect(position.y + size.height).toBeLessThanOrEqual(700)
+        expect(position.x).toBeGreaterThanOrEqual(0)
+        expect(position.y).toBeGreaterThanOrEqual(0)
+      } finally {
+        Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth })
+        Object.defineProperty(window, 'innerHeight', { configurable: true, value: originalHeight })
+      }
+    })
+
+    it('clamps an explicit position/size that would overflow a small viewport', () => {
+      const originalWidth = window.innerWidth
+      const originalHeight = window.innerHeight
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 320 })
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: 568 })
+
+      try {
+        const { openPlotWindow } = useUIStore.getState()
+        openPlotWindow('block-1', { x: 300, y: 500 }, { width: 450, height: 280 })
+
+        const { position, size } = useUIStore.getState().plotWindows['block-1']
+        expect(size.width).toBeLessThanOrEqual(320)
+        expect(size.height).toBeLessThanOrEqual(568)
+        expect(position.x + size.width).toBeLessThanOrEqual(320)
+        expect(position.y + size.height).toBeLessThanOrEqual(568)
+      } finally {
+        Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth })
+        Object.defineProperty(window, 'innerHeight', { configurable: true, value: originalHeight })
+      }
+    })
+
     it('preserves existing window position when reopening', () => {
       const { openPlotWindow, closePlotWindow } = useUIStore.getState()
 

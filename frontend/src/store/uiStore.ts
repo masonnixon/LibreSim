@@ -92,11 +92,30 @@ export const useUIStore = create<UIState>((set) => ({
   // Plot window management
   openPlotWindow: (blockId, initialPosition, initialSize) => set((state) => {
     const existingWindows = Object.keys(state.plotWindows).length
-    const defaultPosition = initialPosition || {
+    const viewportWidth = window.innerWidth
+    const viewportHeight = window.innerHeight
+    const margin = 8
+
+    // Cap the default size to the viewport so a window never opens larger
+    // than the screen (e.g. on a phone, where 450x280 would overflow).
+    const maxWidth = Math.max(240, viewportWidth - margin * 2)
+    const maxHeight = Math.max(160, viewportHeight - margin * 2)
+    const defaultSize = {
+      width: Math.min((initialSize || { width: 450, height: 280 }).width, maxWidth),
+      height: Math.min((initialSize || { width: 450, height: 280 }).height, maxHeight),
+    }
+
+    const cascadePosition = {
       x: 20 + (existingWindows * 30),
       y: 100 + (existingWindows * 30),
     }
-    const defaultSize = initialSize || { width: 450, height: 280 }
+    const rawPosition = initialPosition || cascadePosition
+    // Clamp so the whole window stays on-screen regardless of viewport size.
+    const defaultPosition = {
+      x: Math.max(margin, Math.min(rawPosition.x, viewportWidth - defaultSize.width - margin)),
+      y: Math.max(margin, Math.min(rawPosition.y, viewportHeight - defaultSize.height - margin)),
+    }
+
     return {
       plotWindows: {
         ...state.plotWindows,
