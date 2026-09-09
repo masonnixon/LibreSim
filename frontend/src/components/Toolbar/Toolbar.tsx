@@ -704,7 +704,7 @@ export function Toolbar({ embed = false, restoreLastModel = true }: ToolbarProps
       {/* === View Toggles — icon buttons at every tier; labeled at full === */}
       <div className="flex items-center gap-0.5 md:gap-1 shrink-0">
         <button onClick={toggleProperties} className={`p-1.5 text-sm rounded transition-colors flex items-center gap-1 ${showProperties ? 'bg-blue-600' : 'hover:bg-editor-border'}`} title="Toggle Properties Panel">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" /></svg>
           {tier === 'full' && <span>Properties</span>}
         </button>
         <button onClick={handleTogglePlotWindows} className={`p-1.5 text-sm rounded transition-colors flex items-center gap-1 ${hasOpenPlotWindows ? 'bg-blue-600' : 'hover:bg-editor-border'}`} title={hasOpenPlotWindows ? 'Close All Plot Windows' : 'Open Plot Windows'}>
