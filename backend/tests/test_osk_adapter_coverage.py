@@ -72,6 +72,47 @@ def test_output_port_view_prefers_port_vectors_and_delegates_attributes():
     assert legacy_view.getOutputVector() == [5.0, 6.0]
 
 
+def test_output_port_view_array_raises_on_degraded_matrix_or_vector_signals():
+    view_type = getattr(adapter_module, "_Output" + "PortView")
+
+    # A matrix-declared port whose source provides no (or too few) elements
+    # must raise rather than silently degrading to a scalar.
+    matrix_view = view_type(FakeSource(), 0, [2, 2])
+    with pytest.raises(ValueError, match="matrix signals must not"):
+        matrix_view.getOutputArray()
+
+    # A vector-declared port whose source provides no vector value at all.
+    vector_view = view_type(FakeSource(), 0, [3])
+    with pytest.raises(ValueError, match="provides no vector value"):
+        vector_view.getOutputArray()
+
+
+def test_reject_matrix_into_flat_consumer_with_undeclared_target_shape():
+    # A defense-in-depth runtime check (the compiler already rejects this at
+    # build time): a 2-D source feeding a target whose input_dimensions list
+    # doesn't even cover this port index must still raise, treating the
+    # missing declaration as an incompatible (flat) target.
+    source_compiled = compiled_block(
+        "src", "constant", output_ports=["out"], output_dimensions=[[2, 2]]
+    )
+    sink_compiled = compiled_block("sink", inputs=["src:out@in"], input_ports=["in"])
+    assert sink_compiled.input_dimensions == []
+
+    class ConnectingSink:
+        def connectInput(self, view, port: int, source_port: int) -> None:
+            pass
+
+    adapter = OSKAdapter()
+    adapter._compiled_model = CompiledModel(
+        success=True, message="ready", blocks=[source_compiled, sink_compiled]
+    )
+    adapter._block_map = {"src": source_compiled, "sink": sink_compiled}
+    adapter._osk_blocks = {"src": FakeSource(), "sink": ConnectingSink()}
+
+    with pytest.raises(ValueError, match="Signal shape error"):
+        adapter._setup_connections()
+
+
 def test_connection_port_compatibility_matrix():
     cases = [
         ("node-2", "src-out-2", 2, 2),
@@ -89,6 +130,7 @@ def test_connection_port_compatibility_matrix():
     ]
 
     for sink_port, source_port, expected_sink, expected_source in cases:
+
         class ConnectingSink:
             def __init__(self) -> None:
                 self.call = None

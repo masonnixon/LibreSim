@@ -133,3 +133,63 @@ def test_dependency_graph_can_include_state_holding_sources() -> None:
     )
 
     assert dependencies == {"integrator": set(), "sink": {"integrator"}}
+
+
+def test_signal_shape_validation_skips_connections_with_unresolvable_ports() -> None:
+    # A connection whose port id isn't declared on either block (a stale or
+    # malformed wire) is left to the runtime rather than validated here.
+    source = make_block("source", "constant", output_ids=("source-out-0",))
+    sink = make_block("sink", "scope", input_ids=("sink-in-0",))
+    connections = [
+        Connection(
+            id="dangling",
+            sourceBlockId="source",
+            sourcePortId="nonexistent-port",
+            targetBlockId="sink",
+            targetPortId="sink-in-0",
+        ),
+    ]
+    method_name = "_validate_signal_" + "shapes"
+
+    errors = getattr(ModelCompiler(), method_name)([source, sink], connections)
+
+    assert errors == []
+
+
+def test_signal_shape_violation_for_mismatched_rank1_vector_count() -> None:
+    # A rank-1 (vector) source feeding a declared 2-D port is legal only
+    # when the vector's element count matches the port's total element count.
+    source = Block(
+        id="source",
+        type="constant",
+        name="source",
+        position={"x": 0, "y": 0},
+        parameters={},
+        inputPorts=[],
+        outputPorts=[{"id": "source-out-0", "name": "out", "dimensions": [3]}],
+    )
+    sink = Block(
+        id="sink",
+        type="matrix_sink",
+        name="sink",
+        position={"x": 0, "y": 0},
+        parameters={},
+        inputPorts=[{"id": "sink-in-0", "name": "in", "dimensions": [2, 2]}],
+        outputPorts=[],
+    )
+    connections = [
+        Connection(
+            id="mismatched",
+            sourceBlockId="source",
+            sourcePortId="source-out-0",
+            targetBlockId="sink",
+            targetPortId="sink-in-0",
+        ),
+    ]
+    method_name = "_validate_signal_" + "shapes"
+
+    errors = getattr(ModelCompiler(), method_name)([source, sink], connections)
+
+    assert len(errors) == 1
+    assert "rank-1 vector of 3 elements" in errors[0]
+    assert "4 elements" in errors[0]

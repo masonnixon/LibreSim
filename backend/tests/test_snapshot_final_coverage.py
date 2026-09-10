@@ -88,13 +88,23 @@ def test_reflective_codec_version_apply_and_compact_metadata_edges():
 
     invalid_lengths = [
         ((1,), "metadata"),
+        ((-1,), "metadata"),  # Negative entries fail the basic sanity check.
         ((3, 1, 2), "exceeds live history"),
+        # trace_count (5) exceeds the live block's single recorded trace,
+        # caught by the scope-specific pre-check before the per-field loop.
+        ((2, 5, 0, 0, 0, 0, 0), "exceeds live history"),
         ((2, 0, 2), "trace count"),
         ((2, 1, 3), "trace length"),
     ]
     for lengths, message in invalid_lengths:
         with pytest.raises(SnapshotValidationError, match=message):
             codec._validate_compact_lengths(block, ("times", "values"), lengths)
+
+    # Non-scope blocks compare the lengths tuple directly against the field
+    # count, with no scope-specific trace-count layout.
+    non_scope_codec = ReflectiveBlockCodec("gain")
+    with pytest.raises(SnapshotValidationError, match="metadata"):
+        non_scope_codec._validate_compact_lengths(block, ("times", "values"), (1, 2, 3))
 
     prepared = PreparedBlockRestore(
         block=block,

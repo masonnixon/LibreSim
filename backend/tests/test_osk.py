@@ -299,3 +299,27 @@ class TestSimRun:
         results = sim.run()
 
         assert len(results["times"]) >= 2
+
+
+class TestBlockArrayBridge:
+    """Base-class array bridge fallbacks for blocks that don't override them."""
+
+    def test_get_output_array_falls_back_to_scalar_output_without_getoutputvector(self):
+        # SimpleBlock has no getOutputVector, so getOutputArray must fall
+        # through to the scalar getOutput() bridge.
+        block = SimpleBlock(value=3.0)
+        block.output = 3.0
+        assert block.getOutputArray().tolist() == 3.0
+
+    def test_set_input_array_delegates_to_set_input(self):
+        class RecordingBlock(SimpleBlock):
+            def __init__(self):
+                super().__init__()
+                self.received = None
+
+            def setInput(self, value, port=0):
+                self.received = (value, port)
+
+        block = RecordingBlock()
+        block.setInputArray([1.0, 2.0], port=1)
+        assert block.received == ([1.0, 2.0], 1)
