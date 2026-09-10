@@ -425,9 +425,7 @@ double {struct_name}_get_output({struct_name}* b, int port) {{
 
 def model_reference_template(block: BlockInfo, struct_name: str) -> str:
     """Generate Model Reference block code."""
-    wn = block.parameters.get(
-        "naturalFrequency", block.parameters.get("natural_frequency", 1.0)
-    )
+    wn = block.parameters.get("naturalFrequency", block.parameters.get("natural_frequency", 1.0))
     zeta = block.parameters.get("dampingRatio", block.parameters.get("damping_ratio", 1.0))
     return f"""
 // {block.name} - Model Reference: wn^2 / (s^2 + 2*zeta*wn*s + wn^2)

@@ -60,9 +60,7 @@ def test_compile_sanitizes_compiler_download_filename(
     from src.codegen import controller
 
     class StubCompiler:
-        async def get_executable_bytes(
-            self, project: GeneratedProject
-        ) -> tuple[bytes, str]:
+        async def get_executable_bytes(self, project: GeneratedProject) -> tuple[bytes, str]:
             return b"executable", '../evil\r\n"; filename="payload'
 
     monkeypatch.setattr(controller, "CodeGenerator", _StubGenerator)

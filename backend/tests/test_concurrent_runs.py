@@ -470,19 +470,13 @@ async def test_retained_sessions_are_independently_addressable(
     assert second_id == second.session_id
 
     current_status = await async_client.get("/api/simulate/status")
-    first_status = await async_client.get(
-        "/api/simulate/status", params={"sessionId": first_id}
-    )
-    first_results = await async_client.get(
-        "/api/simulate/results", params={"sessionId": first_id}
-    )
+    first_status = await async_client.get("/api/simulate/status", params={"sessionId": first_id})
+    first_results = await async_client.get("/api/simulate/results", params={"sessionId": first_id})
     assert current_status.json()["sessionId"] == second_id
     assert first_status.json()["sessionId"] == first_id
     assert first_results.json()["sessionId"] == first_id
 
-    stop_first = await async_client.post(
-        "/api/simulate/stop", params={"sessionId": first_id}
-    )
+    stop_first = await async_client.post("/api/simulate/stop", params={"sessionId": first_id})
     assert stop_first.status_code == 200
     assert stop_first.json()["sessionId"] == first_id
     assert first._should_stop is True
@@ -564,12 +558,12 @@ async def test_default_replacement_removes_only_current_retained_session(
     retained_id = retained_response.json()["sessionId"]
     replaced_id = current_response.json()["sessionId"]
     replacement_id = replacement_response.json()["sessionId"]
-    assert (await async_client.get(
-        "/api/simulate/status", params={"sessionId": retained_id}
-    )).status_code == 200
-    assert (await async_client.get(
-        "/api/simulate/status", params={"sessionId": replaced_id}
-    )).status_code == 404
+    assert (
+        await async_client.get("/api/simulate/status", params={"sessionId": retained_id})
+    ).status_code == 200
+    assert (
+        await async_client.get("/api/simulate/status", params={"sessionId": replaced_id})
+    ).status_code == 404
     assert (await async_client.get("/api/simulate/status")).json()["sessionId"] == replacement_id
     assert retained.has_live_run
     assert not replaced.has_live_run
@@ -621,15 +615,21 @@ async def test_replacement_wait_does_not_block_coexistence_installation(
     replacement_response = await replacement_request
     await replacement.run_entered.wait()
     assert replacement_response.status_code == 200
-    assert (await async_client.get(
-        "/api/simulate/status",
-        params={"sessionId": first_response.json()["sessionId"]},
-    )).status_code == 404
-    assert (await async_client.get(
-        "/api/simulate/status",
-        params={"sessionId": coexist_response.json()["sessionId"]},
-    )).status_code == 200
-    assert (await async_client.get("/api/simulate/status")).json()["sessionId"] == replacement.session_id
+    assert (
+        await async_client.get(
+            "/api/simulate/status",
+            params={"sessionId": first_response.json()["sessionId"]},
+        )
+    ).status_code == 404
+    assert (
+        await async_client.get(
+            "/api/simulate/status",
+            params={"sessionId": coexist_response.json()["sessionId"]},
+        )
+    ).status_code == 200
+    assert (await async_client.get("/api/simulate/status")).json()[
+        "sessionId"
+    ] == replacement.session_id
 
     coexist.release.set()
     replacement.release.set()
@@ -664,22 +664,20 @@ async def test_deletion_tombstone_rejects_targeting_and_promotes_latest_peer(
     second.allow_stop.clear()
 
     second_id = second_response.json()["sessionId"]
-    deletion = asyncio.create_task(
-        async_client.delete(f"/api/simulate/sessions/{second_id}")
-    )
+    deletion = asyncio.create_task(async_client.delete(f"/api/simulate/sessions/{second_id}"))
     await second.stop_entered.wait()
-    tombstoned = await async_client.get(
-        "/api/simulate/status", params={"sessionId": second_id}
-    )
+    tombstoned = await async_client.get("/api/simulate/status", params={"sessionId": second_id})
     assert tombstoned.status_code == 409
 
     second.allow_stop.set()
     deleted = await deletion
     assert deleted.status_code == 200
-    assert (await async_client.get(
-        "/api/simulate/status", params={"sessionId": second_id}
-    )).status_code == 404
-    assert (await async_client.get("/api/simulate/status")).json()["sessionId"] == first_response.json()["sessionId"]
+    assert (
+        await async_client.get("/api/simulate/status", params={"sessionId": second_id})
+    ).status_code == 404
+    assert (await async_client.get("/api/simulate/status")).json()[
+        "sessionId"
+    ] == first_response.json()["sessionId"]
     assert first.has_live_run
 
     first.release.set()
@@ -737,10 +735,12 @@ async def test_capacity_never_evicts_live_sessions_and_prunes_oldest_terminal(
     await admitted_runner.run_entered.wait()
     assert admitted.status_code == 200
     assert simulation_routes._registry.session_count == 2
-    assert (await async_client.get(
-        "/api/simulate/status",
-        params={"sessionId": responses[0].json()["sessionId"]},
-    )).status_code == 404
+    assert (
+        await async_client.get(
+            "/api/simulate/status",
+            params={"sessionId": responses[0].json()["sessionId"]},
+        )
+    ).status_code == 404
     assert runners[1].has_live_run
 
     runners[1].release.set()
@@ -824,9 +824,7 @@ async def test_targeted_step_continuation_conflicts_only_with_same_session(
     )
     assert continued.status_code == 200
     await first.continue_entered.wait()
-    conflict = await async_client.post(
-        "/api/simulate/reset", params={"sessionId": first_id}
-    )
+    conflict = await async_client.post("/api/simulate/reset", params={"sessionId": first_id})
     peer_step = await async_client.post(
         "/api/simulate/step/forward",
         params={"sessionId": second_id},
@@ -909,9 +907,7 @@ async def test_concurrent_capacity_creations_share_one_atomic_prune_slot(
         return_exceptions=True,
     )
     admitted = [result for result in results if isinstance(result, SessionRecord)]
-    rejected = [
-        result for result in results if isinstance(result, SessionCapacityExceeded)
-    ]
+    rejected = [result for result in results if isinstance(result, SessionCapacityExceeded)]
     assert len(admitted) == 1
     assert len(rejected) == 1
     assert registry.session_count == 2

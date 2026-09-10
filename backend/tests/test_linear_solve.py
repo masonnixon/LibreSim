@@ -254,9 +254,7 @@ def test_solve_nonsquare_a_rejected():
     """A nonsquare A is reported as a failure, never solved or inverted."""
     # A is 3x2 (nonsquare); b has 3 rows to match A's rows, so the only
     # problem is that A is not square.
-    block = solve_model(
-        [1.0, 2.0, 3.0, 4.0, 5.0, 6.0], [3, 2], [1.0, 2.0, 3.0], [3], [2]
-    )
+    block = solve_model([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], [3, 2], [1.0, 2.0, 3.0], [3], [2])
     assert block.status == 0.0
     assert block.dimension == 0
     assert block.get_status()["reason"] != ""
@@ -290,7 +288,11 @@ def test_solve_ill_conditioned_reported_as_failure():
     # cond([[2,1],[1,3]]) is ~9.5; lowering the limit to 1.0 flags it as
     # ill-conditioned even though it is mathematically solvable.
     block = solve_model(
-        [2.0, 1.0, 1.0, 3.0], [2, 2], [3.0, 5.0], [2], [2],
+        [2.0, 1.0, 1.0, 3.0],
+        [2, 2],
+        [3.0, 5.0],
+        [2],
+        [2],
         {"conditionLimit": 1.0},
     )
     assert block.status == 0.0

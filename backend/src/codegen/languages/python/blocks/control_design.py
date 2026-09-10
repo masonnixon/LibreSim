@@ -394,9 +394,7 @@ class {class_name}:
 
 def model_reference_template(block: BlockInfo, class_name: str) -> str:
     """Generate Model Reference block code."""
-    wn = block.parameters.get(
-        "naturalFrequency", block.parameters.get("natural_frequency", 1.0)
-    )
+    wn = block.parameters.get("naturalFrequency", block.parameters.get("natural_frequency", 1.0))
     zeta = block.parameters.get("dampingRatio", block.parameters.get("damping_ratio", 1.0))
     return f'''
 class {class_name}:

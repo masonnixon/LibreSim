@@ -323,7 +323,11 @@ def test_shape_survives_one_level_subsystem_nesting():
     compiled, adapter, outputs = run_model(model_3x4_one_level_nested())
 
     assert [block.id for block in compiled.blocks] == [
-        "src", "sub__in-1", "sub__gain-1", "sub__out-1", "scope-1",
+        "src",
+        "sub__in-1",
+        "sub__gain-1",
+        "sub__out-1",
+        "scope-1",
     ]
     assert list(outputs.values()) == VALUES_3X4
 

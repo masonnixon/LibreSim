@@ -100,9 +100,7 @@ def test_tracking_example_uses_real_templates(language: Language) -> None:
         ),
     )
     source = "\n".join(
-        generated.content
-        for generated in project.files
-        if isinstance(generated.content, str)
+        generated.content for generated in project.files if isinstance(generated.content, str)
     )
 
     assert "Passthrough (type: alpha_beta_filter)" not in source

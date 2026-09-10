@@ -142,6 +142,4 @@ def test_filter_design_defensively_falls_back_for_degenerate_poles(monkeypatch):
         "_butterworth_poles",
         lambda order: [complex(math.nan, math.nan)],
     )
-    assert design_analog_filter({}, step_size) == [
-        BiquadCoefficients(1.0, 0.0, 0.0, 0.0, 0.0)
-    ]
+    assert design_analog_filter({}, step_size) == [BiquadCoefficients(1.0, 0.0, 0.0, 0.0, 0.0)]

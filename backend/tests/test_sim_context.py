@@ -127,8 +127,7 @@ def _snapshot_state_zoo_model() -> Model:
                 "position": {"x": index * 100, "y": 0},
                 "parameters": parameters,
                 "inputPorts": [
-                    {"id": f"{block_id}-in-{port}", "name": f"in{port}"}
-                    for port in range(inputs)
+                    {"id": f"{block_id}-in-{port}", "name": f"in{port}"} for port in range(inputs)
                 ],
                 "outputPorts": [
                     {"id": f"{block_id}-out-{port}", "name": f"out{port}"}
@@ -230,9 +229,7 @@ def _advance_builtin(block: Block, context: SimContext, index: int) -> float:
     return float(block.getOutput())
 
 
-def _builtin_reference(
-    factory: Callable[[], Block], step_size: float, steps: int
-) -> list[float]:
+def _builtin_reference(factory: Callable[[], Block], step_size: float, steps: int) -> list[float]:
     block, context = _initialized_builtin(factory, step_size)
     return [_advance_builtin(block, context, index) for index in range(steps)]
 
@@ -872,8 +869,7 @@ def test_timing_sensitive_builtins_match_isolated_traces_when_interleaved(
         for name, (step_size, steps) in cases.items()
     }
     instances = {
-        name: _initialized_builtin(factory, step_size)
-        for name, (step_size, _) in cases.items()
+        name: _initialized_builtin(factory, step_size) for name, (step_size, _) in cases.items()
     }
     traces = {name: [] for name in cases}
     indices = {name: 0 for name in cases}
@@ -919,8 +915,7 @@ def test_adapter_schedules_preserve_complete_peer_state_and_output_traces(chunk_
         ]
 
     adapters = {
-        name: initialized(solver, step_size)
-        for name, (solver, step_size, _) in cases.items()
+        name: initialized(solver, step_size) for name, (solver, step_size, _) in cases.items()
     }
     traces = {name: [] for name in cases}
     indices = {name: 0 for name in cases}

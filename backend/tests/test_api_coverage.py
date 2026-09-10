@@ -183,10 +183,22 @@ def test_step_controls_without_session(
     "route,target,message,status,prefix",
     [
         ("/api/simulate/start", "SimulationConfig", "bad config", 400, "Invalid config data"),
-        ("/api/simulate/start", "SimulationRunner", "runner exploded", 500, "Failed to create simulation"),
+        (
+            "/api/simulate/start",
+            "SimulationRunner",
+            "runner exploded",
+            500,
+            "Failed to create simulation",
+        ),
         ("/api/simulate/step/init", "Model", "bad model", 400, "Invalid model data"),
         ("/api/simulate/step/init", "SimulationConfig", "bad config", 400, "Invalid config data"),
-        ("/api/simulate/step/init", "SimulationRunner", "runner exploded", 500, "Failed to initialize step mode"),
+        (
+            "/api/simulate/step/init",
+            "SimulationRunner",
+            "runner exploded",
+            500,
+            "Failed to initialize step mode",
+        ),
     ],
 )
 def test_simulation_construction_errors_are_translated(
@@ -203,9 +215,7 @@ def test_simulation_construction_errors_are_translated(
     from src.api.routes import simulation
 
     monkeypatch.setattr(simulation, target, Mock(side_effect=ValueError(message)))
-    response = test_client.post(
-        route, json={"model": sample_model, "config": simulation_config}
-    )
+    response = test_client.post(route, json={"model": sample_model, "config": simulation_config})
     assert response.status_code == status
     assert response.json() == {"detail": f"{prefix}: {message}"}
 
@@ -213,9 +223,7 @@ def test_simulation_construction_errors_are_translated(
 def test_step_init_requires_model(
     test_client: TestClient, simulation_config: dict[str, Any]
 ) -> None:
-    response = test_client.post(
-        "/api/simulate/step/init", json={"config": simulation_config}
-    )
+    response = test_client.post("/api/simulate/step/init", json={"config": simulation_config})
     assert response.status_code == 400
     assert response.json() == {"detail": "model is required"}
 
@@ -231,9 +239,7 @@ def test_step_backward_and_resets_round_trip(
     )
     assert initialized.status_code == 200
     session_id = initialized.json()["sessionId"]
-    forward = test_client.post(
-        "/api/simulate/step/forward", json={"numSteps": 2}
-    )
+    forward = test_client.post("/api/simulate/step/forward", json={"numSteps": 2})
     assert forward.status_code == 200
     backward = test_client.post("/api/simulate/step/backward")
     assert backward.status_code == 200

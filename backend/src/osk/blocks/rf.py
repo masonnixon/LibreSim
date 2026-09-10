@@ -479,7 +479,6 @@ class AMModulator(Block):
         if self.input_blocks[0] is not None:
             self.message = self.input_blocks[0].getOutput()
 
-
         envelope = 1 + self.modulation_index * self.message
         if self.input_blocks[1] is not None:
             self.carrier = self.input_blocks[1].getOutput()
@@ -537,7 +536,6 @@ class FMModulator(Block):
         if self.input_block is not None:
             self.message = self.input_block.getOutput()
 
-
         t = self.context.t
         dt = self.context.dt
 
@@ -585,7 +583,6 @@ class PhaseNoise(Block):
             signal = self.input_block.getOutput()
         else:
             signal = 0.0
-
 
         dt = self.context.dt
 

@@ -201,6 +201,7 @@ def test_compile_failure_mapping(
     detail: str,
 ) -> None:
     if failure_site == "generator":
+
         def fail(self: Any, model: dict[str, Any], config: Any) -> GeneratedProject:
             raise exception
 

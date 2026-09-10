@@ -109,8 +109,7 @@ class LinearSolve(Block):
         pivoting = str(pivoting).strip().lower()
         if pivoting not in {"partial"}:
             raise ValueError(
-                "LinearSolve block: unsupported pivoting "
-                f"{pivoting!r}; only 'partial' is provided"
+                f"LinearSolve block: unsupported pivoting {pivoting!r}; only 'partial' is provided"
             )
         failure_policy = str(failure_policy).strip().lower()
         if failure_policy not in {"status", "raise"}:
@@ -125,8 +124,7 @@ class LinearSolve(Block):
             )
         if condition_limit <= 0.0:
             raise ValueError(
-                "LinearSolve block: condition_limit must be positive, "
-                f"got {condition_limit!r}"
+                f"LinearSolve block: condition_limit must be positive, got {condition_limit!r}"
             )
 
         self.method = method
@@ -261,9 +259,7 @@ class LinearSolve(Block):
         elif b.ndim == 2:
             b_matrix = b
         else:
-            self._fail(
-                n_cols, math.inf, f"b must be a vector or matrix, got shape {list(b.shape)}"
-            )
+            self._fail(n_cols, math.inf, f"b must be a vector or matrix, got shape {list(b.shape)}")
             return
 
         if b_matrix.shape[0] != n_rows:

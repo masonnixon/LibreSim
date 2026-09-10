@@ -351,7 +351,6 @@ class GPSSensor(Block):
                     else:
                         self.true_velocity = vec[:3]
 
-
         t = self.context.t
 
         # Only update at GPS rate
@@ -476,7 +475,6 @@ class ComplementaryFilter(Block):
                     else:
                         self.gyro = vec[:3]
 
-
         dt = self.context.dt
 
         # Estimate angles from accelerometer
@@ -579,7 +577,6 @@ class MadgwickFilter(Block):
                         self.gyro = vec[:3]
                     else:
                         self.mag = vec[:3]
-
 
         dt = self.context.dt
 
@@ -728,7 +725,6 @@ class MahonyFilter(Block):
                     else:
                         self.gyro = vec[:3]
 
-
         dt = self.context.dt
 
         q0, q1, q2, q3 = self.q
@@ -874,7 +870,6 @@ class INSGPSFusion(Block):
                         self.gps_valid = True
                     elif i == 2 and len(vec) >= 3:
                         self.gps_velocity = vec[:3]
-
 
         dt = self.context.dt
 

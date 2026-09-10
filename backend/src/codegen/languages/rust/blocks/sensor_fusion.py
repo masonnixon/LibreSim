@@ -33,7 +33,7 @@ impl Default for {struct_name}{{fn default()->Self{{Self::new()}}}}
 
 
 def madgwick_filter_template(block: BlockInfo, struct_name: str) -> str:
-    beta=block.parameters.get("beta",0.1)
+    beta = block.parameters.get("beta", 0.1)
     return f"""
 #[derive(Clone)] pub struct {struct_name}{{pub input:[f64;3],pub input1:[f64;3],pub output:[f64;4],q:[f64;4],beta:f64}}
 impl {struct_name}{{pub fn new()->Self{{Self{{input:[0.0;3],input1:[0.0;3],output:[1.0,0.0,0.0,0.0],q:[1.0,0.0,0.0,0.0],beta:{beta}_f64}}}}pub fn init(&mut self){{self.q=[1.0,0.0,0.0,0.0];self.output=self.q;}}
@@ -44,7 +44,7 @@ impl Default for {struct_name}{{fn default()->Self{{Self::new()}}}}
 
 
 def complementary_filter_template(block: BlockInfo, struct_name: str) -> str:
-    alpha=block.parameters.get("alpha",0.98)
+    alpha = block.parameters.get("alpha", 0.98)
     return f"""
 #[derive(Clone)]pub struct {struct_name}{{pub input:[f64;3],pub input1:[f64;3],pub output:[f64;3],euler:[f64;3],alpha:f64}}
 impl {struct_name}{{pub fn new()->Self{{Self{{input:[0.0;3],input1:[0.0;3],output:[0.0;3],euler:[0.0;3],alpha:{alpha}_f64}}}}pub fn init(&mut self){{self.euler=[0.0;3];self.output=[0.0;3];}}pub fn update(&mut self,_t:f64,dt:f64){{let(ax,ay,az)=(self.input[0],self.input[1],self.input[2]);let(p,q,r)=(self.input1[0],self.input1[1],self.input1[2]);let(ro,pi,ya)=(self.euler[0],self.euler[1],self.euler[2]);let ar=ay.atan2((ax*ax+az*az).sqrt());let ap=(-ax).atan2((ay*ay+az*az).sqrt());let rr=p+ro.sin()*pi.tan()*q+ro.cos()*pi.tan()*r;let pr=ro.cos()*q-ro.sin()*r;let yr=if pi.cos().abs()>1e-6{{ro.sin()/pi.cos()*q+ro.cos()/pi.cos()*r}}else{{0.0}};self.euler=[self.alpha*(ro+rr*dt)+(1.0-self.alpha)*ar,self.alpha*(pi+pr*dt)+(1.0-self.alpha)*ap,ya+yr*dt];self.output=self.euler;}}pub fn get_output(&self,p:usize)->f64{{if p<3{{self.output[p]}}else{{0.0}}}}pub fn get_output_vector(&self)->&[f64;3]{{&self.output}}}}

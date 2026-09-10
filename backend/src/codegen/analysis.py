@@ -6,9 +6,7 @@ from collections.abc import Mapping
 from ..osk.blocks.control_analysis import BodePlot, NyquistPlot, PoleZeroMap, StepInfo
 from .models import BlockInfo
 
-ANALYSIS_BLOCK_TYPES = frozenset(
-    {"bode_plot", "nyquist_plot", "pole_zero_map", "step_info"}
-)
+ANALYSIS_BLOCK_TYPES = frozenset({"bode_plot", "nyquist_plot", "pole_zero_map", "step_info"})
 
 _ANALYSIS_CLASSES = {
     "bode_plot": BodePlot,

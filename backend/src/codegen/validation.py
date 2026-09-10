@@ -279,7 +279,9 @@ def canonicalize_headless_results(
 
         if not canonical_times:
             statistics = results.get("statistics", {})
-            final_time = statistics.get("finalTime", 0.0) if isinstance(statistics, Mapping) else 0.0
+            final_time = (
+                statistics.get("finalTime", 0.0) if isinstance(statistics, Mapping) else 0.0
+            )
             try:
                 canonical_times = (float(final_time),)
             except (TypeError, ValueError) as exc:

@@ -42,9 +42,7 @@ def test_compiler_preserves_declared_output_dimensions():
                     "position": {"x": 0, "y": 0},
                     "parameters": {"value": [1.0, 2.0, 3.0]},
                     "inputPorts": [],
-                    "outputPorts": [
-                        {"id": "constant-out", "name": "out", "dimensions": [3]}
-                    ],
+                    "outputPorts": [{"id": "constant-out", "name": "out", "dimensions": [3]}],
                 },
                 {
                     "id": "scope",

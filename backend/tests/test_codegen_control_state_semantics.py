@@ -48,9 +48,7 @@ def _model(block_type: str, parameters: dict) -> dict:
                 "position": {"x": 100, "y": 0},
                 "parameters": parameters,
                 "inputPorts": [{"id": "control-in", "name": "in", "dimensions": [1]}],
-                "outputPorts": [
-                    {"id": "control-out", "name": "out", "dimensions": [1]}
-                ],
+                "outputPorts": [{"id": "control-out", "name": "out", "dimensions": [1]}],
             },
             {
                 "id": "scope",

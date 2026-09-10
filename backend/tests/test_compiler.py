@@ -69,12 +69,10 @@ class TestModelCompiler:
                 position={"x": 0, "y": 0},
                 parameters=parameters or {},
                 inputPorts=[
-                    {"id": f"{block_id}-in-{index}", "name": "in"}
-                    for index in range(num_inputs)
+                    {"id": f"{block_id}-in-{index}", "name": "in"} for index in range(num_inputs)
                 ],
                 outputPorts=[
-                    {"id": f"{block_id}-out-{index}", "name": "out"}
-                    for index in range(num_outputs)
+                    {"id": f"{block_id}-out-{index}", "name": "out"} for index in range(num_outputs)
                 ],
                 children=children,
                 childConnections=child_connections,
@@ -120,9 +118,7 @@ class TestModelCompiler:
                 connect("inner-to-outer-out", "inner", "outer-out"),
             ],
         )
-        source = make_block(
-            "source", "constant", {"value": 4.0}, num_inputs=0
-        )
+        source = make_block("source", "constant", {"value": 4.0}, num_inputs=0)
         scope = make_block("scope", "scope", num_outputs=0)
         model = Model(
             id="nested",
@@ -280,9 +276,10 @@ class TestModelCompiler:
             [source, subsystem], connections
         )
 
-        assert next(block for block in flattened_blocks if block.id == "source").output_ports[
-            0
-        ].id == "custom-source-output"
+        assert (
+            next(block for block in flattened_blocks if block.id == "source").output_ports[0].id
+            == "custom-source-output"
+        )
         assert len(flattened_connections) == 1
         assert flattened_connections[0].source_port_id == "custom-source-output"
         assert flattened_connections[0].target_block_id == "sub__in-2"

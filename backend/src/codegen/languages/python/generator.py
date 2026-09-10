@@ -525,7 +525,9 @@ def run_simulation(
                         # For port 0 use 'input', for port 1+ use 'input1', 'input2', etc.
                         input_field = "input" if port_idx == 0 else f"input{port_idx}"
                         vector_suffix = (
-                            "" if source_block.type != "demux" or source_port == 0 else str(source_port)
+                            ""
+                            if source_block.type != "demux" or source_port == 0
+                            else str(source_port)
                         )
                         lines.append(
                             f"        self.{var_name}.{input_field} = "
@@ -578,7 +580,9 @@ def run_simulation(
                         # For port 0 use 'input', for port 1+ use 'input1', 'input2', etc.
                         input_field = "input" if port_idx == 0 else f"input{port_idx}"
                         vector_suffix = (
-                            "" if source_block.type != "demux" or source_port == 0 else str(source_port)
+                            ""
+                            if source_block.type != "demux" or source_port == 0
+                            else str(source_port)
                         )
                         block_lines.append(
                             f"        self.{var_name}.{input_field} = "

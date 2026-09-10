@@ -150,9 +150,7 @@ class SessionRegistry:
         )
         record.operation_token = token
         record.task = task
-        task.add_done_callback(
-            lambda completed: self._task_done(record, token, completed)
-        )
+        task.add_done_callback(lambda completed: self._task_done(record, token, completed))
         return task
 
     def _insert_locked(

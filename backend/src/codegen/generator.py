@@ -273,9 +273,7 @@ class CodeGenerator:
                 input_dimensions=input_dimensions,
                 output_dimensions=output_dimensions,
                 ready_only=compiled_block.type in READY_ONLY_BLOCKS,
-                custom_state_propagation=(
-                    compiled_block.type in CUSTOM_STATE_PROPAGATION_BLOCKS
-                ),
+                custom_state_propagation=(compiled_block.type in CUSTOM_STATE_PROPAGATION_BLOCKS),
                 step_size=resolved_step_size,
             )
             blocks.append(block_info)
@@ -329,16 +327,12 @@ class CodeGenerator:
                 continue
 
             if sink.type in ANALYSIS_BLOCK_TYPES:
-                dimensions = (
-                    tuple(sink.output_dimensions[0]) if sink.output_dimensions else (1,)
-                )
+                dimensions = tuple(sink.output_dimensions[0]) if sink.output_dimensions else (1,)
                 if dimensions != (1,):
                     raise CodeGenerationError(
                         f"Analysis block '{sink_id}' must declare one scalar output"
                     )
-                canonical_key = (
-                    f"analysis={quote(sink_id, safe='')}|out=0|element=scalar"
-                )
+                canonical_key = f"analysis={quote(sink_id, safe='')}|out=0|element=scalar"
                 outputs.append(
                     OutputSignalInfo(
                         canonical_key=canonical_key,

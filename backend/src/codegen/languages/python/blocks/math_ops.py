@@ -427,8 +427,8 @@ def demux_template(block: BlockInfo, class_name: str) -> str:
     for port in range(num_outputs):
         suffix = "" if port == 0 else str(port)
         vector_getters.append(
-            f'''    def get_output_vector{suffix}(self) -> list:
-        return list(self.outputs[{port}])'''
+            f"""    def get_output_vector{suffix}(self) -> list:
+        return list(self.outputs[{port}])"""
         )
     getter_code = "\n\n".join(vector_getters)
     return f'''

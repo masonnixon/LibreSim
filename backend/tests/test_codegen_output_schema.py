@@ -25,9 +25,7 @@ def _model(*, dimensions: list[int] | None = None) -> dict:
                 "position": {"x": 0, "y": 0},
                 "parameters": {"value": value},
                 "inputPorts": [],
-                "outputPorts": [
-                    {"id": "source/a-out", "name": "out", "dimensions": dimensions}
-                ],
+                "outputPorts": [{"id": "source/a-out", "name": "out", "dimensions": dimensions}],
             },
             {
                 "id": "source-b",
@@ -36,9 +34,7 @@ def _model(*, dimensions: list[int] | None = None) -> dict:
                 "position": {"x": 0, "y": 100},
                 "parameters": {"value": 2.0},
                 "inputPorts": [],
-                "outputPorts": [
-                    {"id": "source-b-out", "name": "out", "dimensions": [1]}
-                ],
+                "outputPorts": [{"id": "source-b-out", "name": "out", "dimensions": [1]}],
             },
             {
                 "id": "sink|scope",
@@ -90,9 +86,7 @@ def test_output_schema_is_stable_ordered_and_display_name_independent():
         "sink=sink%7Cscope|in=0|source=source%2Fa|out=0|element=scalar",
         "sink=sink%7Cscope|in=1|source=source-b|out=0|element=scalar",
     ]
-    assert [signal.canonical_key for signal in second] == [
-        signal.canonical_key for signal in first
-    ]
+    assert [signal.canonical_key for signal in second] == [signal.canonical_key for signal in first]
     assert all(signal.sink_input_port != 2 for signal in first)
 
 
@@ -120,9 +114,11 @@ def test_vector_columns_are_shared_across_generators(language, main_path, access
 
 
 def test_headless_results_are_canonicalized_by_sink_and_trace_order():
-    schema = CodeGenerator().compile_model_info(
-        _model(dimensions=[3]), CodeGenerationConfig()
-    ).output_signals
+    schema = (
+        CodeGenerator()
+        .compile_model_info(_model(dimensions=[3]), CodeGenerationConfig())
+        .output_signals
+    )
     results = {
         "signals": [
             {

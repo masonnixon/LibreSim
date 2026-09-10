@@ -460,9 +460,7 @@ class MatrixIdentity(_MatrixBlock):
         super().__init__()
         self.n = int(n)
         if self.n < 1:
-            raise ValueError(
-                f"MatrixIdentity block: size must be a positive integer, got {n!r}"
-            )
+            raise ValueError(f"MatrixIdentity block: size must be a positive integer, got {n!r}")
         self._recompute()
 
     def update(self):

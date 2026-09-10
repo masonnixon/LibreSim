@@ -1441,8 +1441,11 @@ class OSKAdapter:
                         source_dimensions,
                     )
                     self._reject_matrix_into_flat_consumer(
-                        block, target_port_index, source_dimensions,
-                        source_block_id, source_port,
+                        block,
+                        target_port_index,
+                        source_dimensions,
+                        source_block_id,
+                        source_port,
                     )
                     # Use connectInput if available, otherwise we'll handle in step()
                     if hasattr(osk_block, "connectInput"):
@@ -2100,9 +2103,7 @@ class OSKAdapter:
             raise SnapshotValidationError("Snapshot configuration fingerprint does not match")
         snapshot.context.validate_boundary()
 
-        expected = {
-            block_id: self._block_map[block_id].type for block_id in self._osk_blocks
-        }
+        expected = {block_id: self._block_map[block_id].type for block_id in self._osk_blocks}
         provided: dict[str, Any] = {}
         for block_snapshot in snapshot.blocks:
             if block_snapshot.block_id in provided:

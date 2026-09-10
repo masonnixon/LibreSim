@@ -773,9 +773,7 @@ class TestSimulationRunner:
     def test_runner_decimates_results_without_losing_time_range(self):
         from src.simulation.runner import SimulationRunner
 
-        runner = SimulationRunner(
-            self._create_simple_model(), SimulationConfig(maxResultPoints=4)
-        )
+        runner = SimulationRunner(self._create_simple_model(), SimulationConfig(maxResultPoints=4))
         for index in range(20):
             runner._record_outputs(float(index), {"block-1:out:Signal": float(index)})
 
@@ -1182,6 +1180,7 @@ class TestOSKAdapterExtended:
 
     def test_create_osk_block_with_error(self, monkeypatch):
         """Block constructor failures identify the block and type."""
+
         class FailingBlock:
             def __init__(self, **kwargs):
                 raise TypeError("invalid constructor parameters")
@@ -2349,9 +2348,7 @@ class TestSimulationRunnerStepMode:
 
         assert len(runner._state_history) == history_limit
         referenced = {
-            (ref.key, ref.generation)
-            for state in runner._state_history
-            for ref in state.results
+            (ref.key, ref.generation) for state in runner._state_history for ref in state.results
         }
         stored = {
             (key, generation)
@@ -2366,16 +2363,12 @@ class TestSimulationRunnerStepMode:
             for values in generations.values()
         )
         signal_count = max(1, len(runner._results))
-        assert checkpoint_points <= signal_count * history_limit * (
-            config.max_result_points + 1
-        )
+        assert checkpoint_points <= signal_count * history_limit * (config.max_result_points + 1)
 
         runner.step_backward(history_limit - 1)
         runner.step_forward(history_limit - 1)
         referenced_after_branch = {
-            (ref.key, ref.generation)
-            for state in runner._state_history
-            for ref in state.results
+            (ref.key, ref.generation) for state in runner._state_history for ref in state.results
         }
         stored_after_branch = {
             (key, generation)

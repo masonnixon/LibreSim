@@ -120,9 +120,7 @@ def test_python_rf_templates_execute_canonical_equations() -> None:
 
     namespace = {}
     exec(
-        am_modulator_template(
-            _block("am_modulator", {"modulationIndex": 0.8}, inputs=2), "AM"
-        ),
+        am_modulator_template(_block("am_modulator", {"modulationIndex": 0.8}, inputs=2), "AM"),
         namespace,
     )
     am_type = namespace["AM"]
@@ -147,9 +145,7 @@ def test_rf_examples_use_real_templates(language: Language, example: str) -> Non
         ),
     )
     source = "\n".join(
-        generated.content
-        for generated in project.files
-        if isinstance(generated.content, str)
+        generated.content for generated in project.files if isinstance(generated.content, str)
     )
 
     assert "Passthrough (type: rf_budget_element)" not in source

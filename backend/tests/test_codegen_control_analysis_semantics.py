@@ -64,9 +64,7 @@ def test_analysis_examples_precompute_declared_scalar_outputs(example, expected)
 
 def test_connected_transfer_function_coefficients_override_analysis_parameters():
     model = _load_example("07a_bode_plot_analysis")
-    model["blocks"][1]["parameters"].update(
-        {"numerator": [999.0], "denominator": [1.0]}
-    )
+    model["blocks"][1]["parameters"].update({"numerator": [999.0], "denominator": [1.0]})
 
     info = CodeGenerator().compile_model_info(model, _config(model))
 
@@ -79,9 +77,7 @@ def test_connected_transfer_function_coefficients_override_analysis_parameters()
 def test_all_targets_emit_analysis_templates_and_output_columns(language, example, expected):
     model = _load_example(example)
     project = CodeGenerator().generate(model, _config(model, language=language))
-    generated_text = "\n".join(
-        file.content for file in project.files if not file.is_binary
-    )
+    generated_text = "\n".join(file.content for file in project.files if not file.is_binary)
 
     assert "Passthrough (type:" not in generated_text
     assert "precomputed control analysis" in generated_text.lower()
@@ -108,10 +104,7 @@ def test_headless_analysis_payload_matches_canonical_output_schema(example, expe
     parsed = canonicalize_headless_results(results, info.output_signals)
 
     assert parsed.final_values == pytest.approx(
-        {
-            f"analysis={block_id}|out=0|element=scalar": value
-            for block_id, value in expected
-        }
+        {f"analysis={block_id}|out=0|element=scalar": value for block_id, value in expected}
     )
     assert {
         block_id: results["analyses"][block_id]["output"] for block_id, _ in expected

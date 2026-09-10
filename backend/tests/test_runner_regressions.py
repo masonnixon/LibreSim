@@ -450,9 +450,7 @@ def test_initialize_step_mode_records_adapter_failure() -> None:
 
 def test_step_forward_reports_compilation_failure_without_detailed_errors() -> None:
     runner = SimulationRunner(constant_model(), SimulationConfig())
-    runner._compiler.compile = Mock(
-        return_value=CompiledModel(success=False, message="bad graph")
-    )
+    runner._compiler.compile = Mock(return_value=CompiledModel(success=False, message="bad graph"))
 
     assert runner.step_forward() == {"success": False, "error": "bad graph"}
 

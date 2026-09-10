@@ -111,9 +111,7 @@ async def generate_code(request: CodeGenRequest):
         return StreamingResponse(
             zip_buffer,
             media_type="application/zip",
-            headers={
-                "Content-Disposition": download_content_disposition(f"{project.name}.zip")
-            },
+            headers={"Content-Disposition": download_content_disposition(f"{project.name}.zip")},
         )
 
     except HTTPException:

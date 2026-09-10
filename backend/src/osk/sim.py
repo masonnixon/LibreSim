@@ -166,11 +166,7 @@ class Sim(metaclass=_SimFacade):
         last_stage = 0
         for stage_index, stage in enumerate(self.vStage):
             last_stage = stage_index
-            self.dt = (
-                self.dts[stage_index]
-                if stage_index < len(self.dts)
-                else self.dts[-1]
-            )
+            self.dt = self.dts[stage_index] if stage_index < len(self.dts) else self.dts[-1]
             self.context.reset_step(self.dt)
             self.context.tickfirst = 1
             self.context.ready = 1

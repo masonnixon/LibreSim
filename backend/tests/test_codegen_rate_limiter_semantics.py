@@ -102,9 +102,7 @@ def _noise_model() -> dict:
             "outputPorts": [{"id": "noise-out", "name": "out", "dimensions": [1]}],
         }
     )
-    model["connections"][0].update(
-        {"sourceBlockId": "noise", "sourcePortId": "noise-out"}
-    )
+    model["connections"][0].update({"sourceBlockId": "noise", "sourcePortId": "noise-out"})
     return model
 
 

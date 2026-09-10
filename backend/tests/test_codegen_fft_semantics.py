@@ -37,9 +37,9 @@ def _block(
 def test_python_window_and_fft_templates_match_osk() -> None:
     """Generated Python must preserve the OSK frame and interleaved DFT contract."""
     model = json.loads(EXAMPLE_PATH.read_text())
-    frame = next(block for block in model["blocks"] if block["id"] == "fft_frame")[
-        "parameters"
-    ]["value"]
+    frame = next(block for block in model["blocks"] if block["id"] == "fft_frame")["parameters"][
+        "value"
+    ]
 
     osk_window = WindowFunction(window_type="hamming", length=64)
     osk_fft = FFT(n_points=64)
@@ -89,17 +89,13 @@ def test_fft_example_uses_real_templates_and_128_element_spectrum(language: Lang
     )
     model_info = generator.compile_model_info(model, config)
     frequency_outputs = [
-        signal
-        for signal in model_info.output_signals
-        if signal.sink_block_id == "scope_freq"
+        signal for signal in model_info.output_signals if signal.sink_block_id == "scope_freq"
     ]
     assert len(frequency_outputs) == 128
 
     project = generator.generate(model, config)
     source = "\n".join(
-        generated.content
-        for generated in project.files
-        if isinstance(generated.content, str)
+        generated.content for generated in project.files if isinstance(generated.content, str)
     )
     assert "Passthrough (type: window_function)" not in source
     assert "Passthrough (type: fft)" not in source

@@ -85,9 +85,7 @@ class SimulationRunner:
         # O(K * (H + M)); repeated rollback branches have a conservative
         # O(K * H * M) bound.  The O(M) copy occurs only at decimation or branching.
         self._result_generations: dict[str, int] = {}
-        self._result_checkpoints: dict[
-            str, dict[int, tuple[tuple[float, float], ...]]
-        ] = {}
+        self._result_checkpoints: dict[str, dict[int, tuple[tuple[float, float], ...]]] = {}
         self._next_result_generation = 0
         self._start_time: float = 0
         self._execution_time: float = 0
@@ -167,9 +165,7 @@ class SimulationRunner:
         """Validate that an opaque token still owns the requested operation."""
         with self._operation_lock:
             if self._active_operation is not token or token.kind != kind:
-                raise SimulationOperationConflict(
-                    f"Invalid or stale operation token for {kind}"
-                )
+                raise SimulationOperationConflict(f"Invalid or stale operation token for {kind}")
             if adopt:
                 if token.adopted:
                     raise SimulationOperationConflict(
@@ -331,9 +327,7 @@ class SimulationRunner:
                 self._resume_gate.set()
                 active_finished = active.finished
             elif active is not None:
-                raise SimulationOperationConflict(
-                    f"Simulation is busy with {active.kind}"
-                )
+                raise SimulationOperationConflict(f"Simulation is busy with {active.kind}")
             else:
                 token = SimulationOperationToken(kind="step-enter")
                 self._active_operation = token
@@ -527,8 +521,7 @@ class SimulationRunner:
         rollback = self._prepare_snapshot_restore(before)
         history_before = list(self._state_history)
         checkpoints_before = {
-            key: dict(generations)
-            for key, generations in self._result_checkpoints.items()
+            key: dict(generations) for key, generations in self._result_checkpoints.items()
         }
         try:
             self._commit_snapshot_restore(target)
@@ -561,9 +554,7 @@ class SimulationRunner:
         expected_time = self.config.start_time + snapshot.total_steps * self.config.step_size
         duration = self.config.stop_time - self.config.start_time
         expected_progress = (
-            (snapshot.current_time - self.config.start_time) / duration
-            if duration > 0
-            else 0.0
+            (snapshot.current_time - self.config.start_time) / duration if duration > 0 else 0.0
         )
         if (
             snapshot.total_steps < 0
@@ -1085,9 +1076,7 @@ class SimulationRunner:
             self._results[key].append((t, value))
             if len(self._results[key]) > self.config.max_result_points:
                 generation = self._result_generations[key]
-                self._result_checkpoints.setdefault(key, {})[generation] = tuple(
-                    self._results[key]
-                )
+                self._result_checkpoints.setdefault(key, {})[generation] = tuple(self._results[key])
                 latest = self._results[key][-1]
                 self._results[key] = self._results[key][::2]
                 if self._results[key][-1] != latest:

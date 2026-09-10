@@ -49,16 +49,13 @@ class {class_name}:
 def am_modulator_template(block: BlockInfo, class_name: str) -> str:
     """Generate an AM modulator with external or internal carrier semantics."""
     modulation_index = block.parameters.get("modulationIndex", 0.5)
-    carrier_freq = block.parameters.get(
-        "carrierFreq", block.parameters.get("carrierFreqHz", 1e6)
-    )
+    carrier_freq = block.parameters.get("carrierFreq", block.parameters.get("carrierFreqHz", 1e6))
     carrier_amplitude = block.parameters.get("carrierAmplitude", 1.0)
     if len(block.input_dimensions) > 1:
         output_expression = "self.input1 * envelope"
     else:
         output_expression = (
-            "self.carrier_amplitude * envelope * "
-            "math.cos(2.0 * math.pi * self.carrier_freq * t)"
+            "self.carrier_amplitude * envelope * math.cos(2.0 * math.pi * self.carrier_freq * t)"
         )
     return f'''
 import math

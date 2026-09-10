@@ -107,14 +107,11 @@ class ModelCompiler:
             # Validate declared signal shapes on every connection before the
             # model is consumed. A 2-D (matrix) signal feeding a flat-list
             # only port is a model-build error.
-            shape_errors = self._validate_signal_shapes(
-                flattened_blocks, flattened_connections
-            )
+            shape_errors = self._validate_signal_shapes(flattened_blocks, flattened_connections)
             if shape_errors:
                 return CompiledModel(
                     success=False,
-                    message="Signal shape validation failed: "
-                    + "; ".join(shape_errors),
+                    message="Signal shape validation failed: " + "; ".join(shape_errors),
                     errors=shape_errors,
                 )
 
@@ -377,6 +374,7 @@ class ModelCompiler:
         Returns:
             Tuple of (flattened_blocks, flattened_connections)
         """
+
         def port_index(port_id: str) -> int | None:
             try:
                 return int(port_id.rsplit("-", 1)[-1])
@@ -387,7 +385,7 @@ class ModelCompiler:
             if prefixed_id == block_id:
                 return port_id
             if port_id.startswith(f"{block_id}-"):
-                return f"{prefixed_id}{port_id[len(block_id):]}"
+                return f"{prefixed_id}{port_id[len(block_id) :]}"
             return f"{prefixed_id}__{port_id}"
 
         def flatten_level(
@@ -414,17 +412,13 @@ class ModelCompiler:
                             parameters=block.parameters,
                             input_ports=[
                                 port.model_copy(
-                                    update={
-                                        "id": prefixed_port_id(port.id, block.id, prefixed_id)
-                                    }
+                                    update={"id": prefixed_port_id(port.id, block.id, prefixed_id)}
                                 )
                                 for port in block.input_ports
                             ],
                             output_ports=[
                                 port.model_copy(
-                                    update={
-                                        "id": prefixed_port_id(port.id, block.id, prefixed_id)
-                                    }
+                                    update={"id": prefixed_port_id(port.id, block.id, prefixed_id)}
                                 )
                                 for port in block.output_ports
                             ],
@@ -455,9 +449,7 @@ class ModelCompiler:
                             f"{child_prefix}{child.id}"
                         )
 
-                child_name_prefix = (
-                    f"{name_prefix}/{block.name}" if name_prefix else block.name
-                )
+                child_name_prefix = f"{name_prefix}/{block.name}" if name_prefix else block.name
                 child_blocks, child_connections = flatten_level(
                     block.children,
                     block.child_connections or [],
