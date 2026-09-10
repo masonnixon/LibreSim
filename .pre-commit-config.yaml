@@ -22,10 +22,6 @@ repos:
         name: ruff (format)
         files: ^backend/
 
-  # NOTE: MyPy type checking runs in CI via GitHub Actions/GitLab CI
-  # It's configured as a local hook but requires the conda environment's Python
-  # On Windows, users should run: python -m mypy backend/src/ --config-file=backend/pyproject.toml
-
   # Bandit - Security vulnerability scanner
   - repo: https://github.com/PyCQA/bandit
     rev: 1.7.9
@@ -35,12 +31,29 @@ repos:
         args: [-c, backend/pyproject.toml, -r]
         files: ^backend/src/
 
-  # Pytest - Run unit tests on code changes
+  # MyPy - heavier check, only on push, not every commit. Runs inside the
+  # backend dev container so it matches CI's Python 3.11 and pinned deps
+  # exactly (the host's conda Python drifts version-to-version and can hit
+  # mypy/numpy-stub incompatibilities CI never sees).
   - repo: local
     hooks:
+      - id: mypy-backend
+        name: mypy (backend typecheck)
+        entry: bash -c 'docker exec libresimgit-backend-1 python -m mypy src/ --config-file=pyproject.toml || { echo "mypy failed, or backend container is not running (docker compose up -d backend)"; exit 1; }'
+        language: system
+        files: ^backend/
+        pass_filenames: false
+        stages: [pre-push]
+
+      # Pytest (with coverage) - runs on the host's conda Python (see repo
+      # CLAUDE.md: "I use anaconda python") since test *behavior* isn't
+      # Python-version-sensitive the way mypy's stub parsing is, and running
+      # on the host avoids leaving root-owned coverage artifacts (htmlcov/,
+      # coverage.xml, .pytest_cache/) that the container's root user would
+      # otherwise create and the host user then can't overwrite next run.
       - id: pytest-backend
-        name: pytest (backend tests)
-        entry: bash -c 'cd backend && python -m pytest tests/ -x -q --tb=line'
+        name: pytest (backend tests + 100% coverage gate)
+        entry: bash -c 'cd backend && python -m pytest tests/ -q --tb=short'
         language: system
         files: ^backend/
         pass_filenames: false
@@ -50,22 +63,32 @@ repos:
   # FRONTEND (TypeScript/JavaScript) HOOKS
   # ==========================================================================
 
-  # ESLint - TypeScript/JavaScript linting (runs in Docker)
+  # These run inside the frontend dev container (docker compose up).
+  # If the container isn't running, the hook FAILS rather than silently
+  # skipping — a skipped check is a check that didn't happen.
   - repo: local
     hooks:
       - id: eslint
         name: eslint (frontend)
-        entry: bash -c 'docker exec libresimgit-frontend-1 npm run lint 2>/dev/null || echo "Docker container not running - skipping eslint"'
+        entry: bash -c 'docker exec libresimgit-frontend-1 npm run lint || { echo "eslint failed, or frontend container is not running (docker compose up -d frontend)"; exit 1; }'
         language: system
         files: ^frontend/.*\.(ts|tsx|js|jsx)$
         pass_filenames: false
 
       - id: tsc
         name: tsc (typecheck)
-        entry: bash -c 'docker exec libresimgit-frontend-1 npx tsc --noEmit 2>/dev/null || echo "Docker container not running - skipping tsc"'
+        entry: bash -c 'docker exec libresimgit-frontend-1 npx tsc --noEmit || { echo "tsc failed, or frontend container is not running (docker compose up -d frontend)"; exit 1; }'
         language: system
         files: ^frontend/.*\.(ts|tsx)$
         pass_filenames: false
+
+      - id: frontend-coverage
+        name: vitest (frontend tests + 100% coverage gate)
+        entry: bash -c 'docker exec libresimgit-frontend-1 npm run test:coverage || { echo "frontend tests/coverage failed, or frontend container is not running (docker compose up -d frontend)"; exit 1; }'
+        language: system
+        files: ^frontend/.*\.(ts|tsx)$
+        pass_filenames: false
+        stages: [pre-push]  # Full coverage run only on push, not every commit
 
   # ==========================================================================
   # GENERAL HOOKS
